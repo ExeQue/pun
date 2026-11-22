@@ -11,9 +11,9 @@
 
 [package]
 edition = "2024"
-rust-version = "1.99.0"
+rust-version = "1.100.0"
 name = "mago-syntax"
-version = "1.57.0"
+version = "1.61.0"
 authors = ["Seifeddine Gmati <azjezz@carthage.software>"]
 build = false
 autolib = false
@@ -41,22 +41,22 @@ name = "mago_syntax"
 path = "src/lib.rs"
 
 [dependencies.mago-allocator]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-database]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-php-version]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-reporting]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-span]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-syntax-core]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.memchr]
 version = "2.7.4"

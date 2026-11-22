@@ -1,14 +1,14 @@
-# Mago syntax 1.57.0: maintained patch
+# Mago syntax 1.61.0: maintained patch
 
 ## Source
 
-The library source and normalized manifest come from the published `mago-syntax` 1.57.0 package
-(checksum `c9f8e390954afaad9f6d5138b9f67449de8c99e125bf046fafcdda4a1abd8d0a`). Its
+The library source and normalized manifest come from the published `mago-syntax` 1.61.0 package
+(checksum `16c140f687755e7e1b0f8ed92315178a2b6a3383023a673c9ccad4f8fe8ebd74`). Its
 `.cargo_vcs_info.json` identifies upstream revision
-[`9656cd55`](https://github.com/carthage-software/mago/tree/9656cd55d51d96bd6dc57f1f1e73c15f22cb7cc3/crates/syntax).
+[`08934a6e`](https://github.com/carthage-software/mago/tree/08934a6e3925cc1c836041efc931505330911f6e/crates/syntax).
 Both license files come from that revision. Registry bookkeeping, the package lockfile, external
 tests, and benchmarks are omitted, along with their manifest targets and development dependencies.
-Sibling Mago dependencies remain pinned to `=1.57.0`. The root manifest patches this crate and
+Sibling Mago dependencies remain pinned to `=1.61.0`. The root manifest patches this crate and
 excludes its directory from Pun's workspace members.
 
 ## Opening tags within leading shebang text

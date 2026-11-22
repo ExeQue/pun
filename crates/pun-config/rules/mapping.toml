@@ -35,7 +35,7 @@
 
 [meta]
 schema = 2
-upstream = { php-cs-fixer = "3.95.25", pint = "1.32.1 (oracle .oracle/pint)", rector = "2.8.4", rector-laravel = "driftingly/rector-laravel 2.7.3", pest-plugin-rector = "5.x-dev@8c1b780", rector-phpunit = "dev-main@22c6dae (bundled with Rector 2.8.4)", phpstan = "2.3.5", phpstan-strict-rules = "2.0.12", phpstan-deprecation-rules = "2.0.5", larastan = "3.14.0", mago = "1.57.0" }
+upstream = { php-cs-fixer = "3.95.25", pint = "1.32.1 (oracle .oracle/pint)", rector = "2.8.4", rector-laravel = "driftingly/rector-laravel 2.7.3", pest-plugin-rector = "5.x-dev@8c1b780", rector-phpunit = "dev-main@22c6dae (bundled with Rector 2.8.4)", phpstan = "2.3.5", phpstan-strict-rules = "2.0.12", phpstan-deprecation-rules = "2.0.5", larastan = "3.14.0", mago = "1.61.0" }
 ecosystems = ["laravel", "pest", "phpunit"]
 sets = ["dead-code", "modernize", "code-quality", "types", "early-return", "privatization", "naming", "coding-style"]
 presets = { format = ["laravel", "psr12", "empty"], analyse = ["basic", "essential", "recommended", "strict", "max"] }
@@ -4639,6 +4639,7 @@ no-insecure-comparison = { pun = "lint/security/no-insecure-comparison", options
 no-is-null = { pun = "lint/style/no-is-null", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
 no-isset = { pun = "lint/style/no-isset", options = "same", status = "decided" }
 no-iterator-to-array-in-foreach = { pun = "lint/complexity/no-iterator-to-array-in-foreach", options = "same", status = "decided" }
+no-legacy-constructor = { pun = "lint/style/no-php4-constructor", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
 no-literal-namespace-string = { pun = "lint/style/prefer-class-constant", options = "same", status = "decided" }
 no-literal-password = { pun = "lint/security/no-literal-password", options = "same", status = "decided" }
 no-missing-format-argument = { pun = "lint/functions/no-missing-format-argument", options = "same", status = "decided" }
@@ -4706,6 +4707,7 @@ prefer-fake-helper = { pun = "lint/laravel/prefer-fake-helper", options = "same"
 prefer-first-class-callable = { pun = "lint/php-8.1/prefer-first-class-callable", options = "same", status = "decided" }
 prefer-interface = { unsupported = "Symfony integration: out of scope (Laravel-first)", status = "decided" }
 prefer-pre-increment = { pun = "format/operators/increment-style", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
+prefer-self = { pun = "lint/style/prefer-self-reference", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
 prefer-self-return-type = { pun = "lint/style/prefer-self-reference", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
 prefer-static-closure = { pun = "lint/performance/prefer-static-closure", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
 prefer-test-attribute = { pun = "lint/phpunit/prefer-test-attribute", options = "same", status = "decided" }
@@ -4765,6 +4767,7 @@ AmbiguousObjectMethodAccess = { unsupported = "no PHPStan-parity equivalent; Mag
 AmbiguousObjectPropertyAccess = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 ArrayAppendInReadContext = { pun = "analyse/arrays/read-without-offset", options = "none", status = "decided" }
 ArrayAppendOverflow = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
+ArrayToIntCast = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 ArrayToStringConversion = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 AssignmentToConstant = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 AssignmentToThis = { pun = "analyse/types/assign-to-this", options = "none", status = "decided" }
@@ -4778,6 +4781,7 @@ CloneInsideLoop = { unsupported = "no PHPStan-parity equivalent; Mago analyzer i
 ConditionIsTooComplex = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 ConflictingReferenceConstraint = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 ConflictingTemplateEqualityBounds = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
+DeadCatch = { pun = "analyse/types/dead-catch", options = "none", status = "decided" }
 DeprecatedClass = { pun = "analyse/deprecated/class", options = "none", status = "decided" }
 DeprecatedClassConstant = { pun = "analyse/deprecated/class-constant", options = "none", status = "decided" }
 DeprecatedClosure = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
@@ -4812,6 +4816,7 @@ FalseIterator = { pun = "analyse/types/foreach-non-iterable", options = "none", 
 FalseOperand = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 GenericObjectIteration = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 HiddenGeneratorReturn = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
+ImplicitFloatToIntCast = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 ImplicitResourceToStringCast = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 ImplicitToStringCast = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 ImpossibleArrayAccess = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
@@ -4845,6 +4850,7 @@ IncompatibleReadonlyModifier = { pun = "analyse/classes/incompatible-override", 
 IncompatibleReturnType = { pun = "analyse/classes/incompatible-override", options = "none", status = "decided" }
 IncompatibleStaticModifier = { pun = "analyse/classes/incompatible-override", also = ["analyse/classes/incompatible-property-override"], options = "none", status = "decided" }
 IncompatibleTemplateLowerBound = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
+IncompatibleThrowType = { pun = "analyse/types/throws-not-covariant", options = "none", status = "decided" }
 IncompatibleVisibility = { pun = "analyse/classes/incompatible-override", options = "none", status = "decided" }
 InconsistentTemplate = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 IncorrectClassLikeCasing = { pun = "analyse/undefined/group-import", options = "none", status = "decided" }
@@ -4987,6 +4993,7 @@ PossibleMethodAccessOnNull = { pun = "analyse/classes/invalid-method-callable", 
 PossiblyArrayAppendOverflow = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 PossiblyFalseArgument = { pun = "analyse/types/argument", options = "none", status = "decided" }
 PossiblyFalseArrayAccess = { pun = "analyse/arrays/invalid-destructuring", options = "none", status = "decided" }
+PossiblyFalseArrayIndex = { pun = "analyse/types/invalid-offset", options = "none", status = "decided" }
 PossiblyFalseIterator = { pun = "analyse/types/foreach-non-iterable", options = "none", status = "decided" }
 PossiblyFalseOperand = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 PossiblyInvalidArgument = { pun = "analyse/types/argument", options = "none", status = "decided" }
@@ -5037,6 +5044,7 @@ StringMemberSelector = { unsupported = "no PHPStan-parity equivalent; Mago analy
 TemplateConstraintViolation = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 TooFewArguments = { pun = "analyse/types/argument", options = "none", status = "decided" }
 TooManyArguments = { pun = "analyse/types/argument", options = "none", status = "decided" }
+TooWideThrowType = { pun = "analyse/types/unused-throws-type", options = "none", status = "decided" }
 TraitConstantOverride = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }
 TraitInstantiation = { pun = "analyse/types/invalid-closure-signature", options = "none", status = "decided" }
 TypeConfirmation = { unsupported = "no PHPStan-parity equivalent; Mago analyzer is not a migrate input", status = "decided" }

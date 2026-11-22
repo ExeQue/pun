@@ -1,0 +1,68 @@
+{
+ "general": [],
+ "errors": [
+  {
+   "file": "members.php",
+   "line": 54,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: MagicMembers\\Pending",
+   "tip": null
+  },
+  {
+   "file": "members.php",
+   "line": 55,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: MagicMembers\\Pending",
+   "tip": null
+  },
+  {
+   "file": "members.php",
+   "line": 56,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: MagicMembers\\Pending",
+   "tip": null
+  },
+  {
+   "file": "members.php",
+   "line": 57,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: MagicMembers\\Pending",
+   "tip": null
+  },
+  {
+   "file": "members.php",
+   "line": 62,
+   "identifier": "property.notFound",
+   "message": "Access to an undefined property MagicMembers\\Magic::$name.",
+   "tip": "Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property"
+  },
+  {
+   "file": "members.php",
+   "line": 62,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: bool",
+   "tip": null
+  },
+  {
+   "file": "members.php",
+   "line": 63,
+   "identifier": "property.notFound",
+   "message": "Access to an undefined property MagicMembers\\Magic::$name.",
+   "tip": "Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property"
+  },
+  {
+   "file": "members.php",
+   "line": 83,
+   "identifier": "method.protected",
+   "message": "Call to protected method hidden() of class MagicMembers\\Forwarding.",
+   "tip": null
+  },
+  {
+   "file": "members.php",
+   "line": 83,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: array<string>",
+   "tip": null
+  }
+ ]
+}

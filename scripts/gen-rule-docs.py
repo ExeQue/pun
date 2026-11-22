@@ -101,11 +101,11 @@ def upstream_url(row: dict, urls: dict) -> str:
     if tool == "phpstan-parameters":
         return "https://phpstan.org/config-reference"
     if tool == "mago-linter":
-        return f"https://mago.carthage.software/1.57.0/en/tools/linter/rules/#{quote(name)}"
+        return f"https://mago.carthage.software/1.61.0/en/tools/linter/rules/#{quote(name)}"
     if tool == "pun":
-        return "https://mago.carthage.software/1.57.0/en/tools/linter/rules/"
+        return "https://mago.carthage.software/1.61.0/en/tools/linter/rules/"
     if tool == "mago-analyzer":
-        return "https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/"
+        return "https://mago.carthage.software/1.61.0/en/tools/analyzer/overview/"
     if tool == "larastan":
         return "https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md"
     return "https://laravel.com/docs/pint"

@@ -136,6 +136,15 @@ where
                 continue;
             };
 
+            let fq_class_id = std::iter::once(fq_class_id)
+                .chain(class_resolution.intersections.iter().filter_map(|intersection| intersection.fqcn))
+                .find(|class_id| {
+                    context.codebase.get_class_like(class_id.as_bytes()).is_some_and(|metadata| {
+                        metadata.constants.contains_key(&const_name) || metadata.enum_cases.contains_key(&const_name)
+                    })
+                })
+                .unwrap_or(fq_class_id);
+
             // Handle regular constants and enum cases
             let Some(metadata) = context.codebase.get_class_like(fq_class_id.as_bytes()) else {
                 if class_resolution.is_parent()
@@ -402,6 +411,15 @@ where
     {
         let display = format!("{}::{}", metadata.original_name, const_name);
         crate::utils::availability::check_enum_case_availability(context, enum_case_metadata, &display, const_span);
+
+        if enum_case_metadata.flags.is_deprecated() {
+            context.collector.report_with_code(
+                IssueCode::DeprecatedClassConstant,
+                Issue::warning(format!("Use of deprecated enum case `{display}`."))
+                    .with_annotation(Annotation::primary(const_span).with_message("This enum case is deprecated"))
+                    .with_help(format!("Check the documentation for `{display}` for a replacement.")),
+            );
+        }
 
         let const_type =
             TUnion::from_atomic(TAtomic::Object(TObject::Enum(TEnum::new_case(metadata.original_name, const_name))));

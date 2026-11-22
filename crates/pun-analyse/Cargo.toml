@@ -55,7 +55,7 @@ bincode = { version = "2.0.1", features = ["serde"] }
 mago-prelude.workspace = true
 mago-reporting.workspace = true
 mago-codex = { workspace = true, features = ["serde"] }
-mago-extension = "=1.57.0"
+mago-extension = "=1.61.0"
 
 # The root `[workspace.lints]` plus the allows for code that ports upstream PHP function by function. Cargo
 # cannot extend an inherited table, so this repeats the workspace lints: a change there goes here too.

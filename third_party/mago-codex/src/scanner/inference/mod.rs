@@ -41,11 +41,15 @@ use crate::metadata::constant::ConstantMetadata;
 use crate::scanner::Context;
 use crate::ttype::atomic::TAtomic;
 use crate::ttype::atomic::array::TArray;
+use crate::ttype::atomic::array::key::ArrayKey;
 use crate::ttype::atomic::array::keyed::TKeyedArray;
 use crate::ttype::atomic::array::list::TList;
 use crate::ttype::atomic::callable::TCallable;
 use crate::ttype::atomic::derived::TDerived;
+use crate::ttype::atomic::derived::index_access::TIndexAccess;
 use crate::ttype::atomic::derived::value_of::TValueOf;
+use crate::ttype::atomic::object::TObject;
+use crate::ttype::atomic::object::named::TNamedObject;
 use crate::ttype::atomic::reference::TGlobalReferenceSelector;
 use crate::ttype::atomic::reference::TReference;
 use crate::ttype::atomic::reference::TReferenceMemberSelector;
@@ -64,6 +68,7 @@ use crate::ttype::get_false;
 use crate::ttype::get_float;
 use crate::ttype::get_int;
 use crate::ttype::get_int_or_float;
+use crate::ttype::get_int_range;
 use crate::ttype::get_literal_int;
 use crate::ttype::get_literal_string;
 use crate::ttype::get_mixed;
@@ -92,7 +97,7 @@ pub use initializer::class_names as initializer_class_names;
 #[inline]
 #[must_use]
 pub fn get_literal_constant_type(name: &[u8]) -> Option<TUnion> {
-    let name = name.strip_prefix(b"\\").unwrap_or(name);
+    let name = name.trim_prefix(b"\\");
 
     if name.eq_ignore_ascii_case(b"true") {
         Some(get_true())
@@ -182,7 +187,7 @@ pub fn get_platform_constant_type(name: &[u8]) -> Option<TUnion> {
         TAtomic::Scalar(TScalar::Integer(TInteger::Literal(90))),
     ];
 
-    let name = name.strip_prefix(b"\\").unwrap_or(name);
+    let name = name.trim_prefix(b"\\");
 
     match name {
         b"PHP_MAXPATHLEN"
@@ -211,8 +216,17 @@ pub fn get_platform_constant_type(name: &[u8]) -> Option<TUnion> {
         | b"PHP_VERSION"
         | b"PHP_SAPI"
         | b"PHP_SYSCONFDIR"
+        | b"PASSWORD_ARGON2_PROVIDER"
         | b"ICONV_IMPL"
         | b"LIBXML_DOTTED_VERSION"
+        | b"LIBXML_LOADED_VERSION"
+        | b"ICONV_VERSION"
+        | b"OPENSSL_VERSION_TEXT"
+        | b"GD_VERSION"
+        | b"INTL_ICU_VERSION"
+        | b"LIBZIP_VERSION"
+        | b"MB_ONIGURUMA_VERSION"
+        | b"SODIUM_LIBRARY_VERSION"
         | b"PCRE_VERSION" => Some(get_non_empty_string()),
         b"STDIN" | b"STDOUT" | b"STDERR" => Some(get_open_resource()),
         b"NAN" | b"PHP_FLOAT_EPSILON" | b"INF" => Some(get_float()),
@@ -424,7 +438,8 @@ fn infer_with_constant_sources<'arena>(
         }
         Expression::UnaryPrefix(UnaryPrefix { operator, operand }) => {
             let operand_type =
-                infer_with_constant_sources(context, scope, operand, enclosing_class, constants, class_constants)?;
+                infer_with_constant_sources(context, scope, operand, enclosing_class, constants, class_constants)
+                    .unwrap_or_else(get_mixed);
 
             match operator {
                 UnaryPrefixOperator::Plus(_) => {
@@ -445,12 +460,14 @@ fn infer_with_constant_sources<'arena>(
                         TUnion::from_single(Cow::Owned(TAtomic::Scalar(TScalar::Float(TFloat::literal(
                             -operand_value,
                         )))))
-                    } else if operand_type.is_numeric() {
-                        get_int_or_float()
                     } else {
-                        operand_type
+                        get_int_or_float()
                     })
                 }
+                UnaryPrefixOperator::BitwiseNot(_) => Some(match operand_type.get_single_literal_int_value() {
+                    Some(operand_value) => get_literal_int(!operand_value),
+                    None => get_int(),
+                }),
                 UnaryPrefixOperator::ArrayCast(_, _) => Some(get_mixed_keyed_array()),
                 UnaryPrefixOperator::BoolCast(_, _) => Some(get_bool()),
                 UnaryPrefixOperator::BooleanCast(_, _) => Some(get_bool()),
@@ -647,6 +664,68 @@ fn infer_with_constant_sources<'arena>(
                 _ => Some(get_int_or_float()),
             }
         }
+        Expression::ArrayAccess(array_access) => {
+            let array_type = infer_with_constant_sources(
+                context,
+                scope,
+                array_access.array,
+                enclosing_class,
+                constants,
+                class_constants,
+            )?;
+            let index_type = infer_with_constant_sources(
+                context,
+                scope,
+                array_access.index,
+                enclosing_class,
+                constants,
+                class_constants,
+            )?;
+
+            if array_type.types.iter().any(|atomic| matches!(atomic, TAtomic::Reference(_))) {
+                return Some(wrap_atomic(TAtomic::Derived(TDerived::IndexAccess(TIndexAccess::new(
+                    array_type, index_type,
+                )))));
+            }
+
+            let key = if let Some(index) = index_type.get_single_literal_int_value() {
+                ArrayKey::Integer(index)
+            } else {
+                ArrayKey::String(word(index_type.get_single_literal_string_value()?))
+            };
+
+            let (optional, element_type) = match (array_type.is_single().then(|| array_type.get_single())?, key) {
+                (TAtomic::Array(TArray::List(list)), ArrayKey::Integer(index)) => {
+                    list.known_elements.as_ref()?.get(&usize::try_from(index).ok()?)?
+                }
+                (TAtomic::Array(TArray::Keyed(keyed)), key) => keyed.known_items.as_ref()?.get(&key)?,
+                _ => return None,
+            };
+
+            (!optional).then(|| element_type.clone())
+        }
+        Expression::Parenthesized(parenthesized) => infer_with_constant_sources(
+            context,
+            scope,
+            parenthesized.expression,
+            enclosing_class,
+            constants,
+            class_constants,
+        ),
+        Expression::Binary(Binary { operator: BinaryOperator::Spaceship(_), lhs, rhs }) => {
+            let lhs = infer_with_constant_sources(context, scope, lhs, enclosing_class, constants, class_constants)
+                .and_then(|lhs| lhs.get_single_literal_int_value());
+            let rhs = infer_with_constant_sources(context, scope, rhs, enclosing_class, constants, class_constants)
+                .and_then(|rhs| rhs.get_single_literal_int_value());
+
+            Some(match (lhs, rhs) {
+                (Some(lhs), Some(rhs)) => get_literal_int(lhs.cmp(&rhs) as i64),
+                _ => get_int_range(Some(-1), Some(1)),
+            })
+        }
+        Expression::Binary(Binary { operator, .. }) if operator.is_comparison() || operator.is_logical() => {
+            Some(get_bool())
+        }
         Expression::Construct(construct) => match construct {
             Construct::Isset(_) => Some(get_bool()),
             Construct::Empty(_) => Some(get_bool()),
@@ -775,6 +854,15 @@ fn infer_with_constant_sources<'arena>(
                 return None;
             };
 
+            if property_name.value == b"name"
+                && let Expression::Access(Access::ClassConstant(ClassConstantAccess {
+                    constant: ClassLikeConstantSelector::Identifier(case_name),
+                    ..
+                })) = property_access.object
+            {
+                return Some(get_literal_string(word(case_name.value)));
+            }
+
             if !property_name.value.eq_ignore_ascii_case(b"value") {
                 return None;
             }
@@ -875,7 +963,20 @@ fn infer_with_constant_sources<'arena>(
                     constants,
                     class_constants,
                 )
-                .and_then(|v| v.get_single_array_key()) else {
+                .and_then(|v| {
+                    v.get_single_array_key().or_else(|| match v.types.as_ref() {
+                        [
+                            TAtomic::Reference(TReference::Member {
+                                class_like_name,
+                                member_selector: TReferenceMemberSelector::Identifier(constant_name),
+                            }),
+                        ] => Some(ArrayKey::ClassLikeConstant {
+                            class_like_name: *class_like_name,
+                            constant_name: *constant_name,
+                        }),
+                        _ => None,
+                    })
+                }) else {
                     unknown_key_values.push(value_type);
                     continue;
                 };
@@ -905,6 +1006,12 @@ fn infer_with_constant_sources<'arena>(
 
             Some(TUnion::from_single(Cow::Owned(TAtomic::Array(TArray::Keyed(keyed_array)))))
         }
+        Expression::Instantiation(instantiation) => match instantiation.class {
+            Expression::Identifier(identifier) => Some(wrap_atomic(TAtomic::Object(TObject::Named(
+                TNamedObject::new(word(context.resolved_names.get(identifier))),
+            )))),
+            _ => None,
+        },
         Expression::Closure(closure) => Some(wrap_atomic(TAtomic::Callable(TCallable::Alias(
             FunctionLikeIdentifier::for_closure(context.file, closure.span()),
         )))),
@@ -959,9 +1066,14 @@ fn infer_constant<'ctx, 'arena>(
         }
     }
 
-    Some(wrap_atomic(TAtomic::Reference(TReference::Global {
-        selector: TGlobalReferenceSelector::Identifier(ascii_lowercase_constant_name_word(fqn)),
-    })))
+    let name = ascii_lowercase_constant_name_word(fqn);
+    let selector = if constant.is_local() && !names.is_imported(constant) && fqn != constant.value() {
+        TGlobalReferenceSelector::Fallback { name, fallback: ascii_lowercase_constant_name_word(constant.value()) }
+    } else {
+        TGlobalReferenceSelector::Identifier(name)
+    };
+
+    Some(wrap_atomic(TAtomic::Reference(TReference::Global { selector })))
 }
 
 #[inline]

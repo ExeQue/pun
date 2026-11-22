@@ -1,33 +1,53 @@
-# Mago analyzer 1.57.0: maintained patches
+# Mago analyzer 1.61.0: maintained patches
 
 ## Source
 
 This directory contains the library source and normalized manifest from the published
-`mago-analyzer` 1.57.0 package. The package's `.cargo_vcs_info.json` identifies upstream
-revision `9656cd55d51d96bd6dc57f1f1e73c15f22cb7cc3`, directory `crates/analyzer`:
+`mago-analyzer` 1.61.0 package. The package's `.cargo_vcs_info.json` identifies upstream
+revision `08934a6e3925cc1c836041efc931505330911f6e`, directory `crates/analyzer`:
 
-<https://github.com/carthage-software/mago/tree/9656cd55d51d96bd6dc57f1f1e73c15f22cb7cc3/crates/analyzer>
+<https://github.com/carthage-software/mago/tree/08934a6e3925cc1c836041efc931505330911f6e/crates/analyzer>
 
 The crates.io package checksum is
-`73ccd424bc8dd35ae85d15c2222418281493e58f0b5e88ddb647c00cdb64144d`.
+`2deabc20e385488401cc63f373ad7ad3cdf81d26079a3902aaa391f82f81dd37`.
 `LICENSE-MIT` and `LICENSE-APACHE` come from the same upstream revision.
 
 The copy excludes registry bookkeeping, the package lockfile, upstream test fixtures,
 and benchmarks. The manifest removes those test targets and their development dependencies,
 except `indoc`, which the inline loop-convergence tests need.
-Every sibling `mago-*` dependency remains pinned to `=1.57.0`.
+Every sibling `mago-*` dependency remains pinned to `=1.61.0`.
 The root manifest patches `mago-analyzer` and `mago-codex`, excluding both directories from Pun's workspace members.
+
+## Superseded by upstream 1.58.0–1.61.0
+
+These patches, or the named parts of them, were removed in the 1.61.0 merge because upstream now ships the behaviour.
+
+- "New-object template defaults": upstream's declared template defaults for `new` in `expression/instantiation.rs`
+  and `utils/template.rs` (commit `2066b186`, 1.59.0).
+- "Nonempty concatenation truthiness": upstream 1.61's `expression/binary/concat.rs` makes two nonempty operands
+  non-falsy and requires every alternative on a side to be nonempty, in both the aggregate and pairwise paths.
+  The `string_casing.rs` concat regression still covers it.
+- "Laravel-framework level max parity", the `expression/composite_string.rs` bullet: upstream 1.61 folds an
+  interpolated string's truthiness and casing part by part itself.
+- "General array writes do not assert a literal arm", the literal-arm half: upstream 1.61's
+  `get_index_literal_types()` and `writes_every_key()` in `expression/assignment/array_assignment.rs`.
+- "Full expression arithmetic and global constants", the namespace-fallback restriction and platform lookup by the
+  resolved name: upstream 1.61's `expression/constant_access.rs`.
+- "For and while entry-scope pollution", Pun's empty-condition infinite-loop check: upstream 1.61's
+  `is_always_true_literal()` test of the last for condition in `statement/loop/for.rs`.
+- "Regex array shapes (preg_match)", the `get_formula()` half of the `preg_match_bool_cast()` bullet: upstream
+  1.61's `get_base_formula()` reads every `(bool)` cast as its operand.
 
 ## Semantic changes
 
-The raw callback gather patch originally changed three source files. The ranges below describe that
+The raw callback gather patch originally changed three source files. The table below describes that
 patch before the native-state additions documented at the end of this file.
 
-| File | Patched lines | Change |
-| --- | --- | --- |
-| `src/context/mod.rs` | 68–69, 105, 259–276 | Gather depth and speculative diagnostic/state isolation. |
-| `src/expression/mod.rs` | 73, 244 | Suppress expression observer hooks during the speculative walk. |
-| `src/invocation/analyzer.rs` | 13, 148–200, 490–508, 531 | Gather under the raw callable parameter and use that signature for template inference only. |
+| File | Change |
+| --- | --- |
+| `src/context/mod.rs` | Gather depth (`raw_callback_gather_depth`) and speculative diagnostic/state isolation (`gather_callback()`). |
+| `src/expression/mod.rs` | Suppress expression observer hooks during the speculative walk. |
+| `src/invocation/analyzer.rs` | Gather under the raw callable parameter (`gather_raw_callback()`) and use that signature for template inference only. |
 
 The reference is PHPStan 2.3.1, source revision
 `cb3b7e99489b2e3789ee2eec10501cb7a72580ea`:
@@ -211,6 +231,12 @@ invalidate earlier, completed evaluations. Local queries describe the current li
   `artifacts.rs` owns native expression values and uses the existing checkpoint operations for insert,
   removal, keep, rollback, merge, and opaque-hook detach/restore. Completed child-body values transfer
   to their parent alongside full values. There are no independent native convergence decisions.
+  Every lane uses the generic `ExpressionTypeCheckpoints<T>`, which carries upstream 1.61's
+  silent-recording counter, and
+  `expression_type_checkpoint_matches()` passes upstream's `cleaned` range to the own-type and
+  call-termination lanes too. `begin_expression_type_recording()` and
+  `begin_silent_expression_type_recording()` open a checkpoint on every other lane, which the matching
+  `finish_*` call keeps, so a recording never leaves those lanes without their paired checkpoint.
 - `invocation/analyzer.rs` creates paired scratch artifacts for raw callback gathers. The existing
   cloned block, detached shared scopes, context restoration, and suppressed expression observers still
   isolate speculative work. Scratch native values are not published. Callback bodies themselves remain
@@ -621,14 +647,17 @@ These changes use the same Mago 1.57.0 package and PHPStan 2.3.1 revisions liste
 They preserve the separate signed-division overflow correction documented above.
 No dependency versions change.
 
-| File | Patched lines | Change |
-| --- | --- | --- |
-| `src/expression/binary/arithmetic.rs` | 749–756, 785, 802–824, 1069 | Keep non-finite float results and evaluate literal float remainders after PHP integer conversion. |
-| `src/expression/constant_access.rs` | 35–42, 98–116 | Restrict namespace fallback, honor authoritative metadata, and reuse evaluated declaration values. |
-| `src/context/mod.rs` | 68–69, 107 | Retain evaluated global constant values across function-local artifacts in one file analysis. |
-| `src/statement/constant.rs` | 47–51 | Save initializer values produced by the full expression analyzer. |
+| File | Change |
+| --- | --- |
+| `src/expression/binary/arithmetic.rs` | Keep non-finite float results and evaluate literal float remainders after PHP integer conversion (`modulo_integer()`). `definite_arithmetic_runtime_error()` detects a zero `%` divisor through the same conversion, replacing upstream's literal-`0.0` float check. |
+| `src/expression/constant_access.rs` | Honor authoritative metadata and reuse evaluated declaration values (`context.constant_types`). |
+| `src/context/mod.rs` | Retain evaluated global constant values (`constant_types`) across function-local artifacts in one file analysis. |
+| `src/statement/constant.rs` | Save initializer values produced by the full expression analyzer. |
 
-Pun's `crates/pun-analyse/src/codebase.rs:213–240` supplies exact numeric builtin metadata from
+Upstream 1.61 now restricts the namespace fallback for qualified and imported names, and selects the
+platform type by the resolved constant's name, so those two parts of the original patch are upstream code.
+
+Pun's `crates/pun-analyse/src/codebase.rs` supplies exact numeric builtin metadata from
 PHPStan's exported symbols. The metadata includes `INF`, `NAN`, and the platform unions for
 `PHP_INT_SIZE`, `PHP_INT_MAX`, and `PHP_INT_MIN`. Explicit metadata takes precedence over Mago's
 platform approximation. That approximation remains the fallback for builtin PHPDoc types.
@@ -743,33 +772,6 @@ public regressions pass 73 tests, and the exported `Constants/` and `Arrays/` ru
 without changing saved expectations. Fresh LLVM profiles cover all 165 changed executable lines
 in `codebase.rs`, measured against `9bc30d06` without exclusions.
 
-## Closure::fromCallable provider backport
-
-Pun's `rules/return_types.rs` registers the return provider from Mago 1.59.0 commit
-[`3ea59634580e5986c267d99e7fb3ccbf6ee26587`](https://github.com/carthage-software/mago/commit/3ea59634580e5986c267d99e7fb3ccbf6ee26587).
-The provider uses the callable cast and parameter-dependent signature APIs already present in 1.57.0.
-It resolves positional or named `callback`, clones each resolved signature, and changes only
-`is_closure`. An unresolved alternative leaves the whole call on its declared Closure fallback.
-No vendored analyzer source or dependency version changes for this backport.
-
-`crates/pun-analyse/tests/closure_from_callable.rs` checks public analyser output against PHPStan 2.3.1. Its fixtures
-cover immediate and assigned closures, invocation, strings, arrays, invokable objects, typed callbacks,
-named arguments, optional and variadic parameters, references, generic and conditional targets,
-inheritance, visibility, staticness, and unresolved alternatives. The two `phpstan*.neon` files
-under `crates/pun-analyse/tests/fixtures/closure-from-callable/` describe the oracle runs at levels zero and five.
-
-A wider dump probe also exposes an existing representation boundary: Mago's unknown signature prints
-`Closure(mixed ...): mixed`, whereas PHPStan prints `Closure(): mixed`. For a union with a completely
-unresolved ordinary string, the upstream provider also drops known signature alternatives by falling
-back for the whole call. PHPStan retains those alternatives. The unknown-callback contract tests check
-mixed invocation results and the absence of spurious argument errors, not exact dumps of these
-unresolved signature shapes. No expected message is rewritten to Mago's notation.
-The shared renderer also prints static closures as `Closure(...)` rather than PHPStan's
-`static-Closure(...)`. Binding controls check nullability without claiming to fix that spelling.
-
-The existing raw callback, observer, native-state, and integer-overflow patches remain necessary.
-Native method results remain unavailable. This backport does not implement NoDiscard or ordered shapes.
-
 ## PHPStan variable scope transfers
 
 `context/variable_scope.rs` ports variable-holder certainty and conditional holders alongside the
@@ -782,7 +784,13 @@ Continuing `if`, switch and loop edges join actual incoming scopes. Disjoint gua
 both a variable's presence and its explicit absence in the opposite branch. Assignments invalidate
 dependent holders. Include/extract and standalone annotations update certainty at their transfer
 points. Builtin input-reference parameters do not create variables, while output references still do.
-Try/catch snapshots follow throw points even when exception diagnostics are disabled. Impossible
+Try/catch snapshots follow throw points even when exception diagnostics are disabled.
+`statement/try.rs` deliberately discards upstream 1.61's catch and finally scope changes: the filtered
+`FinallyScope { locals }` entry snapshot, the end-only try's first-catch replacement, and the finally
+block's narrowing of the continuing locals. Pun had already replaced upstream's `FinallyScope::locals`
+merges, and `FinallyScope` keeps only Pun's `break_depth` and `exits`. PHPStan's `TryCatchHandler`
+builds each catch and finally entry from throw-point scopes, which `FinallyScope::exits` and
+`variable_throw_scopes` supply. Impossible
 branches still publish diagnostic observations, but their break, continue and throw edges do not
 contribute to the enclosing flow.
 
@@ -804,40 +812,15 @@ with fresh PHPStan diagnostics. The exported Variables fixture group covers both
 artifacts, and keeps the definedness hook observational so speculative callback gathers cannot publish
 its events. No dependency pins or native-dependent rule activation change.
 
-## New-object template defaults
-
-`expression/instantiation.rs` and `utils/template.rs` backport the analyzer changes from Mago
-[`2066b186`](https://github.com/carthage-software/mago/commit/2066b186d2a7cea821e0d4923934032e5f4e32c5),
-included in 1.59.0. Dependencies stay at 1.57.0. Declared defaults replace unresolved placeholders after
-constructor inference and scalar widening, so a literal default remains literal. Resolution follows
-declaration order and substitutes earlier parameters into later defaults. Inherited-constructor lookup
-now distinguishes absent inference from inferred `mixed`. Its class-member caller keeps its existing
-mixed fallback. Neither expression dispatch nor native tracking changes.
-
-`tests/generic_defaults.rs` in `pun-analyse` checks PHPStan 2.3.1's exact dumps and argument diagnostics,
-including empty constructors, narrower defaults, dependent properties, inherited constructors, self
-constants, and raw callback returns. The inferred-mixed case reads the public raw type because Pun's
-existing display drops implicit mixed from `list<mixed>`. Public Analyzer checks retain one observer
-visit per expression and equal full artifacts with native tracking enabled and disabled. The no-default
-controls preserve Mago's placeholders and SPL's `never`, not PHPStan's different bound defaults.
-
-The backport does not resolve the unspecified-template property gap. PHPStan can retain symbolic
-dependent templates in constructor-bearing object dumps while resolving their properties; Mago
-substitutes the arguments eagerly. Literal constructor inference also keeps Mago's existing widening.
-The separate maintained [codex patch](../mago-codex/PATCHES.md) resolves `parent::VALUE` and
-`parent::class` defaults through the declaring class's direct parent, using the same upstream commit.
-
-Fresh coverage against `00a825d6` measures **30/30 changed analyzer executable lines** and
-**169/169 test executable lines**, without exclusions. The instrumented private-target run passes
-all 36 tests in `generic_defaults`, `callback_gather`, `debug`, `native_lane`, and `instantiation`.
-
 ## Array assignment certainty
 
 `src/expression/assignment/array_assignment.rs::analyze()` invalidates certainty at the final root
 transfer. Invalidating the root also removes stale absence and conditional holders for its descendant
 paths. The written root loses its possibly-undefined flags. Other locals retain their correlations.
 This happens after every index is read and after the fallible property update, not during the
-intermediate array-type calculations.
+intermediate array-type calculations. In 1.61 the `invalidate_variable_certainty()` call sits just
+before upstream's root insert and its new `assigned_variable_ids` entry, after upstream's
+`pin_open_type_parameters()` has fixed an `ArrayAccess` root's open type parameters.
 
 Without this transfer, `$a[$t] = []` can retain the absence established by `!isset($a[$t])`.
 Input-reference handling then skips `array_unshift()`'s mutation. The existing level-4
@@ -875,6 +858,9 @@ An absent root stays absent. A `never` RHS contributes no continuing scope, and 
 non-null rather than truthy. PHPStan's
 [`CoalesceHandler`](https://github.com/phpstan/phpstan-src/blob/cb3b7e99489b2e3789ee2eec10501cb7a72580ea/src/Analyser/ExprHandler/CoalesceHandler.php#L88-L105)
 uses the same join, including RHS variable effects when the LHS is statically known.
+This join replaces two upstream 1.61 additions: the `IsIsset` reconciliation of the LHS after a `never`
+RHS (`$x ?? throw ...`) and the `merge_conditional_locals()` merge after an assigning RHS. As in
+upstream 1.61, the isset-success LHS value (`non_null_lhs_type`) is not possibly undefined.
 The expression's result-type selection and the skipped RHS's exception isolation stay unchanged.
 The passive native lane gains no transfers.
 
@@ -942,8 +928,12 @@ the two-byte plain operator without a second expression walk or a context-wide a
 
 `expression/variable.rs` returns the shared codex error value for an ordinary read when the live scope
 knows the variable is absent. PHPStan's `VariableHandler::createTypeCallback` returns `ErrorType` in
-that case. Isset and unset probes retain their existing handling, and reference creation still runs
-before the read result is selected. Pun converts the marked mixed value to its existing `Type::Error`.
+that case. Reference creation still runs before the read result is selected and, as in upstream 1.61,
+reads `null`; an input-reference span in `variable_state.non_creating_references` skips that creation
+path. An undefined variable read inside `isset()` or `unset()` keeps Pun's `mixed`, not upstream's
+`null` for unset reads, and the merge drops upstream 1.61's `has_extracted_variables()` checks (see
+the `extract()` note under "Foreach body and exit-scope pollution"). Pun converts the marked mixed
+value to its existing `Type::Error`.
 This preserves the error through self-coalescing assignment instead of replacing it with `mixed` or
 the LHS's earlier concrete type. The passive native lane gains no new transfer.
 Pun's level helper still treats this error as implicit mixed when level 10 checks it, matching
@@ -967,8 +957,8 @@ checks positional, named, variadic, arrow, and typed-callable outputs alongside 
 input-reference controls. Expectations come from PHPStan 2.3.1.
 ## Generic array keys after unset
 
-`src/statement/unset.rs:130–150,322–335,360,368–395` ports generic key subtraction from the
-same PHPStan 2.3.1 revision. The references are `ArrayType::unsetOffset()` at lines 519–537,
+`src/statement/unset.rs` (`unset_member()`, `unset_keyed()` and `subtract_key()`) ports generic key
+subtraction from the same PHPStan 2.3.1 revision. The references are `ArrayType::unsetOffset()` at lines 519–537,
 `TypeCombinator::doRemove()`, and `TemplateTypeTrait::tryRemove()` at lines 399–423.
 
 A single literal integer or string offset removes that value from a generic array's key type.
@@ -1035,8 +1025,8 @@ an engine-wide error type, widen incoming declarations, change a gap list, or ac
 
 ## Virtual offset-unset write-back
 
-`src/statement/unset.rs:89–97,125,309–314,326–501` ports the virtual assignment from PHPStan
-2.3.1, revision `cb3b7e99489b2e3789ee2eec10501cb7a72580ea`. Its sources are
+`src/statement/unset.rs` (`write_back()`, `set_existing()` and `set_existing_items()`) ports the
+virtual assignment from PHPStan 2.3.1, revision `cb3b7e99489b2e3789ee2eec10501cb7a72580ea`. Its sources are
 `Analyser/StmtHandler/UnsetHandler.php:110–151`, `Analyser/ExprHandler/AssignHandler.php:1803–1850`,
 `Type/ArrayType.php:460–517`, `NullType::setExistingOffsetValueType()`, and
 `ConstantArrayTypeBuilder::setOffsetValueType()`.
@@ -1048,9 +1038,12 @@ expression observer, or replaces an incoming expression artifact. Each union kee
 Null remains null, including a null containing receiver.
 
 Finite union keys join single-key write alternatives instead of overwriting every key strongly.
-`src/expression/assignment/mod.rs:64` exposes the existing array updater within the crate for this
-transfer. No second expression evaluator is added. Root writes invalidate descendants and variable
-certainty through the existing `BlockContext` APIs, then record the virtual assignment.
+`src/expression/assignment/mod.rs` exposes the existing array updater,
+`array_assignment::update_type_with_key_values()`, within the crate for this transfer. Upstream 1.61
+added that function's `definite` parameter; `set_existing()` passes `true`, which keeps the pre-1.61
+behaviour. The merge also drops upstream 1.61's `write_back_to_holding_arrays()`, which `write_back()`
+already covers. No second expression evaluator is added. Root writes invalidate descendants and
+variable certainty through the existing `BlockContext` APIs, then record the virtual assignment.
 
 Generic containing arrays use `ArrayType::setExistingOffsetValueType()` rather than ordinary assignment.
 They keep their key type, listness, and existing non-empty guarantee. A write does not assert that an
@@ -1146,8 +1139,8 @@ controls, optional shapes, generic empty lists, readonly assignment, and invalid
 
 ## Template constant-array unset reconstruction
 
-`src/statement/unset.rs:134–154,167,174,321,470,523–571` distinguishes a declared template
-constant-array bound from a generic array with known offsets added by flow analysis.
+`src/statement/unset.rs` (`unset_member()`, `constant_array()` and `unset_keyed()`) distinguishes a
+declared template constant-array bound from a generic array with known offsets added by flow analysis.
 The declaration comes from `TypeResolutionContext`, matched by template name and defining entity.
 The transfer preserves the current inferred items and template identity. It does not replace the
 current value with the declaration's bound.
@@ -1267,11 +1260,11 @@ coverage exclusions. These corrections do not change the passive native-state im
 
 The next correction closes `generic-keys.php:108` and `:116`. It uses the codex constant-array
 marker instead of inferring source kind from the presence of known keys or restoring a declaration.
-The template branch in `statement/unset.rs:134–162` now uses that marker too. A template generic
+The template branch in `statement/unset.rs` `unset_member()` now uses that marker too. A template generic
 array refined by `isset()` becomes an ordinary array after compatible literal-key subtraction.
 A template constant array still retains its identity when its bound is recreated.
 
-`unset_keyed()` at `statement/unset.rs:516–546` separates the two transfers:
+`unset_keyed()` in `statement/unset.rs` separates the two transfers:
 
 - `ArrayType::unsetOffset()` subtracts a compatible literal from the generic key domain.
 - `HasOffsetValueType::unsetOffset()` removes an assertion only for its exact literal key.
@@ -1392,8 +1385,11 @@ adds `HasOffsetValueType` only for a single constant offset. A general string ca
 literal arm in Mago's representation. For example, a guarded lowercase string can be stored as
 `non-empty-lowercase-string|''`. Its empty-string arm is not a definitely written offset.
 
-`expression/assignment/array_assignment.rs` now rejects partial literal extraction in both root
-and nested writes. General writes also retain existing generic-array offset values, as
+Upstream 1.61's `expression/assignment/array_assignment.rs` now rejects partial literal extraction
+itself: `get_index_literal_types()` returns no keys for such an index, and `writes_every_key()`
+passes the resulting `definite` flag to `update_type_with_key_values()` for root and nested writes.
+Pun keeps only the other half. In `update_array_assignment_child_type()`, general writes retain
+existing generic-array offset values (the `is_constant_shape()` guard), as
 [`HasOffsetValueType::setOffsetValueType()`](https://github.com/phpstan/phpstan-src/blob/cb3b7e99489b2e3789ee2eec10501cb7a72580ea/src/Type/Accessory/HasOffsetValueType.php#L182-L197)
 requires. Constant shapes still widen overlapping entries. The converter is unchanged: a required
 known item on a generic array still means `hasOffsetValue`.
@@ -1497,6 +1493,9 @@ The follow-up closes the three producer and transfer failures recorded above. Th
 of replacing that value with the entire asserted domain. The intersection uses the finite
 falsey domain and strict assertion containment. In particular, integer zero does not satisfy
 `is_float()`. Subsequent positive float and bool guards retain their surviving literals.
+In 1.61 this falsey-mixed branch, with Pun's subtracted-mixed intersection after it, sits inside
+upstream 1.61's new mixed guard in `reconcile()`, which skips a `null` assertion on a mixed that
+cannot be null, and runs before upstream's truthy-mixed branch.
 
 `assertion.rs` supplies explicit mixed key and value types for builtin `is_array()` assertions,
 matching `IsArrayFunctionTypeSpecifyingExtension::specifyTypes()`. The prelude annotation does
@@ -1566,6 +1565,12 @@ to a single atom. Named, `self`, and `parent` reads retain the raw initializer e
 PHPDoc declaration is broader or incompatible. An overridable late-bound receiver instead exposes
 the effective declaration type. Final receiver classes and final untyped constants retain raw values.
 Final typed constants still expose their declared type through an overridable receiver.
+
+`resolver/class_constant.rs` keeps Pun's `expander::expand_class_constant_value()` selection and
+deliberately rejects upstream 1.61's late-bound descendant join, which unions the constant's value
+from every known descendant (or widens its literals past 64 descendants). PHPStan's
+`ClassConstFetchHandler` reads the constant on the receiver's class only and gives a late-bound
+receiver the declared type, never a union of subclass values.
 
 Declaration-expression analysis remains independent: a PHPDoc compatibility diagnostic checks the
 runtime expression type, not the canonical reflection union. The external metadata writer uses its
@@ -1814,7 +1819,9 @@ Skipped or unresolved loop conditions and increments cannot retain a previous te
 removing the entry instead would let a checkpoint merge restore the old true fact.
 Pun's flow and finally checks consume the resolved facts. Unused-call checks suppress only
 explicit never results. Throw, exit and die produce nonaccepting never; a terminating closure body
-without return values infers non-accepting never, as `ClosureTypeResolver` does.
+without return values infers non-accepting never, as `ClosureTypeResolver` does. A body whose only
+returns are bare `return;` statements (upstream 1.61's `AnalysisArtifacts::has_bare_return`) infers
+`void` instead.
 
 `crates/pun-analyse/tests/never_calls.rs` compares public diagnostics with the pinned PHPStan
 capture under `tests/fixtures/never-calls/`. The fixture distinguishes implicit return values,
@@ -2014,42 +2021,6 @@ responses retain the existing provider warning and native-analysis fallback.
 Their semantic controls use PHPStan 2.3.1's retained `object-intersections` captures: joining
 `mixed~A` with `C~A&C` yields `mixed~A&C`, whereas joining it with `C` or `A&C` yields `mixed`.
 
-## Nonempty concatenation truthiness
-
-`expression/binary/concat.rs` refines the concatenation of two nonempty strings to a non-falsy
-string. Both the aggregate and pairwise paths check this conjunction before propagating an
-existing truthy operand. Aggregate queries require every alternative on each side to be nonempty.
-The existing nonempty fallback, literal folding, literal origin, and independent casing guarantees
-remain unchanged.
-
-The branch order follows PHPStan 2.3.1's
-[`InitializerExprTypeResolver::resolveConcatType()`](https://github.com/phpstan/phpstan-src/blob/cb3b7e99489b2e3789ee2eec10501cb7a72580ea/src/Reflection/InitializerExprTypeResolver.php#L582-L600).
-The public `pun-analyse/tests/string_casing.rs` regression runs the unchanged research probe through
-`run()`. Its `fixtures/string-casing/concat-expected.json` contains 29 freshly captured level-0
-PHPStan diagnostics. Before the correction, 11 types differ and 18 controls match. After the
-correction, all 29 match, including asymmetric operands, partly-nonempty unions, empty and zero
-suffixes, literal-origin strings, casing accessories, and flattened chains.
-
-The repeat controls retain PHPStan's separate behavior: `str_repeat($nonempty, 2)` remains
-`non-empty-string`, not `non-falsy-string`. Casing-union normalization and native inference are
-unchanged. The existing casing, guarantees, repeat, and native-lane selection passes all 34 tests.
-
-Fresh raw LLVM profiles from the new public regression alone cover **6/6 changed production
-executable lines** against `ea303bb4`, without exclusions. The maintained analyzer is explicitly
-instrumented with `--dep-coverage mago-analyzer`. The private target uses one Cargo job, one Rayon
-thread, one test thread, debug level 1, and no incremental compilation:
-
-```sh
-export CARGO_TARGET_DIR=/tmp/pun-concat-target
-export CARGO_LLVM_COV_TARGET_DIR="$CARGO_TARGET_DIR"
-export CARGO_BUILD_JOBS=1 RAYON_NUM_THREADS=1 RUST_TEST_THREADS=1
-export CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=1 CARGO_PROFILE_TEST_DEBUG=1
-export CARGO_NET_OFFLINE=true
-timeout 900 nice cargo llvm-cov --offline --no-report --dep-coverage mago-analyzer \
-	-p punphp-analyse --test string_casing --test string_guarantees --test str_repeat \
-	--test native_lane -- --test-threads=1
-```
-
 ## Boolean operand definition certainty
 
 Evaluated Boolean scopes retain variable state and possible-variable membership alongside their
@@ -2058,6 +2029,12 @@ RHS-only cached types. An output argument evaluated only on the RHS therefore re
 defined when the LHS can short-circuit. Branch transfers restore the captured certainty state as
 well as the evaluated types, including nested expressions and explicit absence after `unset`.
 The object-exclusion transfer and the continuing `if` branch type join remain unchanged.
+
+In 1.61, `analyze_logical_and_operation()` and `analyze_logical_or_operation()` restore the evaluated
+scope (`restore_certainty()` and its locals) at their end, just before upstream 1.61's
+`narrow_after_finishing_left_operand()` narrows after a `never` RHS, so that narrowing applies to
+the restored scope. A `&&` RHS starts from upstream 1.61's `left_true_context` when the LHS is itself
+a `&&`, and from the left operand's context otherwise.
 
 The original public `variables` flow fixture retains both PHPStan 2.3.1 diagnostics for `$matches`
 at lines 99 and 100. Fresh captures also confirm the unchanged transfer-fixture expectations.
@@ -2238,6 +2215,10 @@ The reference is PHPStan 2.3.1 at `cb3b7e99489b2e3789ee2eec10501cb7a72580ea`:
   zero-iteration edge. Disabling pollution adds the pre-loop scope on that edge only. A definitely-entering
   while does not acquire the for loop's extra pre-loop edge.
 - `ForHandler.php:175–190` evaluates all header expressions but uses only the last condition's truthiness.
+  Upstream 1.61 now does this itself: `statement/loop/for.rs` treats the loop as infinite when its last
+  condition is missing or an always-true literal (`is_always_true_literal()`), replacing Pun's
+  empty-condition check, and `apply_pre_condition_to_loop_context()` takes upstream's `tested` flag for
+  the last condition.
 - `ForHandler.php:273–295` generalizes the final body's holders with the update scope before falsey
   condition reconciliation. `MutatingScope.php:5014–5129,5157–5245` retains the incoming holder set and
   certainty; differing constant-string buckets retain literal origin and common string accessories.
@@ -2248,6 +2229,12 @@ No variable-name scan or diagnostic rewrite is involved. The existing break and 
 local and outward exits. A dead back edge does not publish update writes or widen the next iteration. Updates
 are still analyzed on a detached copy for diagnostics, as in PHPStan's final walk. An outward exit from a
 guaranteed first iteration cannot fall through into an enclosing loop's update expressions.
+
+`statement/loop/mod.rs::inherit_loop_block_context()` gives a known-infinite loop with a break only its
+observed `break_locals` after the loop: an always-true condition has no normal exit in
+WhileHandler or ForHandler. The merge keeps this in place of upstream 1.61's restore of
+`possibly_redefined_loop_parent_variables` for such loops, and keeps upstream 1.61's `body_always_ends`
+check, under which a loop whose body always ends cannot be left.
 
 The public `variables` test compares resolved default, enabled, disabled, and quiet configs against fresh
 PHPStan diagnostics and `dumpType()` output in `tests/fixtures/loop-pollution/expected.json`. The fixture includes
@@ -2299,6 +2286,14 @@ Controls cover the original `foreach-always-iterable.php`, nonempty and possibly
 arrays, key and value bindings, assignment and property iterables, empty-edge types, local and outward exits,
 termination, definite and maybe-defined holders, conditional-holder invalidation, unset, and extract.
 The do-while, standalone block, and loop-initial controls retain their separate behavior.
+
+The `extract()` controls use `expression/call/function_call.rs::extract()`, Pun's port of
+`FuncCallScopeEffectsHelper`: a constant array assigns its string keys, and any other argument sets
+`variable_state.after_extract_call`, so `can_any_variable_exist()` holds. Upstream 1.61's
+`has_extracted_variables` block flag is deliberately never set, and its checks in `expression/variable.rs`
+are removed. After any `extract()`, that flag suppresses the possibly-undefined report and reads an
+unknown variable as `mixed` without an undefined-variable error, whatever the argument. PHPStan lets
+any variable exist only when the argument is not a constant array.
 
 Native loop transfers still invalidate native state before the loop on the existing path. This patch does
 not reconstruct paired native types, extend iterable reconciliation, or claim complete DefinedVariableRule parity.
@@ -2494,6 +2489,12 @@ inference then correctly included `''`, which caused an extra `argument.type` di
 `explode($chars[$i], 'Mercedes-Benz')`. The evaluated comparison supplies the existing integer
 assertion with the upper bound `3`, restoring `int<0, 2>` and `'-'|'.'|'/'`.
 
+Upstream 1.61 added the helper's `tested` parameter, true only for the last for condition, and a
+first-application rebuild of the stored clauses from the evaluated formula when
+`condition_needs_analyzed_types()` holds. The merge keeps both beside Pun's per-pass formula: only the
+tested condition derives evaluated clauses, takes the first-falsey snapshot, and narrows the body.
+Earlier comma-separated conditions are evaluated but contribute no clauses.
+
 The reference is PHPStan 2.3.1 at `cb3b7e99489b2e3789ee2eec10501cb7a72580ea`:
 
 - [`ForHandler::processStmt()`](https://github.com/phpstan/phpstan-src/blob/cb3b7e99489b2e3789ee2eec10501cb7a72580ea/src/Analyser/StmtHandler/ForHandler.php#L175-L194)
@@ -2564,6 +2565,10 @@ operand's scope. Expression statements compose those specifications with the exi
 and reconciler. This follows PHPStan 2.3.1's `ExpressionHandler`, `BooleanNarrowingHelper`, and
 `ExpressionResult` contracts. The builtin `assert` extension retains its truthy-argument
 specifications in both boolean branches. Host assertion providers use the same deferred boundary.
+`invocation/post_process.rs::record_null_context_assertions()` replaces upstream's
+`apply_assertion_to_call_context()`. Upstream 1.61's new step there, which saturates the block's
+clauses with the call's assertions and reconciles the implied assertions on other variables, is not
+ported: the expression statement already composes the recorded specifications with those clauses.
 
 The public `scope_joins` target retains 40 foreach-entry records and all original 123 asymmetric
 join records. Fresh PHPStan captures extend the join matrix to 131 records and add 86 null-context
@@ -2662,7 +2667,10 @@ instance methods, and unresolved methods invalidate mutable receiver descendants
 possibly impure methods and static callees preserve receiver facts unless an argument escapes.
 Readonly targets and private properties declared outside the callee's reflected class retain
 their facts. Conditional guards invalidate without those target-only exemptions, matching
-`ScopeOps::invalidateExpression()`.
+`ScopeOps::invalidateExpression()`. The merge deliberately leaves out upstream 1.61's
+`call_may_write_static_property` filter, which forgets `Class::$prop` holders and clauses after a static
+method call. PHPStan's `StaticCallHandler` invalidates only `$this` and the volatile expressions of
+`MutatingScope::invalidateVolatileExpressions()`, so narrowed static property fetches survive the call.
 
 The reflected requested name, rather than trait storage identity, selects the consuming class,
 PHPDoc availability, native return fallback, and constructor classification. The public
@@ -2795,6 +2803,10 @@ existing optional slots receive the replacement value, and unmatched keys become
 Append visits existing slots in insertion order before it adds the highest possible next index.
 Numeric strings use `ArrayKey::from_string` before slot identity and duplicate conversion.
 Constant unpacks preserve optional slots and feed integer slots through the append operation.
+In 1.61 this state (`finite_key_indexes`, `property_order`, `degraded_finite_keys`, `has_general_unpack`)
+sits in `ArrayCreationInfo` beside upstream 1.61's `unkeyed_minimum_count` and `push_unkeyed_int()`,
+which count the required items whose integer key the literal cannot pin down and add that many
+required elements to a resulting list.
 
 `finite_array_literal_keys` compares the public analyzer's live constant slots, optionality,
 nonempty and list flags, exact counts, and degraded key and value types with 50 fresh PHPStan
@@ -2951,6 +2963,12 @@ with the reverted call scope, as in
 [`NullsafeMethodCallHandler::processExpr`](https://github.com/phpstan/phpstan-src/blob/cb3b7e99489b2e3789ee2eec10501cb7a72580ea/src/Analyser/ExprHandler/NullsafeMethodCallHandler.php#L61-L148).
 The expression's short-circuit null comes from the original receiver, not the temporary device.
 
+`expression/call/method_call.rs` deliberately drops two upstream 1.61 additions in favour of this
+device: the `merge_conditional_locals()` merge of assignments in a nullsafe call's arguments, and the
+in-place non-null narrowing of the receiver's local while its arguments run. `analyze_method_call()`
+takes upstream 1.61's new `operator_span` beside Pun's ensured `receiver`, and passes it to
+`resolve_method_targets()` or, for an ensured receiver, `resolve_method_targets_after_receiver()`.
+
 The nullsafe join drops fetch holders present on only one incoming edge, after it derives
 conditional holders. This follows `ScopeOps::finishMerge` without changing ordinary property
 memoization. This matters when a receiver assignment occurs only on the call edge.
@@ -3070,6 +3088,10 @@ Preparation diagnostics from the composed fetch are discarded. The existing writ
 validates the assignment, while the operand walks keep their effects and diagnostics.
 Literal string selectors use their evaluated bytes to select the same holder as a named fetch.
 A dynamic selector with a constant-string type keeps its own expression identity.
+The merge deliberately removes upstream 1.61's `analyze_assignment_target_indices()` pre-pass, which
+evaluates an array target's indices before the RHS. Preparation already evaluates the root and each
+dimension once before the RHS, as `AssignHandler::prepareTarget()` does, so the pre-pass would only
+repeat that walk outside the preparation positions and the operand handoff below.
 
 `observations.rs` collects successful operand completions and passes their `ExpressionResult`
 values to the write in a lexical handoff. The handoff preserves raw, value, native, and call-return
@@ -3123,6 +3145,10 @@ types, following PHPStan 2.3.1's `NullsafeMethodCallHandler` and `NullsafeMethod
 The per-call artifact is cleared before hooks and replaced by each real receiver evaluation. Selected
 scope pricing clones artifacts, so its derived receiver answers cannot overwrite the real walk.
 
+Upstream 1.61 added its own redundant-nullsafe report for method calls in `resolver/method.rs`.
+`resolve_method_targets_after_receiver()` judges it on this artifact
+(`AnalysisArtifacts::nullsafe_method_receiver_types`), falling back to the receiver's expression type,
+not on the non-null device the twin resolves on.
 Pun's `NullsafeMethodCallRule` consumes this artifact rather than the ensured operand. Nested calls on
 the same nullable receiver remain nullable; independent non-null receivers and assignment expressions
 still report redundant nullsafe access. The dynamic-method complete-record fixture covers these
@@ -3286,6 +3312,10 @@ property selectors and non-first-class partial applications retain their indepen
 `ClassConstFetchHandler` returns genuine mixed for non-Identifier names, independently of selector
 diagnostics. Unresolved named constant fetches retain ErrorType. Valid receiver-union alternatives
 survive invalid alternatives. Resolver diagnostics, references and operand evaluation remain active.
+In `expression/access/class_constant_access.rs` these values replace upstream's `never` for an invalid
+path and feed upstream 1.61's memoized class-constant holders: a narrowed holder in `locals` answers
+the read, and a conditional read stores its value there. The ErrorType path returns before that
+memoization, so a failed fetch never becomes a holder.
 `failed_class_constants` captures producer values, written holders, continuation and complete diagnostics
 from PHPStan 2.3.1, including a genuinely terminating selector and fatal analysis-error propagation.
 
@@ -3339,7 +3369,9 @@ for the sentinel. Its `::class` projection is `TClassLikeString::LiteralAny`: an
 The provider leaves unsupported non-object and no-argument calls to existing inference.
 
 Protocol 2.3 adds object tag 7 and class-string variant 5 without reusing existing tags. Both header
-readers reject older minor versions before decoding. The real PHP worker round-trip control checks
+readers reject older minor versions before decoding. Pun's 2.3 also carries upstream 1.61's own MANA 2.1
+(throw-type provider registrations) and MANA 2.2 (constant fallbacks), so Pun's minor numbers differ
+from upstream's; upstream 1.61 itself is at 2.2. The real PHP worker round-trip control checks
 the sentinel, its literal class string, an object/sentinel union, and a valid inherited-parent object.
 The public fixture's observations and complete level-0, level-5 and level-9 diagnostics come from the
 hash-pinned PHPStan capture under `tests/fixtures/failed-instantiation/`.
@@ -3350,6 +3382,8 @@ hash-pinned PHPStan capture under `tests/fixtures/failed-instantiation/`.
 unresolved syntactic `parent::class`, including outside class scope. The reference is PHPStan 2.3.1,
 source revision `cb3b7e99489b2e3789ee2eec10501cb7a72580ea`, lines 2687–2691.
 The constant resolver retains that value after class-name resolution reports the invalid parent.
+Upstream 1.61's memoized class-constant holders in `expression/access/class_constant_access.rs`
+skip `::class` fetches, so this value is returned but never stored as a holder.
 Ordinary missing constants still return ErrorType. Dynamic constant names still return mixed,
 and a dynamic `NonexistentParent` holder still projects to `class-string&literal-string`.
 
@@ -3544,6 +3578,10 @@ added unless the result is `never`. Mago kept the body's type alone, so `fn ($v)
 `1|2`, and `fn (int $v): int => $m` with a mixed `$m` returned `mixed`. Containment uses the comparator's assertion
 mode, because `isSuperTypeOf()` does not accept an `int` as a `float` (`fn (): float => 1` returns `float`).
 Generator closures keep their own path: PHPStan applies the native type only when the closure does not yield.
+The inferred body type uses upstream 1.61's `has_bare_return`: a bare `return;` beside returned values adds
+`null` to them. The merge does not take upstream 1.61's other changes to this block: its `fits_declared` check,
+which keeps the inferred type only when it fits the declared return, is replaced by Pun's intersection, and its
+`null` for a body that can end without returning is not added.
 
 `invocation/callback.rs` prices an inline closure or arrow function callback as
 `ArrayMapFunctionReturnTypeExtension::resolveCallbackReturnType()` does: the closure is walked again inside the
@@ -3563,13 +3601,14 @@ and `closure_freshness` checks that an edited declaration reaches `array_map`'s 
 These changes follow PHPStan 2.3.1 where laravel-framework at level max showed Mago's result differing.
 `crates/pun-analyse/tests/fixtures/coverage/laravel-max` holds PHPStan's output for a reduced case of each.
 
-- `expression/composite_string.rs` folds an interpolated string's parts as `resolveConcatType()` does: the string is
-  `non-falsy-string` once a part is truthy, or once a non-empty part follows a non-empty prefix.
 - `statement/class_like/method.rs` analyses a trait method with the using class (`trait_context_class`) as its scope
   class, so `self`, `static` and `$this` are that class, as in NodeScopeResolver. `statement/function_like/mod.rs`
   `trait_context_parameter_type()` finds the trait through the scope's reference origin instead.
 - `statement/loop/mod.rs` keeps a variable that only the loop body defines after the loop, possibly undefined and with
-  the back edge's type, instead of removing it.
+  the back edge's type, instead of removing it. The merge folds this into upstream 1.61's seeding of the next pass
+  (`seeded_loop_variables`, `get_unseeded_variables()`): the variable is seeded with its body-end type joined with the
+  continue edges' types, without upstream's plain-variable, condition-variable and reference filters. A variable the
+  body assigns before reading it is still removed, as upstream does.
 - `context/variable_scope.rs` keeps a remembered call's type (an id ending in `)`) after a branch join only when every
   live branch has it, as `MutatingScope::mergeWith()` keeps only `Yes`-certainty expressions.
   `expression/binary/null_coalesce.rs` also joins the isset-success scope's remembered calls after the right side.
@@ -3673,7 +3712,8 @@ as `(object&hasMethod(m))|class-string`.
 ArrayKeyExistsFunctionTypeSpecifyingExtension, a constant key specifies a mixed array as
 `array<mixed, mixed>&hasOffset(key)` when true, and as `array<mixed, mixed>` when false (PHP 8 throws for any other
 value). `context/non_nullability.rs` no longer asserts a key on a mixed parent of an `isset()` or `??` offset, so those
-parents stay mixed as in PHPStan.
+parents stay mixed as in PHPStan. In 1.61 the mixed branch of `reconcile_has_array_key()` uses upstream's normalized
+`key_name` (`normalize_array_key()`), so a decimal-integer string key becomes the integer offset, as PHP casts it.
 
 ## Superglobals
 
@@ -3721,6 +3761,9 @@ each closure or array item the expected value type, a closure item of an array a
 from the callables of the parameter's array value type. Laravel's `->with(['posts' => fn ($query) => ...])` types
 `$query` as `Relation<*, *, *>` from `array<array|(Closure(Relation<*, *, *>): mixed)|string>`. The shared
 `callable_parameter_types()` and `expected_value_type()` helpers live in `invocation/arguments.rs`.
+A direct closure argument's parameter and return hints now come from upstream 1.61's `closure_signature_hints()`;
+`analyze_and_store_argument_type()` skips that call for an array literal argument and passes the literal
+`expected_value_type()` instead.
 
 ## Implicit throw point of a method call without reflection
 
@@ -3738,9 +3781,11 @@ parameter is an array in the body: `@param mixed ...$tags` on a plain `$tags` le
 - `utils/docblock.rs` `insert_variable_from_docblock()`: an inline `@var` drops the clauses that mention the
   variable, as MutatingScope::assignVariable() forgets the variable's earlier specifications. A narrowing made before
   `/** @var User $user */` no longer applies to the annotated type.
-- `utils/expression/array.rs` `get_array_access_method_value_type()`: reading `$object[...]` on an `ArrayAccess`
+- `utils/expression/array.rs` `get_primary_array_access_parameters()`: reading `$object[...]` on an `ArrayAccess`
   object uses `offsetGet()`'s return type (assignment keeps `offsetSet()`'s value parameter), as
   ObjectType::getOffsetValueType() does. A paginator's `$users[0]` is `User|null` from its `offsetGet()`.
+  Upstream 1.61 now reads both methods through `get_array_access_method_value_type()`; Pun only removes upstream's
+  filter that ignores a `mixed` `offsetGet()` return on reads, since PHPStan uses that `mixed`.
 - `expression/call/method_call.rs`: a call that only an undocumented `__call()` handles, with no method type provider,
   returns an ErrorType (`*ERROR*`), as MethodCallHandler resolves no method reflection for it.
 - `statement/try.rs`: when a catch does not leave, the clauses after the try statement are those that held before it.
@@ -3768,7 +3813,9 @@ returns `TemplateObjectType::getMethod()`. `$this->each->makeHidden()` on a `Col
 `Settings::mixin_receiver_binding` (Pun sets it with Larastan, whose forwarding extensions answer for the receiver)
 keeps Mago's receiver binding. `static_to_receiver()` then replaces `static` in the mixin's type arguments with the
 calling object (`@mixin Foo<static>` on `ChildUsages` is `Foo<ChildUsages>`), as `getMethodCallType()` maps each
-StaticType in the result to the called-on type.
+StaticType in the result to the called-on type. Upstream 1.61 added a mixin depth to each collected entry, so Pun's
+entries are 4-tuples `(Word, TObject, Option<TGenericParameter>, usize)`: the template the mixin came from sits beside
+upstream's depth, in `collect_mixin_types()`, `collect_mixin_types_into()` and their `resolver/property.rs` caller.
 
 ## Property values after an offset write
 
@@ -3802,9 +3849,10 @@ ArgumentsHandler does for the method reflection Larastan's ModelForwardsCallsExt
   `$t['a']` of a mixed `$t`, so after `if ($t['a'])` or `$t['a'] ? $t['a'] : ''` the second fetch has an expression
   type and NonexistentOffsetInArrayDimFetchRule does not report it again. The holder itself stays mixed (see
   `adjust_array_offset()` above). Property paths (`$t->p`) keep the filter, as PHPStan still reports their fetches.
-- `expression/assignment/array_assignment.rs` `update_array_assignment_child_type()`: a written key goes through
-  `toArrayKey()` for bools and floats too, not only `null`: `$a[get_class($mixed)] = 1` has the key `0|class-string`,
-  not `false|class-string`.
+- `expression/assignment/array_assignment.rs` `normalize_key_type()`: a written key goes through `toArrayKey()` for
+  bools and floats too, not only `null`: `$a[get_class($mixed)] = 1` has the key `0|class-string`, not
+  `false|class-string`. Upstream 1.61's `normalize_key_type()` now converts floats and literal bools itself; Pun only
+  makes a general `bool` key `0|1` (BooleanType::toArrayKey()) where upstream gives `int`.
 - `invocation/template_inference.rs` `infer_templates_from_input_and_container_types()`: a union input its naked
   template's bound only maybe accepts infers the members the bound accepts (TemplateTypeTrait::inferTemplateTypes()):
   a closure returning `class-string|false` for `callable(): TKey` with `TKey of array-key` infers `class-string`,
@@ -3836,7 +3884,8 @@ analyzer gains the extension points and the comparison forms PHPStan narrows thr
   call's falsy narrowing with the synthetic clause, and the conditional assertions skip the `!== false` side. Mago
   would otherwise read that side as the call's truthiness and narrow `$matches` to the matched shape.
 - `formula.rs` `preg_match_bool_cast()`: CastHandler narrows `(bool) preg_match(...)` as the call's truthiness, in
-  `get_formula()` and `collect_conditional_assertions_inner()`. Also, a loose comparison of a preg call with a bool
+  `collect_conditional_assertions_inner()`. Upstream 1.61's `get_base_formula()` now reads any `(bool)` cast as its
+  operand, so the formula side of this bullet is upstream code. Also, a loose comparison of a preg call with a bool
   literal (`preg_match() == true`, `!= false`) compares the call's truthiness.
 - `formula.rs` `get_coalesce_literal_comparison_formula()`: CoalesceHandler's `createTypesCallback()` for
   `($a ?? V) !== V` with a constant string or integer `V`. The left side is narrowed `!== V` in the branch where the
@@ -3852,7 +3901,9 @@ analyzer gains the extension points and the comparison forms PHPStan narrows thr
 `StdlibPlugin`. PHPStan has no built-in types for azjezz/psl, Flow-PHP or PSR-11 containers, so those providers gave
 types PHPStan does not infer. The stdlib providers no longer target the `Psl\` functions (`max`, `min`, `abs`,
 `array_merge`), and `assertion.rs` drops its `Psl\Iter\contains_key`/`contains` assertions and `Psl\Iter\count` in
-the count checks.
+the count checks. The removal also covers upstream 1.61's additions there: the `Psl\Iter\contains` branch's new
+`get_in_array_assertions()` call, and `Psl\Iter\count` in the `COUNT_FUNCTIONS` list that now also serves the
+count-mode check.
 
 ## Keyed array key order (ConstantArrayType)
 
@@ -3860,15 +3911,19 @@ The analyzer side of mago-codex's "Keyed array key order" patch: every keyed arr
 `KnownItems` in insertion order.
 
 - Writers keep the order: array literals and their unpacks (`expression/array.rs`), offset writes
-  (`expression/assignment/array_assignment.rs`, an existing key keeps its slot), `+` (`expression/binary/arithmetic.rs`,
-  the left keys, then the right ones), `array_filter()`, `array_map()`, `array_flip()`, `array_merge()`, `compact()`,
-  `get_object_vars()` and the PSL and Flow plugins, which already build their maps in argument or source order.
+  (`expression/assignment/array_assignment.rs`, an existing key keeps its slot), `+` (`expression/binary/arithmetic.rs`
+  `compose_keyed_plus()`, the left keys, then the right ones; `list_as_keyed()` also builds a `KnownItems`),
+  `array_filter()`, `array_map()`, `array_flip()`, `array_merge()`, `compact()`, `get_object_vars()` and the PSL and
+  Flow plugins, which already build their maps in argument or source order. An append (`update_array_assignment_child_type()`)
+  drops only the alternatives it extended (`extended_shapes`); upstream 1.61's `extended_lists` does the same for lists,
+  but its `extended_shape` flag drops every keyed alternative.
 - Removals keep the others' slots, as ConstantArrayType::unsetOffset() does: `statement/unset.rs`,
   `reconciler/mod.rs` and `reconciler/simple_negated_assertion_reconciler.rs` use `shift_remove()`.
 - `context/variable_scope.rs`: the nullable-shape and shared-key joins compare key sets, not sequences.
 - `plugin/libraries/stdlib/url/parse_url.rs`: the components in ParseUrlFunctionDynamicReturnTypeExtension's
-  `componentTypesPairedStrings` order. `common/global.rs` `sorted()`: the superglobal shapes, which PHPStan does not
-  have, keep their sorted order.
+  `componentTypesPairedStrings` order. `get_full_array_return_type()` builds that order with upstream 1.61's
+  component types: `non-empty-string` for `scheme` and `host`, `string` for the components that may be empty.
+  `common/global.rs` `sorted()`: the superglobal shapes, which PHPStan does not have, keep their sorted order.
 
 ## Overwriting assertions and count narrowing on list shapes
 
@@ -3900,7 +3955,8 @@ The analyzer side of mago-codex's "Keyed array key order" patch: every keyed arr
   `magic(): int`.
 - `statement/loop/mod.rs`: a variable that only a for loop's update expressions assign is removed before the next
   pass, not kept as maybe defined. ForHandler's post-loop scope is the body's back edge, before the update
-  expressions, so PHPStan reports `Undefined variable` for it after the loop.
+  expressions, so PHPStan reports `Undefined variable` for it after the loop. In 1.61 this removal (`update_only`)
+  runs first inside upstream's seeding loop, so such a variable is never seeded.
 - `expression/assignment/array_assignment.rs` `analyze()`: before an offset write, a container that is neither mixed
   nor only an array loses its bool, int and float members, as produceArrayDimFetchAssignValueToWrite() intersects it
   with `array|ArrayAccess|null`. `$data['foo'] = 'a'` on `array|bool|int` is `non-empty-array&hasOffsetValue(...)`.
@@ -4001,7 +4057,8 @@ Each case was compared with PHPStan 2.3.5 on dev-null.sh, with and without bleed
   `$v = RHS`, a closure inside RHS that uses `&$v` enters with `$v` before the assignment (null when undefined)
   joined with RHS's type. A by-ref use undefined where the closure is created is null (processClosureScope()).
 - `expression/array.rs`: unpacking an array of unknown keys degrades the literal to a general array of every item's
-  keys and values (ConstantArrayTypeBuilder), so `[...$a, 'x' => 1]` is `non-empty-array<mixed>`.
+  keys and values (ConstantArrayTypeBuilder), so `[...$a, 'x' => 1]` is `non-empty-array<mixed>`. The flag is
+  `ArrayCreationInfo::has_general_unpack`, beside upstream 1.61's `unkeyed_minimum_count`.
 - `expression/binary/null_coalesce.rs`: the result stays benevolent when every member is a member of a benevolent
   side (`?string ?? __()` stays `(array|string)`), as TypeCombinator::union() keeps it.
 - `formula.rs`: `[]` is a constant value for CoalesceHandler's `($a ?? V) !== V`. A right side the left cannot be
@@ -4014,6 +4071,8 @@ Each case was compared with PHPStan 2.3.5 on dev-null.sh, with and without bleed
 - `statement/loop/mod.rs`: a do-while's condition evaluated at the loop's head runs with observers off; PHPStan only
   evaluates it after the body.
 - `statement/loop/foreach.rs`: an empty array's key and value stay `never` (`getIterableValueType()` of `array{}`).
+  The merge drops upstream 1.61's early return for an empty-array iterator when dead-code analysis is off, so the
+  body is still walked with those `never` bindings.
 
 ## Callback parameters of a call on a union receiver
 
@@ -4070,3 +4129,64 @@ the same errors as PHPStan.
   TemplateArgumentObserver::observeClosureSendToCallable() keeps the members whose isCallable() is not no, and lets the
   closure escape when they are not all callable. A `string` or an array beside `Closure(static): mixed`, as in
   Builder::where()'s `$column`, may be a callable too, so a stored closure passed to `where()` keeps its declared type.
+
+## Closure::fromCallable provider backport
+
+Pun's `rules/return_types.rs` registers the return provider from Mago 1.59.0 commit
+[`3ea59634580e5986c267d99e7fb3ccbf6ee26587`](https://github.com/carthage-software/mago/commit/3ea59634580e5986c267d99e7fb3ccbf6ee26587).
+The provider uses the callable cast and parameter-dependent signature APIs already present in 1.57.0.
+It resolves positional or named `callback`, clones each resolved signature, and changes only
+`is_closure`. An unresolved alternative leaves the whole call on its declared Closure fallback.
+No vendored analyzer source or dependency version changes for this backport.
+
+`crates/pun-analyse/tests/closure_from_callable.rs` checks public analyser output against PHPStan 2.3.1. Its fixtures
+cover immediate and assigned closures, invocation, strings, arrays, invokable objects, typed callbacks,
+named arguments, optional and variadic parameters, references, generic and conditional targets,
+inheritance, visibility, staticness, and unresolved alternatives. The two `phpstan*.neon` files
+under `crates/pun-analyse/tests/fixtures/closure-from-callable/` describe the oracle runs at levels zero and five.
+
+## Mago 1.61.0 merge adaptations
+
+These merge changes keep Pun's patches consistent with upstream 1.61.0 code. Each one either changes no behaviour or
+keeps the pre-merge behaviour.
+
+- `statement/loop/memo.rs`: upstream 1.61's loop memo, its fix for slow nested loops, is disabled. `supports()`
+  returns false through `const ENABLED: bool = false`. A memo hit replays only issues, expression types and
+  assignment targets, and its key is `locals`. Pun's native lane, `variable_state` and observation artifacts (throw
+  scopes, abrupt property scopes, variable flow, call terminations) would come back stale. The memo's
+  `BlockContext::with_scope()` still carries `native_locals` and `variable_state`.
+- `utils/expression/mod.rs`: upstream 1.61's `has_assignment()` and `merge_conditional_locals()` helpers are deleted.
+  Their only callers, the nullsafe-argument and coalesce-RHS merges, are replaced by Pun's joins ("Nullsafe calls
+  restore shallow receiver devices" and "Assignment certainty and null-coalesce scopes").
+- `expression/variable.rs`: upstream 1.61's `has_extracted_variables()` checks are removed, because
+  `expression/call/function_call.rs` never sets that flag (see "Foreach body and exit-scope pollution").
+- `statement/unset.rs`: `set_existing()` passes `definite = true` to `update_type_with_key_values()`, which keeps
+  the pre-1.61 write (see "Virtual offset-unset write-back").
+- `reconciler/assertion_reconciler.rs`: `intersect_atomic_with_atomic()` strips a value's intersection parts before it
+  intersects the bare type. An array's only intersection part is its `callable` conjunct, which
+  `get_intersection_types_mut()` cannot clear, so the bare array kept it and the function recursed until the stack
+  overflowed (Symfony `src`, laravel-framework `src`). The bare Keyed or List array now also drops `callable`.
+
+## Mago 1.61.0 changes rejected for PHPStan parity
+
+- `plugin/libraries/stdlib/closure/`: upstream's `ClosureFromCallableProvider` (1.59.0) is not registered, and its
+  file is deleted. With Pun's codex it resolves every `Closure::fromCallable()` call to a bare `Closure`, while
+  Pun's backport in `crates/pun-analyse/src/rules/return_types.rs` (see "Closure::fromCallable provider
+  backport") gives PHPStan's `Closure(string): string`. `tests/closure_from_callable.rs` checks that.
+
+- `resolver/property.rs`: upstream 1.61 types an undocumented property of a class with `__get` or `__set` as the
+  magic method's return or value type. PHPStan reports `property.notFound` there and reads the fetch as an error
+  type, so the property type stays `mixed`, as in 1.57.0. This is visible on Pest's `TestCall`, whose `__get()`
+  returns `self`: `$this->question` inside a test closure read as `TestCall` instead of `mixed`.
+- `resolver/static_method.rs`: upstream 1.61 searches nested mixins for a static call, which Pun keeps, but binds
+  `static` and `$this` to the host class. PHPStan's `MixinMethodsClassReflectionExtension` binds them to the mixin
+  class. `find_static_method_in_single_mixin()` binds them to the mixin object, after `expand_union()` fills a bare
+  generic mixin's template defaults. So `Http::withHeader()` (Larastan's stub declares `Http` with
+  `@mixin Factory`, and `Factory` declares `@mixin PendingRequest`) is `PendingRequest`, and `Http::head()` resolves
+  `TAsync is false ? Response : ...` to `Response`.
+- `resolver/method.rs`: upstream 1.61's `get_method_candidates_from_object()` drops an inaccessible declared method
+  when the class has `__call`, so the call resolves through `__call` and reads as an error type. PHPStan keeps the
+  declared method: it reports `method.protected` or `method.private` and returns the method's declared type. The
+  filter is removed and visibility is checked on every target, as in 1.57.0. Upstream's private-scope lookup
+  (`private_member_scope()`) stays. This is visible on Livewire's `Component::getListeners()` passed to Pest's
+  `expect()`, which reported a false `argument.templateType`.

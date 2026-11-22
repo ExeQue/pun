@@ -11,9 +11,9 @@
 
 [package]
 edition = "2024"
-rust-version = "1.99.0"
+rust-version = "1.100.0"
 name = "mago-codex"
-version = "1.57.0"
+version = "1.61.0"
 authors = ["Seifeddine Gmati <azjezz@carthage.software>"]
 build = false
 autolib = false
@@ -49,38 +49,41 @@ version = "0.2"
 version = "2.8.0"
 features = ["serde"]
 
+[dependencies.itoa]
+version = "1.0"
+
 [dependencies.mago-allocator]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-bytes]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-database]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-fingerprint]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-names]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-php-version]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-phpdoc-syntax]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-reporting]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-span]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-syntax]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.mago-word]
-version = "=1.57.0"
+version = "=1.61.0"
 
 [dependencies.memchr]
 version = "2.7.4"

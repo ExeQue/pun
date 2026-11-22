@@ -51,7 +51,7 @@ scripts/coverage.sh punphp-tokens
 
 1. `scripts/oracle.sh` installs Pint into `.oracle/pint`. `scripts/corpus.sh` checks out the projects in `corpus/`.
 2. `cargo build --profile profiling -p punphp` builds `target/profiling/pun`. `PUN_BIN=path` selects another binary.
-3. Put the Mago 1.57.0 release binary (the version the Mago crates pin) under `.oracle/mago/`, or pass `MAGO_BIN=path`.
+3. Put the Mago 1.61.0 release binary (the version the Mago crates pin) under `.oracle/mago/`, or pass `MAGO_BIN=path`.
 4. Run `scripts/bench.py`. `RUNS` (default 3) sets the measured runs per tool, `WARMUP` (default 1) the untimed runs before them, and `TOOLS` a subset of `pint-parallel,pint,pint-warm,pun,pun-warm,pun-format,mago`.
 
 The four tools:
@@ -109,7 +109,7 @@ Every Rector run uses `--dry-run --clear-cache`.
 - `pun-harness` is local tooling. It regenerates `context/reports/scoreboard.md`.
 - Release: a tag runs cargo-dist (`dist-workspace.toml`, `.github/workflows/release.yml`), which builds the four archives `composer/bin/pun` downloads (Linux musl and macOS, x86_64 and arm64). `.gitattributes` export-ignores every top-level path except the Composer package; add each new top-level path there. Every crate has `publish = false`.
 - The commands divide the work like this. `format` changes layout only. `lint` applies code rules, including PHP-CS-Fixer's risky fixers. `analyse` reports type errors. `check` runs all three in one pass.
-- The Mago crates are pinned to `=1.57.0`. Bump them together. Four of them (mago-analyzer, mago-codex, mago-syntax, mago-phpdoc-syntax) are vendored and patched in `third_party/`; each has a PATCHES.md, and a bump re-applies those patches.
+- The Mago crates are pinned to `=1.61.0`. Bump them together. Four of them (mago-analyzer, mago-codex, mago-syntax, mago-phpdoc-syntax) are vendored and patched in `third_party/`; each has a PATCHES.md, and a bump re-applies those patches.
 - Harness-only environment variables: `PUN_IGNORE_PHP_CONSTRAINT=1` (for corpora that allow PHP below 8.4), `PUN_BIN`, `PUN_HARNESS_ROOT`, `PUN_PROFILE`, and `PUN_GITHUB_URL` (the plain-HTTP server `pun self-update` downloads from in its tests, instead of github.com and api.github.com).
 - Every test that spawns `pun` sets `PUN_AGENT=0`. Tests of agent mode are the exception.
 

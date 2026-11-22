@@ -1,15 +1,15 @@
-# Mago PHPDoc syntax 1.57.0: maintained patch
+# Mago PHPDoc syntax 1.61.0: maintained patch
 
 ## Source
 
-The library source and normalized manifest come from the published `mago-phpdoc-syntax` 1.57.0
-package (checksum `0eeb52927d77253f3467d696bddf9dce88349b3ed4917baf7408d46ba6733437`). Its
+The library source and normalized manifest come from the published `mago-phpdoc-syntax` 1.61.0
+package (checksum `283a30eef27d2c6ccda22898f36eee66fc76f6b81d9806815d1d529ac7a33e44`). Its
 `.cargo_vcs_info.json` identifies upstream revision
-[`9656cd55`](https://github.com/carthage-software/mago/tree/9656cd55d51d96bd6dc57f1f1e73c15f22cb7cc3/crates/phpdoc-syntax).
+[`08934a6e`](https://github.com/carthage-software/mago/tree/08934a6e3925cc1c836041efc931505330911f6e/crates/phpdoc-syntax).
 Both license files come from that revision. Registry bookkeeping, the package lockfile, and
 external tests are omitted, along with their manifest targets. The `indoc` development dependency
 remains because the upstream lexer unit tests use it. Sibling Mago dependencies stay pinned to
-`=1.57.0`. The root manifest patches this crate and excludes it from Pun's workspace members.
+`=1.61.0`. The root manifest patches this crate and excludes it from Pun's workspace members.
 
 ## Quoted shape-key source tokens
 

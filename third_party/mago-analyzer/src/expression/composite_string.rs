@@ -9,6 +9,7 @@ use mago_codex::ttype::get_never;
 use mago_codex::ttype::get_non_empty_string;
 use mago_codex::ttype::get_non_empty_unspecified_literal_string;
 use mago_codex::ttype::get_string;
+use mago_codex::ttype::get_truthy_string;
 use mago_codex::ttype::get_unspecified_literal_string;
 use mago_codex::ttype::union::TUnion;
 use mago_span::HasSpan;
@@ -40,16 +41,19 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for CompositeString<'arena> {
         // follows a non-empty prefix
         let mut truthy = false;
         let mut all_literals = true;
+        let mut lowercase = true;
+        let mut uppercase = true;
         let mut resulting_strings: Option<Vec<String>> = Some(vec![String::new()]);
         let mut impossible = false;
 
         for part in self.parts().as_slice() {
             let (part_type, part_expression_id) = match part {
                 StringPart::Literal(literal_string_part) => {
-                    let part_non_empty = !literal_string_part.raw.is_empty();
-                    let part_truthy = part_non_empty && literal_string_part.value != Some(b"0".as_slice());
-                    truthy = truthy || part_truthy || (non_empty && part_non_empty);
-                    non_empty = non_empty || part_non_empty;
+                    let literal = literal_string_part.value.unwrap_or(literal_string_part.raw);
+                    truthy = truthy || (!literal.is_empty() && (non_empty || literal != b"0"));
+                    non_empty = non_empty || !literal.is_empty();
+                    lowercase = lowercase && !literal.iter().any(u8::is_ascii_uppercase);
+                    uppercase = uppercase && !literal.iter().any(u8::is_ascii_lowercase);
                     if let Some(strings) = resulting_strings.as_mut() {
                         if let Some(Ok(part_str)) = literal_string_part.value.map(str::from_utf8) {
                             for s in strings.iter_mut() {
@@ -109,6 +113,13 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for CompositeString<'arena> {
                 continue;
             }
 
+            if self.parts().iter().filter(|part| !matches!(part, StringPart::Literal(literal) if literal.value.unwrap_or(literal.raw).is_empty())).count() == 1 {
+                artifacts.set_expression_type(self, casted_part_type);
+
+                return Ok(());
+            }
+
+            let part_is_int = part_type.is_int();
             let mut is_non_empty_part = true;
             let mut is_truthy_part = true;
             let mut part_is_all_literals = true;
@@ -118,6 +129,12 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for CompositeString<'arena> {
             for cast_part_atomic in casted_part_type.types.as_ref() {
                 is_non_empty_part = is_non_empty_part && cast_part_atomic.is_non_empty_string();
                 is_truthy_part = is_truthy_part && cast_part_atomic.is_truthy();
+                if !part_is_int {
+                    lowercase = lowercase
+                        && matches!(cast_part_atomic, TAtomic::Scalar(TScalar::String(string)) if string.is_lowercase());
+                    uppercase = uppercase
+                        && matches!(cast_part_atomic, TAtomic::Scalar(TScalar::String(string)) if string.is_uppercase());
+                }
 
                 if !part_is_all_literals {
                     continue;
@@ -141,7 +158,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for CompositeString<'arena> {
                 }
             }
 
-            truthy = truthy || (is_truthy_part && is_non_empty_part) || (non_empty && is_non_empty_part);
+            truthy = truthy || is_truthy_part || (non_empty && is_non_empty_part);
             non_empty = non_empty || is_non_empty_part;
             all_literals = all_literals && part_is_all_literals;
 
@@ -200,12 +217,26 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for CompositeString<'arena> {
                         .collect(),
                 )
             }
-        } else if truthy {
+        } else if lowercase || uppercase {
+            let casing = if lowercase { TStringCasing::Lowercase } else { TStringCasing::Uppercase };
+            let non_empty = truthy || non_empty;
             TUnion::from_atomic(TAtomic::Scalar(TScalar::String(if all_literals {
-                TString::unspecified_literal_with_props(false, true, true, false, TStringCasing::Unspecified)
+                TString::unspecified_literal_with_props(false, truthy, non_empty, false, casing)
             } else {
-                TString::general_with_props(false, true, true, false, TStringCasing::Unspecified)
+                TString::general_with_props(false, truthy, non_empty, false, casing)
             })))
+        } else if truthy {
+            if all_literals {
+                TUnion::from_atomic(TAtomic::Scalar(TScalar::String(TString::unspecified_literal_with_props(
+                    false,
+                    true,
+                    true,
+                    false,
+                    TStringCasing::Unspecified,
+                ))))
+            } else {
+                get_truthy_string()
+            }
         } else if non_empty {
             if all_literals { get_non_empty_unspecified_literal_string() } else { get_non_empty_string() }
         } else if all_literals {

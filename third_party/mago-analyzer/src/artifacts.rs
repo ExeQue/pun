@@ -26,6 +26,7 @@ use crate::context::block::VariableState;
 use crate::context::scope::case_scope::CaseScope;
 use crate::context::scope::loop_scope::LoopScope;
 use crate::readonly::PendingReadonlyPropertyWrite;
+use crate::statement::r#loop::memo::LoopMemo;
 
 pub use self::expression_result::ExpressionResult;
 use self::expression_result::OwnExpressionType;
@@ -120,6 +121,12 @@ impl BooleanExpressionScope {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct ShortCircuitAssignmentTypes {
+    pub when_true: WordMap<Rc<TUnion>>,
+    pub when_false: WordMap<Rc<TUnion>>,
+}
+
+#[derive(Debug, Clone)]
 pub struct AnalysisArtifacts {
     /// Effective full values. Use get_raw_expression_type for a call's own unprojected return.
     pub expression_types: HashMap<(u32, u32), Rc<TUnion>>,
@@ -136,7 +143,9 @@ pub struct AnalysisArtifacts {
     pub if_true_assertions: HashMap<(u32, u32), WordMap<AssertionSet>>,
     pub if_false_assertions: HashMap<(u32, u32), WordMap<AssertionSet>>,
     pub true_branch_only_assertions: HashMap<(u32, u32), WordMap<AssertionSet>>,
+    pub(crate) short_circuit_assignment_types: HashMap<(u32, u32), ShortCircuitAssignmentTypes>,
     pub inferred_return_types: Vec<Rc<TUnion>>,
+    pub has_bare_return: bool,
     pub inferred_yield_key_types: Vec<TUnion>,
     pub inferred_yield_value_types: Vec<TUnion>,
     pub symbol_references: SymbolReferences,
@@ -144,6 +153,8 @@ pub struct AnalysisArtifacts {
     pub case_scopes: Vec<CaseScope>,
     pub fully_matched_switch_offsets: HashSet<u32>,
     pub inferred_parameter_types: Option<HashMap<usize, TUnion>>,
+    pub inferred_return_type: Option<TUnion>,
+    pub expected_return_type: Option<TUnion>,
     /// ArrayHandler's passed-to type: the value type an argument's parameter expects of the array literal analysed
     /// next, whose closure items take their parameter types from its callables.
     pub(crate) array_passed_to_type: Option<TUnion>,
@@ -191,6 +202,8 @@ pub struct AnalysisArtifacts {
     pub(crate) static_local_types: Option<WordMap<Rc<TUnion>>>,
     expression_type_checkpoints: ExpressionTypeCheckpoints,
     retain_completed_expression_types: bool,
+    pub(crate) assignment_target_log: Option<WordSet>,
+    pub(crate) loop_memos: HashMap<(u32, u32), LoopMemo>,
 }
 
 impl Default for AnalysisArtifacts {
@@ -212,16 +225,20 @@ impl AnalysisArtifacts {
             boolean_expression_scopes: HashMap::default(),
             null_context_clauses: HashMap::default(),
             inferred_return_types: Vec::new(),
+            has_bare_return: false,
             inferred_yield_key_types: Vec::new(),
             inferred_yield_value_types: Vec::new(),
             if_true_assertions: HashMap::default(),
             if_false_assertions: HashMap::default(),
             true_branch_only_assertions: HashMap::default(),
+            short_circuit_assignment_types: HashMap::default(),
             symbol_references: SymbolReferences::new(),
             case_scopes: Vec::new(),
             loop_scope: None,
             fully_matched_switch_offsets: HashSet::default(),
             inferred_parameter_types: None,
+            inferred_return_type: None,
+            expected_return_type: None,
             array_passed_to_type: None,
             callback_parameter_types: HashMap::default(),
             callback_returns: Vec::new(),
@@ -250,6 +267,8 @@ impl AnalysisArtifacts {
             static_local_types: None,
             expression_type_checkpoints: ExpressionTypeCheckpoints::default(),
             retain_completed_expression_types: true,
+            assignment_target_log: None,
+            loop_memos: HashMap::default(),
         }
     }
 
@@ -286,7 +305,11 @@ impl AnalysisArtifacts {
     }
 
     pub(crate) fn should_retain_completed_expression_types(&self) -> bool {
-        self.retain_completed_expression_types || !self.expression_type_checkpoints.is_empty()
+        self.retain_completed_expression_types || self.expression_type_checkpoints.has_visible_checkpoints()
+    }
+
+    pub(crate) fn retains_completed_expression_types(&self) -> bool {
+        self.retain_completed_expression_types
     }
 
     pub(crate) fn record_static_local_types(
@@ -399,6 +422,10 @@ impl AnalysisArtifacts {
     }
 
     pub(crate) fn record_loop_assignment_target(&mut self, target: Word) {
+        if let Some(log) = &mut self.assignment_target_log {
+            log.insert(target);
+        }
+
         let mut loop_scope = self.loop_scope.as_mut();
         while let Some(scope) = loop_scope {
             if scope.tracks_assignment_targets {
@@ -526,17 +553,63 @@ impl AnalysisArtifacts {
         }
     }
 
-    pub(crate) fn expression_type_checkpoint_matches(&self, same: impl Fn(&TUnion, &TUnion) -> bool) -> bool {
+    pub(crate) fn begin_expression_type_recording(&mut self) {
+        self.expression_type_checkpoints.begin_checkpoint();
+        self.begin_recording_lane_checkpoints();
+    }
+
+    pub(crate) fn finish_expression_type_recording(&mut self) -> Vec<((u32, u32), Rc<TUnion>)> {
+        self.finish_recording_lane_checkpoints();
+        self.expression_type_checkpoints.finish_recording(&self.expression_types)
+    }
+
+    pub(crate) fn begin_silent_expression_type_recording(&mut self) {
+        self.expression_type_checkpoints.begin_silent_recording();
+        self.begin_recording_lane_checkpoints();
+    }
+
+    pub(crate) fn finish_silent_expression_type_recording(&mut self) -> Vec<((u32, u32), Rc<TUnion>)> {
+        self.finish_recording_lane_checkpoints();
+        self.expression_type_checkpoints.finish_silent_recording(&self.expression_types)
+    }
+
+    /// The other lanes keep one checkpoint per full-lane checkpoint, so a recording is a kept checkpoint for them.
+    fn begin_recording_lane_checkpoints(&mut self) {
+        self.own_expression_type_checkpoints.begin_checkpoint();
+        self.call_termination_checkpoints.begin_checkpoint();
+        if let Some(native) = &mut self.native_expression_types {
+            native.checkpoints.begin_checkpoint();
+        }
+    }
+
+    fn finish_recording_lane_checkpoints(&mut self) {
+        let action = CheckpointAction::Keep;
+        self.own_expression_type_checkpoints.finish_checkpoint(&mut self.own_expression_types, action);
+        self.call_termination_checkpoints.finish_checkpoint(&mut self.call_terminations, action);
+        if let Some(native) = &mut self.native_expression_types {
+            native.checkpoints.finish_checkpoint(&mut native.types, action);
+        }
+    }
+
+    pub(crate) fn expression_type_checkpoint_matches(
+        &self,
+        same: impl Fn(&TUnion, &TUnion) -> bool,
+        cleaned: Option<(u32, u32)>,
+    ) -> bool {
         // Native state is passive: it must not change the full lane's loop iteration decisions.
-        self.expression_type_checkpoints.checkpoint_matches(&self.expression_types, |a, b| same(a, b))
-            && self.own_expression_type_checkpoints.checkpoint_matches(&self.own_expression_types, |a, b| {
-                a.raw == b.raw
-                    && a.holder == b.holder
-                    && a.projects_void == b.projects_void
-                    && a.resolved == b.resolved
-                    && a.overridden == b.overridden
-            })
-            && self.call_termination_checkpoints.checkpoint_matches(&self.call_terminations, |a, b| a == b)
+        self.expression_type_checkpoints.checkpoint_matches(&self.expression_types, |a, b| same(a, b), cleaned)
+            && self.own_expression_type_checkpoints.checkpoint_matches(
+                &self.own_expression_types,
+                |a, b| {
+                    a.raw == b.raw
+                        && a.holder == b.holder
+                        && a.projects_void == b.projects_void
+                        && a.resolved == b.resolved
+                        && a.overridden == b.overridden
+                },
+                cleaned,
+            )
+            && self.call_termination_checkpoints.checkpoint_matches(&self.call_terminations, |a, b| a == b, cleaned)
     }
 
     pub(crate) fn finish_expression_type_checkpoint(&mut self, action: CheckpointAction) {

@@ -76,6 +76,9 @@ pub struct Settings {
     /// (e.g. `: string|false` on a function that always returns a string). Defaults to `false`.
     pub find_overly_wide_return_types: bool,
 
+    /// Warn when a documented `@throws` type cannot escape the function or method. Defaults to `false`.
+    pub find_overly_wide_throw_types: bool,
+
     /// Analyze code that appears to be unreachable. Defaults to `false`.
     /// Unmatched catches are observed from their pre-try scope without adding flow edges,
     /// following Rector's catch decoration. Their diagnostics and outward effects are discarded.
@@ -90,11 +93,23 @@ pub struct Settings {
 
     /// Enable checking for unhandled thrown exceptions.
     ///
-    /// When `true`, the analyzer will report any exception that is thrown but not caught
-    /// in a `try-catch` block or documented in a `@throws` tag.
+    /// When `true`, the analyzer reports exceptions that are thrown but not caught in a
+    /// `try-catch` block or documented in a `@throws` tag.
     ///
     /// This check is disabled by default (`false`) as it can be computationally expensive.
     pub check_throws: bool,
+
+    /// Check whether each catch clause can catch a known exception from its try block.
+    ///
+    /// This check only runs when `check_throws` is enabled. It is disabled by default
+    /// because exceptions from undocumented code cannot be ruled out statically.
+    pub check_dead_catch: bool,
+
+    /// Enable checking that overriding and implementing methods declare covariant `@throws` types.
+    ///
+    /// A missing `@throws` tag means `Throwable`; use `@throws void` for no exceptions.
+    /// This check is disabled by default (`false`).
+    pub check_throw_type_covariance: bool,
 
     /// Exceptions to ignore including all subclasses (hierarchy-aware).
     ///
@@ -462,10 +477,13 @@ impl Settings {
             find_unused_expressions: true,
             find_unused_definitions: true,
             find_overly_wide_return_types: false,
+            find_overly_wide_throw_types: false,
             analyze_dead_code: false,
             memoize_properties: true,
             allow_possibly_undefined_array_keys: true,
             check_throws: false,
+            check_dead_catch: false,
+            check_throw_type_covariance: false,
             unchecked_exceptions: WordSet::default(),
             unchecked_exception_classes: WordSet::default(),
             use_colors: true,

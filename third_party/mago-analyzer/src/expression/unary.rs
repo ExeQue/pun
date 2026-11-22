@@ -27,7 +27,9 @@ use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::atomic::scalar::float::TFloat;
 use mago_codex::ttype::atomic::scalar::int::TInteger;
 use mago_codex::ttype::atomic::scalar::string::TString;
+use mago_codex::ttype::atomic::scalar::string::TStringCasing;
 use mago_codex::ttype::atomic::scalar::string::TStringLiteral;
+use mago_codex::ttype::combiner::CombinerOptions;
 use mago_codex::ttype::combiner::combine;
 use mago_codex::ttype::get_arraykey;
 use mago_codex::ttype::get_bool;
@@ -68,8 +70,10 @@ use crate::context::block::BlockContext;
 use crate::error::AnalysisError;
 use crate::expression::assignment::PropertyWriteKind;
 use crate::expression::assignment::assign_to_expression;
+use crate::expression::binary::arithmetic::report_fractional_float_operand;
 use crate::expression::call::method_call::analyze_implicit_method_call;
 use crate::expression::operator_overloading::report_overloaded_operator_on_operand;
+use crate::resolver::method::retain_narrowest_returns;
 use crate::utils::expression::get_block_expression_id;
 use crate::utils::php_emulation::str_increment_bytes;
 use crate::utils::php_emulation::str_is_numeric_bytes;
@@ -116,6 +120,11 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for UnaryPrefix<'arena> {
             // operators that always retain the type of the operand
             UnaryPrefixOperator::Reference(_) => {
                 let mut referenced_type = operand_type.map_or_else(get_mixed, |t| t.as_ref().clone());
+                if matches!(self.operand, Expression::ArrayAccess(_)) && referenced_type.possibly_undefined() {
+                    referenced_type = referenced_type.as_nullable();
+                    referenced_type.set_possibly_undefined(false, None);
+                }
+
                 referenced_type.set_by_reference(true);
 
                 artifacts.set_rc_expression_type(self, Rc::new(referenced_type));
@@ -129,10 +138,8 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for UnaryPrefix<'arena> {
             }
             UnaryPrefixOperator::BitwiseNot(_) => {
                 if let Some(operand_type) = operand_type {
-                    if let Some(value) = operand_type.get_single_literal_int_value() {
-                        artifacts.set_expression_type(self, wrap_atomic(TAtomic::Scalar(TScalar::Integer(TInteger::Literal(!value)))));
-                        return Ok(());
-                    }
+                    report_fractional_float_operand(context, self.operand.span(), &operand_type, "Operand of `~`");
+
                     let is_class_without_bitwise_not = |atomic: &TAtomic| {
                         get_operator_overloading_class(atomic)
                             .is_some_and(|class| !class.overloads(OverloadedOperator::BitwiseNot))
@@ -147,7 +154,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for UnaryPrefix<'arena> {
                             OverloadedOperator::BitwiseNot,
                         );
 
-                        artifacts.set_rc_expression_type(self, operand_type);
+                        artifacts.set_expression_type(self, bitwise_not_result(&operand_type.types, context));
                     } else {
                         let (classes_without_bitwise_not, other_types): (Vec<&TAtomic>, Vec<&TAtomic>) =
                             operand_type.types.iter().partition(|atomic| is_class_without_bitwise_not(atomic));
@@ -164,7 +171,10 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for UnaryPrefix<'arena> {
                             if other_types.is_empty() {
                                 get_never()
                             } else {
-                                TUnion::from_vec(other_types.into_iter().cloned().collect())
+                                bitwise_not_result(
+                                    other_types.into_iter().cloned().collect::<Vec<_>>().as_slice(),
+                                    context,
+                                )
                             },
                         );
                     }
@@ -393,6 +403,20 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for UnaryPrefix<'arena> {
             UnaryPrefixOperator::IntCast(_, _) | UnaryPrefixOperator::IntegerCast(_, _) => {
                 let resulting_type = match operand_type {
                     Some(t) => {
+                        if has_array_in_cast_operand(&t) {
+                            context.collector.report_with_code(
+                                IssueCode::ArrayToIntCast,
+                                Issue::warning("Casting an array to int instead of counting its elements.")
+                                    .with_annotation(
+                                        Annotation::primary(self.span())
+                                            .with_message("Casting an array to int always returns 1 if the array is non-empty, regardless of the number of elements."),
+                                    )
+                                    .with_help("Use count() to get the number of elements in an array.")
+                                    .with_note("An empty array ([]) casts to 0.")
+                                    .with_note("Any non-empty array casts to 1, not its element count."),
+                            );
+                        }
+
                         // we intentionally do not report redundant casts here, as
                         // what we think is an integer, might be a float at runtime.
                         //
@@ -535,6 +559,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for UnaryPostfix<'arena> {
         block_context.flags.set_inside_general_use(was_in_general_use);
 
         let operand_type = artifacts.get_rc_expression_type(&self.operand).cloned();
+
         match self.operator {
             UnaryPostfixOperator::PostIncrement(span) => {
                 let written = increment_operand(context, block_context, artifacts, self.operand, span)?;
@@ -726,6 +751,19 @@ fn report_ineffective_increment_or_decrement<A>(
     );
 }
 
+fn with_generic_bounds(operand_type: &TUnion) -> Vec<TAtomic> {
+    operand_type
+        .types
+        .iter()
+        .flat_map(|atomic| match atomic {
+            TAtomic::GenericParameter(parameter) if !parameter.constraint.is_mixed() => {
+                parameter.constraint.types.to_vec()
+            }
+            _ => vec![atomic.clone()],
+        })
+        .collect()
+}
+
 /// Computes an incremented value from an already observed read, without evaluating or assigning its operand.
 ///
 /// # Arguments
@@ -756,7 +794,7 @@ where
     }
     let mut possibilities = vec![];
     let mut reported_invalid = false;
-    for operand_atomic_type in operand_type.types.as_ref() {
+    for operand_atomic_type in &with_generic_bounds(operand_type) {
         match operand_atomic_type {
             TAtomic::Scalar(scalar) => match scalar {
                 TScalar::Integer(int_scalar) => {
@@ -962,6 +1000,11 @@ fn increment_operand<'ctx, 'arena, A: Arena>(
     };
     let resulting_type_union = increment_type(context, block_context, operand, operation_span, operand_type);
     let operand_id = get_block_expression_id(operand, context, block_context);
+    if let Some(operand_id) = operand_id {
+        block_context.assigned_variable_ids.insert(operand_id, operand.start_offset());
+        block_context.possibly_assigned_variable_ids.insert(operand_id);
+    }
+
     let successful = assign_to_expression(
         context,
         block_context,
@@ -1018,7 +1061,7 @@ where
     }
     let mut possibilities = vec![];
 
-    for operand_atomic_type in operand_type.types.as_ref() {
+    for operand_atomic_type in &with_generic_bounds(operand_type) {
         match operand_atomic_type {
             TAtomic::Scalar(scalar) => {
                 match scalar {
@@ -1217,6 +1260,11 @@ fn decrement_operand<'ctx, 'arena, A: Arena>(
     };
     let resulting_type_union = decrement_type(context, block_context, operand, operation_span, operand_type);
     let operand_id = get_block_expression_id(operand, context, block_context);
+    if let Some(operand_id) = operand_id {
+        block_context.assigned_variable_ids.insert(operand_id, operand.start_offset());
+        block_context.possibly_assigned_variable_ids.insert(operand_id);
+    }
+
     let successful = assign_to_expression(
         context,
         block_context,
@@ -1579,6 +1627,7 @@ where
                     resulting_float_atomics.push(TAtomic::Scalar(TScalar::literal_float(1.0)));
                 }
             }
+            TAtomic::Object(object) if casts_to_number(object, context) => return get_float(),
             TAtomic::Object(_) => {
                 if !reported_error_for_object {
                     context.collector.report_with_code(
@@ -1745,6 +1794,24 @@ impl NumericInterval {
     }
 }
 
+fn casts_to_number<A>(object: &TObject, context: &Context<'_, '_, A>) -> bool
+where
+    A: Arena,
+{
+    object.get_name().is_some_and(|name| {
+        context.codebase.is_instance_of(name.as_bytes(), b"SimpleXMLElement")
+            || context.codebase.is_instance_of(name.as_bytes(), b"GMP")
+    })
+}
+
+fn has_array_in_cast_operand(operand_type: &TUnion) -> bool {
+    operand_type.types.iter().any(|atomic| {
+        atomic.is_array()
+            || atomic.is_iterable()
+            || atomic.map_generic_parameter_constraint(has_array_in_cast_operand).unwrap_or(false)
+    })
+}
+
 fn cast_type_to_int<A>(
     operand_type: &TUnion,
     operand: &Expression<'_>,
@@ -1776,6 +1843,7 @@ where
 
                 TAtomic::Scalar(TScalar::literal_int(1))
             }
+            TAtomic::Object(object) if casts_to_number(object, context) => return get_int(),
             TAtomic::Object(_) => TAtomic::Scalar(TScalar::literal_int(1)),
             TAtomic::Callable(callable)
                 if callable
@@ -1798,12 +1866,7 @@ where
                         TAtomic::Scalar(TScalar::literal_int(1))
                     }
                 },
-                TScalar::Integer(int_scalar) => match int_scalar.get_literal_value() {
-                    Some(i) => TAtomic::Scalar(TScalar::literal_int(i)),
-                    None => {
-                        return get_int();
-                    }
-                },
+                TScalar::Integer(int_scalar) => TAtomic::Scalar(TScalar::Integer(*int_scalar)),
                 TScalar::Float(float_scalar) => match float_scalar {
                     TFloat::Literal(f) => {
                         if f.is_nan() {
@@ -1866,38 +1929,32 @@ where
                 return get_never();
             }
             TAtomic::Never => return get_never(),
-            TAtomic::Callable(callable)
-                if callable
-                    .get_signature()
-                    .is_none_or(mago_codex::ttype::atomic::callable::TCallableSignature::is_closure) =>
-            {
+            _ if t.is_object_type() => {
                 possibilities.push(t.clone());
             }
-            TAtomic::Object(_) => {
-                possibilities.push(t.clone());
-            }
-            TAtomic::Array(TArray::Keyed(keyed_array)) => {
+            TAtomic::Array(TArray::Keyed(keyed_array)) if keyed_array.known_items.is_some() => {
                 let mut known_properties = BTreeMap::new();
-                if let Some(known_items) = &keyed_array.known_items {
-                    for (key, item) in known_items.iter() {
-                        let property_name = key.to_atom();
-
-                        known_properties.insert(property_name, item.clone());
-                    }
-
-                    // Casting an array to an object produces a `stdClass` instance in PHP,
-                    // so intersect the shape with `stdClass` to preserve both the shape
-                    // information and the nominal `stdClass` type.
-                    let mut named = TNamedObject::new(word("stdClass"));
-                    named.intersection_types = Some(Box::new(vec![TAtomic::Object(TObject::new_with_properties(
-                        keyed_array.parameters.is_none(),
-                        known_properties,
-                    ))]));
-
-                    possibilities.push(TAtomic::Object(TObject::Named(named)));
+                for (key, item) in keyed_array.known_items.iter().flat_map(|items| items.iter()) {
+                    known_properties.insert(key.to_atom(), item.clone());
                 }
+
+                // Casting an array to an object produces a `stdClass` instance in PHP,
+                // so intersect the shape with `stdClass` to preserve both the shape
+                // information and the nominal `stdClass` type.
+                let mut named = TNamedObject::new(word("stdClass"));
+                named.intersection_types = Some(Box::new(vec![TAtomic::Object(TObject::new_with_properties(
+                    keyed_array.parameters.is_none(),
+                    known_properties,
+                ))]));
+
+                possibilities.push(TAtomic::Object(TObject::Named(named)));
             }
-            _ => {}
+            TAtomic::Scalar(_) | TAtomic::Array(_) | TAtomic::Null | TAtomic::Void => {
+                possibilities.push(TAtomic::Object(TObject::Named(TNamedObject::new(word("stdClass")))));
+            }
+            _ => {
+                possibilities.push(TAtomic::Object(TObject::Any));
+            }
         }
     }
 
@@ -2234,49 +2291,81 @@ where
     let intersection_types = atomic.get_intersection_types()?;
     let to_string_id = word(b"__toString");
 
-    for intersection in intersection_types {
-        match intersection {
+    let mut has_to_string_assertion = false;
+    let mut candidates = Vec::new();
+    for part in std::iter::once(atomic).chain(intersection_types) {
+        match part {
             TAtomic::Object(TObject::HasMethod(has_method)) if has_method.has_method(to_string_id.as_bytes()) => {
-                return Some(Ok(get_string()));
+                has_to_string_assertion = true;
             }
-
             TAtomic::Object(TObject::Named(named)) => {
-                let intersection_name = named.get_name();
-                let Some(intersection_class) = context.codebase.get_class_like(intersection_name.as_bytes()) else {
+                let Some(class_metadata) = context.codebase.get_class_like(named.get_name().as_bytes()) else {
                     continue;
                 };
 
-                let intersection_method_id = context.codebase.get_declaring_method_identifier(&MethodIdentifier::new(
-                    intersection_class.original_name,
+                let method_identifier = context.codebase.get_declaring_method_identifier(&MethodIdentifier::new(
+                    class_metadata.original_name,
                     to_string_id,
                 ));
 
-                let Some(method) = context.codebase.get_method(
-                    intersection_method_id.get_class_name().as_bytes(),
-                    intersection_method_id.get_method_name().as_bytes(),
-                ) else {
-                    continue;
-                };
-
-                return Some(analyze_implicit_method_call(
-                    context,
-                    block_context,
-                    artifacts,
-                    &TObject::Named(named.clone()),
-                    operand_expression_id,
-                    to_string_id,
-                    intersection_method_id,
-                    intersection_class,
-                    method,
-                    None,
-                    expression_span,
-                ));
+                if context.codebase.get_method_by_id(&method_identifier).is_some() {
+                    candidates.push((named, class_metadata, method_identifier));
+                }
             }
             _ => {}
         }
     }
 
-    None
+    retain_narrowest_returns(context.codebase, &mut candidates, |(_, _, method_identifier)| method_identifier);
+
+    let Some((named, class_metadata, method_identifier)) = candidates.into_iter().next() else {
+        return has_to_string_assertion.then(|| Ok(get_string()));
+    };
+
+    let method = context.codebase.get_method_by_id(&method_identifier)?;
+
+    Some(analyze_implicit_method_call(
+        context,
+        block_context,
+        artifacts,
+        &TObject::Named(named.clone()),
+        operand_expression_id,
+        to_string_id,
+        method_identifier,
+        class_metadata,
+        method,
+        None,
+        expression_span,
+    ))
+}
+
+/// `~` turns an int or float into an int and keeps a string a string.
+fn bitwise_not_result<A>(atomics: &[TAtomic], context: &Context<'_, '_, A>) -> TUnion
+where
+    A: Arena,
+{
+    let results =
+        atomics
+            .iter()
+            .map(|atomic| match atomic {
+                TAtomic::Scalar(TScalar::Integer(integer)) => match integer.get_literal_value() {
+                    Some(value) => TAtomic::Scalar(TScalar::literal_int(!value)),
+                    None => TAtomic::Scalar(TScalar::int()),
+                },
+                TAtomic::Scalar(TScalar::Float(float)) => match float.get_literal_value() {
+                    Some(value) if value.is_finite() && value.abs() < 9.2e18 => {
+                        TAtomic::Scalar(TScalar::literal_int(!(value as i64)))
+                    }
+                    _ => TAtomic::Scalar(TScalar::int()),
+                },
+                TAtomic::Scalar(TScalar::String(string)) => TAtomic::Scalar(TScalar::String(
+                    TString::general_with_props(false, false, string.is_non_empty(), false, TStringCasing::Unspecified),
+                )),
+                other => other.clone(),
+            })
+            .collect::<Vec<_>>();
+
+    TUnion::from_vec(combine(results, context.codebase, CombinerOptions::default()))
 }
 
 #[cfg(test)]

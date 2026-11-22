@@ -19,17 +19,22 @@ use mago_syntax::cst::ArrayAccess;
 use mago_syntax::cst::Call;
 use mago_syntax::cst::ClassLikeConstantSelector;
 use mago_syntax::cst::ClassLikeMemberSelector;
+use mago_syntax::cst::Construct;
 use mago_syntax::cst::Expression;
 use mago_syntax::cst::FunctionCall;
 use mago_syntax::cst::Literal;
+use mago_syntax::cst::LiteralString;
 use mago_syntax::cst::MethodCall;
 use mago_syntax::cst::NullSafeMethodCall;
+use mago_syntax::cst::NullSafePropertyAccess;
+use mago_syntax::cst::PropertyAccess;
 use mago_syntax::cst::StaticMethodCall;
 use mago_syntax::cst::UnaryPostfixOperator;
 use mago_syntax::cst::UnaryPrefix;
 use mago_syntax::cst::UnaryPrefixOperator;
 use mago_syntax::cst::Variable;
 use mago_word::Word;
+use mago_word::WordMap;
 use mago_word::concat_word;
 use mago_word::empty_word;
 use mago_word::word;
@@ -69,7 +74,21 @@ pub(crate) fn get_literal_array_key(expression: &Expression<'_>, artifacts: &Ana
 pub(crate) const fn expression_has_observable_side_effect(expression: &Expression<'_>) -> bool {
     match expression {
         Expression::Parenthesized(p) => expression_has_observable_side_effect(p.expression),
-        Expression::Assignment(_) | Expression::Throw(_) | Expression::Yield(_) | Expression::Clone(_) => true,
+        Expression::Assignment(_)
+        | Expression::Throw(_)
+        | Expression::Yield(_)
+        | Expression::Clone(_)
+        | Expression::Instantiation(_)
+        | Expression::Construct(
+            Construct::Exit(_)
+            | Construct::Die(_)
+            | Construct::Print(_)
+            | Construct::Eval(_)
+            | Construct::Include(_)
+            | Construct::IncludeOnce(_)
+            | Construct::Require(_)
+            | Construct::RequireOnce(_),
+        ) => true,
         Expression::UnaryPrefix(u) => {
             matches!(
                 u.operator,
@@ -118,26 +137,45 @@ pub(crate) const fn expression_is_nullsafe(expr: &'_ Expression<'_>) -> bool {
     }
 }
 
-pub(crate) fn get_nullsafe_base_expressions<'ast, 'arena>(
+pub(crate) fn get_access_base_expressions<'ast, 'arena>(
     expression: &'ast Expression<'arena>,
+    artifacts: &AnalysisArtifacts,
 ) -> Vec<&'ast Expression<'arena>> {
     let mut bases = vec![];
     let mut current = Some(unwrap_expression(expression));
+    let mut can_narrow_ordinary_bases = true;
+
     while let Some(expression) = current {
         match expression {
-            Expression::Access(Access::NullSafeProperty(access)) => {
-                bases.push(access.object);
-                current = Some(unwrap_expression(access.object));
+            Expression::Access(Access::NullSafeProperty(NullSafePropertyAccess { object, property, .. }))
+            | Expression::Access(Access::Property(PropertyAccess { object, property, .. })) => {
+                can_narrow_ordinary_bases &= matches!(property, ClassLikeMemberSelector::Identifier(_));
+
+                if matches!(expression, Expression::Access(Access::NullSafeProperty(_)))
+                    || (can_narrow_ordinary_bases
+                        && artifacts.get_expression_type(object).is_some_and(TUnion::can_be_null))
+                {
+                    bases.push(*object);
+                }
+
+                current = Some(unwrap_expression(object));
             }
-            Expression::Access(Access::Property(access)) => {
-                current = Some(unwrap_expression(access.object));
-            }
-            Expression::Call(Call::NullSafeMethod(call)) => {
-                bases.push(call.object);
-                current = Some(unwrap_expression(call.object));
-            }
-            Expression::Call(Call::Method(call)) => {
-                current = Some(unwrap_expression(call.object));
+            Expression::Call(Call::NullSafeMethod(NullSafeMethodCall { object, method, argument_list, .. }))
+            | Expression::Call(Call::Method(MethodCall { object, method, argument_list, .. })) => {
+                can_narrow_ordinary_bases &= matches!(method, ClassLikeMemberSelector::Identifier(_))
+                    && argument_list
+                        .arguments
+                        .iter()
+                        .all(|argument| matches!(unwrap_expression(argument.value()), Expression::Literal(_)));
+
+                if matches!(expression, Expression::Call(Call::NullSafeMethod(_)))
+                    || (can_narrow_ordinary_bases
+                        && artifacts.get_expression_type(object).is_some_and(TUnion::can_be_null))
+                {
+                    bases.push(*object);
+                }
+
+                current = Some(unwrap_expression(object));
             }
             Expression::ArrayAccess(access) => {
                 current = Some(unwrap_expression(access.array));
@@ -274,7 +312,13 @@ fn get_extended_expression_id<'ast, 'arena>(
     }
 
     Some(match expression {
-        Expression::UnaryPrefix(UnaryPrefix { operator: UnaryPrefixOperator::Reference(_), operand }) => {
+        Expression::UnaryPrefix(UnaryPrefix {
+            operator:
+                UnaryPrefixOperator::Reference(_)
+                | UnaryPrefixOperator::PreIncrement(_)
+                | UnaryPrefixOperator::PreDecrement(_),
+            operand,
+        }) => {
             return get_expression_id(operand, this_class_name, resolved_names, codebase);
         }
         Expression::Variable(variable) => word(get_variable_id(variable)?),
@@ -346,20 +390,8 @@ fn get_extended_expression_id<'ast, 'arena>(
                 word(b"self")
             }
         }
-        Expression::Parent(_) if solve_identifiers => {
-            if let Some(class_name) = this_class_name {
-                class_name
-            } else {
-                word(b"parent")
-            }
-        }
-        Expression::Static(_) if solve_identifiers => {
-            if let Some(class_name) = this_class_name {
-                class_name
-            } else {
-                word(b"static")
-            }
-        }
+        Expression::Parent(_) if solve_identifiers => word(b"parent"),
+        Expression::Static(_) if solve_identifiers => word(b"static"),
         Expression::Identifier(identifier) if solve_identifiers => {
             let identifier_id = resolved_names.get(&identifier);
 
@@ -493,6 +525,68 @@ pub fn get_root_expression_id(expression: &Expression<'_>) -> Option<Word> {
     }
 }
 
+/// The id of a string key, written single-quoted from its value so `"a"`, `'a'` and `"\x61"` name the same key.
+fn get_string_key_id(literal_string: &LiteralString<'_>) -> Word {
+    let Some(value) = literal_string.value else {
+        return word(literal_string.raw);
+    };
+
+    if literal_string.raw.first() == Some(&b'\'') && !literal_string.raw.contains(&b'\\') {
+        return word(literal_string.raw);
+    }
+
+    let mut id = Vec::with_capacity(value.len() + 2);
+    id.push(b'\'');
+    for &byte in value {
+        if matches!(byte, b'\'' | b'\\') {
+            id.push(b'\\');
+        }
+
+        id.push(byte);
+    }
+    id.push(b'\'');
+
+    word(&id)
+}
+
+/// The members (properties, elements, static members) of `before` that `after` lost while their root variable kept
+/// the same type: something that ran in between, such as a call, cleared their narrowing.
+pub fn get_cleared_members<V>(before: &WordMap<V>, after: &WordMap<V>) -> Vec<Word>
+where
+    V: PartialEq,
+{
+    before
+        .keys()
+        .filter(|id| {
+            let bytes = id.as_bytes();
+            let Some(root_end) =
+                [memchr::memmem::find(bytes, b"->"), memchr::memmem::find(bytes, b"::"), memchr::memchr(b'[', bytes)]
+                    .into_iter()
+                    .flatten()
+                    .min()
+            else {
+                return false;
+            };
+
+            let root = word(&bytes[..root_end]);
+
+            !after.contains_key(*id) && before.get(&root) == after.get(&root)
+        })
+        .copied()
+        .collect()
+}
+
+/// Whether an id such as `$a[$i]` reads `variable` (`$i`) inside an offset, so it names another element once
+/// `variable` changes.
+pub fn uses_variable_as_offset(id: &[u8], variable: &[u8]) -> bool {
+    variable.first() == Some(&b'$')
+        && memchr::memchr_iter(b'[', id).any(|bracket| {
+            id[bracket + 1..]
+                .strip_prefix(variable)
+                .is_some_and(|rest| rest.first().is_none_or(|next| !(next.is_ascii_alphanumeric() || *next == b'_')))
+        })
+}
+
 pub fn get_index_id<'ast, 'arena>(
     expression: &'ast Expression<'arena>,
     this_class_name: Option<Word>,
@@ -500,7 +594,7 @@ pub fn get_index_id<'ast, 'arena>(
     codebase: Option<&CodebaseMetadata>,
 ) -> Option<Word> {
     Some(match expression {
-        Expression::Literal(Literal::String(literal_string)) => word(literal_string.raw),
+        Expression::Literal(Literal::String(literal_string)) => get_string_key_id(literal_string),
         Expression::Literal(Literal::Integer(literal_integer)) => word(literal_integer.raw),
         Expression::UnaryPostfix(unary_postfix) => {
             return get_index_id(unary_postfix.operand, this_class_name, resolved_names, codebase);

@@ -319,17 +319,17 @@ where
 
     artifacts.symbol_references.add_reference_for_method_call(&block_context.scope, &constructor_id);
 
-    let mut has_inconsistent_constructor =
-        !metadata.flags.is_final() && metadata.name_span.is_some() && !metadata.flags.has_consistent_constructor();
+    let mut has_inconsistent_constructor = !metadata.flags.is_final()
+        && metadata.name_span.is_some()
+        && !metadata.flags.has_consistent_constructor()
+        && !metadata.overridden_method_ids.contains_key(&word("__construct"));
     let mut constructor_span = None;
 
     let mut template_result = TemplateResult::new(IndexMap::with_hasher(RandomState::default()), HashMap::default());
 
-    let is_spl_object_storage = classname_str.as_bytes().eq_ignore_ascii_case(b"splobjectstorage");
-
     if let Some(constructor) = context.codebase.get_method_by_id(&constructor_declraing_id) {
-        has_inconsistent_constructor =
-            has_inconsistent_constructor && !constructor.method_metadata.as_ref().is_some_and(|meta| meta.is_final);
+        has_inconsistent_constructor = has_inconsistent_constructor
+            && !constructor.method_metadata.as_ref().is_some_and(|meta| meta.is_final || meta.is_abstract);
         constructor_span = Some(constructor.name_span.unwrap_or(constructor.span));
 
         artifacts.symbol_references.add_reference_for_method_call(&block_context.scope, &constructor_declraing_id);
@@ -453,8 +453,6 @@ where
                 .unwrap_or_else(|| {
                     if template.default.is_some() { wrap_atomic(TAtomic::Placeholder) } else { get_mixed() }
                 })
-            } else if is_spl_object_storage {
-                get_never()
             } else {
                 wrap_atomic(TAtomic::Placeholder)
             };
@@ -516,13 +514,33 @@ where
 
         argument_list.analyze(context, block_context, artifacts)?;
     } else if !metadata.template_types.is_empty() {
-        type_parameters = Some(
-            metadata
-                .template_types
-                .iter()
-                .map(|(_, _)| if is_spl_object_storage { get_never() } else { wrap_atomic(TAtomic::Placeholder) })
-                .collect(),
-        );
+        type_parameters = Some(metadata.template_types.iter().map(|_| wrap_atomic(TAtomic::Placeholder)).collect());
+    }
+
+    if let Some(parameters) = &mut type_parameters
+        && metadata.template_types.values().any(|template| template.default.is_some())
+        && parameters.iter().any(TUnion::is_placeholder)
+    {
+        let mut resolved_templates = TemplateResult::default();
+        for ((template_name, template), parameter) in metadata.template_types.iter().zip(parameters) {
+            if parameter.is_placeholder()
+                && let Some(default) = &template.default
+            {
+                *parameter = inferred_type_replacer::replace(default, &resolved_templates, context.codebase);
+                expander::expand_union(
+                    context.codebase,
+                    parameter,
+                    &TypeExpansionOptions {
+                        self_class: Some(metadata.name),
+                        static_class_type: StaticClassType::Exact(metadata.name),
+                        function_is_final: metadata.flags.is_final(),
+                        ..Default::default()
+                    },
+                );
+            }
+
+            resolved_templates.add_lower_bound(*template_name, template.defining_entity, parameter.clone());
+        }
     }
 
     // PHPStan's DummyConstructorReflection also participates in dynamic return extensions.
@@ -564,37 +582,12 @@ where
             .insert(word(b"Throwable"), block_context.variable_scope());
     }
 
-    if let Some(parameters) = &mut type_parameters
-        && metadata.template_types.values().any(|template| template.default.is_some())
-        && parameters.iter().any(TUnion::is_placeholder)
-    {
-        let mut resolved_templates = TemplateResult::default();
-        for ((template_name, template), parameter) in metadata.template_types.iter().zip(parameters) {
-            if parameter.is_placeholder()
-                && let Some(default) = &template.default
-            {
-                *parameter = inferred_type_replacer::replace(default, &resolved_templates, context.codebase);
-                expander::expand_union(
-                    context.codebase,
-                    parameter,
-                    &TypeExpansionOptions {
-                        self_class: Some(metadata.name),
-                        static_class_type: StaticClassType::Exact(metadata.name),
-                        function_is_final: metadata.flags.is_final(),
-                        ..Default::default()
-                    },
-                );
-            }
-
-            resolved_templates.add_lower_bound(*template_name, template.defining_entity, parameter.clone());
-        }
-    }
-
     let skip_constructor_warning =
         classname.is_from_class_string() && (metadata.kind.is_interface() || metadata.kind.is_trait());
 
     if has_inconsistent_constructor
         && !skip_constructor_warning
+        && !classname.is_from_literal_class_string()
         && (classname.is_static() || classname.is_from_class_string() || classname.is_object_instance())
     {
         let mut issue = if classname.is_static() {
@@ -643,11 +636,11 @@ where
         return Ok(constructor_result);
     }
 
-    let constraint_object = TAtomic::Object(TObject::Named(TNamedObject {
+    let mut constraint_object = TAtomic::Object(TObject::Named(TNamedObject {
         name: metadata.original_name,
         type_parameters: type_parameters.map(Vec::into_boxed_slice),
         variances: None,
-        is_static: classname.is_static(),
+        is_static: classname.is_static() || matches!(classname.origin, ResolutionOrigin::Object { is_this: true }),
         is_this: false,
         is_exact: metadata.kind.is_class()
             && !metadata.flags.is_abstract()
@@ -656,6 +649,10 @@ where
         subtracted_type: None,
         remapped_parameters: false,
     }));
+
+    for intersection in &classname.intersections {
+        constraint_object.add_intersection_type(intersection.get_object_type(context.codebase));
+    }
 
     // `new $className()` where `$className: class-string<T>` produces a `T`, not the constraint.
     // Preserve the template parameter so the function's `@return T` keeps narrowing on the call site.

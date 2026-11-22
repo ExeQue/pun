@@ -10,9 +10,11 @@ use mago_codex::assertion::Assertion;
 use mago_codex::context::ScopeContext;
 use mago_codex::ttype::TType;
 use mago_codex::ttype::add_optional_union_type;
+use mago_codex::ttype::atomic::TAtomic;
+use mago_codex::ttype::combine_union_types_rc;
+use mago_codex::ttype::combiner::CombinerOptions;
 use mago_codex::ttype::comparator::ComparisonResult;
 use mago_codex::ttype::comparator::union_comparator;
-use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::get_never;
 use mago_codex::ttype::union::TUnion;
 use mago_span::Span;
@@ -29,6 +31,7 @@ use crate::context::scope::finally_scope::FinallyScope;
 use crate::context::scope::var_has_root;
 use crate::reconciler::assertion_reconciler;
 use crate::reconciler::negated_assertion_reconciler;
+use crate::utils::expression::uses_variable_as_offset;
 use mago_bytes::BytesDisplay;
 
 #[path = "variable_scope.rs"]
@@ -47,6 +50,7 @@ pub enum ReferenceConstraintSource {
     Static,
     Parameter,
     Argument,
+    Property,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -54,6 +58,13 @@ pub struct ReferenceConstraint {
     pub constraint_span: Span,
     pub source: ReferenceConstraintSource,
     pub constraint_type: Option<Rc<TUnion>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PossiblyThrownGenericException {
+    pub atomic_type: TAtomic,
+    pub span: Span,
+    pub object_names: Vec<Word>,
 }
 
 #[derive(Clone, Debug)]
@@ -70,6 +81,11 @@ pub struct BlockContext<'ctx> {
     pub assigned_variable_ids: WordMap<u32>,
     pub possibly_assigned_variable_ids: WordSet,
     pub derived_local_sources: WordMap<Word>,
+    pub foreach_variables: WordSet,
+
+    /// Maps a variable holding the result of `get_class($source)` to `$source`, so that
+    /// `get_class()` case narrowing on the holder propagates back to the tested variable.
+    pub class_string_sources: WordMap<Word>,
     pub possibly_undefined_variable_ids: WordSet,
 
     /// Maps variable names to the number of times they have been referenced in the current scope.
@@ -106,8 +122,13 @@ pub struct BlockContext<'ctx> {
     pub parent_conflicting_clause_variables: WordSet,
     pub loop_bounds: (u32, u32),
     pub if_body_context: Option<Rc<RefCell<Self>>>,
+    pub logical_and_true_context: Option<Rc<RefCell<Option<Self>>>>,
+    pub logical_or_false_context: Option<Rc<RefCell<Option<Self>>>>,
     pub control_actions: ControlActionSet,
     pub possibly_thrown_exceptions: WordMap<HashSet<Span>>,
+    pub possibly_thrown_generic_exceptions: HashSet<PossiblyThrownGenericException>,
+    pub possibly_thrown_exceptions_for_too_wide: WordMap<HashSet<Span>>,
+    pub possibly_thrown_generic_exceptions_for_too_wide: HashSet<PossiblyThrownGenericException>,
 
     /// Properties that are DEFINITELY initialized in ALL code paths.
     /// Uses intersection semantics - a property must be initialized in ALL branches.
@@ -205,6 +226,56 @@ fn find_accessor_separator(bytes: &[u8]) -> Option<usize> {
 }
 
 impl<'ctx> BlockContext<'ctx> {
+    pub(crate) fn with_scope(self, scope: ScopeContext<'_>) -> BlockContext<'_> {
+        BlockContext {
+            scope,
+            locals: self.locals,
+            native_locals: self.native_locals,
+            variable_state: self.variable_state,
+            static_locals: self.static_locals,
+            variables_possibly_in_scope: self.variables_possibly_in_scope,
+            conditionally_referenced_variable_ids: self.conditionally_referenced_variable_ids,
+            assigned_variable_ids: self.assigned_variable_ids,
+            possibly_assigned_variable_ids: self.possibly_assigned_variable_ids,
+            derived_local_sources: self.derived_local_sources,
+            foreach_variables: self.foreach_variables,
+            class_string_sources: self.class_string_sources,
+            possibly_undefined_variable_ids: self.possibly_undefined_variable_ids,
+            referenced_counts: self.referenced_counts,
+            references_in_scope: self.references_in_scope,
+            references_to_external_scope: self.references_to_external_scope,
+            references_possibly_from_confusing_scope: self.references_possibly_from_confusing_scope,
+            by_reference_constraints: self.by_reference_constraints,
+            flags: self.flags,
+            clauses: self.clauses,
+            reconciled_expression_clauses: self.reconciled_expression_clauses,
+            known_functions: self.known_functions,
+            known_constants: self.known_constants,
+            break_types: self.break_types,
+            finally_scope: self.finally_scope,
+            parent_conflicting_clause_variables: self.parent_conflicting_clause_variables,
+            loop_bounds: self.loop_bounds,
+            if_body_context: None,
+            logical_and_true_context: None,
+            logical_or_false_context: None,
+            control_actions: self.control_actions,
+            possibly_thrown_exceptions: self.possibly_thrown_exceptions,
+            possibly_thrown_generic_exceptions: self.possibly_thrown_generic_exceptions,
+            possibly_thrown_exceptions_for_too_wide: self.possibly_thrown_exceptions_for_too_wide,
+            possibly_thrown_generic_exceptions_for_too_wide: self.possibly_thrown_generic_exceptions_for_too_wide,
+            definitely_initialized_properties: self.definitely_initialized_properties,
+            possibly_initialized_properties: self.possibly_initialized_properties,
+            definitely_uninitialized_property_ids: self.definitely_uninitialized_property_ids,
+            definitely_called_methods: self.definitely_called_methods,
+            called_methods: self.called_methods,
+            calls_parent_initializer: self.calls_parent_initializer,
+            active_method_call_assertions: self.active_method_call_assertions,
+            stable_method_call_assertions: self.stable_method_call_assertions,
+            stable_method_calls: self.stable_method_calls,
+            class_type_relations: self.class_type_relations,
+        }
+    }
+
     pub(crate) fn has_same_class_type_relations(&self, other: &BlockContext<'_>) -> bool {
         self.class_type_relations == other.class_type_relations
     }
@@ -232,6 +303,8 @@ impl<'ctx> BlockContext<'ctx> {
             assigned_variable_ids: WordMap::default(),
             possibly_assigned_variable_ids: WordSet::default(),
             derived_local_sources: WordMap::default(),
+            foreach_variables: WordSet::default(),
+            class_string_sources: WordMap::default(),
             possibly_undefined_variable_ids: WordSet::default(),
             referenced_counts: WordMap::default(),
             references_in_scope: WordMap::default(),
@@ -248,8 +321,13 @@ impl<'ctx> BlockContext<'ctx> {
             parent_conflicting_clause_variables: WordSet::default(),
             loop_bounds: (0, 0),
             if_body_context: None,
+            logical_and_true_context: None,
+            logical_or_false_context: None,
             control_actions: ControlActionSet::new(),
             possibly_thrown_exceptions: WordMap::default(),
+            possibly_thrown_generic_exceptions: HashSet::default(),
+            possibly_thrown_exceptions_for_too_wide: WordMap::default(),
+            possibly_thrown_generic_exceptions_for_too_wide: HashSet::default(),
             definitely_initialized_properties: WordSet::default(),
             possibly_initialized_properties: WordSet::default(),
             definitely_uninitialized_property_ids: WordSet::default(),
@@ -389,6 +467,20 @@ impl<'ctx> BlockContext<'ctx> {
         (included_clauses, rejected_clauses)
     }
 
+    /// Like [`Self::remove_reconciled_clause_refs`], but keeps the clauses that link several
+    /// variables, such as a flag stored from a condition: the new types do not express them.
+    pub(crate) fn partition_unreconciled_clauses(
+        clauses: &Vec<Rc<Clause>>,
+        changed_var_ids: &WordSet,
+    ) -> (Vec<Rc<Clause>>, Vec<Rc<Clause>>) {
+        let (mut included, rejected) = Self::remove_reconciled_clause_refs(clauses, changed_var_ids);
+        let (linked, rejected): (Vec<_>, Vec<_>) =
+            rejected.into_iter().partition(|clause| clause.possibilities.len() > 1);
+        included.extend(linked);
+
+        (included, rejected)
+    }
+
     pub(crate) fn retain_unreconciled_clauses(clauses: &mut Vec<Rc<Clause>>, changed_var_ids: &WordSet) {
         clauses.retain(|clause| !Self::is_reconciled_clause(clause, changed_var_ids));
     }
@@ -418,6 +510,7 @@ impl<'ctx> BlockContext<'ctx> {
         'outer: for clause in clauses {
             for (var_id, assertions) in &clause.possibilities {
                 if var_has_root(*var_id, remove_var_id)
+                    || uses_variable_as_offset(var_id.as_bytes(), remove_var_id.as_bytes())
                     || assertions.values().any(|assertion| {
                         assertion.referenced_variable().is_some_and(|variable| var_has_root(variable, remove_var_id))
                     })
@@ -498,7 +591,8 @@ impl<'ctx> BlockContext<'ctx> {
             !targets.is_empty()
         });
 
-        self.parent_conflicting_clause_variables.insert(remove_var_id);
+        self.class_string_sources
+            .retain(|holder, source| !var_has_root(*holder, remove_var_id) && !var_has_root(*source, remove_var_id));
     }
 
     pub(crate) fn add_class_type_relation(&mut self, source: Word, target: Word) {
@@ -537,16 +631,13 @@ impl<'ctx> BlockContext<'ctx> {
         self.remove_variable_from_conflicting_clauses(
             context,
             remove_var_id,
-            if existing_type.is_mixed() {
-                None
-            } else if let Some(new_type) = new_type {
-                Some(new_type)
-            } else {
-                None
-            },
+            if existing_type.is_mixed() { None } else { new_type },
         );
 
-        self.locals.retain(|var_id, _| !var_has_root(*var_id, remove_var_id));
+        self.locals.retain(|var_id, _| {
+            !var_has_root(*var_id, remove_var_id)
+                && !uses_variable_as_offset(var_id.as_bytes(), remove_var_id.as_bytes())
+        });
     }
 
     /// Registers a variable that is referenced conditionally, like in a property
@@ -607,6 +698,7 @@ impl<'ctx> BlockContext<'ctx> {
         self.possibly_assigned_variable_ids.remove(&var_atom);
         self.conditionally_referenced_variable_ids.remove(&var_atom);
         self.derived_local_sources.remove(&var_atom);
+        self.class_string_sources.retain(|holder, source| *holder != var_atom && !var_has_root(*source, var_atom));
         self.possibly_undefined_variable_ids.remove(&var_atom);
     }
 
@@ -666,6 +758,8 @@ impl<'ctx> BlockContext<'ctx> {
         self.possibly_assigned_variable_ids.remove(&remove_var_atom);
         self.conditionally_referenced_variable_ids.remove(&remove_var_atom);
         self.derived_local_sources.remove(&remove_var_atom);
+        self.class_string_sources
+            .retain(|holder, source| *holder != remove_var_atom && !var_has_root(*source, remove_var_atom));
         self.possibly_undefined_variable_ids.remove(&remove_var_atom);
     }
 
@@ -675,7 +769,7 @@ impl<'ctx> BlockContext<'ctx> {
         start_block_context: &Self,
         end_block_context: &mut Self,
         has_leaving_statements: bool,
-        vars_to_update: &WordSet,
+        vars_to_update: &WordMap<Rc<TUnion>>,
         updated_vars: &mut WordSet,
     ) where
         A: Arena,
@@ -688,6 +782,11 @@ impl<'ctx> BlockContext<'ctx> {
             vars_to_update,
             updated_vars,
         );
+
+        for updated_var in updated_vars.iter() {
+            self.class_string_sources
+                .retain(|holder, source| *holder != *updated_var && !var_has_root(*source, *updated_var));
+        }
     }
 
     pub(crate) fn update_locals<A>(
@@ -696,7 +795,7 @@ impl<'ctx> BlockContext<'ctx> {
         start_locals: &WordMap<Rc<TUnion>>,
         end_block_context: &mut Self,
         has_leaving_statements: bool,
-        vars_to_update: &WordSet,
+        vars_to_update: &WordMap<Rc<TUnion>>,
         updated_vars: &mut WordSet,
     ) where
         A: Arena,
@@ -706,9 +805,9 @@ impl<'ctx> BlockContext<'ctx> {
         }
 
         for (variable_id, old_type) in start_locals {
-            if !vars_to_update.contains(variable_id) {
+            let Some(else_type) = vars_to_update.get(variable_id) else {
                 continue;
-            }
+            };
 
             let new_type = if !has_leaving_statements && end_block_context.has_variable_atom(*variable_id) {
                 end_block_context.locals.get(variable_id).cloned()
@@ -724,6 +823,19 @@ impl<'ctx> BlockContext<'ctx> {
 
                 continue;
             };
+
+            if let Some(new_type) = &new_type
+                && existing_type.eq(old_type.as_ref())
+            {
+                if !old_type.eq(new_type) {
+                    self.locals.insert(
+                        *variable_id,
+                        combine_union_types_rc(else_type, new_type, context.codebase, CombinerOptions::default()),
+                    );
+                }
+
+                continue;
+            }
 
             let old_type = old_type.as_ref().clone();
 
@@ -774,6 +886,7 @@ impl std::fmt::Display for ReferenceConstraintSource {
             ReferenceConstraintSource::Static => write!(f, "static"),
             ReferenceConstraintSource::Parameter => write!(f, "parameter"),
             ReferenceConstraintSource::Argument => write!(f, "argument"),
+            ReferenceConstraintSource::Property => write!(f, "property"),
         }
     }
 }
@@ -787,16 +900,8 @@ fn substitute_types<A>(
 where
     A: Arena,
 {
-    if existing_type.is_mixed() || existing_type.is_never() {
+    if existing_type.is_mixed() || existing_type.is_never() || existing_type.eq(&old_type) {
         return existing_type;
-    }
-
-    if existing_type.eq(&old_type) {
-        let Some(new_type) = new_type else {
-            return existing_type;
-        };
-
-        return add_optional_union_type(get_mixed(), Some(new_type), context.codebase);
     }
 
     let updated_type = subtract_union_types(context, existing_type, old_type);

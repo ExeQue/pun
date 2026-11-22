@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use mago_bytes::BytesDisplay;
 use mago_codex::assertion::Assertion;
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::operator_overloading::OperandAcceptance;
@@ -13,13 +14,13 @@ use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
 use mago_codex::ttype::atomic::array::keyed::TKeyedArray;
+use mago_codex::ttype::atomic::array::list::TList;
 use mago_codex::ttype::atomic::mixed::TMixed;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::atomic::scalar::float::TFloat;
 use mago_codex::ttype::atomic::scalar::int::TInteger;
 use mago_codex::ttype::combiner;
 use mago_codex::ttype::comparator::ComparisonResult;
-use mago_codex::ttype::comparator::atomic_comparator;
 use mago_codex::ttype::comparator::union_comparator;
 use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::get_mixed_keyed_array;
@@ -64,6 +65,17 @@ where
     let fallback = Rc::new(get_mixed());
     let left_type = artifacts.get_rc_expression_type(&binary.lhs).cloned().unwrap_or_else(|| Rc::clone(&fallback));
     let right_type = artifacts.get_rc_expression_type(&binary.rhs).cloned().unwrap_or_else(|| Rc::clone(&fallback));
+    if matches!(
+        binary.operator,
+        BinaryOperator::Addition(_) | BinaryOperator::Subtraction(_) | BinaryOperator::Multiplication(_)
+    ) && is_same_template(&left_type, &right_type)
+    {
+        assign_arithmetic_type(artifacts, (*left_type).clone(), binary);
+        return Ok(());
+    }
+
+    let left_type = generic_bound(&left_type).map_or(left_type, Rc::new);
+    let right_type = generic_bound(&right_type).map_or(right_type, Rc::new);
 
     if left_type.is_never() || right_type.is_never() {
         assign_arithmetic_type(artifacts, get_never(), binary);
@@ -155,12 +167,6 @@ where
         );
     }
 
-    if is_arithmetic_compatible_generic(context, &left_type, &right_type) {
-        final_result_type = Some(left_type.as_ref().clone());
-    } else if is_arithmetic_compatible_generic(context, &right_type, &left_type) {
-        final_result_type = Some(right_type.as_ref().clone());
-    }
-
     if let Some(final_result_type) = final_result_type {
         assign_arithmetic_type(artifacts, final_result_type, binary);
 
@@ -175,6 +181,25 @@ where
             | BinaryOperator::LeftShift(_)
             | BinaryOperator::RightShift(_)
     );
+
+    if (is_bitwise || matches!(binary.operator, BinaryOperator::Modulo(_)))
+        && !left_type.has_object_type()
+        && !right_type.has_object_type()
+    {
+        let operator = BytesDisplay(binary.operator.as_bytes());
+        report_fractional_float_operand(
+            context,
+            binary.lhs.span(),
+            &left_type,
+            &format!("Left operand of `{operator}`"),
+        );
+        report_fractional_float_operand(
+            context,
+            binary.rhs.span(),
+            &right_type,
+            &format!("Right operand of `{operator}`"),
+        );
+    }
 
     if left_type.is_false() && !is_bitwise {
         context.collector.report_with_code(
@@ -713,34 +738,24 @@ fn integer_division(binary: &Binary<'_>, left_type: &TUnion, right_type: &TUnion
     Some(number)
 }
 
-#[inline]
-fn is_arithmetic_compatible_generic<A>(context: &Context<'_, '_, A>, union: &TUnion, other_union: &TUnion) -> bool
-where
-    A: Arena,
-{
+fn is_same_template(left: &TUnion, right: &TUnion) -> bool {
+    matches!(
+        (left.types.as_ref(), right.types.as_ref()),
+        ([TAtomic::GenericParameter(left)], [TAtomic::GenericParameter(right)])
+            if left.parameter_name == right.parameter_name && left.defining_entity == right.defining_entity
+    )
+}
+
+fn generic_bound(union: &TUnion) -> Option<TUnion> {
     if !union.is_single() {
-        return false;
+        return None;
     }
 
     let TAtomic::GenericParameter(generic_parameter) = union.get_single() else {
-        return false;
+        return None;
     };
 
-    for constraint_atomic in generic_parameter.constraint.types.iter() {
-        for other_atomic in other_union.types.iter() {
-            if !atomic_comparator::is_contained_by(
-                context.codebase,
-                other_atomic,
-                constraint_atomic,
-                false,
-                &mut ComparisonResult::new(),
-            ) {
-                return false;
-            }
-        }
-    }
-
-    true
+    (!generic_parameter.constraint.is_mixed()).then(|| (*generic_parameter.constraint).clone())
 }
 
 #[inline]
@@ -866,6 +881,8 @@ fn determine_numeric_result(op: &BinaryOperator<'_>, left: &TAtomic, right: &TAt
                         } else {
                             vec![TAtomic::Scalar(TScalar::int()), TAtomic::Scalar(TScalar::float())]
                         }
+                    } else if matches!(op, BinaryOperator::Exponentiation(_)) {
+                        integer_power_result(*left_int, *right_int)
                     } else {
                         vec![TAtomic::Scalar(TScalar::int())]
                     }
@@ -896,11 +913,11 @@ fn determine_numeric_result(op: &BinaryOperator<'_>, left: &TAtomic, right: &TAt
                     _ => None,
                 };
 
-                if let (Some(l), Some(r)) = (left_f, right_f) {
-                    if matches!(op, BinaryOperator::Division(_)) && r == 0.0 {
-                        return vec![TAtomic::Never];
-                    }
+                if matches!(op, BinaryOperator::Division(_)) && right_f == Some(0.0) {
+                    return vec![TAtomic::Never];
+                }
 
+                if let (Some(l), Some(r)) = (left_f, right_f) {
                     let result = match op {
                         BinaryOperator::Addition(_) => Some(l + r),
                         BinaryOperator::Subtraction(_) => Some(l - r),
@@ -996,6 +1013,25 @@ fn string_bitwise_result(op: &BinaryOperator<'_>, left: &TAtomic, right: &TAtomi
     }
 }
 
+/// `int ** int` is a float when the exponent is negative or the result overflows.
+fn integer_power_result(base: TInteger, exponent: TInteger) -> Vec<TAtomic> {
+    if let (Some(base), Some(exponent)) = (base.get_literal_value(), exponent.get_literal_value()) {
+        let value = (base as f64).powf(exponent as f64);
+
+        return vec![if value.is_finite() {
+            TAtomic::Scalar(TScalar::literal_float(value))
+        } else {
+            TAtomic::Scalar(TScalar::float())
+        }];
+    }
+
+    match exponent.get_bounds() {
+        (Some(minimum), _) if minimum >= 0 => vec![TAtomic::Scalar(TScalar::int())],
+        (_, Some(maximum)) if maximum < 0 => vec![TAtomic::Scalar(TScalar::float())],
+        _ => vec![TAtomic::Scalar(TScalar::int()), TAtomic::Scalar(TScalar::float())],
+    }
+}
+
 fn calculate_int_arithmetic(op: &BinaryOperator<'_>, left: TInteger, right: TInteger) -> Option<TInteger> {
     use TInteger::Literal;
     use TInteger::Unspecified;
@@ -1038,14 +1074,56 @@ fn calculate_int_arithmetic(op: &BinaryOperator<'_>, left: TInteger, right: TInt
     if result.is_unspecified() { None } else { Some(result) }
 }
 
+/// Reports a float literal with a fraction (or out of the int range) where PHP converts it to an int.
+pub(crate) fn report_fractional_float_operand<A>(
+    context: &mut Context<'_, '_, A>,
+    operand_span: Span,
+    operand_type: &TUnion,
+    operand_description: &str,
+) where
+    A: Arena,
+{
+    let Some(value) = operand_type.types.iter().find_map(|atomic| {
+        atomic
+            .get_literal_float_value()
+            .filter(|value| value.fract() != 0.0 || *value < i64::MIN as f64 || *value >= -(i64::MIN as f64))
+    }) else {
+        return;
+    };
+
+    context.collector.report_with_code(
+        IssueCode::ImplicitFloatToIntCast,
+        Issue::warning(format!("{operand_description} is converted to an int, which loses the value of `{value}`."))
+            .with_annotation(
+                Annotation::primary(operand_span)
+                    .with_message(format!("This float (`{value}`) does not fit an int exactly")),
+            )
+            .with_note("Bitwise and modulo operators convert their operands to int, dropping any fraction.")
+            .with_note(
+                "Since PHP 8.1 this emits \"Deprecated: Implicit conversion from float to int loses precision\".",
+            )
+            .with_help(
+                "Cast the operand explicitly with `(int)`, or round it first with `round()`, `floor()` or `ceil()`.",
+            ),
+    );
+}
+
 /// Compose two array shapes under PHP's `+` operator.
 fn compose_array_plus<A>(left: &TArray, right: &TArray, context: &Context<'_, '_, A>) -> Vec<TAtomic>
 where
     A: Arena,
 {
-    if let (TArray::Keyed(left_keyed), TArray::Keyed(right_keyed)) = (left, right) {
-        let composed = compose_keyed_plus(left_keyed, right_keyed);
-        return vec![TAtomic::Array(TArray::Keyed(composed))];
+    match (left, right) {
+        (TArray::Keyed(left_keyed), TArray::Keyed(right_keyed)) => {
+            return vec![TAtomic::Array(TArray::Keyed(compose_keyed_plus(left_keyed, right_keyed)))];
+        }
+        (TArray::Keyed(left_keyed), TArray::List(right_list)) => {
+            return vec![TAtomic::Array(TArray::Keyed(compose_keyed_plus(left_keyed, &list_as_keyed(right_list))))];
+        }
+        (TArray::List(left_list), TArray::Keyed(right_keyed)) => {
+            return vec![TAtomic::Array(TArray::Keyed(compose_keyed_plus(&list_as_keyed(left_list), right_keyed)))];
+        }
+        (TArray::List(_), TArray::List(_)) => {}
     }
 
     let mut combined = combiner::combine(
@@ -1067,8 +1145,25 @@ where
     combined
 }
 
+fn list_as_keyed(list: &TList) -> TKeyedArray {
+    TKeyedArray {
+        known_items: list.known_elements.as_deref().map(|elements| {
+            elements
+                .iter()
+                .map(|(index, (optional, value))| (ArrayKey::Integer(*index as i64), (*optional, value.clone())))
+                .collect::<mago_codex::ttype::atomic::array::keyed::KnownItems>()
+                .into()
+        }),
+        parameters: (!list.element_type.is_never())
+            .then(|| (Arc::new(get_non_negative_int()), Arc::clone(&list.element_type))),
+        non_empty: list.non_empty,
+        known_non_list: false,
+        callable: None,
+    }
+}
+
 /// `+` composition for two keyed shapes.
-fn compose_keyed_plus(left: &TKeyedArray, right: &TKeyedArray) -> TKeyedArray {
+pub(crate) fn compose_keyed_plus(left: &TKeyedArray, right: &TKeyedArray) -> TKeyedArray {
     use mago_codex::ttype::atomic::array::keyed::KnownItems;
 
     let left_known = left.known_items.as_deref();
@@ -1200,7 +1295,9 @@ fn definite_arithmetic_runtime_error(op: &BinaryOperator<'_>, right: &TAtomic) -
             if zero { Some("Modulo by zero".to_string()) } else { None }
         }
         BinaryOperator::LeftShift(_) | BinaryOperator::RightShift(_) => {
-            let value = right.get_literal_int_value()?;
+            let value = right
+                .get_literal_int_value()
+                .or_else(|| right.get_literal_float_value().map(|value| value.trunc() as i64))?;
 
             if value < 0 { Some(format!("Bit shift by a negative number (`{value}`)")) } else { None }
         }

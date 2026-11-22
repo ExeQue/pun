@@ -14,6 +14,7 @@ use crate::ttype::atomic::callable::TCallable;
 use crate::ttype::atomic::derived::TDerived;
 use crate::ttype::atomic::generic::TGenericParameter;
 use crate::ttype::atomic::object::TObject;
+use crate::ttype::atomic::reference::TReference;
 use crate::ttype::atomic::scalar::TScalar;
 use crate::ttype::atomic::scalar::class_like_string::TClassLikeString;
 use crate::ttype::combiner;
@@ -63,6 +64,7 @@ pub fn replace_with_polarity(
             constraint,
             intersection_types.as_ref(),
             template_result,
+            polarity,
         )
         .map_or_else(|| union.clone(), |replacement| union.clone_with_union(replacement));
     }
@@ -120,6 +122,7 @@ pub fn replace_with_polarity(
                     constraint,
                     intersection_types.as_ref(),
                     template_result,
+                    polarity,
                 );
 
                 if let Some(template_type) = template_type {
@@ -220,6 +223,7 @@ fn replace_template_parameter(
     constraint: &TUnion,
     intersection_types: Option<&Vec<TAtomic>>,
     template_result: &TemplateResult,
+    polarity: Variance,
 ) -> Option<TUnion> {
     let inferred_lower_bounds = &template_result.lower_bounds;
     let mut template_type = None;
@@ -227,7 +231,9 @@ fn replace_template_parameter(
         get_root_template_type(inferred_lower_bounds, parameter_name, defining_entity, HashSet::default(), codebase);
 
     if let Some(traversed_type) = traversed_type {
-        let mut template_type_inner = if !constraint.is_mixed() && traversed_type.is_mixed() {
+        let mut template_type_inner = if !constraint.is_mixed()
+            && (traversed_type.is_mixed() || (polarity == Variance::Contravariant && traversed_type.is_placeholder()))
+        {
             if constraint.is_array_key() { wrap_atomic(TAtomic::Scalar(TScalar::ArrayKey)) } else { constraint.clone() }
         } else {
             traversed_type
@@ -372,6 +378,11 @@ fn replace_atomic(
                     replace_with_polarity(&old_intersection_types, template_result, codebase, polarity)
                         .types
                         .into_owned();
+            }
+        }
+        TAtomic::Reference(TReference::Symbol { parameters: Some(parameters), .. }) => {
+            for parameter in parameters {
+                *parameter = replace_with_polarity(parameter, template_result, codebase, polarity);
             }
         }
         TAtomic::Object(TObject::Named(named_object)) => {

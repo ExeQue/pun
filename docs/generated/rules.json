@@ -14128,10 +14128,12 @@
       "fix": "unsafe",
       "ecosystem": "core",
       "tools": [
+        "mago",
         "php-cs-fixer",
         "pint"
       ],
       "upstream": [
+        "no-legacy-constructor",
         "no_php4_constructor"
       ],
       "ported": true
@@ -14846,6 +14848,7 @@
         "pint"
       ],
       "upstream": [
+        "prefer-self",
         "prefer-self-return-type",
         "self_accessor"
       ],
@@ -23266,6 +23269,7 @@
       ],
       "upstream": [
         "CatchWithUnthrownExceptionRule",
+        "DeadCatch",
         "DuplicateCaughtType",
         "PHPStan\\Rules\\Exceptions\\CatchWithUnthrownExceptionRule",
         "catch.alreadyCaught",
@@ -24020,6 +24024,7 @@
         "MixedArrayIndex",
         "NullArrayIndex",
         "PHPStan\\Rules\\Arrays\\InvalidKeyInArrayDimFetchRule",
+        "PossiblyFalseArrayIndex",
         "PossiblyNullArrayIndex",
         "offsetAccess.invalidOffset"
       ],
@@ -25278,9 +25283,11 @@
       "fix": "none",
       "ecosystem": "core",
       "tools": [
+        "mago",
         "phpstan"
       ],
       "upstream": [
+        "IncompatibleThrowType",
         "MethodThrowTypeCovarianceRule",
         "PHPStan\\Rules\\Exceptions\\MethodThrowTypeCovarianceRule",
         "throws.notCovariant",
@@ -25620,11 +25627,13 @@
       "fix": "none",
       "ecosystem": "core",
       "tools": [
+        "mago",
         "phpstan"
       ],
       "upstream": [
         "PHPStan\\Rules\\Exceptions\\TooWideFunctionThrowTypeRule",
         "TooWideFunctionThrowTypeRule",
+        "TooWideThrowType",
         "throws.unusedType"
       ],
       "ported": true

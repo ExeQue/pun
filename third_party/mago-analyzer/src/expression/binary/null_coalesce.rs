@@ -61,12 +61,15 @@ where
     A: Arena,
 {
     let was_inside_isset = block_context.flags.inside_isset();
+    let was_inside_coalesce = block_context.flags.inside_coalesce();
     block_context.flags.set_inside_isset(matches!(
         binary.lhs,
         Expression::Variable(_) | Expression::Access(_) | Expression::ArrayAccess(_)
     ));
+    block_context.flags.set_inside_coalesce(true);
     binary.lhs.analyze(context, block_context, artifacts)?;
     block_context.flags.set_inside_isset(was_inside_isset);
+    block_context.flags.set_inside_coalesce(was_inside_coalesce);
 
     let native_lhs = artifacts.get_rc_native_expression_type(binary.lhs).cloned();
     let native_isset = block_context.native_locals.as_ref().and_then(|_| {
@@ -161,10 +164,11 @@ where
     }
     // CoalesceCompositionHelper reads the LHS on its isset-success scope.
     // Removing an explicit null from the raw read alone does not narrow mixed.
-    let non_null_lhs_type = lhs_id
+    let mut non_null_lhs_type = lhs_id
         .and_then(|id| lhs_context.locals.get(&id))
         .unwrap_or(lhs_type)
         .remove_null();
+    non_null_lhs_type.set_possibly_undefined(false, Some(false));
     restore_offset_holders(&offsets, block_context, &mut lhs_context);
     if let Some(name) = get_variable_name(binary.lhs)
         && let Some(locals) = &mut lhs_context.native_locals

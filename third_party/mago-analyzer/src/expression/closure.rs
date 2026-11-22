@@ -9,7 +9,9 @@ use mago_codex::identifier::function_like::FunctionLikeIdentifier;
 use mago_codex::ttype::add_union_type;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::callable::TCallable;
+use mago_codex::ttype::combiner::CombinerOptions;
 use mago_codex::ttype::get_mixed;
+use mago_codex::ttype::get_null;
 use mago_codex::ttype::union::TUnion;
 use mago_database::file::File;
 use mago_reporting::Annotation;
@@ -24,11 +26,15 @@ use crate::artifacts::AnalysisArtifacts;
 use crate::code::IssueCode;
 use crate::context::Context;
 use crate::context::block::BlockContext;
+use crate::context::utils::inherit_too_wide_thrown_exceptions;
 use crate::error::AnalysisError;
+use crate::statement::attributes::AttributeTarget;
+use crate::statement::attributes::analyze_attributes;
 use crate::statement::function_like::FunctionLikeBody;
 use crate::statement::function_like::analyze_function_like;
 use crate::statement::function_like::resolve_closure_like_type;
 use crate::statement::function_like::unused_parameter;
+use crate::utils::expression::variable::is_readonly_property_chain;
 
 impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
     fn analyze<'ctx, A>(
@@ -40,6 +46,14 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
     where
         A: Arena,
     {
+        analyze_attributes(
+            context,
+            block_context,
+            artifacts,
+            self.attribute_lists.as_slice(),
+            AttributeTarget::Function,
+        )?;
+
         let s = self.span();
 
         let Some(function_metadata) = context.codebase.get_closure_at(context.source_file, s) else {
@@ -69,6 +83,18 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
 
         let mut inner_block_context = BlockContext::new(scope, context.settings.register_super_globals);
         inner_block_context.native_locals = block_context.native_locals.as_ref().map(|_| Default::default());
+        inner_block_context.known_functions.clone_from(&block_context.known_functions);
+        inner_block_context.known_constants.clone_from(&block_context.known_constants);
+
+        if !inner_block_context.scope.is_static() {
+            for (variable_id, variable_type) in &block_context.locals {
+                if variable_id.as_bytes().starts_with(b"$this->")
+                    && is_readonly_property_chain(context.codebase, &block_context.locals, variable_id.as_bytes())
+                {
+                    inner_block_context.locals.insert(*variable_id, Rc::clone(variable_type));
+                }
+            }
+        }
 
         if !scope.is_static() {
             let binding = artifacts.closure_bind_scope.as_ref();
@@ -101,9 +127,12 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
                 // has_variable() has side effects, so use contains_key() directly.
                 if !is_by_reference || block_context.locals.contains_key(&word(variable_bytes)) {
                     let was_inside_general_use = block_context.flags.inside_general_use();
+                    let was_inside_variable_reference = block_context.flags.inside_variable_reference();
                     block_context.flags.set_inside_general_use(true);
+                    block_context.flags.set_inside_variable_reference(is_by_reference);
                     use_variable.variable.analyze(context, block_context, artifacts)?;
                     block_context.flags.set_inside_general_use(was_inside_general_use);
+                    block_context.flags.set_inside_variable_reference(was_inside_variable_reference);
                 }
 
                 let variable_span = use_variable.variable.span;
@@ -157,6 +186,19 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
                     }),
                 };
 
+                if !is_by_reference
+                    && (variable_type.possibly_undefined() || variable_type.possibly_undefined_from_try())
+                {
+                    let mut captured = add_union_type(
+                        (*variable_type).clone(),
+                        &get_null(),
+                        context.codebase,
+                        CombinerOptions::default(),
+                    );
+                    captured.set_possibly_undefined(false, Some(false));
+                    variable_type = Rc::new(captured);
+                }
+
                 if is_by_reference {
                     let captures_itself = is_closure_itself(&variable_type, context.source_file, s);
 
@@ -188,7 +230,14 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
                         continue;
                     };
 
-                    if stripped_variable_id.starts_with(b"[") || stripped_variable_id.starts_with(b"-") {
+                    if stripped_variable_id.starts_with(b"[")
+                        || (stripped_variable_id.starts_with(b"-")
+                            && is_readonly_property_chain(
+                                context.codebase,
+                                &block_context.locals,
+                                variable_id.as_bytes(),
+                            ))
+                    {
                         let mut imported_type = Rc::clone(variable_type);
                         if is_by_reference {
                             let inner_descendant = Rc::make_mut(&mut imported_type);
@@ -262,6 +311,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
             Some(types) => Some(types.clone().into_iter().collect()),
             None => inferred_parameter_types,
         };
+        let inferred_return_type = artifacts.inferred_return_type.take();
         let inner_artifacts = analyze_function_like(
             context,
             artifacts,
@@ -270,7 +320,12 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Closure<'arena> {
             &self.parameter_list,
             FunctionLikeBody::Statements(self.body.statements.as_slice(), self.body.span()),
             inferred_parameter_types,
+            inferred_return_type,
         )?;
+
+        if block_context.flags.inside_call() {
+            inherit_too_wide_thrown_exceptions(context, block_context, &inner_block_context);
+        }
 
         for referenced_variable in inner_block_context.references_to_external_scope {
             let Some(inner_type) = inner_block_context.locals.remove(&referenced_variable) else {

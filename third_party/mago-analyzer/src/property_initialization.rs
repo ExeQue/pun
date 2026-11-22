@@ -141,6 +141,7 @@ pub(crate) fn called_method<'ctx, 'arena, A: Arena>(
                 &method.parameter_list,
                 FunctionLikeBody::Statements(body.statements.as_slice(), body.span()),
                 None,
+                None,
             )
         })?;
         // StatementsHandler emits no execution end when the last body statement

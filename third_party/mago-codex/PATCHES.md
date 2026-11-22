@@ -1,42 +1,39 @@
-# Mago codex 1.57.0: maintained patch
+# Mago codex 1.61.0: maintained patch
 
 ## Source
 
-The library source and normalized manifest come from the published `mago-codex` 1.57.0 package
-(checksum `4fad91caa6943ff61d655d1143b864ee265d2e675d0347a9d140ebee6541ba10`). Its
+The library source and normalized manifest come from the published `mago-codex` 1.61.0 package
+(checksum `3bce793f5d411294dc2bcbe83af29f3b76ea9ee926519296237606b18c8a176d`). Its
 `.cargo_vcs_info.json` identifies upstream revision
-[`9656cd55`](https://github.com/carthage-software/mago/tree/9656cd55d51d96bd6dc57f1f1e73c15f22cb7cc3/crates/codex).
+[`08934a6e`](https://github.com/carthage-software/mago/tree/08934a6e3925cc1c836041efc931505330911f6e/crates/codex).
 Both license files come from that revision. Registry bookkeeping, the package lockfile, external
 tests, and benchmarks are omitted, along with their manifest targets and development dependencies.
-Sibling Mago dependencies remain pinned to `=1.57.0`. The root manifest patches this crate and
+Sibling Mago dependencies remain pinned to `=1.61.0`. The root manifest patches this crate and
 excludes its directory from Pun's workspace members.
 
-## Parent-relative member references
+## Superseded by upstream 1.58.0–1.61.0
 
-`ttype/expander.rs::expand_member_reference()` backports the codex change from
-[`2066b186`](https://github.com/carthage-software/mago/commit/2066b186d2a7cea821e0d4923934032e5f4e32c5),
-included in Mago 1.59.0. Before either member lookup or the `::class` shortcut, a case-insensitive
-`parent` resolves through `TypeExpansionOptions::self_class` to the class metadata's
-`direct_parent_class`. Other names and missing-context fallbacks keep their existing behavior.
-No analyzer walk, hook dispatch, native tracking, or dependency version changes.
+These patches were removed in the 1.61.0 merge because upstream now ships the behaviour.
 
-Public regressions in `pun-analyse/tests/parent_defaults.rs` compare complete diagnostics at levels
-0 and 5 with freshly captured PHPStan 2.3.1 output. Distinct ancestor, parent, child, and caller
-constants catch incorrect lookup scopes. Controls cover inherited constants and constructors,
-mixed-case `parent`, dependent defaults, `parent::class`, `self`, and qualified class names.
-`generic_defaults.rs` also checks equal full artifacts and one observer visit per expression with
-native tracking enabled and disabled for this fixture. This patch does not close the broader
-unspecified-template property gap or change missing-default bounds.
+- "Parent-relative member references": upstream's `ttype/expander.rs::expand_member_reference()` resolves a
+  case-insensitive `parent` through `TypeExpansionOptions::self_class` to the direct parent class (commit
+  `2066b186`, 1.59.0). `pun-analyse/tests/parent_defaults.rs` still covers it.
 
-The unchanged 1.57.0 source fails the new public regression: parent defaults become `mixed`,
-properties become `int`, and `parent::class` becomes `'parent'`. The patch matches all 24 dumps at
-level 0 and all 26 diagnostics at level 5, including two distinguishing argument errors.
-Fresh profiles from the six public test binaries cover **7/7 changed codex executable lines**
-against the published source and **57/57 changed test executable lines** against `ac32a4b3`,
-without exclusions. All other imported codex source is byte-identical to the published package.
-The 38-test run uses `cargo llvm-cov --dep-coverage mago-codex --no-report -p punphp-analyse`
-with `--test parent_defaults --test generic_defaults --test callback_gather --test debug`
-and `--test native_lane --test instantiation`, one Cargo job, and two Rayon threads.
+## Mago 1.61.0 merge adaptations
+
+These merge changes keep Pun's patches consistent with upstream 1.61.0 code without changing behaviour.
+
+- `metadata/mod.rs` `extend_many_parallel()`: upstream 1.61's version is adapted to Pun's function-like table and
+  shared symbols. It merges each incoming table through `merge_function_likes()`, without upstream's `reserve()` and
+  `shrink_to_fit()` calls, and takes the shared symbols with `incoming.into_inner()`.
+- `ttype/atomic/scalar/int.rs` `to_string_type()`: mago-word 1.61 no longer has `i64_word`, so the literal strings of
+  an integer range are formatted with `itoa::Buffer` and interned with `word()`.
+- `scanner/ttype.rs`: a union hint computes its `never_kind` from both operands before their types move into the
+  combined union.
+- `scanner/inference/mod.rs`: upstream 1.61's new `null ?? x` and `Conditional` arms are deleted. Pun's earlier
+  `NullCoalesce` arm (which removes explicit null members and joins with `initializer::union()`) and `Conditional`
+  arm (InitializerExprTypeResolver, with no branch selection from the condition) already match every such
+  expression, so upstream's arms were unreachable.
 
 ## PHPStan error-valued mixed
 
@@ -205,10 +202,10 @@ The PHPDoc builder marks open shapes with explicit fields. A shape declared with
 remains generic, matching PHPStan's `TypeNodeResolver`. Removing the final field of an existing
 constant array retains the marker, matching `ConstantArrayType::recreate()`.
 
-The changes are in `ttype/flags.rs`, `ttype/atomic/array/keyed.rs:139–145`, and
-`ttype/builder.rs:797–803`. Union equality includes the flag. The borrowed and owned union paths
+The changes are in `ttype/flags.rs`, `ttype/atomic/array/keyed.rs` (`is_constant_shape()`), and
+`ttype/builder.rs` (`get_shape_from_type()`). Union equality includes the flag. The borrowed and owned union paths
 in `ttype/mod.rs` retain it only when both live key unions carry it. The combiner's known-entry
-branch at `ttype/combiner.rs:941–948` keeps fields optional when joining two declared open shapes
+branch in `ttype/combiner.rs` (`scrape_type_properties()`) keeps fields optional when joining two declared open shapes
 instead of merging those fields into the unrelated extra-key domain.
 
 The reference remains PHPStan source revision `cb3b7e99489b2e3789ee2eec10501cb7a72580ea`, especially
@@ -258,7 +255,8 @@ public guard diagnostics, and passive native tracking. No dependency or lockfile
 
 ## Inherit declared assertions, not parent body predicates
 
-`populator/docblock.rs` excludes body-inferred conditional assertions from PHPDoc inheritance.
+`populator/docblock.rs` `resolve_method_inheritance()` (upstream 1.61's split of `apply_inheritance_work()`)
+excludes body-inferred conditional assertions from PHPDoc inheritance.
 Copying those assertions used to clear `assertions_inferred` on an overriding method, turning
 the parent's implementation detail into a declared child contract. A child without its own
 predicate could also receive inferred parent assertions while keeping a false origin flag.
@@ -384,7 +382,8 @@ The left-null branch still precedes the right-null branch. Nullable leaves use t
 constructors. A nullable union applies `as_nullable()` only after its own operands finish, preserving
 mixed handling and metadata. The patch does not flatten atoms across nullable boundaries.
 Parsing and recursive lowering of non-union constructs remain unchanged. No stack size or provider
-budget changes.
+budget changes. `get_union_from_type()` hands every union node to `get_union_from_union_type()`, so the
+merge drops upstream 1.61's allocation change to the recursive union arm it replaces.
 
 The public `pun-analyse/tests/phpdoc_unions.rs` regression checks an ungrouped 129-arm integer union
 against PHPStan 2.3.1. Its `strlen()` result is `3`, matching the earlier grouped capture in
@@ -570,6 +569,8 @@ preserves bytes through quote, hexadecimal, octal, and Unicode escapes. PHP sour
 decoding is not interchangeable: PHPDoc accepts `\Xff`, retains `\$`, and permits surrogate
 and extended four-byte Unicode values. The codex manifest adds the existing base crate,
 not another literal store. Mago's versions and atomic types do not change.
+Upstream 1.61 added its own `unescape_literal_string()` for these literals; the merge drops it in
+favour of the shared decoder.
 
 `crates/pun-analyse/tests/str_repeat.rs` compares complete diagnostics with PHPStan 2.3.1.
 Its byte fixture includes escaped PHPDoc union members with distinct invalid UTF-8 bytes,
@@ -693,6 +694,9 @@ absorbs contained alternatives, but independent guarantees remain separate union
 `lowercase-string|uppercase-string` is not the simultaneous lower-and-upper guarantee and does not become
 plain `string`. Scalar and array-key containers remove every string alternative, regardless of its ID.
 The existing literal-count threshold still generalizes an oversized finite union to `string`.
+The merge deliberately drops upstream 1.61's rewrite of this path, which keeps each literal that
+violates a refined general string's guarantee (`literals_to_keep`) beside the refined string. PHPStan's
+`compareTypesInUnion()` instead widens the refined string as described below.
 
 Pairwise comparison follows PHPStan 2.3.1's `TypeCombinator::compareTypesInUnion()`
 (`src/Type/TypeCombinator.php:777–845`). Adding the empty string removes a pure nonempty or non-falsy
@@ -842,7 +846,10 @@ key/value pairs and compare complete duplicate-key diagnostics with a fresh PHPS
 The fixtures cover distinct binary bytes, single versus double quotes, decoded-equal overwrites,
 numeric and leading-zero keys, bare keys, scanner `key-of`, inline `@var`, and nested literal spreads.
 Object-shape property construction, class identities, source-comment decoding, and general inference
-are unchanged. Bare float spellings are parser controls, not PHPStan grammar parity claims.
+are unchanged. Upstream 1.61 added `unescape_shape_key()`, which removes only the backslash before
+`\`, `'` and `"` in a shape key's unquoted value. Array-shape keys use the shared decoder above
+instead, and upstream's helper remains only for object-shape keys in `get_object_from_type()`.
+Bare float spellings are parser controls, not PHPStan grammar parity claims.
 
 Fresh profiles from the complete 12-test duplicate-key suite cover **7/7 changed production
 executable lines**: three in this helper and all four PHPDoc syntax constructors, without exclusions.
@@ -1085,7 +1092,9 @@ would make every string argument's check certain, where PHPStan's ViewStringType
 
 `ttype/expander.rs` `resolve_static_type()` follows `CalledOnTypeUnresolvedMethodPrototypeReflection`: on a `$this`
 receiver a `$this` type stays `$this`, also in a final class; on a `static` receiver it is `static` (the object in a
-final class); on an object receiver both are that object.
+final class); on an object receiver both are that object. This replaces upstream 1.61's rule that keeps
+`static` for a receiver reached through `@mixin` (`crosses_mixin`); an object receiver still resolves to that
+object. Upstream's `crosses_mixin` still selects the receiver's own type arguments.
 `resolve_static_type()` also drops the type arguments of a generic `static<...>` resolved on a class without
 templates, as PHPStan's `GenericStaticType::changeBaseClass()` does (`UserCollection`, not `UserCollection<int, User>`).
 
@@ -1107,10 +1116,13 @@ need it: `TRelatedModel&object{pivot: TPivotModel}` resolves its `TPivotModel`.
 `ttype/comparator/atomic_comparator.rs` `can_be_identical()`: `array{}` and a non-empty list cannot be identical, as
 ConstantArrayType's `isSuperTypeOf()` answers no for an array that has an item. A conditional return type
 `($value is empty ? TDefault : TReturn)` (Laravel's `transform()`) takes the `TReturn` branch for `['filled']`.
+Upstream 1.61's `can_be_identical()` now returns false itself for an empty array against a surely non-empty array,
+which probably makes this check redundant; the merge keeps it.
 
 ## A child method's own templates in inherited types
 
-`populator/docblock.rs` `apply_inheritance_work()`: when a child method declares templates of its own, a parameter or
+`populator/docblock.rs` `resolve_method_inheritance()`, which upstream 1.61 split out of `apply_inheritance_work()` for
+its parallel inheritance pass: when a child method declares templates of its own, a parameter or
 return type it inherits from the parent method uses the child's template of the same name in place of the parent
 method's, as PHPStan's TemplateTypeMap resolves templates by name. Laravel's Eloquent `Collection::pad()` declares
 `@template TPadValue` and inherits `@param TPadValue $value`, so `pad(10, 10)` is `Collection<int, TModel|int>`, not
@@ -1118,9 +1130,12 @@ method's, as PHPStan's TemplateTypeMap resolves templates by name. Laravel's Elo
 
 ## Iterable parameters keeping templates
 
-`ttype/mod.rs` `get_iterable_parameters_keeping_templates()`: `get_iterable_parameters()` with a thread-local flag that
-stops `resolve_unbound_generic_parameters()` from replacing templates with their bounds. mago-analyzer's foreach over
-`$this` uses it so the loop variables are the class's own templates.
+`ttype/mod.rs` `get_iterable_parameters_keeping_templates()`: `get_iterable_parameters()` with a thread-local flag
+(`KEEP_ITERABLE_TEMPLATES`) that stops `resolve_unbound_generic_parameters()` from replacing templates with their
+bounds. The check sits at the top of upstream 1.61's new `resolve_unbound_generic_parameters(codebase, class_metadata,
+type_parameters, union)` signature, so it also covers that function's new caller,
+`get_iterator_method_return_type()`. mago-analyzer's foreach over `$this` uses it so the loop variables are the
+class's own templates.
 ## Invariant generic arguments that accept anything
 
 `ttype/comparator/generic_comparator.rs` `is_contained_by()`: an invariant template argument is not checked for
@@ -1141,6 +1156,8 @@ subtracted falsy (or truthy) type answers isSuperTypeOf(). `bool` is a maybe, no
 `ttype/comparator/atomic_comparator.rs` `can_be_identical()`: a Closure callable does not overlap a scalar or an
 array, as ClosureType is an object and no supertype of a callable string or array. Larastan's
 `Benchmark::measure(Closure|array $benchmarkables)` conditional return picks its Closure branch.
+Upstream 1.61's `can_be_identical()` now rejects a Closure against any atom `can_atomic_be_closure()` rules out,
+which probably makes this check redundant; the merge keeps it.
 
 ## A list's other keys
 
@@ -1215,7 +1232,9 @@ the receiver's type with it after the call.
 `metadata/mod.rs` `can_replace_inherited_method()` takes the candidate's `MethodIdentifier`, not only its class
 (callers in `metadata/inherited_methods.rs` and `populator/methods.rs`). A trait's `@method` tag does not hide a real
 method that a sibling trait declares: Carbon's `Comparison` tags `yesterday()` and `Creator` declares it. Pun's
-reflection picks between the two as PHPStan's PhpClassReflectionExtension does.
+reflection picks between the two as PHPStan's PhpClassReflectionExtension does. Upstream 1.61's new `is_pseudo`
+clause in `populator/methods.rs` now covers the Carbon case there; the `MethodIdentifier` argument is still needed by
+`metadata/inherited_methods.rs`.
 
 ## Benevolent template replacements
 

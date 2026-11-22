@@ -18,6 +18,7 @@ use mago_reporting::Issue;
 use mago_span::HasSpan;
 use mago_syntax::cst::Expression;
 use mago_syntax::cst::FunctionCall;
+use mago_word::ascii_lowercase_word;
 use mago_word::word;
 
 use crate::analyzable::Analyzable;
@@ -103,6 +104,14 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for FunctionCall<'arena> {
             }
         } else {
             None
+        };
+
+        let resolved_function = match invocation_targets.as_slice() {
+            [target] => match target.get_function_like_identifier() {
+                Some(FunctionLikeIdentifier::Function(name)) => Some(*name),
+                _ => None,
+            },
+            _ => None,
         };
 
         // PHP evaluates arguments before call effects, in the evolving argument scope. Do not
@@ -192,8 +201,10 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for FunctionCall<'arena> {
             block_context.stable_method_call_assertions.retain(|key, _| !stat(*key));
             block_context.clauses.retain(|clause| !clause.possibilities.keys().copied().any(stat));
         }
+
         if context.plugin_registry.has_function_call_hooks() {
-            let mut hook_context = HookContext::new(context.codebase, context.source_file, block_context, artifacts);
+            let mut hook_context = HookContext::new(context.codebase, context.source_file, block_context, artifacts)
+                .with_resolved_function(resolved_function);
             context.plugin_registry.after_function_call(self, &mut hook_context)?;
             for reported in hook_context.take_issues() {
                 context.collector.report_with_code(reported.code, reported.issue);
@@ -227,19 +238,18 @@ where
     A: Arena,
 {
     if let Expression::Identifier(function_name) = expression {
-        let name = word(context.resolved_names.get(function_name));
-        let unqualified_name = word(function_name.value());
+        let resolved_name = context.resolved_names.get(function_name);
+        let name = word(resolved_name);
 
         let identifier = FunctionLikeIdentifier::Function(name);
-        let alternative = if function_name.is_local() && unqualified_name != name {
-            Some(FunctionLikeIdentifier::Function(unqualified_name))
-        } else {
-            None
-        };
+        let alternative = (function_name.is_local() && function_name.value() != resolved_name)
+            .then(|| FunctionLikeIdentifier::Function(word(function_name.value())));
 
         let lowercased_name = name.to_ascii_lowercase();
         artifacts.symbol_references.add_reference_to_symbol(&block_context.scope, lowercased_name, false);
-        let skip_error = block_context.known_functions.contains(&lowercased_name);
+        let skip_error = block_context.known_functions.contains(&lowercased_name)
+            || alternative.is_some()
+                && block_context.known_functions.contains(&ascii_lowercase_word(function_name.value()));
 
         let target =
             get_function_like_target_with_skip(context, identifier, alternative, expression.span(), None, skip_error);

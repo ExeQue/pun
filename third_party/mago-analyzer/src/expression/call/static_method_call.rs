@@ -2,10 +2,13 @@ use mago_allocator::Arena;
 use mago_codex::identifier::function_like::FunctionLikeIdentifier;
 use mago_codex::ttype::get_error;
 use mago_codex::ttype::get_mixed;
+use mago_codex::ttype::get_void;
 use mago_span::HasSpan;
+use mago_syntax::cst::Access;
 use mago_syntax::cst::ClassLikeMemberSelector;
 use mago_syntax::cst::Expression;
 use mago_syntax::cst::StaticMethodCall;
+use mago_syntax::cst::Variable;
 
 use crate::analyzable::Analyzable;
 use crate::artifacts::AnalysisArtifacts;
@@ -56,6 +59,28 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for StaticMethodCall<'arena> {
                     return Ok(());
                 }
             }
+        }
+
+        if let Expression::Access(Access::StaticProperty(access)) = self.class
+            && let (Expression::Parent(_), Variable::Direct(property)) = (access.class, &access.property)
+            && let ClassLikeMemberSelector::Identifier(hook) = &self.method
+            && block_context.scope.get_property_hook().is_some()
+            && let Some(parent) = block_context.scope.get_class_like().and_then(|class| class.direct_parent_class)
+            && let Some(parent_property) = context.codebase.get_declaring_property(parent.as_bytes(), property.name)
+        {
+            for argument in &self.argument_list.arguments {
+                argument.value().analyze(context, block_context, artifacts)?;
+            }
+
+            let result = if hook.value.eq_ignore_ascii_case(b"get") {
+                parent_property.type_metadata.as_ref().map_or_else(get_mixed, |metadata| metadata.type_union.clone())
+            } else {
+                get_void()
+            };
+
+            artifacts.set_expression_type(&self.span(), result);
+
+            return Ok(());
         }
 
         if block_context.flags.collect_initializations()
@@ -267,6 +292,430 @@ mod tests {
 
     use crate::code::IssueCode;
     use crate::test_analysis;
+
+    test_analysis! {
+        name = abstract_method_inaccessible_with_magic,
+        code = indoc! {"
+            <?php
+
+            abstract class A {
+                abstract protected static function go(): int;
+
+                /** @param list<mixed> $arguments */
+                public static function __callStatic(string $name, array $arguments): mixed {
+                    return 7;
+                }
+            }
+
+            echo A::go();
+        "},
+        issues = [IssueCode::NonDocumentedMethod, IssueCode::MixedArgument]
+    }
+
+    test_analysis! {
+        name = abstract_method_inaccessible_with_inherited_magic,
+        code = indoc! {"
+            <?php
+
+            class MagicParent {
+                /** @param list<mixed> $arguments */
+                public static function __callStatic(string $name, array $arguments): mixed {
+                    return 7;
+                }
+            }
+
+            abstract class A extends MagicParent {
+                abstract protected static function go(): int;
+            }
+
+            echo A::go();
+        "},
+        issues = [IssueCode::NonDocumentedMethod, IssueCode::MixedArgument]
+    }
+
+    test_analysis! {
+        name = abstract_method_private_trait_requirement_with_magic,
+        code = indoc! {"
+            <?php
+
+            trait Requirement {
+                abstract private static function go(): int;
+            }
+
+            abstract class A {
+                use Requirement;
+
+                /** @param list<mixed> $arguments */
+                public static function __callStatic(string $name, array $arguments): mixed {
+                    return 7;
+                }
+            }
+
+            echo A::go();
+        "},
+        issues = [IssueCode::NonDocumentedMethod, IssueCode::MixedArgument]
+    }
+
+    test_analysis! {
+        name = abstract_method_accessible_with_magic,
+        code = indoc! {"
+            <?php
+
+            abstract class A {
+                abstract protected static function go(): int;
+
+                /** @param list<mixed> $arguments */
+                public static function __callStatic(string $name, array $arguments): mixed {
+                    return 7;
+                }
+
+                public static function run(): int {
+                    return self::go();
+                }
+            }
+        "},
+        issues = [IssueCode::InvalidStaticMethodCall]
+    }
+
+    test_analysis! {
+        name = abstract_method_inaccessible_without_magic,
+        code = indoc! {"
+            <?php
+
+            abstract class A {
+                abstract protected static function go(): int;
+            }
+
+            echo A::go();
+        "},
+        issues = [IssueCode::InvalidMethodAccess]
+    }
+
+    test_analysis! {
+        name = abstract_method_trait_parent_class_string,
+        code = indoc! {"
+            <?php
+
+            abstract class BaseItem {
+                abstract public static function getValue(): int;
+            }
+
+            class ParentItem extends BaseItem {
+                public static function getValue(): int {
+                    return 42;
+                }
+            }
+
+            /** @phpstan-require-extends BaseItem */
+            trait ItemTrait {
+                public static function getTotal(): int {
+                    $class = parent::class;
+                    return $class::getValue();
+                }
+
+                public static function getInvalidTotal(): int {
+                    return BaseItem::getValue();
+                }
+            }
+
+            final class Item extends ParentItem {
+                use ItemTrait;
+            }
+
+            echo Item::getTotal();
+        "},
+        issues = [IssueCode::InvalidStaticMethodCall]
+    }
+
+    test_analysis! {
+        name = abstract_method_trait_parent_requirement,
+        code = indoc! {"
+            <?php
+
+            abstract class BaseItem {
+                abstract public static function getValue(): int;
+            }
+
+            class ParentItem extends BaseItem {
+                public static function getValue(): int {
+                    return 1;
+                }
+            }
+
+            /** @phpstan-require-extends BaseItem */
+            trait ItemTrait {
+                public static function getTotal(): int {
+                    return parent::getValue();
+                }
+            }
+
+            final class Item extends ParentItem {
+                use ItemTrait;
+            }
+
+            echo Item::getTotal();
+        "}
+    }
+
+    test_analysis! {
+        name = abstract_method_trait_self_class_string,
+        code = indoc! {"
+            <?php
+
+            trait ItemTrait {
+                abstract public static function getValue(): int;
+
+                public static function getTotal(): int {
+                    $class = self::class;
+                    return $class::getValue();
+                }
+            }
+
+            final class Item {
+                use ItemTrait;
+
+                public static function getValue(): int {
+                    return 1;
+                }
+            }
+
+            echo Item::getTotal();
+        "}
+    }
+
+    test_analysis! {
+        name = abstract_method_literal_string,
+        code = indoc! {"
+            <?php
+
+            abstract class Item {
+                abstract public static function getValue(): int;
+            }
+
+            $class = 'Item';
+            echo $class::getValue();
+        "},
+        issues = [IssueCode::InvalidStaticMethodCall]
+    }
+
+    test_analysis! {
+        name = abstract_method_unconstrained_string,
+        code = indoc! {"
+            <?php
+
+            function getTotal(string $class): void {
+                $class::getValue();
+            }
+        "}
+    }
+
+    test_analysis! {
+        name = abstract_method_non_static_access_diagnostic,
+        code = indoc! {"
+            <?php
+
+            abstract class Item {
+                abstract public function getValue(): int;
+            }
+
+            Item::getValue();
+        "},
+        issues = [IssueCode::InvalidStaticMethodAccess]
+    }
+
+    test_analysis! {
+        name = abstract_method_non_static_self_call,
+        code = indoc! {"
+            <?php
+
+            abstract class Item {
+                abstract public function getValue(): int;
+
+                public function getTotal(): int {
+                    return self::getValue();
+                }
+            }
+        "},
+        issues = [IssueCode::InvalidStaticMethodCall]
+    }
+
+    test_analysis! {
+        name = abstract_method_interface_class_string_diagnostic,
+        code = indoc! {"
+            <?php
+
+            interface Item {
+                public static function getValue(): int;
+            }
+
+            $class = Item::class;
+            $class::getValue();
+        "},
+        issues = [IssueCode::PossiblyStaticAccessOnInterface]
+    }
+
+    test_analysis! {
+        name = abstract_method_self_call,
+        code = indoc! {"
+            <?php
+
+            abstract class ParentItem {
+                abstract protected static function getValue(): int;
+
+                public static function getTotal(): int {
+                    return self::getValue();
+                }
+            }
+
+            final class ChildItem extends ParentItem {
+                protected static function getValue(): int {
+                    return 1;
+                }
+            }
+
+            echo ChildItem::getTotal();
+        "},
+        issues = [IssueCode::InvalidStaticMethodCall]
+    }
+
+    test_analysis! {
+        name = abstract_method_exact_calls,
+        code = indoc! {"
+            <?php
+
+            abstract class ParentItem {
+                abstract public static function getValue(): int;
+            }
+
+            final class ChildItem extends ParentItem {
+                public static function getValue(): int {
+                    return parent::getValue();
+                }
+            }
+
+            echo ParentItem::getValue();
+            $class = ParentItem::class;
+            echo $class::getValue();
+        "},
+        issues = [
+            IssueCode::InvalidStaticMethodCall,
+            IssueCode::InvalidStaticMethodCall,
+            IssueCode::InvalidStaticMethodCall,
+        ]
+    }
+
+    test_analysis! {
+        name = abstract_method_late_static_call,
+        code = indoc! {"
+            <?php
+
+            abstract class ParentItem {
+                abstract protected static function getValue(): int;
+
+                public static function getTotal(): int {
+                    return static::getValue();
+                }
+            }
+
+            final class ChildItem extends ParentItem {
+                protected static function getValue(): int {
+                    return 1;
+                }
+            }
+
+            echo ChildItem::getTotal();
+        "}
+    }
+
+    test_analysis! {
+        name = abstract_method_concrete_self_and_parent_calls,
+        code = indoc! {"
+            <?php
+
+            abstract class ParentItem {
+                protected static function getValue(): int {
+                    return 1;
+                }
+            }
+
+            final class ChildItem extends ParentItem {
+                public static function getTotal(): int {
+                    return self::getValue() + parent::getValue();
+                }
+            }
+
+            echo ChildItem::getTotal();
+        "}
+    }
+
+    test_analysis! {
+        name = abstract_method_trait_self_requirement,
+        code = indoc! {"
+            <?php
+
+            trait ItemTrait {
+                abstract protected static function getValue(): int;
+
+                public static function getTotal(): int {
+                    return self::getValue();
+                }
+            }
+
+            final class Item {
+                use ItemTrait;
+
+                protected static function getValue(): int {
+                    return 1;
+                }
+            }
+
+            echo Item::getTotal();
+        "}
+    }
+
+    test_analysis! {
+        name = abstract_method_runtime_receivers,
+        code = indoc! {"
+            <?php
+
+            abstract class Item {
+                abstract public static function getValue(): int;
+
+                public function getTotal(): int {
+                    return $this::getValue();
+                }
+            }
+
+            /** @param class-string<Item> $class */
+            function fromClass(string $class): int {
+                return $class::getValue();
+            }
+
+            function fromObject(Item $item): int {
+                return $item::getValue();
+            }
+        "}
+    }
+
+    test_analysis! {
+        name = abstract_method_magic_probe,
+        code = indoc! {"
+            <?php
+
+            abstract class Item {
+                /** @param list<mixed> $arguments */
+                abstract public static function __callStatic(string $name, array $arguments): mixed;
+
+                public static function getValue(): int {
+                    return 1;
+                }
+
+                public static function getTotal(): int {
+                    return self::getValue();
+                }
+            }
+        "}
+    }
 
     test_analysis! {
         name = calling_non_static_method_statically_is_ok,

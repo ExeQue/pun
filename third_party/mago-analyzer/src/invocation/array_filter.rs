@@ -259,7 +259,7 @@ impl<'ctx> Filter<'_, 'ctx, '_, '_> {
                 };
                 if !truthy {
                     clauses = crate::formula::negate_or_synthesize(
-                        clauses,
+                        &clauses,
                         expression,
                         context.get_assertion_context_from_block(&scope),
                         self.artifacts,

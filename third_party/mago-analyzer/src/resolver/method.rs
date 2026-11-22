@@ -1,5 +1,6 @@
 use foldhash::HashSet;
 use mago_allocator::Arena;
+use mago_bytes::BytesDisplay;
 
 use mago_codex::identifier::function_like::FunctionLikeIdentifier;
 use mago_codex::identifier::method::MethodIdentifier;
@@ -38,11 +39,13 @@ use crate::context::Context;
 use crate::context::block::BlockContext;
 use crate::error::AnalysisError;
 use crate::resolver::class_name::report_non_existent_class_like;
+use crate::resolver::property::report_redundant_nullsafe;
 use crate::resolver::selector::resolve_member_selector;
 use crate::utils::names::display_class_like_name;
 use crate::utils::names::display_method_name;
 use crate::visibility::check_method_visibility_by_id;
 use crate::visibility::is_method_visible_by_id;
+use crate::visibility::private_member_scope;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedMethod {
@@ -174,6 +177,7 @@ pub fn resolve_method_targets<'ctx, 'ast, 'arena, A>(
     object: &'ast Expression<'arena>,
     selector: &'ast ClassLikeMemberSelector<'arena>,
     is_null_safe: bool,
+    operator_span: Span,
     access_span: Span,
 ) -> Result<MethodResolutionResult, AnalysisError>
 where
@@ -192,6 +196,7 @@ where
         object,
         selector,
         is_null_safe,
+        operator_span,
         access_span,
         None,
     )
@@ -206,6 +211,7 @@ pub(crate) fn resolve_method_targets_after_receiver<'ctx, 'ast, 'arena, A: Arena
     object: &'ast Expression<'arena>,
     selector: &'ast ClassLikeMemberSelector<'arena>,
     is_null_safe: bool,
+    operator_span: Span,
     access_span: Span,
     receiver_type: Option<&TUnion>,
 ) -> Result<MethodResolutionResult, AnalysisError> {
@@ -227,15 +233,31 @@ pub(crate) fn resolve_method_targets_after_receiver<'ctx, 'ast, 'arena, A: Arena
         }
     }
 
+    // The nullsafe twin resolves on its non-null receiver view. Redundancy is judged on the receiver's original type,
+    // which NullSafeMethodCall::analyze() records per call ("Original receiver types for nullsafe method diagnostics").
+    if is_null_safe
+        && let Some(original_type) = artifacts
+            .nullsafe_method_receiver_types
+            .get(&access_span)
+            .or_else(|| artifacts.get_expression_type(object))
+    {
+        let is_nullable = original_type.can_be_null() || original_type.possibly_undefined();
+        let is_all_null = original_type.is_null() || original_type.is_void();
+
+        if !is_nullable && !is_all_null && !original_type.has_nullsafe_null() {
+            report_redundant_nullsafe(context, operator_span, object, original_type, true);
+        }
+    }
+
     if let Some(object_type) = receiver_type.or_else(|| artifacts.get_expression_type(object)) {
         // Each atomic with the template it is the bound of: PHPStan's TemplateObjectType resolves the called method's
         // `static` and `$this` to the template itself (CalledOnTypeUnresolvedMethodPrototypeReflection).
         let mut object_atomics = object_type.types.iter().map(|atomic| (atomic, None)).collect::<Vec<_>>();
 
-        while let Some((object_atomic, template)) = object_atomics.pop() {
-            if let TAtomic::GenericParameter(parameter @ TGenericParameter { constraint, .. }) = object_atomic {
-                let template: Option<&TGenericParameter> = template.or(Some(parameter));
-                object_atomics.extend(constraint.types.iter().map(|atomic| (atomic, template)));
+        while let Some((object_atomic, generic_receiver)) = object_atomics.pop() {
+            if let TAtomic::GenericParameter(parameter) = object_atomic {
+                let receiver: Option<&TGenericParameter> = generic_receiver.or(Some(parameter));
+                object_atomics.extend(parameter.constraint.types.iter().map(|atomic| (atomic, receiver)));
                 continue;
             }
 
@@ -267,11 +289,15 @@ pub(crate) fn resolve_method_targets_after_receiver<'ctx, 'ast, 'arena, A: Arena
                 continue;
             }
 
+            if object_atomic.is_false() && object_type.ignore_falsable_issues() {
+                continue;
+            }
+
             let closure_object;
             let obj_type = match object_atomic {
                 TAtomic::Object(TObject::NonexistentParent) => {
                     result.has_invalid_target = true;
-                    report_call_on_non_object(context, object_atomic, object.span(), selector.span());
+                    report_call_on_non_object(context, object_type, object_atomic, object.span(), selector);
                     continue;
                 }
                 TAtomic::Object(obj_type) => obj_type,
@@ -286,7 +312,7 @@ pub(crate) fn resolve_method_targets_after_receiver<'ctx, 'ast, 'arena, A: Arena
                         result.has_invalid_target = true;
                     }
 
-                    report_call_on_non_object(context, object_atomic, object.span(), selector.span());
+                    report_call_on_non_object(context, object_type, object_atomic, object.span(), selector);
                     continue;
                 }
             };
@@ -443,7 +469,7 @@ pub(crate) fn resolve_method_targets_after_receiver<'ctx, 'ast, 'arena, A: Arena
                     result.property_initialization_method = selected;
                 }
                 let mut resolved_methods = resolved_methods;
-                if let Some(template) = template {
+                if let Some(template) = generic_receiver {
                     for method in &mut resolved_methods {
                         if method.declaring_object.is_none()
                             && matches!(&method.static_class_type, StaticClassType::Object(o) if o == obj_type)
@@ -458,7 +484,7 @@ pub(crate) fn resolve_method_targets_after_receiver<'ctx, 'ast, 'arena, A: Arena
     } else {
         result.has_invalid_target = true;
         result.encountered_mixed = true;
-        report_call_on_non_object(context, &TAtomic::Mixed(TMixed::new()), object.span(), selector.span());
+        report_call_on_non_object(context, &get_mixed(), &TAtomic::Mixed(TMixed::new()), object.span(), selector);
     }
 
     for method_id in asserted_descendant_method_references {
@@ -655,17 +681,36 @@ where
         return candidates;
     };
 
-    let mut method_id = MethodIdentifier::new(class_metadata.original_name, method_name);
-    let function_like_metadata = context.codebase.get_method_by_id(&method_id).or_else(|| {
-        method_id = context.codebase.get_declaring_method_identifier(&method_id);
-        context.codebase.get_method_by_id(&method_id)
-    });
+    let mut visibility_id = MethodIdentifier::new(class_metadata.original_name, method_name);
+    let mut method_id = visibility_id;
+    let function_like_metadata = context
+        .codebase
+        .get_method_by_id(&method_id)
+        .or_else(|| {
+            method_id = context.codebase.get_declaring_method_identifier(&method_id);
+            context.codebase.get_method_by_id(&method_id)
+        })
+        .or_else(|| {
+            let scope_metadata =
+                private_member_scope(context.codebase, class_metadata.name, block_context.scope.get_class_like_name())?;
+            let scope_method_id = MethodIdentifier::new(scope_metadata.original_name, method_name);
+            let scope_method = context.codebase.get_method_by_id(&scope_method_id)?;
+            if !scope_method.method_metadata.as_ref().is_some_and(|metadata| metadata.visibility.is_private()) {
+                return None;
+            }
+
+            method_id = scope_method_id;
+            visibility_id = scope_method_id;
+
+            Some(scope_method)
+        });
 
     if let Some(function_like_metadata) = function_like_metadata {
+        // Pun: like PHPStan, an inaccessible declared method stays the target even when `__call` exists.
         if !check_method_visibility_by_id(
             context,
             block_context.scope.get_class_like_name(),
-            &MethodIdentifier::new(class_metadata.original_name, method_name),
+            &visibility_id,
             access_span,
             Some(selector.span()),
         ) {
@@ -742,13 +787,14 @@ where
             }
         }
 
+        let is_intersection_member = !std::ptr::eq(object_type, outer_object);
         candidates.push(MethodCandidate {
             metadata: class_metadata,
             method_identifier: method_id,
-            object: outer_object.clone(),
+            object: if is_intersection_member { object_type.clone() } else { outer_object.clone() },
             classname: name,
             mixin_without_magic_method: None,
-            receiver_object: None,
+            receiver_object: is_intersection_member.then(|| outer_object.clone()),
             static_generic: None,
         });
     } else if !class_metadata.require_extends.is_empty() || !class_metadata.require_implements.is_empty() {
@@ -781,7 +827,12 @@ where
         // the method was found in a mixin without the required magic method.
         let mixin_types = collect_mixin_types(context.codebase, class_metadata, outer_object, &class_metadata.mixins);
 
-        for (mixin_class_name, mixin_object, mixin_generic) in mixin_types {
+        let mut found_at_depth = None;
+        for (mixin_class_name, mixin_object, mixin_generic, depth) in mixin_types {
+            if found_at_depth.is_some_and(|found_at_depth| depth > found_at_depth) {
+                break;
+            }
+
             let Some(mixin_metadata) = context.codebase.get_class_like_by_name(mixin_class_name) else {
                 continue;
             };
@@ -820,6 +871,7 @@ where
                 // Bind `$this`/`static` in the mixin method's return type to the
                 // receiver, not the mixin class: `@mixin` methods behave as if
                 // declared on the class carrying the tag.
+                found_at_depth = Some(depth);
                 candidates.push(MethodCandidate {
                     metadata: mixin_metadata,
                     method_identifier: mixin_method_id,
@@ -881,9 +933,53 @@ where
     if candidates.len() > 1 {
         let mut seen = HashSet::default();
         candidates.retain(|candidate| seen.insert(candidate.method_identifier));
+
+        if object_type.get_intersection_types().is_some() {
+            retain_narrowest_returns(context.codebase, &mut candidates, |candidate| &candidate.method_identifier);
+        }
     }
 
     candidates
+}
+
+/// Keeps the methods of an intersection whose declared return type no other
+/// method narrows: the value is all of the types at once, so the narrowest
+/// declaration holds.
+pub(crate) fn retain_narrowest_returns<T>(
+    codebase: &CodebaseMetadata,
+    methods: &mut Vec<T>,
+    method_identifier: impl Fn(&T) -> &MethodIdentifier,
+) {
+    let return_types: Vec<Option<&TUnion>> = methods
+        .iter()
+        .map(|method| {
+            codebase
+                .get_method_by_id(method_identifier(method))
+                .and_then(|metadata| metadata.return_type_metadata.as_ref())
+                .map(|return_type| &return_type.type_union)
+        })
+        .collect();
+
+    if return_types.iter().flatten().any(|return_type| return_type.has_template_or_static()) {
+        return;
+    }
+
+    let is_narrower = |narrow: Option<&TUnion>, wide: Option<&TUnion>| match (narrow, wide) {
+        (Some(_), None) => true,
+        (Some(narrow), Some(wide)) => {
+            is_contained_by(codebase, narrow, wide, false, false, false, &mut ComparisonResult::new())
+                && !is_contained_by(codebase, wide, narrow, false, false, false, &mut ComparisonResult::new())
+        }
+        _ => false,
+    };
+
+    let mut index = 0;
+    methods.retain(|_| {
+        let current = return_types[index];
+        index += 1;
+
+        !return_types.iter().any(|other| is_narrower(*other, current))
+    });
 }
 
 fn check_where_method_constraints<A>(
@@ -968,20 +1064,34 @@ where
 
 fn report_call_on_non_object<A>(
     context: &mut Context<'_, '_, A>,
+    object_type: &TUnion,
     atomic_type: &TAtomic,
     obj_span: Span,
-    selector_span: Span,
+    selector: &ClassLikeMemberSelector,
 ) where
     A: Arena,
 {
     let type_str = atomic_type.get_id();
+    let object_type_str = object_type.get_id();
+    let target = if type_str == object_type_str {
+        format!("a non-object type (`{type_str}`)")
+    } else {
+        format!("type `{object_type_str}`, which can be `{type_str}`")
+    };
+
+    let issue_msg = match selector {
+        ClassLikeMemberSelector::Identifier(id) => {
+            format!("Attempting to call method `{}()` on {target}.", BytesDisplay(id.value))
+        }
+        _ => format!("Attempting to access a method on {target}."),
+    };
 
     context.collector.report_with_code(
         if atomic_type.is_mixed() { IssueCode::MixedMethodAccess } else { IssueCode::InvalidMethodAccess },
-        Issue::error(format!("Attempting to access a method on a non-object type (`{type_str}`)."))
-            .with_annotation(Annotation::primary(selector_span).with_message("Cannot call method here"))
+        Issue::error(issue_msg)
+            .with_annotation(Annotation::primary(selector.span()).with_message("Cannot call method here"))
             .with_annotation(
-                Annotation::secondary(obj_span).with_message(format!("This expression has type `{type_str}`")),
+                Annotation::secondary(obj_span).with_message(format!("This expression has type `{object_type_str}`")),
             ),
     );
 }
@@ -1280,15 +1390,16 @@ fn type_has_method_assertion(object_type: &TObject, method_name: &[u8]) -> bool 
     }
 }
 
-fn collect_mixin_types(
+pub(crate) fn collect_mixin_types(
     codebase: &CodebaseMetadata,
     class_metadata: &ClassLikeMetadata,
     outer_object: &TObject,
     mixins: &[TypeMetadata],
-) -> Vec<(Word, TObject, Option<TGenericParameter>)> {
+) -> Vec<(Word, TObject, Option<TGenericParameter>, usize)> {
     let mut results = Vec::new();
     let mut visited = HashSet::default();
-    collect_mixin_types_into(codebase, class_metadata, outer_object, mixins, &mut results, &mut visited);
+    collect_mixin_types_into(codebase, class_metadata, outer_object, mixins, &mut results, &mut visited, 0);
+    results.sort_by_key(|(_, _, _, depth)| *depth);
 
     results
 }
@@ -1298,8 +1409,9 @@ fn collect_mixin_types_into(
     class_metadata: &ClassLikeMetadata,
     outer_object: &TObject,
     mixins: &[TypeMetadata],
-    results: &mut Vec<(Word, TObject, Option<TGenericParameter>)>,
+    results: &mut Vec<(Word, TObject, Option<TGenericParameter>, usize)>,
     visited: &mut HashSet<Word>,
+    depth: usize,
 ) {
     let mut direct: Vec<(Word, &TObject, Option<&TGenericParameter>)> = Vec::new();
 
@@ -1375,12 +1487,20 @@ fn collect_mixin_types_into(
         let specialized_obj = specialize_mixin_object(codebase, class_metadata, outer_object, obj);
         let obj = specialized_obj.as_ref().unwrap_or(obj);
 
-        results.push((name, obj.clone(), generic.cloned()));
+        results.push((name, obj.clone(), generic.cloned(), depth));
 
         if let Some(mixin_metadata) = codebase.get_class_like_by_name(name)
             && !mixin_metadata.mixins.is_empty()
         {
-            collect_mixin_types_into(codebase, mixin_metadata, obj, &mixin_metadata.mixins, results, visited);
+            collect_mixin_types_into(
+                codebase,
+                mixin_metadata,
+                obj,
+                &mixin_metadata.mixins,
+                results,
+                visited,
+                depth + 1,
+            );
         }
     }
 }

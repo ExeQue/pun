@@ -13,7 +13,9 @@ use mago_codex::ttype::atomic::generic::TGenericParameter;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::object::r#enum::TEnum;
 use mago_codex::ttype::atomic::object::named::TNamedObject;
+use mago_codex::ttype::expander;
 use mago_codex::ttype::expander::StaticClassType;
+use mago_codex::ttype::expander::TypeExpansionOptions;
 use mago_codex::ttype::get_specialized_template_type;
 use mago_codex::ttype::wrap_atomic;
 use mago_php_version::feature::Feature;
@@ -44,6 +46,8 @@ use crate::utils::names::display_class_like_name;
 use crate::utils::names::display_method_name;
 use crate::visibility::check_method_visibility_by_id;
 use crate::visibility::is_method_visible_by_id;
+use crate::visibility::private_member_scope;
+use mago_codex::ttype::atomic::scalar::class_like_string::TClassLikeStringKind;
 
 /// Resolves all possible static method targets from a class expression and a member selector.
 ///
@@ -150,6 +154,11 @@ fn resolve_method_from_classname<'ctx, 'arena, A>(
 where
     A: Arena,
 {
+    let names_a_class = std::iter::once(classname)
+        .chain(&classname.intersections)
+        .filter_map(|part| part.fqcn)
+        .any(|name| context.codebase.get_class_like_by_name(name).is_some_and(|metadata| metadata.kind.is_class()));
+
     let mut resolve_method_from_class_id =
         |fq_class_id: Word,
          is_relative: bool,
@@ -162,7 +171,18 @@ where
                 return (false, None);
             };
 
-            if !from_instance && !is_relative && defining_class_metadata.kind.is_interface() && !has_magic_static_call {
+            let from_enum_string = matches!(
+                &classname.origin,
+                ResolutionOrigin::SpecificClassLikeString(class_string) if matches!(class_string.kind(), Some(TClassLikeStringKind::Enum))
+            );
+
+            if !from_instance
+                && !is_relative
+                && !from_enum_string
+                && !names_a_class
+                && defining_class_metadata.kind.is_interface()
+                && !has_magic_static_call
+            {
                 report_static_call_on_interface(
                     context,
                     defining_class_metadata.original_name,
@@ -208,6 +228,7 @@ where
                 && !is_relative
                 && method.is_static
                 && defining_class_metadata.kind.is_trait()
+                && !is_deferred_trait_binding(classname, current_class_metadata)
                 && context.settings.version.is_deprecated(Feature::CallStaticMethodOnTrait)
             {
                 report_deprecated_static_access_on_trait(context, defining_class_metadata.original_name, class_span);
@@ -221,9 +242,10 @@ where
     let mut first_class_id = None;
     let mut magic_call_methods = Vec::new();
 
-    let magic_method_to_check = if classname.is_parent() { word("__call") } else { word("__callStatic") };
+    let in_object_context = classname.is_relative() && !block_context.scope.is_static();
+    let magic_method_to_check = if in_object_context { word("__call") } else { word("__callStatic") };
     if let Some(fq_class_id) = classname.fqcn {
-        let (_, resolved_magic_call_method) = resolve_method_from_class_id(
+        let (_, mut resolved_magic_call_method) = resolve_method_from_class_id(
             fq_class_id,
             classname.is_relative(),
             classname.is_object_instance(),
@@ -232,6 +254,19 @@ where
             true,
             None,
         );
+
+        if resolved_magic_call_method.is_none() && in_object_context {
+            resolved_magic_call_method = resolve_method_from_class_id(
+                fq_class_id,
+                true,
+                classname.is_object_instance(),
+                classname.is_from_class_string(),
+                word("__callStatic"),
+                true,
+                None,
+            )
+            .1;
+        }
 
         let has_magic_static_call = resolved_magic_call_method.is_some();
         magic_call_methods.extend(resolved_magic_call_method);
@@ -297,19 +332,20 @@ where
         && let Some(fq_class_id) = first_class_id
         && let Some(class_metadata) = context.codebase.get_class_like_by_name(fq_class_id)
         && !class_metadata.mixins.is_empty()
-        // Try to find method in mixin types
-        && let Some(resolved_method) = find_static_method_in_mixins(
+    {
+        let mixin_methods = find_static_method_in_mixins(
             context,
             block_context,
             &class_metadata.mixins,
             method_name,
             selector,
             access_span,
-        )
-    {
-        if !magic_call_methods.is_empty() {
-            resolved_methods.push(resolved_method);
-        } else {
+            0,
+        );
+
+        if let Some(mixin_classname) = mixin_methods.first().map(|resolved_method| resolved_method.classname)
+            && magic_call_methods.is_empty()
+        {
             if class_metadata.flags.is_final() {
                 report_non_existent_mixin_static_method(
                     context,
@@ -317,7 +353,7 @@ where
                     method_span,
                     fq_class_id,
                     method_name,
-                    resolved_method.classname,
+                    mixin_classname,
                 );
 
                 result.has_invalid_target = true;
@@ -328,12 +364,12 @@ where
                     method_span,
                     fq_class_id,
                     method_name,
-                    resolved_method.classname,
+                    mixin_classname,
                 );
             }
-
-            resolved_methods.push(resolved_method);
         }
+
+        resolved_methods.extend(mixin_methods);
     }
 
     if resolved_methods.is_empty() {
@@ -410,10 +446,30 @@ fn resolve_method_from_metadata<'ctx, 'arena, A>(
 where
     A: Arena,
 {
-    let method_id = MethodIdentifier::new(defining_class_metadata.original_name, method_name);
+    let mut method_id = MethodIdentifier::new(defining_class_metadata.original_name, method_name);
     let declaring_method_id = context.codebase.get_declaring_method_identifier(&method_id);
+    let scope_private_method = || {
+        let scope_metadata = private_member_scope(
+            context.codebase,
+            defining_class_metadata.name,
+            block_context.scope.get_class_like_name(),
+        )?;
+        let scope_method_id = MethodIdentifier::new(scope_metadata.original_name, method_name);
+        let scope_method = context.codebase.get_method_by_id(&scope_method_id)?;
+
+        scope_method
+            .method_metadata
+            .as_ref()
+            .is_some_and(|metadata| metadata.visibility.is_private())
+            .then_some((scope_method_id, scope_method))
+    };
+
     let (declaring_method_id, function_like) = match context.codebase.get_method_by_id(&declaring_method_id) {
         Some(fl) => (declaring_method_id, fl),
+        None if let Some((scope_method_id, scope_method)) = scope_private_method() => {
+            method_id = scope_method_id;
+            (scope_method_id, scope_method)
+        }
         None => {
             let mut found = None;
             for required_class in
@@ -434,16 +490,44 @@ where
         }
     };
 
-    if let Some(result) = result
-        && !check_method_visibility_by_id(
-            context,
-            block_context.scope.get_class_like_name(),
-            &method_id,
-            access_span,
-            Some(selector.span()),
-        )
-    {
-        result.has_invalid_target = true;
+    let falls_back_to_magic = has_magic_static_call && !function_like.flags.is_magic_method();
+    if falls_back_to_magic && !is_method_visible_by_id(context, block_context, &method_id) {
+        return None;
+    }
+
+    if let Some(result) = result {
+        let is_visible = falls_back_to_magic
+            || check_method_visibility_by_id(
+                context,
+                block_context.scope.get_class_like_name(),
+                &method_id,
+                access_span,
+                Some(selector.span()),
+            );
+        if !is_visible {
+            result.has_invalid_target = true;
+        }
+
+        // Ordinary literal strings retain a class name, unlike unconstrained runtime strings.
+        let is_exact_class = classname.is_named()
+            || classname.is_from_literal_class_string()
+            || (matches!(classname.origin, ResolutionOrigin::AnyString) && classname.fqcn.is_some());
+
+        if let Some(method_metadata) = function_like.method_metadata.as_ref()
+            && is_visible
+            && method_metadata.is_abstract
+            && is_exact_class
+            && !defining_class_metadata.kind.is_interface()
+            && !is_deferred_trait_binding(classname, current_class_metadata)
+            && (method_metadata.is_static
+                || classname.is_relative()
+                || current_class_metadata.is_some_and(|metadata| {
+                    metadata.name == defining_class_metadata.name || metadata.has_parent(defining_class_metadata.name)
+                }))
+        {
+            report_abstract_method_call(context, &declaring_method_id, selector.span());
+            result.has_invalid_target = true;
+        }
     }
 
     if function_like.flags.is_magic_method()
@@ -474,11 +558,21 @@ where
         }
     }
 
-    let static_class_type =
-        get_static_class_type(context, current_class_metadata, classname, fq_class_id, defining_class_metadata);
-
     // Get the class it was called on - need original name for callable creation
     let called_on_class_metadata = context.codebase.get_class_like_by_name(fq_class_id)?;
+
+    let static_class_type = match current_class_metadata {
+        Some(current)
+            if classname.is_named()
+                && !block_context.scope.is_static()
+                && !function_like.method_metadata.as_ref().is_some_and(|method| method.is_static)
+                && (current.name == called_on_class_metadata.name
+                    || current.has_parent(called_on_class_metadata.name)) =>
+        {
+            StaticClassType::Object(get_metadata_object(context, current, current))
+        }
+        _ => get_static_class_type(context, current_class_metadata, classname, fq_class_id, defining_class_metadata),
+    };
 
     Some(ResolvedMethod {
         // Use the original name of the class it was called on
@@ -490,6 +584,22 @@ where
         declaring_object: None,
         is_static: function_like.method_metadata.as_ref().is_some_and(|m| m.is_static),
         mixin_without_magic_method: None,
+    })
+}
+
+fn is_deferred_trait_binding(
+    classname: &ResolvedClassname,
+    current_class_metadata: Option<&ClassLikeMetadata>,
+) -> bool {
+    current_class_metadata.is_some_and(|metadata| {
+        metadata.kind.is_trait()
+            && (classname.is_relative()
+                // Literal class strings do not retain `self::class` or `parent::class` provenance.
+                // The consuming class and its actual parent can implement the abstract method.
+                || (classname.is_from_literal_class_string()
+                    && classname.fqcn.is_some_and(|name| {
+                        name == metadata.original_name || metadata.require_extends.contains(&name.to_ascii_lowercase())
+                    })))
     })
 }
 
@@ -663,6 +773,22 @@ where
     })
 }
 
+fn report_abstract_method_call<A>(context: &mut Context<'_, '_, A>, method_id: &MethodIdentifier, span: Span)
+where
+    A: Arena,
+{
+    let class_name = display_class_like_name(context, method_id.get_class_name());
+    let method_name = display_method_name(context, method_id.get_class_name(), method_id.get_method_name());
+
+    context.collector.report_with_code(
+        IssueCode::InvalidStaticMethodCall,
+        Issue::error(format!("Cannot call abstract method `{class_name}::{method_name}` directly."))
+            .with_annotation(Annotation::primary(span).with_message("This call selects an abstract method"))
+            .with_note("Abstract methods declare a contract but do not provide an implementation.")
+            .with_help("Call a concrete implementation instead, or use `static::` for late static binding."),
+    );
+}
+
 fn report_non_static_access<A>(context: &mut Context<'_, '_, A>, method_id: &MethodIdentifier, span: Span)
 where
     A: Arena,
@@ -797,12 +923,9 @@ fn report_non_existent_mixin_static_method<A>(
     );
 }
 
-/// Searches for a static method in mixin types.
-/// Returns Some(ResolvedMethod) if found, None otherwise.
-///
-/// Note: For static method calls, we cannot resolve generic mixin types (e.g., `@mixin T`)
-/// to concrete types because static calls don't have an instance with type parameters.
-/// In such cases, we fall back to using the constraint type.
+/// Searches for a static method in mixin types, binding `static` to the mixin class like
+/// PHPStan's `MixinMethodsClassReflectionExtension`. A generic parameter mixin falls back to
+/// its constraint.
 fn find_static_method_in_mixins<'ctx, 'arena, A>(
     context: &mut Context<'ctx, 'arena, A>,
     block_context: &BlockContext<'ctx>,
@@ -810,90 +933,81 @@ fn find_static_method_in_mixins<'ctx, 'arena, A>(
     method_name: Word,
     selector: &ClassLikeMemberSelector<'arena>,
     access_span: Span,
-) -> Option<ResolvedMethod>
+    depth: usize,
+) -> Vec<ResolvedMethod>
 where
     A: Arena,
 {
+    let mut resolved_methods = vec![];
     for mixin_type in mixins {
         for mixin_atomic in mixin_type.type_union.types.as_ref() {
-            match mixin_atomic {
-                TAtomic::Object(TObject::Named(named)) => {
-                    if let Some(result) = find_static_method_in_single_mixin(
-                        context,
-                        block_context,
-                        named.name,
-                        method_name,
-                        selector,
-                        access_span,
-                    ) {
-                        return Some(result);
-                    }
-                }
-                TAtomic::Object(TObject::Enum(enum_type)) => {
-                    if let Some(result) = find_static_method_in_single_mixin(
-                        context,
-                        block_context,
-                        enum_type.name,
-                        method_name,
-                        selector,
-                        access_span,
-                    ) {
-                        return Some(result);
-                    }
-                }
-                TAtomic::GenericParameter(TGenericParameter { constraint, .. }) => {
-                    // For static calls, we cannot resolve generic parameters since there's no instance.
-                    // Fall back to using the constraint type.
-                    for constraint_atomic in constraint.types.as_ref() {
-                        let constraint_class_name = match constraint_atomic {
-                            TAtomic::Object(TObject::Named(named)) => named.name,
-                            TAtomic::Object(TObject::Enum(enum_type)) => enum_type.name,
-                            _ => continue,
-                        };
+            let candidates = match mixin_atomic {
+                TAtomic::GenericParameter(TGenericParameter { constraint, .. }) => constraint.types.as_ref(),
+                atomic => std::slice::from_ref(atomic),
+            };
 
-                        if let Some(result) = find_static_method_in_single_mixin(
-                            context,
-                            block_context,
-                            constraint_class_name,
-                            method_name,
-                            selector,
-                            access_span,
-                        ) {
-                            return Some(result);
-                        }
-                    }
-                }
-                _ => {}
+            for candidate in candidates {
+                let TAtomic::Object(mixin_object @ (TObject::Named(_) | TObject::Enum(_))) = candidate else {
+                    continue;
+                };
+
+                resolved_methods.extend(find_static_method_in_single_mixin(
+                    context,
+                    block_context,
+                    mixin_object,
+                    method_name,
+                    selector,
+                    access_span,
+                    depth,
+                ));
             }
         }
     }
 
-    None
+    resolved_methods
 }
 
 /// Searches for a static method in a single mixin class.
 fn find_static_method_in_single_mixin<'ctx, 'arena, A>(
     context: &mut Context<'ctx, 'arena, A>,
     block_context: &BlockContext<'ctx>,
-    mixin_class_name: Word,
+    mixin_object: &TObject,
     method_name: Word,
     selector: &ClassLikeMemberSelector<'arena>,
     access_span: Span,
-) -> Option<ResolvedMethod>
+    depth: usize,
+) -> Vec<ResolvedMethod>
 where
     A: Arena,
 {
-    let mixin_metadata = context.codebase.get_class_like_by_name(mixin_class_name)?;
+    let Some(mixin_metadata) = mixin_object.get_name().and_then(|name| context.codebase.get_class_like_by_name(name))
+    else {
+        return vec![];
+    };
 
     let method_id = MethodIdentifier::new(mixin_metadata.original_name, method_name);
     let declaring_method_id = context.codebase.get_declaring_method_identifier(&method_id);
-    let function_like = context.codebase.get_method_by_id(&declaring_method_id)?;
+    let Some(function_like) = context.codebase.get_method_by_id(&declaring_method_id) else {
+        if depth >= 8 || mixin_metadata.mixins.is_empty() {
+            return vec![];
+        }
+
+        return find_static_method_in_mixins(
+            context,
+            block_context,
+            &mixin_metadata.mixins,
+            method_name,
+            selector,
+            access_span,
+            depth + 1,
+        );
+    };
 
     // Mixin methods should only be accessible if public
     if let Some(method_metadata) = &function_like.method_metadata
         && !method_metadata.visibility.is_public()
     {
-        return None;
+        return vec![];
     }
 
     // Check visibility
@@ -904,22 +1018,38 @@ where
         access_span,
         Some(selector.span()),
     ) {
-        return None;
+        return vec![];
     }
 
-    let static_class_type = if mixin_metadata.kind.is_enum() {
-        StaticClassType::Object(TObject::Enum(TEnum { name: mixin_metadata.original_name, case: None }))
-    } else {
-        StaticClassType::Name(mixin_class_name)
+    let is_static = function_like.method_metadata.as_ref().is_some_and(|m| m.is_static);
+    let (static_class_type, declaring_object) = match mixin_object {
+        TObject::Named(named) if !is_static => {
+            // Pun: like PHPStan, a bare `@mixin Foo` of a generic class reads as `Foo` with its template defaults.
+            let mut filled = wrap_atomic(TAtomic::Object(mixin_object.clone()));
+            expander::expand_union(context.codebase, &mut filled, &TypeExpansionOptions::default());
+            match filled.types.as_ref() {
+                [TAtomic::Object(object @ TObject::Named(filled_named))] => {
+                    (StaticClassType::Object(object.clone()), Some(filled_named.clone()))
+                }
+                _ => (StaticClassType::Object(mixin_object.clone()), Some(named.clone())),
+            }
+        }
+        TObject::Enum(_) if !is_static => {
+            (StaticClassType::Object(mixin_object.clone()), Some(TNamedObject::new(mixin_metadata.original_name)))
+        }
+        TObject::Enum(_) => {
+            (StaticClassType::Object(TObject::Enum(TEnum { name: mixin_metadata.original_name, case: None })), None)
+        }
+        _ => (StaticClassType::Name(mixin_metadata.original_name), None),
     };
 
-    Some(ResolvedMethod {
+    vec![ResolvedMethod {
         classname: mixin_metadata.original_name,
         requested_name: method_name.to_ascii_lowercase(),
         method_identifier: declaring_method_id,
         static_class_type,
-        declaring_object: None,
-        is_static: function_like.method_metadata.as_ref().is_some_and(|m| m.is_static),
+        declaring_object,
+        is_static,
         mixin_without_magic_method: None,
-    })
+    }]
 }

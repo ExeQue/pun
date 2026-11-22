@@ -108,7 +108,7 @@ IN THE SOFTWARE.
 ## Mago
 
 `third_party/mago-analyzer`, `third_party/mago-codex`, `third_party/mago-syntax` and
-`third_party/mago-phpdoc-syntax` are copies of [Mago](https://github.com/carthage-software/mago) 1.57.0 crates
+`third_party/mago-phpdoc-syntax` are copies of [Mago](https://github.com/carthage-software/mago) 1.61.0 crates
 with Pun's patches (each crate's `PATCHES.md` lists them). `crates/pun-lint/tests/mago` holds copies of Mago's linter
 tests. They keep Mago's dual MIT and Apache-2.0 license; the texts are in `THIRD_PARTY_LICENSES.md` (and in each
 vendored crate's `LICENSE-MIT` and `LICENSE-APACHE`).

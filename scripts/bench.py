@@ -8,7 +8,7 @@
     PUN_BIN=target/release/pun MAGO_BIN=mago scripts/bench.py
 
 Setup: scripts/oracle.sh (or its Pint part) for .oracle/pint; scripts/corpus.sh for corpus/;
-`cargo build --profile profiling -p punphp` for target/profiling/pun; the Mago 1.57.0 release binary (the version
+`cargo build --profile profiling -p punphp` for target/profiling/pun; the Mago 1.61.0 release binary (the version
 Pun's mago crates pin) under .oracle/mago/ or MAGO_BIN. Every tool is check-only and nothing writes to the corpus.
 
 - pint-parallel: `pint --test --parallel` in corpus/<name>, with the project's pint.json.
@@ -95,7 +95,7 @@ def bench_format() -> None:
     if not pint.is_file():
         sys.exit(f"missing {pint}: run scripts/oracle.sh")
     if "mago" in tools and not mago:
-        sys.exit("missing Mago: put the 1.57.0 binary under .oracle/mago/ or set MAGO_BIN (or drop it from TOOLS)")
+        sys.exit("missing Mago: put the 1.61.0 binary under .oracle/mago/ or set MAGO_BIN (or drop it from TOOLS)")
 
     env = {**os.environ, "PUN_AGENT": "0", "PUN_IGNORE_PHP_CONSTRAINT": "1"}
     os.environ.update(env)
@@ -423,7 +423,7 @@ def bench_mode(mode: str) -> None:
     if "pun" in tools and not os.access(pun, os.X_OK):
         sys.exit(f"missing {pun}: cargo build --profile profiling -p punphp")
     if "mago" in tools and not mago:
-        sys.exit("missing Mago: put the 1.57.0 binary under .oracle/mago/ or set MAGO_BIN (or drop it from TOOLS)")
+        sys.exit("missing Mago: put the 1.61.0 binary under .oracle/mago/ or set MAGO_BIN (or drop it from TOOLS)")
     upstream = PHPSTAN if mode == "analyse" else RECTOR
     if not upstream.is_file():
         sys.exit(f"missing {upstream}: run scripts/oracle.sh")

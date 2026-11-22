@@ -18,6 +18,8 @@ use mago_codex::ttype::atomic::object::r#enum::TEnum;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::combine_optional_union_types;
 use mago_codex::ttype::combine_union_types;
+use mago_codex::ttype::comparator::ComparisonResult;
+use mago_codex::ttype::comparator::union_comparator::is_contained_by;
 use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::get_never;
 use mago_codex::ttype::union::TUnion;
@@ -31,6 +33,7 @@ use mago_syntax::cst::Match;
 use mago_syntax::cst::MatchArm;
 use mago_syntax::cst::MatchDefaultArm;
 use mago_syntax::cst::MatchExpressionArm;
+use mago_syntax::cst::Variable;
 use mago_word::Word;
 use mago_word::WordSet;
 use mago_word::concat_word;
@@ -46,10 +49,11 @@ use crate::context::Context;
 use crate::context::block::BlockContext;
 use crate::context::utils::inherit_branch_context_properties;
 use crate::error::AnalysisError;
-use crate::formula::add_nullsafe_base_clauses;
+use crate::formula::add_access_base_clauses;
 use crate::formula::get_formula;
 use crate::formula::negate_or_synthesize;
 use crate::reconciler::reconcile_keyed_types;
+use crate::resolver::function::get_builtin_get_class_or_gettype_call;
 use crate::utils::expression::get_expression_id;
 use crate::utils::expression::get_literal_array_key;
 use crate::utils::misc::unwrap_expression;
@@ -240,9 +244,20 @@ where
     where
         A: Arena,
     {
+        let condition_subject = self.get_condition_subject();
+        let retains_subject_types = self.artifacts.retains_completed_expression_types();
+        let record_subject = retains_subject_types
+            && condition_subject
+                .is_some_and(|(_, subject)| !matches!(subject, Expression::Variable(Variable::Direct(_))));
+
         let was_inside_conditional = self.block_context.flags.inside_conditional();
         self.block_context.flags.set_inside_conditional(true);
-        self.stmt.expression.analyze(self.context, self.block_context, self.artifacts)?;
+        if record_subject {
+            self.artifacts.begin_expression_type_recording();
+        }
+        let result = self.stmt.expression.analyze(self.context, self.block_context, self.artifacts);
+        let recorded_subject_types = record_subject.then(|| self.artifacts.finish_expression_type_recording());
+        result?;
         self.block_context.flags.set_inside_conditional(was_inside_conditional);
 
         let mut expression_arms = vec![];
@@ -294,7 +309,13 @@ where
             usize::from(self.context.settings.formula_size_threshold),
         );
 
-        let (is_synthetic, subject_id, subject_for_conditions) = self.get_subject_info(&subject_type);
+        let (is_synthetic, subject_id, subject_for_conditions) =
+            self.get_subject_info(condition_subject, &subject_type);
+        let subject_condition_type = match condition_subject {
+            _ if !retains_subject_types || record_subject => None,
+            Some((_, subject)) => self.artifacts.get_rc_expression_type(subject).cloned(),
+            None => Some(Rc::clone(&subject_type)),
+        };
 
         let mut arm_body_types: Vec<Rc<TUnion>> = Vec::new();
         let mut arm_exit_contexts: Vec<BlockContext<'ctx>> = Vec::new();
@@ -305,6 +326,18 @@ where
         let mut changed_variables = WordSet::default();
         let mut is_exhaustive = false;
         let mut can_apply_original_subject_assertions = true;
+        let assignment_target = match unwrap_expression(self.stmt.expression) {
+            Expression::Assignment(assignment) if condition_subject.is_none() => Some(assignment.lhs),
+            _ => None,
+        };
+        let narrows_assignment_target =
+            assignment_target.is_some_and(|target| self.assignment_target_holds_subject(target, &subject_type));
+        let subject_queries_type = get_builtin_get_class_or_gettype_call(
+            self.stmt.expression,
+            self.context.resolved_names,
+            self.context.codebase,
+        )
+        .is_some();
         for (i, expression_arm) in expression_arms.iter().enumerate() {
             is_exhaustive = is_exhaustive || {
                 running_else_context.locals.get(&subject_id).is_some_and(|t| t.is_never())
@@ -316,7 +349,12 @@ where
             let is_last_arm = i == last_expression_arm_index && first_default_arm.is_none();
             let has_boolean_literal_conditions =
                 expression_arm.conditions.iter().all(|condition| condition.is_true() || condition.is_false());
-            let (arm_status, new_else_clauses) = self.analyze_expression_arm(
+            let apply_original_subject_assertions = if assignment_target.is_some() {
+                narrows_assignment_target
+            } else {
+                subject_queries_type || (can_apply_original_subject_assertions && has_boolean_literal_conditions)
+            };
+            let (arm_status, new_else_clauses, new_original_else_clauses) = self.analyze_expression_arm(
                 &subject_for_conditions,
                 expression_arm,
                 &mut running_else_context,
@@ -324,7 +362,7 @@ where
                 &mut arm_exit_contexts,
                 is_last_arm,
                 is_exhaustive,
-                can_apply_original_subject_assertions && has_boolean_literal_conditions,
+                apply_original_subject_assertions,
             )?;
 
             if let Some(coverage) = &mut finite_array_coverage {
@@ -355,25 +393,33 @@ where
             // is already there. The cumulative state is identical to running
             // the full clause set every iteration; but the per-iteration
             // cost stops being O(K) in arm count.
-            if !new_else_clauses.is_empty() {
-                let mut else_referenced_ids = WordSet::default();
-                let (reconcilable_else_types, _) =
-                    mago_algebra::find_satisfying_assignments(&new_else_clauses, None, &mut else_referenced_ids);
-
-                if !reconcilable_else_types.is_empty() {
-                    reconcile_keyed_types(
-                        self.context,
-                        &reconcilable_else_types,
-                        AssertionMap::default(),
-                        &mut running_else_context,
-                        &mut changed_variables,
-                        &else_referenced_ids,
-                        &expression_arm.span(),
-                        false,
-                        false,
-                    );
-                }
+            if assignment_target.is_some() {
+                self.reconcile_else_clauses(
+                    &new_else_clauses,
+                    &mut running_else_context,
+                    &mut changed_variables,
+                    expression_arm.span(),
+                );
+                self.reconcile_else_clauses(
+                    &new_original_else_clauses,
+                    &mut running_else_context,
+                    &mut WordSet::default(),
+                    expression_arm.span(),
+                );
+            } else {
+                self.reconcile_else_clauses(
+                    new_else_clauses.iter().chain(&new_original_else_clauses),
+                    &mut running_else_context,
+                    &mut changed_variables,
+                    expression_arm.span(),
+                );
             }
+        }
+
+        if let Some(recorded_subject_types) = recorded_subject_types {
+            self.artifacts.extend_expression_types(recorded_subject_types);
+        } else if let Some(subject_condition_type) = subject_condition_type {
+            self.artifacts.set_rc_expression_type(&subject_for_conditions, subject_condition_type);
         }
 
         is_exhaustive = is_exhaustive || {
@@ -431,15 +477,30 @@ where
         Ok(())
     }
 
-    fn get_subject_info(&mut self, subject_type: &Rc<TUnion>) -> (bool, Word, Expression<'arena>) {
-        if let Some(id) = get_expression_id(
-            self.stmt.expression,
+    fn get_condition_subject(&self) -> Option<(Word, &'ast Expression<'arena>)> {
+        let subject = match unwrap_expression(self.stmt.expression) {
+            Expression::Assignment(assignment) if matches!(assignment.lhs, Expression::Variable(_)) => assignment.lhs,
+            Expression::Assignment(_) => return None,
+            _ => self.stmt.expression,
+        };
+
+        let id = get_expression_id(
+            subject,
             self.block_context.scope.get_class_like_name(),
             self.context.resolved_names,
             Some(self.context.codebase),
-        ) && memchr::memmem::find(id.as_bytes(), b"?->").is_none()
-            && memchr::memmem::find(id.as_bytes(), b"()").is_none()
-        {
+        )?;
+
+        (memchr::memmem::find(id.as_bytes(), b"?->").is_none() && memchr::memmem::find(id.as_bytes(), b"()").is_none())
+            .then_some((id, subject))
+    }
+
+    fn get_subject_info(
+        &mut self,
+        condition_subject: Option<(Word, &'ast Expression<'arena>)>,
+        subject_type: &Rc<TUnion>,
+    ) -> (bool, Word, Expression<'arena>) {
+        if let Some((id, subject)) = condition_subject {
             let inserted = match self.block_context.locals.entry(id) {
                 Entry::Occupied(_) => false,
                 Entry::Vacant(entry) => {
@@ -448,7 +509,7 @@ where
                 }
             };
 
-            (inserted, id, self.stmt.expression.clone())
+            (inserted, id, subject.clone())
         } else {
             let subject_id =
                 concat_word!(Self::SYNTHETIC_MATCH_VAR_PREFIX, u32_word(self.stmt.expression.start_offset()));
@@ -471,7 +532,7 @@ where
         is_last: bool,
         is_exhaustive: bool,
         apply_original_subject_assertions: bool,
-    ) -> Result<(ArmExecutionStatus, Vec<Clause>), AnalysisError> {
+    ) -> Result<(ArmExecutionStatus, Vec<Clause>, Vec<Clause>), AnalysisError> {
         if is_exhaustive {
             self.report_unreachable_arm(
                 expression_arm,
@@ -479,7 +540,7 @@ where
             );
 
             self.analyze_unreachable_arm(expression_arm.conditions.as_slice(), expression_arm.expression, running_else_context)?;
-            return Ok((ArmExecutionStatus::Never, Vec::new()));
+            return Ok((ArmExecutionStatus::Never, Vec::new(), Vec::new()));
         }
 
         let arm_condition = new_synthetic_disjunctive_identity(
@@ -515,7 +576,7 @@ where
 
         if arm_status == ArmExecutionStatus::Never {
             self.analyze_unreachable_arm(&[], expression_arm.expression, running_else_context)?;
-            return Ok((ArmExecutionStatus::Never, Vec::new()));
+            return Ok((ArmExecutionStatus::Never, Vec::new(), Vec::new()));
         }
 
         let mut arm_body_context = running_else_context.clone();
@@ -562,12 +623,13 @@ where
             .iter()
             .all(|condition| self.artifacts.get_expression_type(condition).is_some_and(|ty| !ty.can_be_null()))
         {
-            add_nullsafe_base_clauses(
+            add_access_base_clauses(
                 self.stmt.expression,
                 &mut nullsafe_subject_clauses,
                 expression_arm.span(),
                 expression_arm.span(),
                 assertion_context,
+                self.artifacts,
             );
         }
 
@@ -590,18 +652,22 @@ where
             &mut arm_referenced_ids,
         );
 
+        arm_body_context.clauses.clone_from(&combined_clauses);
         if !reconcilable_types.is_empty() {
+            let mut changed_variable_ids = WordSet::default();
             reconcile_keyed_types(
                 self.context,
                 &reconcilable_types,
                 active_types,
                 &mut arm_body_context,
-                &mut WordSet::default(),
+                &mut changed_variable_ids,
                 &arm_referenced_ids,
                 &arm_condition.span(),
                 false,
                 false,
             );
+
+            BlockContext::retain_unreconciled_clauses(&mut arm_body_context.clauses, &changed_variable_ids);
         }
 
         for condition in &expression_arm.conditions {
@@ -617,8 +683,8 @@ where
         );
 
         arm_exit_contexts.push(arm_body_context);
-        let mut negated_arm_clauses = negate_or_synthesize(
-            arm_clauses,
+        let negated_arm_clauses = negate_or_synthesize(
+            &arm_clauses,
             &arm_condition,
             self.context.get_assertion_context_from_block(running_else_context),
             self.artifacts,
@@ -626,26 +692,83 @@ where
             self.context.settings.formula_size_threshold,
         );
 
-        if let Some(original_arm_condition) = original_arm_condition {
-            negated_arm_clauses.extend(negate_or_synthesize(
-                original_arm_clauses,
+        let negated_original_arm_clauses = match original_arm_condition {
+            Some(original_arm_condition) => negate_or_synthesize(
+                &original_arm_clauses,
                 &original_arm_condition,
                 self.context.get_assertion_context_from_block(running_else_context),
                 self.artifacts,
                 &self.context.settings.algebra_thresholds(),
                 self.context.settings.formula_size_threshold,
-            ));
-        }
+            ),
+            None => Vec::new(),
+        };
 
         running_else_context.clauses = saturate_clauses(
-            running_else_context.clauses.iter().map(Deref::deref).chain(negated_arm_clauses.iter()),
+            running_else_context
+                .clauses
+                .iter()
+                .map(Deref::deref)
+                .chain(negated_arm_clauses.iter())
+                .chain(negated_original_arm_clauses.iter()),
             &self.context.settings.algebra_thresholds(),
         )
         .into_iter()
         .map(Rc::new)
         .collect();
 
-        Ok((arm_status, negated_arm_clauses))
+        Ok((arm_status, negated_arm_clauses, negated_original_arm_clauses))
+    }
+
+    fn reconcile_else_clauses<'clause>(
+        &mut self,
+        clauses: impl IntoIterator<Item = &'clause Clause>,
+        running_else_context: &mut BlockContext<'ctx>,
+        changed_variables: &mut WordSet,
+        span: Span,
+    ) {
+        let mut else_referenced_ids = WordSet::default();
+        let (reconcilable_else_types, _) =
+            mago_algebra::find_satisfying_assignments_iter(clauses, None, &mut else_referenced_ids);
+
+        if !reconcilable_else_types.is_empty() {
+            reconcile_keyed_types(
+                self.context,
+                &reconcilable_else_types,
+                AssertionMap::default(),
+                running_else_context,
+                changed_variables,
+                &else_referenced_ids,
+                &span,
+                false,
+                false,
+            );
+        }
+    }
+
+    fn assignment_target_holds_subject(&self, target: &Expression<'arena>, subject_type: &TUnion) -> bool {
+        if !matches!(target, Expression::Access(_)) {
+            return true;
+        }
+
+        get_expression_id(
+            target,
+            self.block_context.scope.get_class_like_name(),
+            self.context.resolved_names,
+            Some(self.context.codebase),
+        )
+        .and_then(|target_id| self.block_context.locals.get(&target_id))
+        .is_some_and(|target_type| {
+            is_contained_by(
+                self.context.codebase,
+                subject_type,
+                target_type,
+                false,
+                false,
+                false,
+                &mut ComparisonResult::new(),
+            )
+        })
     }
 
     // MatchHandler retains every arm's semantic expression result for value flow, including
@@ -722,6 +845,33 @@ where
     fn merge_match_contexts(&mut self, arm_exit_contexts: &[BlockContext<'ctx>]) {
         let reachable_contexts: Vec<_> = arm_exit_contexts.iter().filter(|c| !c.flags.has_returned()).collect();
 
+        if self.context.settings.find_overly_wide_throw_types {
+            for context in arm_exit_contexts.iter().filter(|context| context.flags.has_returned()) {
+                for (exception, spans) in &context.possibly_thrown_exceptions {
+                    self.block_context
+                        .possibly_thrown_exceptions_for_too_wide
+                        .entry(*exception)
+                        .or_default()
+                        .extend(spans.iter().copied());
+                }
+
+                for (exception, spans) in &context.possibly_thrown_exceptions_for_too_wide {
+                    self.block_context
+                        .possibly_thrown_exceptions_for_too_wide
+                        .entry(*exception)
+                        .or_default()
+                        .extend(spans.iter().copied());
+                }
+
+                self.block_context
+                    .possibly_thrown_generic_exceptions_for_too_wide
+                    .extend(context.possibly_thrown_generic_exceptions.iter().cloned());
+                self.block_context
+                    .possibly_thrown_generic_exceptions_for_too_wide
+                    .extend(context.possibly_thrown_generic_exceptions_for_too_wide.iter().cloned());
+            }
+        }
+
         if reachable_contexts.is_empty() {
             self.block_context.flags.set_has_returned(true);
             return;
@@ -751,22 +901,41 @@ where
             }
         }
 
-        // PHPStan's scope merge: a variable every reachable arm defines is defined after the match.
-        let new_vars: Vec<_> = reachable_contexts[0]
-            .locals
-            .keys()
-            .filter(|var_id| !self.block_context.locals.contains_key(*var_id))
-            .filter(|var_id| reachable_contexts.iter().all(|ctx| ctx.locals.contains_key(*var_id)))
-            .copied()
-            .collect();
-        for var_id in new_vars {
+        // PHPStan's scope merge: a variable every reachable arm defines is defined after the match, and one only
+        // some arms define is possibly undefined. A fetch holder (an access path) survives only when every reachable
+        // arm has it.
+        let mut new_variables = WordSet::default();
+        for ctx in &reachable_contexts {
+            new_variables.extend(ctx.locals.keys().copied().filter(|variable_id| {
+                !self.block_context.locals.contains_key(variable_id)
+                    && (!variable_id.as_bytes().iter().any(|byte| matches!(byte, b'[' | b'-' | b':'))
+                        || reachable_contexts.iter().all(|ctx| ctx.locals.contains_key(variable_id)))
+            }));
+        }
+
+        for variable_id in new_variables {
             let mut final_type: Option<TUnion> = None;
+            let mut possibly_undefined = false;
             for arm_context in &reachable_contexts {
-                let arm_type = arm_context.locals.get(&var_id).map(AsRef::as_ref);
-                final_type = Some(combine_optional_union_types(final_type.as_ref(), arm_type, self.context.codebase));
+                match arm_context.locals.get(&variable_id) {
+                    Some(arm_type) => {
+                        final_type = Some(combine_optional_union_types(
+                            final_type.as_ref(),
+                            Some(arm_type),
+                            self.context.codebase,
+                        ));
+                    }
+                    None => possibly_undefined = true,
+                }
             }
-            if let Some(final_type) = final_type {
-                self.block_context.locals.insert(var_id, Rc::new(final_type));
+
+            if let Some(mut final_type) = final_type {
+                if possibly_undefined {
+                    final_type.set_possibly_undefined(true, None);
+                    self.block_context.possibly_undefined_variable_ids.insert(variable_id);
+                }
+
+                self.block_context.locals.insert(variable_id, Rc::new(final_type));
             }
         }
 

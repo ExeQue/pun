@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use mago_allocator::Arena;
+use mago_codex::misc::GenericParent;
 use mago_codex::ttype::TType;
 use mago_codex::ttype::add_union_type;
 use mago_codex::ttype::atomic::TAtomic;
@@ -12,6 +13,7 @@ use mago_codex::ttype::atomic::array::keyed::KnownItems;
 use mago_codex::ttype::atomic::array::keyed::TKeyedArray;
 use mago_codex::ttype::atomic::array::list::TList;
 use mago_codex::ttype::atomic::generic::TGenericParameter;
+use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::atomic::scalar::string::TString;
 use mago_codex::ttype::combine_union_types;
@@ -20,18 +22,21 @@ use mago_codex::ttype::combiner::CombinerOptions;
 use mago_codex::ttype::comparator::ComparisonResult;
 use mago_codex::ttype::comparator::union_comparator;
 use mago_codex::ttype::get_arraykey;
+use mago_codex::ttype::get_empty_keyed_array;
 use mago_codex::ttype::get_int;
 use mago_codex::ttype::get_iterable_parameters;
 use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::get_never;
 use mago_codex::ttype::get_non_negative_int;
 use mago_codex::ttype::union::TUnion;
+use mago_codex::ttype::widen_numeric_string_key;
 use mago_codex::ttype::wrap_atomic;
 use mago_reporting::Annotation;
 use mago_reporting::Issue;
 use mago_span::HasSpan;
 use mago_syntax::cst::Access;
 use mago_syntax::cst::Expression;
+use mago_syntax::cst::Variable;
 use mago_word::Word;
 use mago_word::empty_word;
 use mago_word::word;
@@ -45,10 +50,12 @@ use crate::context::block::ReferenceConstraintSource;
 use crate::error::AnalysisError;
 use crate::expression::assignment::PropertyWriteKind;
 use crate::expression::assignment::property_assignment;
+use crate::expression::assignment::static_property_assignment;
 use crate::utils::expression::array::ArrayTarget;
 use crate::utils::expression::array::get_array_target_type_given_index;
 use crate::utils::expression::get_block_expression_id;
 use crate::utils::expression::get_index_id;
+use crate::utils::expression::get_root_expression_id;
 
 pub(crate) fn analyze<'ctx, 'arena, A>(
     context: &mut Context<'ctx, 'arena, A>,
@@ -75,7 +82,9 @@ where
         array_target_expressions.last().unwrap_unchecked().get_array()
     };
 
-    if artifacts.get_expression_type(root_array_expression).is_none() {
+    if let Some(created_root_type) = get_created_root_type(context, block_context, root_array_expression) {
+        artifacts.set_expression_type(root_array_expression, created_root_type);
+    } else if artifacts.get_expression_type(root_array_expression).is_none() {
         let was_inside_general_use = block_context.flags.inside_general_use();
         block_context.flags.set_inside_general_use(true);
         root_array_expression.analyze(context, block_context, artifacts)?;
@@ -86,10 +95,12 @@ where
         artifacts.get_rc_expression_type(root_array_expression).cloned().unwrap_or_else(|| Rc::new(get_mixed()));
     let root_is_array_access_object =
         root_array_type.types.iter().all(|atomic| atomic.extends_or_implements(context.codebase, b"ArrayAccess"));
+    let root_is_array = root_array_type.types.iter().all(TAtomic::is_array);
 
     let mut current_type = Rc::clone(&root_array_type);
 
     let root_var_id = get_block_expression_id(root_array_expression, context, block_context);
+    let writes_container_directly = array_target_expressions.len() == 1;
     let current_index = analyze_nested_array_assignment(
         context,
         block_context,
@@ -101,15 +112,12 @@ where
         &mut current_type,
     )?;
 
-    let mut key_values = Vec::new();
-
     let index_type = current_index.map(|current_index| {
         artifacts.get_rc_expression_type(current_index).cloned().unwrap_or_else(|| Rc::new(get_arraykey()))
     });
 
-    if let Some(index_type) = &index_type {
-        key_values = get_index_literal_types(index_type);
-    }
+    let key_values = index_type.as_deref().map(get_index_literal_types).unwrap_or_default();
+    let definite = writes_every_key(block_context, &key_values, current_index);
 
     let mut root_array_type = Rc::unwrap_or_clone(root_array_type);
     // AssignHandler::produceArrayDimFetchAssignValueToWrite(): a container that is neither mixed nor an array is
@@ -127,8 +135,8 @@ where
         root_array_type.types = root_array_type.types.iter().filter(|atomic| !inaccessible(atomic)).cloned().collect();
     }
     let root_is_string = root_array_type.has_string();
-    let mut root_array_type = if !key_values.is_empty() {
-        update_type_with_key_values(context, root_array_type, &current_type, &key_values, index_type.as_ref())
+    let root_array_type = if !key_values.is_empty() {
+        update_type_with_key_values(context, root_array_type, &current_type, &key_values, index_type.as_ref(), definite)
     } else if !root_is_string {
         update_array_assignment_child_type(
             context,
@@ -158,8 +166,38 @@ where
             },
             initializes_marker,
         )?;
+    } else if let Expression::Access(Access::StaticProperty(property_access)) = &root_array_expression
+        && root_is_array
+    {
+        let (result, issues) = context.record(|context| {
+            static_property_assignment::analyze(
+                context,
+                block_context,
+                artifacts,
+                property_access,
+                &root_array_type,
+                root_var_id,
+            )
+        });
+
+        result?;
+        context.collector.extend(issues.into_iter().filter(|issue| {
+            issue.code.as_deref().is_some_and(|code| {
+                code == IssueCode::InvalidPropertyAssignmentValue.as_str()
+                    || code == IssueCode::PropertyTypeCoercion.as_str()
+                    || code == IssueCode::MixedPropertyTypeCoercion.as_str()
+            })
+        }));
     }
 
+    let mut root_array_type = if root_is_array_access_object
+        && writes_container_directly
+        && matches!(root_array_expression, Expression::Variable(_))
+    {
+        pin_open_type_parameters(context, root_array_type, index_type.as_deref(), assign_value_type)
+    } else {
+        root_array_type
+    };
     root_array_type.set_possibly_undefined(false, None);
     root_array_type.set_possibly_undefined_from_try(false);
     let root_array_type = Rc::new(root_array_type);
@@ -168,6 +206,7 @@ where
         // conditional holders for this root and its descendants, not other locals.
         block_context.invalidate_variable_certainty(*root_var_id);
         block_context.locals.insert(*root_var_id, Rc::clone(&root_array_type));
+        block_context.assigned_variable_ids.insert(*root_var_id, array_target.span().start_offset());
 
         if let Some(constraint) = block_context.by_reference_constraints.get(root_var_id)
             && let Some(constraint_type) = constraint.constraint_type.as_ref()
@@ -230,28 +269,142 @@ where
     Ok(())
 }
 
+/// Binds the open (`_`) type arguments of an `ArrayAccess` object to the key and value written through `offsetSet()`.
+fn pin_open_type_parameters<A>(
+    context: &Context<'_, '_, A>,
+    mut container_type: TUnion,
+    key_type: Option<&TUnion>,
+    value_type: &TUnion,
+) -> TUnion
+where
+    A: Arena,
+{
+    for atomic in container_type.types.to_mut() {
+        let TAtomic::Object(TObject::Named(named_object)) = atomic else {
+            continue;
+        };
+
+        let Some(type_parameters) = named_object.type_parameters.as_mut() else {
+            continue;
+        };
+
+        if !type_parameters.iter().any(TUnion::is_placeholder) {
+            continue;
+        }
+
+        let Some(class_metadata) = context.codebase.get_class_like(named_object.name.as_bytes()) else {
+            continue;
+        };
+
+        let Some(offset_set) = context.codebase.get_declaring_method(named_object.name.as_bytes(), b"offsetSet") else {
+            continue;
+        };
+
+        for (parameter, written_type) in offset_set.parameters.iter().zip([key_type, Some(value_type)]) {
+            let (Some(written_type), Some(parameter_type)) = (written_type, parameter.get_type_metadata()) else {
+                continue;
+            };
+
+            let [TAtomic::GenericParameter(template)] = parameter_type.type_union.types.as_ref() else {
+                continue;
+            };
+
+            if template.defining_entity != GenericParent::ClassLike(class_metadata.name) {
+                continue;
+            }
+
+            if let Some(slot) = class_metadata
+                .template_types
+                .get_index_of(&template.parameter_name)
+                .and_then(|index| type_parameters.get_mut(index))
+                && slot.is_placeholder()
+            {
+                let mut pinned = written_type.clone();
+                pinned.widen_scalars();
+                *slot = pinned;
+            }
+        }
+    }
+
+    container_type
+}
+
 pub(crate) fn update_type_with_key_values<A>(
     context: &Context<'_, '_, A>,
     mut new_type: TUnion,
     current_type: &TUnion,
     key_values: &Vec<TAtomic>,
     key_type: Option<&Rc<TUnion>>,
+    definite: bool,
 ) -> TUnion
 where
     A: Arena,
 {
     let mut has_matching_item = false;
+    let key_type = key_type.map(normalize_key_type);
+    let key_type = key_type.as_ref();
 
     new_type.types = new_type
         .types
         .into_owned()
         .into_iter()
         .map(|atomic_type| {
-            update_atomic_given_key(context, atomic_type, key_values, key_type, &mut has_matching_item, current_type)
+            update_atomic_given_key(
+                context,
+                atomic_type,
+                key_values,
+                key_type,
+                &mut has_matching_item,
+                current_type,
+                definite,
+            )
         })
         .collect();
 
     new_type
+}
+
+fn normalize_key_type(key_type: &Rc<TUnion>) -> Rc<TUnion> {
+    if key_type.is_mixed() {
+        return Rc::new(get_arraykey());
+    }
+
+    if !key_type.types.iter().any(|atomic| {
+        matches!(
+            atomic,
+            TAtomic::Null
+                | TAtomic::Object(_)
+                | TAtomic::Array(_)
+                | TAtomic::Scalar(TScalar::Bool(_) | TScalar::Float(_) | TScalar::Generic | TScalar::Numeric)
+        )
+    }) {
+        return widen_numeric_string_key(key_type).map_or_else(|| Rc::clone(key_type), Rc::new);
+    }
+
+    let mut types = Vec::with_capacity(key_type.types.len());
+    for atomic in key_type.types.iter() {
+        match atomic {
+            TAtomic::Null => types.push(TAtomic::Scalar(TScalar::String(TString::known_literal(empty_word())))),
+            // BooleanType::toArrayKey() is `0|1`, not `int`.
+            TAtomic::Scalar(TScalar::Bool(boolean)) => match boolean.value {
+                Some(value) => types.push(TAtomic::Scalar(TScalar::literal_int(i64::from(value)))),
+                None => {
+                    types.extend([TAtomic::Scalar(TScalar::literal_int(0)), TAtomic::Scalar(TScalar::literal_int(1))]);
+                }
+            },
+            TAtomic::Scalar(TScalar::Float(_)) => types.push(TAtomic::Scalar(TScalar::int())),
+            TAtomic::Scalar(TScalar::Generic | TScalar::Numeric) => types.push(TAtomic::Scalar(TScalar::ArrayKey)),
+            TAtomic::Object(_) | TAtomic::Array(_) => {}
+            _ => types.push(atomic.clone()),
+        }
+    }
+
+    if types.is_empty() {
+        return Rc::new(get_arraykey());
+    }
+
+    let normalized = TUnion::from_vec(types);
+    Rc::new(widen_numeric_string_key(&normalized).unwrap_or(normalized))
 }
 
 fn update_atomic_given_key<A>(
@@ -261,6 +414,7 @@ fn update_atomic_given_key<A>(
     key_type: Option<&Rc<TUnion>>,
     has_matching_item: &mut bool,
     current_type: &TUnion,
+    definite: bool,
 ) -> TAtomic
 where
     A: Arena,
@@ -275,6 +429,7 @@ where
             key_type,
             has_matching_item,
             current_type,
+            definite,
         );
     }
 
@@ -361,6 +516,18 @@ where
             }
         }
     } else {
+        let possible_type = || {
+            let mut possible_type = current_type.clone();
+            possible_type.set_possibly_undefined(true, None);
+            possible_type
+        };
+        let widen = |entry: &TUnion| {
+            let mut widened =
+                combine_union_types(entry, current_type, context.codebase, context.settings.combiner_options());
+            widened.set_possibly_undefined(entry.possibly_undefined(), None);
+            widened
+        };
+
         for key_value in key_values {
             if let TAtomic::Array(array) = &mut atomic_type {
                 let array_key = if let Some(str) = key_value.get_literal_string_value() {
@@ -373,24 +540,33 @@ where
 
                 match array {
                     TArray::List(list) => match array_key {
-                        ArrayKey::Integer(key_value) => {
+                        ArrayKey::Integer(key_value) if key_value >= 0 => {
                             *has_matching_item = true;
 
                             if let Some(known_elements) = list.known_elements.as_mut().map(Arc::make_mut) {
                                 if let Some((pu, entry)) = known_elements.get_mut(&(key_value as usize)) {
-                                    *entry = current_type.clone();
-                                    *pu = false;
-                                } else {
+                                    if definite {
+                                        *entry = current_type.clone();
+                                        *pu = false;
+                                    } else {
+                                        *entry = widen(entry);
+                                    }
+                                } else if definite {
                                     known_elements.insert(key_value as usize, (false, current_type.clone()));
+                                } else {
+                                    known_elements.insert(key_value as usize, (true, possible_type()));
                                 }
-                            } else {
+                            } else if definite {
                                 list.known_elements =
                                     Some(BTreeMap::from([(key_value as usize, (false, current_type.clone()))]).into());
+                            } else {
+                                list.known_elements =
+                                    Some(BTreeMap::from([(key_value as usize, (true, possible_type()))]).into());
                             }
 
                             list.non_empty = true;
                         }
-                        ArrayKey::String(ustr) => {
+                        ArrayKey::String(_) | ArrayKey::Integer(_) => {
                             *has_matching_item = true;
 
                             let parameters = if list.element_type.is_never() {
@@ -406,7 +582,11 @@ where
                                 }
                             }
 
-                            known_items.insert(ArrayKey::String(ustr), (false, current_type.clone()));
+                            if definite {
+                                known_items.insert(array_key, (false, current_type.clone()));
+                            } else {
+                                known_items.insert(array_key, (true, possible_type()));
+                            }
 
                             *array = TArray::Keyed(TKeyedArray {
                                 callable: list.callable.clone(),
@@ -425,14 +605,23 @@ where
 
                         if let Some(known_items) = keyed_array.known_items.as_mut().map(Arc::make_mut) {
                             if let Some((pu, entry)) = known_items.get_mut(&array_key) {
-                                *entry = current_type.clone();
-                                *pu = false;
-                            } else {
+                                if definite {
+                                    *entry = current_type.clone();
+                                    *pu = false;
+                                } else {
+                                    *entry = widen(entry);
+                                }
+                            } else if definite {
                                 known_items.insert(array_key, (false, current_type.clone()));
+                            } else {
+                                known_items.insert(array_key, (true, possible_type()));
                             }
-                        } else {
+                        } else if definite {
                             keyed_array.known_items =
                                 Some(KnownItems::from_iter([(array_key, (false, current_type.clone()))]).into());
+                        } else {
+                            keyed_array.known_items =
+                                Some(KnownItems::from_iter([(array_key, (true, possible_type()))]).into());
                         }
 
                         keyed_array.non_empty = true;
@@ -461,44 +650,42 @@ where
     let mut extended_shapes = Vec::new();
 
     if let Some(key_type) = key_type {
-        // PHP coerces null to empty string '' when used as array key.
-        // If the key type contains null, we need to:
-        // 1. Remove null from the type
-        // 2. Add empty string literal to represent the coerced value
-        let key_type = if key_type.is_mixed() {
-            Rc::new(get_arraykey())
-        } else if key_type.has_null()
-            || key_type.types.iter().any(|t| matches!(t, TAtomic::Scalar(TScalar::Bool(_) | TScalar::Float(_))))
-        {
-            // Filter out null types; `toArrayKey()` casts a bool key to 0/1 and a float key to int
-            let mut types: Vec<TAtomic> = key_type
-                .types
-                .iter()
-                .filter(|t| !t.is_null())
-                .flat_map(|t| match t {
-                    TAtomic::Scalar(TScalar::Bool(b)) if b.is_true() => vec![TAtomic::Scalar(TScalar::literal_int(1))],
-                    TAtomic::Scalar(TScalar::Bool(b)) if b.is_false() => vec![TAtomic::Scalar(TScalar::literal_int(0))],
-                    TAtomic::Scalar(TScalar::Bool(_)) => {
-                        vec![TAtomic::Scalar(TScalar::literal_int(0)), TAtomic::Scalar(TScalar::literal_int(1))]
-                    }
-                    TAtomic::Scalar(TScalar::Float(_)) => vec![TAtomic::Scalar(TScalar::int())],
-                    t => vec![t.clone()],
-                })
-                .collect();
+        let key_type = normalize_key_type(key_type);
 
-            // Add empty string literal since null coerces to ''
-            if key_type.has_null() {
-                types.push(TAtomic::Scalar(TScalar::String(TString::known_literal(empty_word()))));
-            }
-
-            Rc::new(TUnion::from_vec(types))
-        } else {
-            Rc::clone(key_type)
-        };
+        let breaks_list = key_type.types.iter().all(|key| match key {
+            TAtomic::Scalar(TScalar::String(_) | TScalar::ClassLikeString(_)) => true,
+            TAtomic::Scalar(TScalar::Integer(integer)) => integer.get_bounds().1.is_some_and(|max| max < 0),
+            _ => false,
+        });
 
         for original_type in root_type.types.as_ref() {
             match original_type {
                 TAtomic::Array(array_type) => match array_type {
+                    TArray::List(list) if breaks_list => {
+                        let known_items = list.known_elements.as_deref().map(|known_elements| {
+                            known_elements
+                                .iter()
+                                .map(|(index, entry)| (ArrayKey::Integer(*index as i64), entry.clone()))
+                                .collect::<KnownItems>()
+                                .into()
+                        });
+
+                        collection_types.push(TAtomic::Array(TArray::Keyed(TKeyedArray {
+                            callable: list.callable.clone(),
+                            parameters: Some((
+                                Arc::new(add_union_type(
+                                    get_non_negative_int(),
+                                    &key_type,
+                                    context.codebase,
+                                    CombinerOptions::default(),
+                                )),
+                                Arc::new(value_type.clone()),
+                            )),
+                            known_items,
+                            non_empty: true,
+                            known_non_list: true,
+                        })));
+                    }
                     TArray::List(list) => {
                         collection_types.push(TAtomic::Array(TArray::List(TList {
                             callable: list.callable.clone(),
@@ -573,8 +760,14 @@ where
                         // but only up to the threshold to prevent memory explosion on files with
                         // thousands of array pushes.
                         let current_known_count = list.known_elements.as_deref().map_or(0, BTreeMap::len);
+                        let all_known_elements_set = list
+                            .known_elements
+                            .as_deref()
+                            .is_none_or(|elements| elements.values().all(|(optional, _)| !optional));
+
                         if !block_context.flags.inside_loop()
                             && list.element_type.is_never()
+                            && all_known_elements_set
                             && current_known_count < context.settings.array_combination_threshold as usize
                         {
                             // This is the complete successor value, not an alternative containing
@@ -684,6 +877,36 @@ where
     result
 }
 
+fn get_created_root_type<A>(
+    context: &Context<'_, '_, A>,
+    block_context: &BlockContext<'_>,
+    root_array_expression: &Expression<'_>,
+) -> Option<TUnion>
+where
+    A: Arena,
+{
+    let Expression::Variable(Variable::Direct(variable)) = root_array_expression else {
+        return None;
+    };
+
+    let variable_id = word(variable.name);
+    match block_context.locals.get(&variable_id) {
+        None if !block_context.variables_possibly_in_scope.contains(&variable_id) => Some(get_empty_keyed_array()),
+        Some(existing_type) if existing_type.possibly_undefined() => {
+            let mut defined_type = (**existing_type).clone();
+            defined_type.set_possibly_undefined(false, None);
+
+            Some(combine_union_types(
+                &defined_type,
+                &get_empty_keyed_array(),
+                context.codebase,
+                context.settings.combiner_options(),
+            ))
+        }
+        _ => None,
+    }
+}
+
 pub(crate) fn analyze_nested_array_assignment<'ctx, 'ast, 'arena, A>(
     context: &mut Context<'ctx, 'arena, A>,
     block_context: &mut BlockContext<'ctx>,
@@ -788,7 +1011,13 @@ where
 
         block_context.flags.set_inside_assignment(false);
 
-        let array_expr_type = Rc::new(if is_last { assign_value_type.clone() } else { array_expr_type });
+        let array_expr_type = Rc::new(if is_last {
+            assign_value_type.clone()
+        } else if array_target.get_index().is_none() {
+            get_empty_keyed_array()
+        } else {
+            array_expr_type
+        });
         artifacts.set_rc_expression_type(&array_target, Rc::clone(&array_expr_type));
 
         artifacts.set_rc_expression_type(array_target.get_array(), Rc::clone(&array_expression_type));
@@ -821,7 +1050,9 @@ where
     let first_array_target = &array_target_expressions.remove(0);
 
     if let Some(root_var_id) = &root_var_id
-        && artifacts.get_expression_type(first_array_target.get_array()).is_some()
+        && artifacts
+            .get_expression_type(first_array_target.get_array())
+            .is_some_and(|array_type| !array_type.has_object_type())
     {
         let combined = format!("{}{}", root_var_id, var_id_additions.join(""));
         let extended_var_id = mago_word::word(&combined);
@@ -845,6 +1076,7 @@ where
 
         let key_values =
             if let Some(index_type) = index_type.as_ref() { get_index_literal_types(index_type) } else { vec![] };
+        let definite = writes_every_key(block_context, &key_values, last_array_expression_index);
 
         let array_expr_id =
             get_block_expression_id(array_target.get_array(), context, block_context).map(|var_var_id| {
@@ -862,6 +1094,7 @@ where
             last_array_expr_type,
             &key_values,
             index_type.as_ref(),
+            definite,
         );
 
         *last_array_expr_type = Rc::new(array_expr_type);
@@ -891,15 +1124,19 @@ where
     Ok(last_array_expression_index)
 }
 
+fn writes_every_key(block_context: &BlockContext<'_>, key_values: &[TAtomic], index: Option<&Expression<'_>>) -> bool {
+    key_values.len() == 1
+        || index.and_then(get_root_expression_id).is_some_and(|id| block_context.foreach_variables.contains(&id))
+}
+
 fn get_index_literal_types(expression_index_type: &TUnion) -> Vec<TAtomic> {
     let mut valid_offset_types = vec![];
     for single_atomic in expression_index_type.types.as_ref() {
-        if single_atomic.is_literal_int() || single_atomic.is_known_literal_string() {
-            valid_offset_types.push(single_atomic.clone());
-        } else {
-            // A literal arm of a general offset is not a definitely written key.
+        if !single_atomic.is_literal_int() && !single_atomic.is_known_literal_string() {
             return vec![];
         }
+
+        valid_offset_types.push(single_atomic.clone());
     }
 
     valid_offset_types

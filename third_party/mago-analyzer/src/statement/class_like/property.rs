@@ -35,8 +35,8 @@ use crate::statement::analyze_statements;
 use crate::statement::attributes::AttributeTarget;
 use crate::statement::attributes::analyze_attributes;
 use crate::statement::function_like::add_properties_to_context;
+use crate::statement::function_like::check_type_metadata;
 use crate::statement::function_like::get_this_type;
-use crate::statement::function_like::report_undefined_type_references;
 use crate::statement::r#return::handle_return_value;
 
 impl<'ast, 'arena> Analyzable<'ast, 'arena> for Property<'arena> {
@@ -229,6 +229,40 @@ where
         AttributeTarget::Method,
     )?;
 
+    for parameter in hook.parameter_list.iter().flat_map(|parameter_list| parameter_list.parameters.iter()) {
+        analyze_attributes(
+            context,
+            parent_block_context,
+            artifacts,
+            parameter.attribute_lists.as_slice(),
+            AttributeTarget::Parameter,
+        )?;
+    }
+
+    let hook_metadata = parent_block_context
+        .scope
+        .get_class_like()
+        .and_then(|class_like| class_like.properties.get(&property_name))
+        .and_then(|property| property.hooks.get(&word(hook.name.value)));
+
+    if let Some(hook_metadata) = hook_metadata {
+        if let Some(return_type) = &hook_metadata.return_type_metadata {
+            check_type_metadata(context, return_type);
+        }
+
+        if let Some(param) = &hook_metadata.parameter
+            && let Some(param_type) = param.get_type_metadata()
+        {
+            check_type_metadata(context, param_type);
+
+            if param_type.from_docblock
+                && let Some(param_type_decl) = param.get_type_declaration_metadata()
+            {
+                check_type_metadata(context, param_type_decl);
+            }
+        }
+    }
+
     let PropertyHookBody::Concrete(body) = &hook.body else {
         return Ok(());
     };
@@ -237,24 +271,8 @@ where
     scope.set_class_like(parent_block_context.scope.get_class_like());
     scope.set_static(false);
 
-    if let Some(class_like) = parent_block_context.scope.get_class_like()
-        && let Some(property) = class_like.properties.get(&property_name)
-        && let Some(hook_meta) = property.hooks.get(&word(hook.name.value))
-    {
-        scope.set_property_hook(Some((property_name, hook_meta)));
-
-        if let Some(param) = &hook_meta.parameter
-            && let Some(param_type) = param.get_type_metadata()
-        {
-            report_undefined_type_references(context, param_type);
-
-            // Only check native declaration if effective type is from docblock
-            if param_type.from_docblock
-                && let Some(param_type_decl) = param.get_type_declaration_metadata()
-            {
-                report_undefined_type_references(context, param_type_decl);
-            }
-        }
+    if let Some(hook_metadata) = hook_metadata {
+        scope.set_property_hook(Some((property_name, hook_metadata)));
     }
 
     let mut hook_block_context = BlockContext::new(scope, context.settings.register_super_globals);
@@ -286,9 +304,91 @@ where
     match body {
         PropertyHookConcreteBody::Block(block) => {
             analyze_statements(block.statements.as_slice(), context, &mut hook_block_context, artifacts)?;
+
+            if hook.name.value == b"get"
+                && !hook_block_context.flags.has_returned()
+                && let Some(class_like) = parent_block_context.scope.get_class_like()
+                && let Some(property) = class_like.properties.get(&property_name)
+                && let Some(declaration) = &property.type_declaration_metadata
+            {
+                let property_type = declaration.type_union.get_id();
+
+                context.collector.report_with_code(
+                    IssueCode::MissingReturnStatement,
+                    Issue::error(format!(
+                        "Missing return statement in property hook `{}::{property_name}::get`",
+                        class_like.original_name
+                    ))
+                    .with_annotation(
+                        Annotation::primary(hook.name.span())
+                            .with_message(format!("This hook must return '{property_type}'...")),
+                    )
+                    .with_annotation(
+                        Annotation::secondary(block.span())
+                            .with_message("...but this path can exit without returning a value."),
+                    )
+                    .with_note("PHP throws a `TypeError` when a typed get hook returns nothing.")
+                    .with_help(format!("Return a value of type '{property_type}' on every path.")),
+                );
+            }
         }
         PropertyHookConcreteBody::Expression(expr_body) => {
             expr_body.expression.analyze(context, &mut hook_block_context, artifacts)?;
+
+            if hook.name.value == b"set"
+                && let Some(class_like) = parent_block_context.scope.get_class_like()
+                && let Some(type_metadata) =
+                    class_like.properties.get(&property_name).and_then(|property| property.type_metadata.as_ref())
+                && !type_metadata.type_union.is_mixed()
+                && !type_metadata.type_union.has_template_types()
+                && let Some(value_type) = artifacts.get_expression_type(&expr_body.expression)
+                && !value_type.is_mixed()
+                && !value_type.is_never()
+            {
+                let mut property_type = type_metadata.type_union.clone();
+                expand_union(
+                    context.codebase,
+                    &mut property_type,
+                    &TypeExpansionOptions {
+                        self_class: Some(class_like.original_name),
+                        static_class_type: StaticClassType::Name(class_like.original_name),
+                        ..Default::default()
+                    },
+                );
+
+                let mut comparison_result = ComparisonResult::new();
+                if !union_comparator::is_contained_by(
+                    context.codebase,
+                    value_type,
+                    &property_type,
+                    false,
+                    false,
+                    false,
+                    &mut comparison_result,
+                ) && comparison_result.type_coerced != Some(true)
+                {
+                    let value_type_str = value_type.get_id();
+                    let property_type_str = property_type.get_id();
+
+                    context.collector.report_with_code(
+                        IssueCode::InvalidPropertyAssignmentValue,
+                        Issue::error(format!(
+                            "Invalid type for property `{}::{property_name}`: expected `{property_type_str}`, but got `{value_type_str}`.",
+                            class_like.original_name
+                        ))
+                        .with_annotation(
+                            Annotation::primary(expr_body.expression.span())
+                                .with_message(format!("This expression has type `{value_type_str}`")),
+                        )
+                        .with_annotation(
+                            Annotation::secondary(type_metadata.span)
+                                .with_message(format!("The property is declared with type `{property_type_str}`")),
+                        )
+                        .with_note("The short `set => expression;` form assigns the expression to the property.")
+                        .with_help("Change the expression to match the property's type, or update the property's type."),
+                    );
+                }
+            }
 
             if hook.name.value == b"get" {
                 let value_type = artifacts

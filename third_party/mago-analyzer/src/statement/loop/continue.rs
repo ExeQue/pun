@@ -164,6 +164,58 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Continue<'arena> {
                 context.codebase,
             );
 
+            for (variable_id, parent_type) in &loop_scope.parent_context_variables {
+                let combined = add_optional_union_type_rc(
+                    block_context.locals.get(variable_id).unwrap_or(parent_type),
+                    loop_scope.parent_variables_at_continues.get(variable_id).map(AsRef::as_ref),
+                    context.codebase,
+                );
+
+                loop_scope.parent_variables_at_continues.insert(*variable_id, combined);
+            }
+
+            if loop_scope.iteration_count == 0 {
+                let defined_here = block_context
+                    .locals
+                    .iter()
+                    .filter(|(var_id, var_type)| {
+                        !loop_scope.parent_context_variables.contains_key(*var_id) && !var_type.possibly_undefined()
+                    })
+                    .map(|(var_id, _)| *var_id)
+                    .collect::<WordSet>();
+
+                match loop_scope.variables_defined_at_every_continue.as_mut() {
+                    Some(defined_at_every_continue) => {
+                        defined_at_every_continue.retain(|var_id| defined_here.contains(var_id))
+                    }
+                    None => loop_scope.variables_defined_at_every_continue = Some(defined_here),
+                }
+            }
+
+            for (variable_id, variable_type) in &block_context.locals {
+                if loop_scope.parent_context_variables.contains_key(variable_id)
+                    || variable_id.as_bytes().iter().any(|byte| matches!(byte, b'[' | b'-' | b':'))
+                    || loop_scope
+                        .seeded_loop_variables
+                        .get(variable_id)
+                        .is_some_and(|seeded_type| seeded_type == variable_type)
+                {
+                    continue;
+                }
+
+                let combined = match loop_scope.possibly_defined_loop_variables.get(variable_id) {
+                    Some(existing_type) => Rc::new(combine_union_types(
+                        existing_type,
+                        variable_type,
+                        context.codebase,
+                        CombinerOptions::default(),
+                    )),
+                    None => Rc::clone(variable_type),
+                };
+
+                loop_scope.possibly_defined_loop_variables.insert(*variable_id, combined);
+            }
+
             let mut removed_var_ids = WordSet::default();
             let redefined_vars =
                 block_context.get_redefined_locals(&loop_scope.parent_context_variables, false, &mut removed_var_ids);
@@ -208,7 +260,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for Continue<'arena> {
                             context.codebase,
                             CombinerOptions::default(),
                         )),
-                        None => Rc::clone(&var_type),
+                        None => var_type,
                     },
                 );
             }

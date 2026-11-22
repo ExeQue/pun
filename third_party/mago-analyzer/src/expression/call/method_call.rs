@@ -4,6 +4,7 @@ use mago_allocator::Arena;
 use mago_word::Word;
 use mago_word::WordMap;
 
+use crate::expression::access::property_access::is_isset_from_loop_mixed;
 use mago_codex::identifier::function_like::FunctionLikeIdentifier;
 use mago_codex::identifier::method::MethodIdentifier;
 use mago_codex::metadata::class_like::ClassLikeMetadata;
@@ -14,6 +15,7 @@ use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::expander::StaticClassType;
 use mago_codex::ttype::get_error;
 use mago_codex::ttype::get_mixed;
+use mago_codex::ttype::get_mixed_maybe_from_loop;
 use mago_codex::ttype::get_never;
 use mago_codex::ttype::get_null;
 use mago_codex::ttype::template::TemplateResult;
@@ -101,6 +103,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for MethodCall<'arena> {
             &self.method,
             &self.argument_list,
             false, // is_nullsafe
+            self.arrow.span(),
             self.span(),
             None,
         )?;
@@ -175,6 +178,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for NullSafeMethodCall<'arena> {
                 &self.method,
                 &self.argument_list,
                 true, // is_nullsafe
+                self.question_mark_arrow.span(),
                 self.span(),
                 Some(&ensured),
             )?;
@@ -325,6 +329,7 @@ fn analyze_method_call<'ctx, 'ast, 'arena, A>(
     selector: &'ast ClassLikeMemberSelector<'arena>,
     argument_list: &'ast ArgumentList<'arena>,
     is_null_safe: bool,
+    operator_span: Span,
     span: Span,
     receiver: Option<&EnsuredNonNullability<'arena>>,
 ) -> Result<(), AnalysisError>
@@ -354,6 +359,7 @@ where
             object,
             selector,
             is_null_safe,
+            operator_span,
             span,
             Some(&receiver.receiver_type),
         )?;
@@ -362,7 +368,7 @@ where
         resolution.encountered_null = receiver.original_type.is_nullable();
         resolution
     } else {
-        resolve_method_targets(context, block_context, artifacts, object, selector, is_null_safe, span)?
+        resolve_method_targets(context, block_context, artifacts, object, selector, is_null_safe, operator_span, span)?
     };
     if let Some(outer) = outer_bind_scope {
         artifacts.closure_bind_scope = outer;
@@ -491,6 +497,7 @@ where
             .push(vec![mago_codex::assertion::Assertion::IsNotType(mago_codex::ttype::atomic::TAtomic::Null)]);
     }
 
+    let encountered_mixed = method_resolution.encountered_mixed;
     if has_resolved_methods || method_resolution.undocumented_methods.is_empty() {
         analyze_invocation_targets(
             context,
@@ -502,7 +509,7 @@ where
             InvocationArgumentsSource::ArgumentList(argument_list),
             span,
             this_variable,
-            method_resolution.encountered_mixed,
+            encountered_mixed,
             is_null_safe && method_resolution.encountered_null,
             artifacts.get_expression_type(object).is_some_and(|t| t.has_nullsafe_null()),
             is_null_safe,
@@ -568,6 +575,10 @@ where
 
     if let Some(before) = short_circuit {
         crate::context::non_nullability::merge_short_circuit(block_context, &before, context);
+    }
+
+    if encountered_mixed && is_isset_from_loop_mixed(artifacts.get_expression_type(object)) {
+        artifacts.set_expression_type(&span, get_mixed_maybe_from_loop(true));
     }
 
     Ok(())
@@ -696,13 +707,9 @@ where
         };
 
         let mut invocation = Invocation::new(target, InvocationArgumentsSource::ArgumentList(argument_list), span);
-        let signature_handled = if context.external_analysis_session.is_some()
+        let signature_handled = context.external_analysis_session.is_some()
             && context.plugin_registry.may_have_callable_signature_provider(&requested_identifier)
-        {
-            apply_callable_signature(context, artifacts, &requested_identifier, &mut invocation)
-        } else {
-            false
-        };
+            && apply_callable_signature(context, artifacts, &requested_identifier, &mut invocation);
 
         let mut invocation_template_result = template_result.clone();
         let mut parameter_types = WordMap::default();

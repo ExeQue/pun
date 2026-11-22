@@ -113,11 +113,12 @@ where
             let left = get_union_from_hint(union_hint.left, classname, context);
             let right = get_union_from_hint(union_hint.right, classname, context);
 
-            let combined_types: Vec<TAtomic> = left.types.iter().chain(right.types.iter()).cloned().collect();
+            let never_kind = left.never_kind().unwrap_or_default().max(right.never_kind().unwrap_or_default());
+            let mut combined_types = Vec::with_capacity(left.types.len() + right.types.len());
+            combined_types.extend(left.types.into_owned());
+            combined_types.extend(right.types.into_owned());
 
-            TUnion::from_vec(combined_types).with_never_kind(
-                left.never_kind().unwrap_or_default().max(right.never_kind().unwrap_or_default()),
-            )
+            TUnion::from_vec(combined_types).with_never_kind(never_kind)
         }
         Hint::Null(_) => get_null(),
         Hint::True(_) => get_true(),

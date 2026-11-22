@@ -2,7 +2,12 @@ use mago_allocator::Arena;
 use mago_codex::ttype::add_optional_union_type;
 use mago_codex::ttype::get_error;
 use mago_codex::ttype::get_mixed;
+use std::rc::Rc;
+
+use mago_syntax::cst::Access;
 use mago_syntax::cst::ClassConstantAccess;
+use mago_syntax::cst::ClassLikeConstantSelector;
+use mago_syntax::cst::Expression;
 
 use crate::analyzable::Analyzable;
 use crate::artifacts::AnalysisArtifacts;
@@ -10,6 +15,7 @@ use crate::context::Context;
 use crate::context::block::BlockContext;
 use crate::error::AnalysisError;
 use crate::resolver::class_constant::resolve_class_constants;
+use crate::utils::expression::get_block_expression_id;
 
 impl<'ast, 'arena> Analyzable<'ast, 'arena> for ClassConstantAccess<'arena> {
     fn analyze<'ctx, A>(
@@ -21,14 +27,7 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for ClassConstantAccess<'arena> {
     where
         A: Arena,
     {
-        let resolution = resolve_class_constants(
-            context,
-            block_context,
-            artifacts,
-            self.class,
-            &self.constant,
-            false,
-        )?;
+        let resolution = resolve_class_constants(context, block_context, artifacts, self.class, &self.constant, false)?;
 
         let mut resulting_type = None;
         for resolved_constant in resolution.constants {
@@ -41,18 +40,45 @@ impl<'ast, 'arena> Analyzable<'ast, 'arena> for ClassConstantAccess<'arena> {
 
         // ClassConstFetchHandler prices every dynamic selector as mixed, including literal names.
         // InitializerExprTypeResolver keeps resolved union arms before its ErrorType fallback.
-        artifacts.set_expression_type(
-            self,
-            if !self.constant.is_identifier() {
-                get_mixed()
-            } else if let Some(resulting_type) = resulting_type {
-                resulting_type
-            } else if resolution.has_invalid_path {
-                get_error()
-            } else {
-                get_mixed()
-            },
+        let resulting_type = if !self.constant.is_identifier() {
+            get_mixed()
+        } else if let Some(resulting_type) = resulting_type {
+            resulting_type
+        } else if resolution.has_invalid_path {
+            artifacts.set_expression_type(self, get_error());
+
+            return Ok(());
+        } else {
+            get_mixed()
+        };
+
+        let is_class_name = matches!(
+            &self.constant,
+            ClassLikeConstantSelector::Identifier(identifier) if identifier.value.eq_ignore_ascii_case(b"class")
         );
+
+        let constant_id = if is_class_name {
+            None
+        } else {
+            get_block_expression_id(&Expression::Access(Access::ClassConstant(self.clone())), context, block_context)
+        };
+
+        if let Some(constant_id) = constant_id
+            && let Some(narrowed_type) = block_context.locals.get(&constant_id)
+        {
+            artifacts.set_rc_expression_type(self, Rc::clone(narrowed_type));
+
+            return Ok(());
+        }
+
+        let resulting_type = Rc::new(resulting_type);
+        if let Some(constant_id) = constant_id
+            && block_context.flags.inside_conditional()
+        {
+            block_context.locals.insert(constant_id, Rc::clone(&resulting_type));
+        }
+
+        artifacts.set_rc_expression_type(self, resulting_type);
 
         Ok(())
     }

@@ -26,6 +26,7 @@ use mago_codex::ttype::atomic::scalar::class_like_string::TClassLikeString;
 use mago_codex::ttype::atomic::scalar::string::TString;
 use mago_codex::ttype::atomic::scalar::string::TStringLiteral;
 use mago_codex::ttype::combiner::CombinerOptions;
+use mago_codex::ttype::comparator::union_comparator;
 use mago_codex::ttype::expander;
 use mago_codex::ttype::expander::StaticClassType;
 use mago_codex::ttype::expander::TypeExpansionOptions;
@@ -559,6 +560,7 @@ fn combine_walk_reflection<'ctx, A: Arena>(
                     None,
                     None,
                     method.map(|method| &method.class_type),
+                    false,
                 );
                 if class_templates.lower_bounds.is_empty() {
                     ty
@@ -804,6 +806,7 @@ where
                     calling_class_like_metadata,
                     calling_instance_type,
                     method_class_type,
+                    false,
                 )
             })
         });
@@ -828,6 +831,7 @@ where
                         calling_class_like_metadata,
                         calling_instance_type,
                         method_class_type,
+                        false,
                     )
                 })
                 .and_then(|parameter_type| closure_parameter_bounds(context, Some(&parameter_type), template_result))
@@ -869,6 +873,7 @@ where
                     calling_class_like_metadata,
                     calling_instance_type,
                     method_class_type,
+                    false,
                 );
                 match gathered {
                     Some(gathered) => {
@@ -914,6 +919,7 @@ where
                 calling_class_like_metadata,
                 calling_instance_type,
                 method_class_type,
+                false,
             );
             let is_pure = invocation.target.get_function_like_metadata().is_some_and(|metadata| metadata.flags.is_pure());
             // Only a bare template takes the argument whole; `EventCollection<WrittenEvent<ID>>` infers `ID`
@@ -954,6 +960,7 @@ where
                 calling_class_like_metadata,
                 calling_instance_type,
                 method_class_type,
+                false,
             );
 
             if parameter_type.has_template_types() {
@@ -1045,6 +1052,7 @@ where
                 calling_class_like_metadata,
                 calling_instance_type,
                 method_class_type,
+                true,
             );
 
             let has_parameter_variable = contains_parameter_variable(&base_parameter_type);
@@ -1083,6 +1091,16 @@ where
 
         let parameter_type = if let Some(mut pt) = parameter_type {
             filter_array_filter_callback_type(&invocation.target, &mut pt, &analyzed_argument_types);
+            if let Some(base_parameter_type) = &base_parameter_type_for_inference
+                && match argument_expression {
+                    Expression::Closure(closure) => closure.return_type_hint.is_some(),
+                    Expression::ArrowFunction(arrow_function) => arrow_function.return_type_hint.is_some(),
+                    _ => false,
+                }
+            {
+                drop_accumulator_parameter_hints(base_parameter_type, &mut pt);
+            }
+
             Some(pt)
         } else {
             None
@@ -1116,6 +1134,7 @@ where
                     calling_class_like_metadata,
                     calling_instance_type,
                     method_class_type,
+                    false,
                 );
 
                 if resolved.has_template_types() {
@@ -1367,38 +1386,26 @@ where
                         )
                         .with_help("Remove one of the duplicate named arguments."),
                     );
-                } else if let Some(previous_span) = assigned_parameters_by_position.get(&parameter_offset) {
+                } else if let Some(previous_span) =
+                    assigned_parameters_by_position.get(&parameter_offset).filter(|_| !parameter_ref.is_variadic())
+                {
                     has_named_argument_anomaly = true;
                     let target_name_str = invocation.target.guess_name(context);
-                    if parameter_ref.is_variadic() {
-                        context.collector.report_with_code(
-                            IssueCode::NamedArgumentAfterPositional,
-                             Issue::warning(format!(
-                                "Named argument `${}` for {} `{}` targets a variadic parameter that has already captured positional arguments.",
-                                named_value_display, target_kind_str, target_name_str
-                            ))
-                            .with_annotation(Annotation::primary(named_argument.name.span()).with_message("Named argument for variadic parameter"))
-                            .with_annotation(Annotation::secondary(*previous_span).with_message("Positional arguments already captured by variadic here"))
-                            .with_note("Mixing positional and named arguments for the same variadic parameter can be confusing and may lead to unexpected behavior depending on PHP version and argument unpacking.")
-                            .with_help("Consider providing all arguments for the variadic parameter either positionally or via unpacking a named array."),
-                        );
-                    } else {
-                        context.collector.report_with_code(
-                            IssueCode::NamedArgumentOverridesPositional,
-                            Issue::error(format!(
-                                "Named argument `${}` for {} `{}` targets a parameter already provided positionally.",
-                                named_value_display, target_kind_str, target_name_str
-                            ))
-                            .with_annotation(
-                                Annotation::primary(named_argument.name.span()).with_message("This named argument"),
-                            )
-                            .with_annotation(
-                                Annotation::secondary(*previous_span)
-                                    .with_message("Parameter already filled by positional argument here"),
-                            )
-                            .with_help("Provide the argument either positionally or by name, but not both."),
-                        );
-                    }
+                    context.collector.report_with_code(
+                        IssueCode::NamedArgumentOverridesPositional,
+                        Issue::error(format!(
+                            "Named argument `${}` for {} `{}` targets a parameter already provided positionally.",
+                            named_value_display, target_kind_str, target_name_str
+                        ))
+                        .with_annotation(
+                            Annotation::primary(named_argument.name.span()).with_message("This named argument"),
+                        )
+                        .with_annotation(
+                            Annotation::secondary(*previous_span)
+                                .with_message("Parameter already filled by positional argument here"),
+                        )
+                        .with_help("Provide the argument either positionally or by name, but not both."),
+                    );
                     assigned_parameters_by_name.insert(parameter_offset, named_argument.name.span());
                 } else {
                     assigned_parameters_by_name.insert(parameter_offset, named_argument.name.span());
@@ -1414,6 +1421,7 @@ where
                 calling_class_like_metadata,
                 calling_instance_type,
                 method_class_type,
+                true,
             );
 
             let observed_parameter_type = (context.settings.template_arguments
@@ -1466,45 +1474,77 @@ where
                 .parameter_count()
                 .checked_sub(1)
                 .and_then(|idx| invocation.target.get_parameter(idx))
-                .is_some_and(|parameter| parameter.is_variadic());
+                .is_some_and(|parameter| parameter.is_variadic())
+                && !invocation.target.get_function_like_metadata().is_some_and(|metadata| metadata.flags.is_built_in());
 
-            if !has_variadic_parameter {
-                has_named_argument_anomaly = true;
-                let target_name_str = invocation.target.guess_name(context);
-
-                context.collector.report_with_code(
-                    IssueCode::InvalidNamedArgument,
-                    Issue::error(format!(
-                        "Invalid named argument `${argument_name}` for {target_kind_str} `{target_name_str}`"
-                    ))
-                    .with_annotation(
-                        Annotation::primary(named_argument.name.span())
-                            .with_message(format!("Unknown argument name `${argument_name}`")),
-                    )
-                    .with_annotation(
-                        Annotation::secondary(invocation.target.span())
-                            .with_message(format!("Call to {target_kind_str} is here")),
-                    )
-                    .with_help({
-                        if !invocation.target.allows_named_arguments() {
-                            format!("The {target_kind_str} `{target_name_str}` does not support named arguments.")
-                        } else if invocation.target.parameter_count() == 0 {
-                            format!("The {target_kind_str} `{target_name_str}` has no parameters.")
-                        } else {
-                            let available_params: Vec<String> = invocation
-                                .target
-                                .iter_parameters()
-                                .filter_map(|parameter| parameter.get_name())
-                                .map(|n| {
-                                    let bytes = trim_start_byte(n.0.as_bytes(), b'$');
-                                    BytesDisplay(bytes).to_string()
-                                })
-                                .collect();
-                            format!("Available parameters are: `{}`.", available_params.join("`, `"))
-                        }
-                    }),
+            if has_variadic_parameter {
+                let variadic_parameter = invocation.target.get_parameter(invocation.target.parameter_count() - 1);
+                let base_parameter_type = get_parameter_type(
+                    context,
+                    variadic_parameter,
+                    base_class_metadata,
+                    calling_class_like_metadata,
+                    calling_instance_type,
+                    method_class_type,
+                    true,
                 );
+
+                let final_parameter_type = resolve_parameter_type_for_invocation(
+                    context,
+                    invocation,
+                    template_result,
+                    parameter_types,
+                    base_class_metadata,
+                    base_parameter_type,
+                );
+
+                verify_argument_type(
+                    context,
+                    &argument_value_type,
+                    &final_parameter_type,
+                    *argument_offset,
+                    argument_expression,
+                    &invocation.target,
+                );
+
+                continue;
             }
+
+            has_named_argument_anomaly = true;
+            let target_name_str = invocation.target.guess_name(context);
+
+            context.collector.report_with_code(
+                IssueCode::InvalidNamedArgument,
+                Issue::error(format!(
+                    "Invalid named argument `${argument_name}` for {target_kind_str} `{target_name_str}`"
+                ))
+                .with_annotation(
+                    Annotation::primary(named_argument.name.span())
+                        .with_message(format!("Unknown argument name `${argument_name}`")),
+                )
+                .with_annotation(
+                    Annotation::secondary(invocation.target.span())
+                        .with_message(format!("Call to {target_kind_str} is here")),
+                )
+                .with_help({
+                    if !invocation.target.allows_named_arguments() {
+                        format!("The {target_kind_str} `{target_name_str}` does not support named arguments.")
+                    } else if invocation.target.parameter_count() == 0 {
+                        format!("The {target_kind_str} `{target_name_str}` has no parameters.")
+                    } else {
+                        let available_params: Vec<String> = invocation
+                            .target
+                            .iter_parameters()
+                            .filter_map(|parameter| parameter.get_name())
+                            .map(|n| {
+                                let bytes = trim_start_byte(n.0.as_bytes(), b'$');
+                                BytesDisplay(bytes).to_string()
+                            })
+                            .collect();
+                        format!("Available parameters are: `{}`.", available_params.join("`, `"))
+                    }
+                }),
+            );
 
             break;
         } else if *argument_offset >= invocation.target.parameter_count() {
@@ -1575,6 +1615,7 @@ where
                     calling_class_like_metadata,
                     calling_instance_type,
                     method_class_type,
+                    false,
                 );
 
                 infer_parameter_templates_from_default(context, &parameter_type, &default_type, template_result);
@@ -1604,6 +1645,7 @@ where
             calling_class_like_metadata,
             calling_instance_type,
             method_class_type,
+            false,
         );
 
         if base_variadic_parameter_type.has_template_types() {
@@ -1687,6 +1729,7 @@ where
                     calling_class_like_metadata,
                     calling_instance_type,
                     method_class_type,
+                    false,
                 );
 
                 let observed_variadic_parameter_type = (context.settings.template_arguments
@@ -1716,7 +1759,7 @@ where
                         base_variadic_parameter_type
                     };
 
-                for unpacked_argument in unpacked_arguments {
+                for unpacked_argument in &unpacked_arguments {
                     let Some(argument_expression) = unpacked_argument.value() else {
                         continue;
                     };
@@ -1768,6 +1811,10 @@ where
                         let unpacked_element_type =
                             get_unpacked_argument_type(context, &argument_value_type, argument_expression.span());
 
+                        if unpacked_element_type.is_never() && !argument_value_type.is_never() {
+                            continue;
+                        }
+
                         verify_argument_type(
                             context,
                             &unpacked_element_type,
@@ -1808,6 +1855,10 @@ where
                             })
                             .unwrap_or(0);
                         number_of_provided_parameters += unpacked_count;
+                        if !argument_value_type.types.iter().all(TAtomic::is_array) {
+                            get_unpacked_argument_type(context, &argument_value_type, argument_expression.span());
+                        }
+
                         let target_name_str = invocation.target.guess_name(context);
 
                         validate_unpacked_argument_elements(
@@ -1896,6 +1947,14 @@ where
         }
         _ if has_unpacked_arguments || has_named_argument_anomaly => {
             number_of_provided_parameters < number_of_required_parameters
+                && !unpacked_arguments.iter().any(|argument| {
+                    argument.value().and_then(|value| artifacts.get_expression_type(value)).is_none_or(|unpacked| {
+                        unpacked
+                            .types
+                            .iter()
+                            .any(|atomic| !matches!(atomic, TAtomic::Array(array) if array.is_sealed()))
+                    })
+                })
         }
         _ => number_of_satisfied_required_parameters < number_of_required_parameters,
     };
@@ -2010,6 +2069,7 @@ where
                     calling_class_like_metadata,
                     calling_instance_type,
                     method_class_type,
+                    false,
                 );
                 resolve_invocation_type(context, invocation, template_result, parameter_types, ty)
             });
@@ -2092,6 +2152,7 @@ fn infer_generic_callable_arguments<'ctx, 'arena, A>(
             calling_class_like_metadata,
             calling_instance_type,
             method_class_type,
+            true,
         );
 
         let mut result_without_callback_bounds = template_result.clone();
@@ -2275,6 +2336,7 @@ fn get_parameter_type<'ctx, A>(
     calling_class_like_metadata: Option<&'ctx ClassLikeMetadata>,
     calling_instance_type: Option<&TAtomic>,
     method_class_type: Option<&StaticClassType>,
+    preserve_template_conditionals: bool,
 ) -> TUnion
 where
     A: Arena,
@@ -2292,6 +2354,7 @@ where
         calling_class_like_metadata,
         calling_instance_type,
         method_class_type,
+        preserve_template_conditionals,
     )
 }
 
@@ -2304,6 +2367,7 @@ fn resolve_type_in_class_context<'ctx, A>(
     calling_class_like_metadata: Option<&'ctx ClassLikeMetadata>,
     calling_instance_type: Option<&TAtomic>,
     method_class_type: Option<&StaticClassType>,
+    preserve_template_conditionals: bool,
 ) -> TUnion
 where
     A: Arena,
@@ -2336,6 +2400,7 @@ where
             self_class: base_class_metadata.map(|meta| meta.name),
             static_class_type,
             function_is_final: calling_class_like_metadata.is_some_and(|meta| meta.flags.is_final()),
+            preserve_template_conditionals,
             ..Default::default()
         },
     );
@@ -2381,7 +2446,7 @@ where
         return resolve_invocation_type(context, invocation, template_result, parameter_types, parameter_type);
     }
 
-    if has_template_bindings {
+    if has_template_bindings || parameter_type.has_template_types() {
         expander::expand_union(
             context.codebase,
             &mut parameter_type,
@@ -2571,6 +2636,7 @@ fn validate_unpacked_argument_elements<'ctx, 'arena, A>(
                                 calling_class_like_metadata,
                                 calling_instance_type,
                                 method_class_type,
+                                true,
                             );
 
                             let final_parameter_type = resolve_parameter_type_for_invocation(
@@ -2594,7 +2660,7 @@ fn validate_unpacked_argument_elements<'ctx, 'arena, A>(
                     }
                 } else {
                     let element_type = list.get_element_type();
-                    let min_size = list.known_count.unwrap_or(0);
+                    let min_size = list.known_count.unwrap_or(usize::MAX);
                     let max_parameters_to_check = std::cmp::min(
                         min_size,
                         invocation_target.parameter_count().saturating_sub(starting_parameter_position),
@@ -2610,6 +2676,7 @@ fn validate_unpacked_argument_elements<'ctx, 'arena, A>(
                                 calling_class_like_metadata,
                                 calling_instance_type,
                                 method_class_type,
+                                true,
                             );
 
                             let final_parameter_type = resolve_parameter_type_for_invocation(
@@ -2621,14 +2688,24 @@ fn validate_unpacked_argument_elements<'ctx, 'arena, A>(
                                 base_parameter_type,
                             );
 
-                            verify_argument_type(
-                                context,
-                                element_type,
-                                &final_parameter_type,
-                                parameter_position,
-                                argument_expression,
-                                invocation_target,
-                            );
+                            if list.known_count.is_some()
+                                || !union_comparator::can_expression_types_be_identical(
+                                    context.codebase,
+                                    element_type,
+                                    &final_parameter_type,
+                                    false,
+                                    false,
+                                )
+                            {
+                                verify_argument_type(
+                                    context,
+                                    element_type,
+                                    &final_parameter_type,
+                                    parameter_position,
+                                    argument_expression,
+                                    invocation_target,
+                                );
+                            }
                         }
                     }
                 }
@@ -2712,6 +2789,7 @@ fn validate_keyed_array_elements<'ctx, 'arena, A>(
                 calling_class_like_metadata,
                 calling_instance_type,
                 method_class_type,
+                true,
             );
 
             let final_parameter_type = resolve_parameter_type_for_invocation(
@@ -2739,7 +2817,8 @@ fn validate_keyed_array_elements<'ctx, 'arena, A>(
                 .parameter_count()
                 .checked_sub(1)
                 .and_then(|idx| invocation_target.get_parameter(idx))
-                .is_some_and(|parameter| parameter.is_variadic());
+                .is_some_and(|parameter| parameter.is_variadic())
+                && !invocation_target.get_function_like_metadata().is_some_and(|metadata| metadata.flags.is_built_in());
 
             if !has_variadic_parameter {
                 context.collector.report_with_code(
@@ -3033,4 +3112,34 @@ fn closure_parameter_bounds<A: Arena>(
         context.codebase,
         mago_codex::ttype::template::variance::Variance::Contravariant,
     ))
+}
+
+/// In `callable(I, V): I` the parameter typed like the return is an accumulator: its first value
+/// is not its type on later calls, so the closure keeps its own declared type for it.
+fn drop_accumulator_parameter_hints(base_parameter_type: &TUnion, parameter_type: &mut TUnion) {
+    for (base_atomic, atomic) in base_parameter_type.types.iter().zip(parameter_type.types.to_mut().iter_mut()) {
+        let (
+            TAtomic::Callable(TCallable::Signature(base_signature)),
+            TAtomic::Callable(TCallable::Signature(signature)),
+        ) = (base_atomic, atomic)
+        else {
+            continue;
+        };
+
+        let Some(base_return_type) = base_signature.get_return_type() else {
+            continue;
+        };
+
+        if !base_return_type.is_single() || !matches!(base_return_type.get_single(), TAtomic::GenericParameter(_)) {
+            continue;
+        }
+
+        for (index, base_parameter) in base_signature.get_parameters().iter().enumerate() {
+            if base_parameter.get_type_signature() == Some(base_return_type)
+                && let Some(parameter) = signature.get_parameters_mut().get_mut(index)
+            {
+                *parameter = parameter.clone().with_type_signature(None);
+            }
+        }
+    }
 }

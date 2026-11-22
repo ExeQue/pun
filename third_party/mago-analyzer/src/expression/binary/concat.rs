@@ -487,7 +487,7 @@ fn fold_concat_operands(operands: &[&Expression<'_>], artifacts: &AnalysisArtifa
     }
 
     if current_strings.iter().all(|s| !s.is_literal_origin()) {
-        let is_non_empty = current_strings.iter().any(|s| s.is_non_empty);
+        let is_non_empty = current_strings.iter().all(|s| s.is_non_empty);
         let is_truthy = current_strings.iter().all(|s| s.is_truthy);
         let casing = TStringCasing::from_guarantees(
             current_strings.iter().all(|s| s.is_lowercase()),
@@ -507,8 +507,10 @@ fn concat_string_lists(left_strings: Vec<TString>, right_strings: &[TString], th
         left_strings.iter().any(|s| s.literal.is_some()) || right_strings.iter().any(|s| s.literal.is_some());
 
     if !has_literals || left_strings.len().saturating_mul(right_strings.len()) > threshold as usize {
-        let is_non_empty = left_strings.iter().any(|s| s.is_non_empty) || right_strings.iter().any(|s| s.is_non_empty);
-        let is_truthy = (left_strings.iter().all(|s| s.is_non_empty) && right_strings.iter().all(|s| s.is_non_empty))
+        let left_is_non_empty = left_strings.iter().all(|s| s.is_non_empty);
+        let right_is_non_empty = right_strings.iter().all(|s| s.is_non_empty);
+        let is_non_empty = left_is_non_empty || right_is_non_empty;
+        let is_truthy = (left_is_non_empty && right_is_non_empty)
             || left_strings.iter().all(|s| s.is_truthy)
             || right_strings.iter().all(|s| s.is_truthy);
         let casing = TStringCasing::from_guarantees(
@@ -524,9 +526,9 @@ fn concat_string_lists(left_strings: Vec<TString>, right_strings: &[TString], th
         for right_string in right_strings {
             let mut resulting_string = TString::general();
             resulting_string.is_non_empty = left_string.is_non_empty || right_string.is_non_empty;
-            resulting_string.is_truthy = (left_string.is_non_empty && right_string.is_non_empty)
-                || left_string.is_truthy
-                || right_string.is_truthy;
+            resulting_string.is_truthy = left_string.is_truthy
+                || right_string.is_truthy
+                || (left_string.is_non_empty && right_string.is_non_empty);
             resulting_string.casing = left_string.casing.join(right_string.casing);
             resulting_string.literal = match (&left_string.literal, &right_string.literal) {
                 (Some(TStringLiteral::Value(left_literal)), Some(TStringLiteral::Value(right_literal))) => {
@@ -546,7 +548,7 @@ fn concat_string_lists(left_strings: Vec<TString>, right_strings: &[TString], th
 }
 
 #[inline]
-fn get_operand_strings(operand_type: &TUnion) -> Vec<TString> {
+pub(crate) fn get_operand_strings(operand_type: &TUnion) -> Vec<TString> {
     let mut operand_strings = vec![];
 
     for operand_atomic_type in operand_type.types.as_ref() {
@@ -589,6 +591,10 @@ fn get_operand_strings(operand_type: &TUnion) -> Vec<TString> {
             TScalar::Integer(tint) => {
                 if let Some(v) = tint.get_literal_value() {
                     operand_strings.push(TString::known_literal(i64_word(v)));
+                } else if let (Some(from), Some(to)) = tint.get_bounds()
+                    && to.checked_sub(from).is_some_and(|span| (0..10).contains(&span))
+                {
+                    operand_strings.extend((from..=to).map(|v| TString::known_literal(i64_word(v))));
                 } else {
                     operand_strings.push(TString::general_with_props(
                         true,

@@ -1,6 +1,5 @@
 //! `parse_url()` return type provider.
 
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -12,6 +11,7 @@ use mago_codex::ttype::atomic::scalar::int::TInteger;
 use mago_codex::ttype::atomic::scalar::string::TString;
 use mago_codex::ttype::get_int_range;
 use mago_codex::ttype::get_non_empty_string;
+use mago_codex::ttype::get_string;
 use mago_codex::ttype::union::TUnion;
 use mago_word::Word;
 
@@ -158,10 +158,13 @@ fn get_component_return_type(component: i64) -> TUnion {
     let false_type = TAtomic::Scalar(TScalar::Bool(TBool::r#false()));
 
     match component {
-        PHP_URL_SCHEME | PHP_URL_HOST | PHP_URL_USER | PHP_URL_PASS | PHP_URL_PATH | PHP_URL_QUERY
-        | PHP_URL_FRAGMENT => {
+        PHP_URL_SCHEME | PHP_URL_HOST => {
             // false|null|non-empty-string
             TUnion::from_vec(vec![false_type, TAtomic::Null, TAtomic::Scalar(TScalar::String(TString::non_empty()))])
+        }
+        PHP_URL_PATH | PHP_URL_USER | PHP_URL_PASS | PHP_URL_QUERY | PHP_URL_FRAGMENT => {
+            // false|null|string: these may be present but empty (e.g. `https://example.com/?`, or `''` for the path)
+            TUnion::from_vec(vec![false_type, TAtomic::Null, TAtomic::Scalar(TScalar::String(TString::general()))])
         }
         PHP_URL_PORT => {
             // false|null|int<0, 65535>
@@ -193,11 +196,16 @@ fn get_all_components_return_type() -> TUnion {
 
 /// Returns the full array type when no component is specified.
 fn get_full_array_return_type() -> TUnion {
-    // PHPStan's componentTypesPairedStrings order
+    // PHPStan's componentTypesPairedStrings order. Path, user, pass, query and fragment may be present but empty
+    // (e.g. `https://example.com/?`, or `''` for the path).
     let known_items: KnownItems = ["scheme", "host", "port", "user", "pass", "path", "query", "fragment"]
         .into_iter()
         .map(|field| {
-            let value = if field == "port" { get_int_range(Some(0), Some(0xFFFF)) } else { get_non_empty_string() };
+            let value = match field {
+                "port" => get_int_range(Some(0), Some(0xFFFF)),
+                "scheme" | "host" => get_non_empty_string(),
+                _ => get_string(),
+            };
             (ArrayKey::String(Word::from(field)), (true, value))
         })
         .collect();

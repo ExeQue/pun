@@ -447,8 +447,9 @@ where
 
     let mut apply_assertions = |assertions: &AssertionSet| {
         for clause in assertions {
+            let mut narrowed_type = None;
             for assertion in clause {
-                return_type = assertion_reconciler::reconcile(
+                let candidate = assertion_reconciler::reconcile(
                     context,
                     assertion,
                     Some(&return_type),
@@ -458,6 +459,12 @@ where
                     false,
                     false,
                 );
+
+                narrowed_type = Some(add_optional_union_type(candidate, narrowed_type.as_ref(), context.codebase));
+            }
+
+            if let Some(narrowed_type) = narrowed_type {
+                return_type = narrowed_type;
             }
         }
     };
@@ -599,7 +606,7 @@ where
         return None;
     };
 
-    if !metadata.is_available_in_version(context.settings.version) {
+    if !skip_error_on_not_found && !metadata.is_available_in_version(context.settings.version) {
         let display_name = display_function_like_identifier(context, &identifier);
         match identifier {
             FunctionLikeIdentifier::Function(_) => {

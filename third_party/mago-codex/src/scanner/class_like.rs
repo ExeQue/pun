@@ -825,7 +825,7 @@ where
 
             class_like_metadata.require_extends.insert(required_name.to_ascii_lowercase());
             if let Some(required_params) = required_params {
-                class_like_metadata.add_template_extended_offset(required_name, required_params);
+                class_like_metadata.add_template_extended_offset(required_name.to_ascii_lowercase(), required_params);
             }
         }
 
@@ -907,19 +907,22 @@ where
 
             class_like_metadata.require_implements.insert(required_name.to_ascii_lowercase());
             if let Some(required_parameters) = required_parameters {
-                class_like_metadata.add_template_extended_offset(required_name, required_parameters);
+                class_like_metadata
+                    .add_template_extended_offset(required_name.to_ascii_lowercase(), required_parameters);
             }
         }
 
-        let mut inheritors = None;
+        let mut inheritors_type = None;
         for tag in document.tags() {
-            if let TagValue::Inheritors(inheritors_tag) = &tag.value {
-                inheritors = Some(*inheritors_tag);
+            match &tag.value {
+                TagValue::Inheritors(inheritors_tag) => inheritors_type = Some(inheritors_tag.r#type),
+                TagValue::Sealed(sealed_tag) => inheritors_type = Some(sealed_tag.r#type),
+                _ => {}
             }
         }
 
-        if let Some(inheritors) = inheritors {
-            match builder::get_union_from_type(inheritors.r#type, scope, &type_context, Some(original_name)) {
+        if let Some(inheritors_type) = inheritors_type {
+            match builder::get_union_from_type(inheritors_type, scope, &type_context, Some(original_name)) {
                 Ok(inheritors_union) => {
                     for inheritor in inheritors_union.types.as_ref() {
                         match inheritor {
@@ -934,7 +937,7 @@ where
                                     Issue::error("The `@inheritors` tag only accepts class, interface, or enum names.")
                                         .with_code(ScanningIssueKind::InvalidInheritorsTag)
                                         .with_annotation(
-                                            Annotation::primary(inheritors.r#type.span())
+                                            Annotation::primary(inheritors_type.span())
                                                 .with_message("This type is not a simple class-like name."),
                                         ),
                                 );
@@ -971,12 +974,23 @@ where
             }
         }
 
+        let mut method_tags = Vec::new();
+        let mut last_method_tags = WordMap::default();
         for tag in document.tags() {
             let TagValue::Method(method_tag) = &tag.value else {
                 continue;
             };
 
             let method_name = ascii_lowercase_word(method_tag.name.value);
+            method_tags.push(method_name);
+            last_method_tags.insert(method_name, method_tag);
+        }
+
+        for method_name in method_tags {
+            let Some(method_tag) = last_method_tags.remove(&method_name) else {
+                continue;
+            };
+
             class_like_metadata.methods.insert(method_name);
             class_like_metadata.pseudo_methods.insert(method_name);
             class_like_metadata
@@ -1522,7 +1536,7 @@ fn create_enum_methods(codebase: &mut CodebaseMetadata, class_like: &mut ClassLi
             codebase.function_likes.insert(method_id, Box::new(function_like_metadata));
         };
 
-    let enum_name_word = class_like.name;
+    let enum_name_word = class_like.original_name;
     let backing_type = class_like.enum_type.clone();
 
     if let Some(backing_type) = backing_type {

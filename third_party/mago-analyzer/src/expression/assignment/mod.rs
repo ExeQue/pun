@@ -7,14 +7,20 @@ use mago_algebra::clause::Clause;
 use mago_algebra::disjoin_clauses;
 use mago_codex::assertion::Assertion;
 use mago_codex::identifier::function_like::FunctionLikeIdentifier;
+use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
 use mago_codex::ttype::atomic::callable::TCallable;
+use mago_codex::ttype::atomic::derived::TDerived;
+use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
+use mago_codex::ttype::combine_union_types;
+use mago_codex::ttype::combiner::CombinerOptions;
 use mago_codex::ttype::comparator::ComparisonResult;
 use mago_codex::ttype::comparator::union_comparator;
+use mago_codex::ttype::get_array_value_parameter;
 use mago_codex::ttype::get_literal_int;
 use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::get_never;
@@ -36,6 +42,7 @@ use mago_syntax::cst::Construct;
 use mago_syntax::cst::Expression;
 use mago_syntax::cst::Literal;
 use mago_syntax::cst::LocalIdentifier;
+use mago_syntax::cst::StaticPropertyAccess;
 use mago_syntax::cst::StringPart;
 use mago_syntax::cst::UnaryPrefix;
 use mago_syntax::cst::UnaryPrefixOperator;
@@ -43,6 +50,7 @@ use mago_syntax::cst::Variable;
 use mago_syntax::walker::MutWalker;
 use mago_word::Word;
 use mago_word::WordSet;
+use mago_word::concat_word;
 use mago_word::word;
 
 use crate::analyzable::Analyzable;
@@ -52,6 +60,7 @@ use crate::artifacts::ExpressionResult;
 use crate::code::IssueCode;
 use crate::context::Context;
 use crate::context::block::BlockContext;
+use crate::context::block::ReferenceConstraint;
 use crate::context::block::ReferenceConstraintSource;
 use crate::context::block::VariableState;
 use crate::context::scope::var_has_root;
@@ -59,13 +68,16 @@ use crate::context::scope::var_references_dynamic;
 use crate::error::AnalysisError;
 use crate::expression::find_expression_logic_issues;
 use crate::formula::get_formula;
+use crate::formula::negate_or_synthesize;
+use crate::resolver::function::is_builtin_function_call;
 use crate::utils::docblock::check_docblock_type_incompatibility;
 use crate::utils::docblock::get_type_from_var_docblock;
 use crate::utils::expression::array::get_array_target_type_given_index;
 use crate::utils::expression::expression_has_logic;
+use crate::utils::expression::get_access_base_expressions;
 use crate::utils::expression::get_block_expression_id;
+use crate::utils::expression::get_expression_id;
 use crate::utils::expression::get_non_nullsafe_expression_id;
-use crate::utils::expression::get_nullsafe_base_expressions;
 use crate::utils::expression::get_root_expression_id;
 use crate::utils::expression::variable::get_variables_referenced_in_expression;
 use crate::utils::misc::unwrap_expression;
@@ -361,8 +373,13 @@ where
         ternary_assignment_conditions(context, block_context, artifacts, conditional, target, &mut pending_conditions);
     }
 
+    let existing_target_type =
+        existing_target_type.or_else(|| target_variable_id.and_then(|id| block_context.locals.get(&id).cloned()));
     if let (Some(target_variable_id), Some(existing_target_type)) = (&target_variable_id, &existing_target_type) {
         block_context.remove_descendants(context, *target_variable_id, existing_target_type, Some(&source_type));
+        if matches!(target_expression, Expression::Access(Access::Property(_))) {
+            block_context.locals.insert(*target_variable_id, Rc::clone(existing_target_type));
+        }
     } else {
         let root_var_id = get_root_expression_id(target_expression);
 
@@ -430,7 +447,7 @@ where
         && let (Some(target_variable_id), Some(source_expression)) = (target_variable_id, source_expression)
         && matches!(target_expression, Expression::Variable(_))
     {
-        add_nullsafe_assignment_clauses(target_variable_id, source_expression, context, block_context);
+        add_access_assignment_clauses(target_variable_id, source_expression, context, block_context, artifacts);
         block_context.install_assignment_conditions(pending_conditions);
     }
 
@@ -500,15 +517,16 @@ fn derived_assignment_rhs_is_pure<'arena, A: Arena>(
     purity.pure
 }
 
-fn add_nullsafe_assignment_clauses<'ctx, 'arena, A>(
+fn add_access_assignment_clauses<'ctx, 'arena, A>(
     target_variable_id: Word,
     source_expression: &Expression<'arena>,
     context: &Context<'ctx, 'arena, A>,
     block_context: &mut BlockContext<'ctx>,
+    artifacts: &AnalysisArtifacts,
 ) where
     A: Arena,
 {
-    for base in get_nullsafe_base_expressions(source_expression) {
+    for base in get_access_base_expressions(source_expression, artifacts) {
         let Some(base_id) = get_block_expression_id(base, context, block_context) else {
             continue;
         };
@@ -559,27 +577,17 @@ where
             Rc::make_mut(&mut source_type).set_by_reference(source_expression.is_reference());
         }
 
-        analyze_reference_assignment(context, block_context, target_expression, source_expression);
+        analyze_reference_assignment(
+            context,
+            block_context,
+            artifacts,
+            target_expression,
+            source_expression,
+            &source_type,
+        )?;
     }
 
-    if let Some(root) = get_root_expression_id(target_expression) {
-        let belongs_to_root =
-            |key: &Word| key.as_bytes().strip_prefix(root.as_bytes()).is_some_and(|suffix| suffix.starts_with(b"->"));
-
-        block_context.stable_method_call_assertions.retain(|key, _| !belongs_to_root(key));
-        block_context.stable_method_calls.retain(|key| !belongs_to_root(key));
-        block_context.clauses.retain(|clause| !clause.possibilities.keys().any(belongs_to_root));
-        block_context.reconciled_expression_clauses.retain(|clause| !clause.possibilities.keys().any(belongs_to_root));
-    } else if !matches!(target_expression, Expression::Variable(_)) {
-        block_context.stable_method_call_assertions.clear();
-        block_context.stable_method_calls.clear();
-        block_context.clauses.retain(|clause| {
-            !clause.possibilities.keys().any(|key| memchr::memmem::find(key.as_bytes(), b"()").is_some())
-        });
-        block_context.reconciled_expression_clauses.retain(|clause| {
-            !clause.possibilities.keys().any(|key| memchr::memmem::find(key.as_bytes(), b"()").is_some())
-        });
-    }
+    forget_stable_method_results(block_context, target_expression);
 
     // Assign/AssignRef (including array-root writes) create PHPStan's marker;
     // compound and increment writes do not. This is separate from readonly's write kind.
@@ -645,6 +653,12 @@ where
                 false,
             )?;
         }
+        Expression::Variable(Variable::Indirect(indirect)) => {
+            indirect.expression.analyze(context, block_context, artifacts)?;
+        }
+        Expression::Variable(Variable::Nested(nested)) => {
+            nested.variable.analyze(context, block_context, artifacts)?;
+        }
         _ => {
             return Ok(false);
         }
@@ -653,12 +667,37 @@ where
     Ok(true)
 }
 
+/// Forgets the remembered results of mutation-free method calls that a write to `target_expression` may change.
+pub(crate) fn forget_stable_method_results(block_context: &mut BlockContext<'_>, target_expression: &Expression<'_>) {
+    if let Some(root) = get_root_expression_id(target_expression) {
+        let belongs_to_root =
+            |key: &Word| key.as_bytes().strip_prefix(root.as_bytes()).is_some_and(|suffix| suffix.starts_with(b"->"));
+
+        block_context.stable_method_call_assertions.retain(|key, _| !belongs_to_root(key));
+        block_context.stable_method_calls.retain(|key| !belongs_to_root(key));
+        block_context.clauses.retain(|clause| !clause.possibilities.keys().any(belongs_to_root));
+        block_context.reconciled_expression_clauses.retain(|clause| !clause.possibilities.keys().any(belongs_to_root));
+    } else if !matches!(target_expression, Expression::Variable(_)) {
+        block_context.stable_method_call_assertions.clear();
+        block_context.stable_method_calls.clear();
+        block_context.clauses.retain(|clause| {
+            !clause.possibilities.keys().any(|key| memchr::memmem::find(key.as_bytes(), b"()").is_some())
+        });
+        block_context.reconciled_expression_clauses.retain(|clause| {
+            !clause.possibilities.keys().any(|key| memchr::memmem::find(key.as_bytes(), b"()").is_some())
+        });
+    }
+}
+
 fn analyze_reference_assignment<'ctx, 'ast, 'arena, A>(
-    context: &Context<'ctx, 'arena, A>,
+    context: &mut Context<'ctx, 'arena, A>,
     block_context: &mut BlockContext<'ctx>,
+    artifacts: &mut AnalysisArtifacts,
     target_expression: &'ast Expression<'arena>,
     source_expression: &'ast Expression<'arena>,
-) where
+    source_type: &Rc<TUnion>,
+) -> Result<(), AnalysisError>
+where
     A: Arena,
 {
     let Expression::UnaryPrefix(UnaryPrefix {
@@ -666,16 +705,66 @@ fn analyze_reference_assignment<'ctx, 'ast, 'arena, A>(
         operand: referenced_expression,
     }) = source_expression
     else {
-        return;
+        return Ok(());
     };
 
     let target_variable_id = get_block_expression_id(target_expression, context, block_context);
     let referenced_variable_id = get_block_expression_id(referenced_expression, context, block_context);
     let (Some(target_variable_id), Some(referenced_variable_id)) = (target_variable_id, referenced_variable_id) else {
-        return;
+        return Ok(());
     };
 
-    block_context.locals.entry(referenced_variable_id).or_insert_with(|| Rc::new(get_mixed()));
+    let is_writable_access = match referenced_expression {
+        Expression::ArrayAccess(array_access) => {
+            artifacts.get_expression_type(array_access.array).is_some_and(|ty| !ty.has_object_type())
+        }
+        Expression::Access(Access::Property(property_access)) => artifacts
+            .get_expression_type(property_access.object)
+            .is_some_and(|object_type| object_type.types.iter().all(TAtomic::is_object_type)),
+        Expression::Access(Access::StaticProperty(_)) => true,
+        _ => false,
+    };
+
+    if is_writable_access && get_root_expression_id(referenced_expression) != Some(target_variable_id) {
+        let created_null = source_type.is_nullable()
+            && match referenced_expression {
+                Expression::ArrayAccess(array_access) => {
+                    artifacts.get_expression_type(array_access.array).is_some_and(|container| {
+                        container.types.iter().all(|atomic| match atomic {
+                            TAtomic::Array(array) => !get_array_value_parameter(array, context.codebase).has_null(),
+                            _ => false,
+                        })
+                    })
+                }
+                _ => false,
+            };
+
+        assign_to_expression(
+            context,
+            block_context,
+            artifacts,
+            referenced_expression,
+            Some(referenced_variable_id),
+            None,
+            if created_null { Rc::new(source_type.to_non_nullable()) } else { Rc::clone(source_type) },
+            false,
+            PropertyWriteKind::Mutation,
+        )?;
+    }
+
+    block_context.locals.entry(referenced_variable_id).or_insert_with(|| Rc::clone(source_type));
+
+    block_context.by_reference_constraints.remove(&target_variable_id);
+    if let Some(property_type) = get_referenced_property_native_type(context, artifacts, referenced_expression) {
+        block_context.by_reference_constraints.insert(
+            target_variable_id,
+            ReferenceConstraint::new(
+                referenced_expression.span(),
+                ReferenceConstraintSource::Property,
+                Some(Rc::new(property_type)),
+            ),
+        );
+    }
 
     if block_context.references_in_scope.contains_key(&target_variable_id) {
         block_context.decrement_reference_count(target_variable_id.as_bytes());
@@ -690,6 +779,59 @@ fn analyze_reference_assignment<'ctx, 'ast, 'arena, A>(
     if memchr::memchr(b'[', referenced_bytes).is_some() || memchr::memmem::find(referenced_bytes, b"->").is_some() {
         block_context.references_to_external_scope.insert(target_variable_id);
     }
+
+    Ok(())
+}
+
+/// The native type PHP enforces on a property a reference is bound to, when every class the
+/// object may be declares the same one.
+fn get_referenced_property_native_type<A>(
+    context: &Context<'_, '_, A>,
+    artifacts: &AnalysisArtifacts,
+    referenced_expression: &Expression<'_>,
+) -> Option<TUnion>
+where
+    A: Arena,
+{
+    let (class_names, property_name): (Vec<Word>, &[u8]) = match referenced_expression {
+        Expression::Access(Access::Property(property_access)) => {
+            let ClassLikeMemberSelector::Identifier(property) = &property_access.property else {
+                return None;
+            };
+
+            let object_type = artifacts.get_expression_type(property_access.object)?;
+            let class_names = object_type
+                .types
+                .iter()
+                .map(|atomic| match atomic {
+                    TAtomic::Object(TObject::Named(named)) => Some(named.name),
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?;
+
+            (class_names, property.value)
+        }
+        Expression::Access(Access::StaticProperty(StaticPropertyAccess {
+            class: Expression::Identifier(class),
+            property: Variable::Direct(property),
+            ..
+        })) => (vec![Word::from(context.resolved_names.get(class))], &property.name[1..]),
+        _ => return None,
+    };
+
+    let mut property_type: Option<TUnion> = None;
+    for class_name in class_names {
+        let property =
+            context.codebase.get_declaring_property(class_name.as_bytes(), &[b"$", property_name].concat())?;
+        let declared = &property.type_declaration_metadata.as_ref()?.type_union;
+        match &property_type {
+            Some(existing) if existing != declared => return None,
+            Some(_) => {}
+            None => property_type = Some(declared.clone()),
+        }
+    }
+
+    property_type.filter(|property_type| !property_type.is_mixed())
 }
 
 pub fn analyze_assignment_to_variable<'ctx, 'arena, A>(
@@ -704,6 +846,10 @@ pub fn analyze_assignment_to_variable<'ctx, 'arena, A>(
 ) where
     A: Arena,
 {
+    if let Some(existing_type) = block_context.locals.get(&variable_id).cloned() {
+        block_context.remove_descendants(context, variable_id, &existing_type, Some(&assigned_type));
+    }
+
     if let Some(constraint) = block_context.by_reference_constraints.get(&variable_id) {
         if let Some(constraint_type) = constraint.constraint_type.as_ref()
             && !union_comparator::is_contained_by(
@@ -772,6 +918,21 @@ pub fn analyze_assignment_to_variable<'ctx, 'arena, A>(
                         "Ensure the assigned value is compatible with the `{constraint_type_str}` type.",
                     ))
                 },
+                ReferenceConstraintSource::Property => {
+                    Issue::error(format!(
+                        "Invalid assignment to `{variable_id}`, a reference to a typed property.",
+                    ))
+                    .with_annotation(Annotation::primary(primary_error_span).with_message(format!(
+                        "This value of type `{assigned_type_str}` is not compatible with the property type `{constraint_type_str}`.",
+                    )))
+                    .with_annotation(Annotation::secondary(constraint.constraint_span).with_message(
+                        "The reference is bound to this property here.",
+                    ))
+                    .with_note("PHP checks every write through the reference against the property type and throws a `TypeError`.")
+                    .with_help(format!(
+                        "Ensure the assigned value is compatible with the `{constraint_type_str}` type.",
+                    ))
+                },
                 ReferenceConstraintSource::Global => {
                     Issue::error(format!(
                         "Invalid assignment to constrained global variable `{variable_id}`.",
@@ -797,6 +958,10 @@ pub fn analyze_assignment_to_variable<'ctx, 'arena, A>(
         if !assigned_type.by_reference() {
             Rc::make_mut(&mut assigned_type).set_by_reference(true);
         }
+    }
+
+    if assigned_type.has_nullsafe_null() {
+        Rc::make_mut(&mut assigned_type).set_nullsafe_null(false);
     }
 
     if block_context.references_possibly_from_confusing_scope.contains(&variable_id) {
@@ -879,16 +1044,7 @@ pub fn analyze_assignment_to_variable<'ctx, 'arena, A>(
     if !from_docblock
         && assigned_type.is_bool()
         && let Some(source_expression) = source_expression
-        && match unwrap_expression(source_expression) {
-            Expression::Binary(_) => true,
-            Expression::Call(call) => {
-                let span = call.span();
-                let range = (span.start.offset, span.end.offset);
-
-                artifacts.if_true_assertions.contains_key(&range) || artifacts.if_false_assertions.contains_key(&range)
-            }
-            _ => false,
-        }
+        && is_boolean_logic(source_expression, artifacts)
     {
         handle_assignment_with_boolean_logic(
             context,
@@ -903,6 +1059,9 @@ pub fn analyze_assignment_to_variable<'ctx, 'arena, A>(
     block_context.locals.retain(|var_id, _| !var_references_dynamic(*var_id, variable_id));
     block_context.derived_local_sources.remove(&variable_id);
     block_context.possibly_undefined_variable_ids.remove(&variable_id);
+    block_context.class_string_sources.retain(|holder, source| {
+        *holder != variable_id && !var_has_root(*source, variable_id) && !var_references_dynamic(*source, variable_id)
+    });
 
     // The source may be an optional offset or a conditional local, but this write defines its target.
     Rc::make_mut(&mut assigned_type).set_possibly_undefined(false, None);
@@ -936,6 +1095,63 @@ pub fn analyze_assignment_to_variable<'ctx, 'arena, A>(
     block_context.invalidate_variable_certainty(variable_id);
     block_context.locals.insert(variable_id, assigned_type);
     block_context.variables_possibly_in_scope.insert(variable_id);
+
+    if let Some(source) = source_expression
+        && let Expression::Call(Call::Function(function_call)) = unwrap_expression(source)
+        && function_call.argument_list.arguments.len() == 1
+        && let Some(argument) = function_call.argument_list.arguments.first()
+    {
+        let is_get_class =
+            is_builtin_function_call(function_call, b"get_class", context.resolved_names, context.codebase);
+        let is_key_lookup = !is_get_class
+            && (is_builtin_function_call(function_call, b"array_key_first", context.resolved_names, context.codebase)
+                || is_builtin_function_call(
+                    function_call,
+                    b"array_key_last",
+                    context.resolved_names,
+                    context.codebase,
+                ));
+
+        if (is_get_class || is_key_lookup)
+            && let Some(source_id) = get_expression_id(
+                argument.value(),
+                block_context.scope.get_class_like_name(),
+                context.resolved_names,
+                Some(context.codebase),
+            )
+            && variable_id != source_id
+        {
+            if is_get_class {
+                block_context.class_string_sources.insert(variable_id, source_id);
+            } else if let Some(array_type) = block_context.locals.get(&source_id)
+                && let Some(value_type) = get_array_union_value_type(array_type, context.codebase)
+            {
+                block_context.locals.insert(
+                    concat_word!(source_id.as_bytes(), b"[", variable_id.as_bytes(), b"]"),
+                    Rc::new(value_type),
+                );
+            }
+        }
+    }
+}
+
+fn get_array_union_value_type(array_type: &TUnion, codebase: &CodebaseMetadata) -> Option<TUnion> {
+    let mut value_type: Option<TUnion> = None;
+    for atomic in array_type.types.iter() {
+        let TAtomic::Array(array) = atomic else {
+            return None;
+        };
+
+        let array_value_type = get_array_value_parameter(array, codebase);
+        value_type = Some(match value_type {
+            Some(value_type) => {
+                combine_union_types(&value_type, &array_value_type, codebase, CombinerOptions::default())
+            }
+            None => array_value_type,
+        });
+    }
+
+    value_type.filter(|value_type| !value_type.is_never())
 }
 
 fn analyze_destructuring<'ctx, 'ast, 'arena, A>(
@@ -959,10 +1175,12 @@ where
     let non_nullable_type = if source_has_null { Some(array_type.to_non_nullable()) } else { None };
     let destructure_type: &TUnion = non_nullable_type.as_ref().unwrap_or(array_type);
 
-    let can_be_destructured = destructure_type
-        .types
-        .iter()
-        .all(|atomic| atomic.is_array() || atomic.extends_or_implements(context.codebase, b"ArrayAccess"));
+    let is_destructurable =
+        |atomic: &TAtomic| atomic.is_array() || atomic.extends_or_implements(context.codebase, b"ArrayAccess");
+    let can_be_destructured = destructure_type.types.iter().all(|atomic| {
+        is_destructurable(atomic)
+            || matches!(atomic, TAtomic::Derived(TDerived::Intersection(intersection)) if intersection.get_base_type().types.iter().all(is_destructurable))
+    });
 
     if array_type.is_null() {
         let mut issue = Issue::error("Destructuring a `null` value.".to_string());
@@ -1649,6 +1867,25 @@ fn prepare_assignment_operand<'ctx, 'arena, A: Arena>(
     result
 }
 
+fn is_boolean_logic(expression: &Expression<'_>, artifacts: &AnalysisArtifacts) -> bool {
+    match unwrap_expression(expression) {
+        Expression::Binary(_) => true,
+        Expression::UnaryPrefix(UnaryPrefix { operator: UnaryPrefixOperator::Not(_), operand }) => {
+            is_boolean_logic(operand, artifacts)
+        }
+        Expression::Assignment(assignment) if matches!(assignment.operator, AssignmentOperator::Assign(_)) => {
+            is_boolean_logic(assignment.rhs, artifacts)
+        }
+        Expression::Call(call) => {
+            let span = call.span();
+            let range = (span.start.offset, span.end.offset);
+
+            artifacts.if_true_assertions.contains_key(&range) || artifacts.if_false_assertions.contains_key(&range)
+        }
+        _ => false,
+    }
+}
+
 fn handle_assignment_with_boolean_logic<'ctx, 'arena, A>(
     context: &mut Context<'ctx, 'arena, A>,
     block_context: &mut BlockContext<'ctx>,
@@ -1679,6 +1916,18 @@ fn handle_assignment_with_boolean_logic<'ctx, 'arena, A>(
         return;
     }
 
+    let right_clauses = right_clauses.into_iter().map(Rc::unwrap_or_clone).collect::<Vec<_>>();
+    let negated_clauses = negate_or_synthesize(
+        &right_clauses,
+        source_expression,
+        context.get_assertion_context_from_block(block_context),
+        artifacts,
+        &context.settings.algebra_thresholds(),
+        context.settings.formula_size_threshold,
+    );
+    let negated_clauses =
+        BlockContext::filter_clauses(context, variable_id, negated_clauses.into_iter().map(Rc::new).collect(), None);
+
     let mut covered_variable_ids: WordSet = WordSet::default();
     covered_variable_ids.insert(variable_id);
     for clause in &right_clauses {
@@ -1689,19 +1938,28 @@ fn handle_assignment_with_boolean_logic<'ctx, 'arena, A>(
 
     block_context.parent_conflicting_clause_variables.retain(|var| !covered_variable_ids.contains(var));
 
-    let mut possibilities = AssertionMap::default();
-    possibilities.insert(variable_id, AssertionMap::from_iter([(Assertion::Falsy.to_hash(), Assertion::Falsy)]));
+    for (assertion, clauses) in [
+        (Assertion::Falsy, right_clauses),
+        (Assertion::Truthy, negated_clauses.into_iter().map(Rc::unwrap_or_clone).collect()),
+    ] {
+        if clauses.is_empty() {
+            continue;
+        }
 
-    block_context.clauses.extend(
-        disjoin_clauses(
-            vec![Clause::new(possibilities, variable_expression_id, variable_expression_id, None, None, None)],
-            right_clauses.into_iter().map(|v| (*v).clone()).collect(),
-            source_expression.span(),
-            &context.settings.algebra_thresholds(),
-        )
-        .into_iter()
-        .map(Rc::new),
-    );
+        let mut possibilities = AssertionMap::default();
+        possibilities.insert(variable_id, AssertionMap::from_iter([(assertion.to_hash(), assertion)]));
+
+        block_context.clauses.extend(
+            disjoin_clauses(
+                vec![Clause::new(possibilities, variable_expression_id, variable_expression_id, None, None, None)],
+                clauses,
+                source_expression.span(),
+                &context.settings.algebra_thresholds(),
+            )
+            .into_iter()
+            .map(Rc::new),
+        );
+    }
 }
 
 /// Pun: AssignHandler's ternary sure types. The part of an arm's type the other arm cannot produce proves that arm
@@ -1760,7 +2018,7 @@ fn ternary_assignment_conditions<'ctx, 'arena, A>(
         };
         if !truthy {
             clauses = crate::formula::negate_or_synthesize(
-                clauses,
+                &clauses,
                 conditional.condition,
                 context.get_assertion_context_from_block(block_context),
                 artifacts,

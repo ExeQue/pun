@@ -572,6 +572,26 @@ fn scrape_type_properties(
         return;
     }
 
+    if let TAtomic::GenericParameter(parameter) = &atomic
+        && let Some(existing) = combination.value_types.values_mut().find_map(|existing| match existing {
+            TAtomic::GenericParameter(existing)
+                if existing.parameter_name == parameter.parameter_name
+                    && existing.defining_entity == parameter.defining_entity
+                    && existing.intersection_types == parameter.intersection_types =>
+            {
+                Some(existing)
+            }
+            _ => None,
+        })
+    {
+        if existing.constraint != parameter.constraint {
+            existing.constraint =
+                Arc::new(combine_union_types(&existing.constraint, &parameter.constraint, codebase, options));
+        }
+
+        return;
+    }
+
     if let TAtomic::Mixed(ref mixed) = atomic {
         if mixed.is_isset_from_loop() {
             if combination.flags.contains(CombinationFlags::GENERIC_MIXED) {
@@ -615,15 +635,13 @@ fn scrape_type_properties(
                 return;
             }
 
-            let has_non_truthy = combination.value_types.values().any(|v| !v.is_truthy())
-                || combination.literal_strings.iter().any(|s| s.is_empty() || s.as_bytes() == b"0");
+            let has_non_truthy = combination.value_types.values().any(|v| !v.is_truthy() && !v.is_never())
+                || combination.literal_strings.iter().any(|s| s.is_empty() || s.as_bytes() == b"0")
+                || combination.integers.iter().any(|integer| !TAtomic::Scalar(TScalar::Integer(*integer)).is_truthy())
+                || combination.literal_floats.iter().any(|float| float.0 == 0.0)
+                || has_array_or_derived_types(combination);
 
-            if has_non_truthy {
-                combination.flags.insert(CombinationFlags::GENERIC_MIXED);
-                return;
-            }
-
-            combination.flags.set_truthy_mixed(Some(true));
+            combination.flags.set_truthy_mixed(Some(!has_non_truthy));
         } else {
             combination.flags.set_truthy_mixed(Some(false));
         }
@@ -646,7 +664,12 @@ fn scrape_type_properties(
             }
 
             let has_non_falsy = combination.value_types.values().any(|v| !v.is_falsy())
-                || combination.literal_strings.iter().any(|s| !s.is_empty() && s.as_bytes() != b"0");
+                || combination.literal_strings.iter().any(|s| !s.is_empty() && s.as_bytes() != b"0")
+                || combination.integers.iter().any(|integer| !TAtomic::Scalar(TScalar::Integer(*integer)).is_falsy())
+                || combination.literal_floats.iter().any(|float| float.0 != 0.0)
+                || !combination.enum_names.is_empty()
+                || !combination.named_objects.is_empty()
+                || has_array_or_derived_types(combination);
 
             if has_non_falsy {
                 combination.flags.insert(CombinationFlags::GENERIC_MIXED);
@@ -708,7 +731,7 @@ fn scrape_type_properties(
     }
 
     if combination.flags.nonnull_mixed().unwrap_or(false) {
-        if atomic == TAtomic::Null {
+        if matches!(atomic, TAtomic::Null) {
             combination.flags.set_nonnull_mixed(Some(false));
             combination.flags.insert(CombinationFlags::GENERIC_MIXED);
         }
@@ -773,11 +796,13 @@ fn scrape_type_properties(
         for array in std::iter::once(array).chain(sealed_arrays) {
             match array {
                 TArray::List(TList { element_type, known_elements, non_empty, known_count: _, .. }) => {
+                    let mut absorbed_empty_array = false;
                     if combination.flags.contains(CombinationFlags::HAS_KEYED_ARRAY)
                         && !combination.flags.contains(CombinationFlags::KEYED_ARRAY_SOMETIMES_FILLED)
                         && combination.keyed_array_parameters.is_none()
                         && combination.keyed_array_entries.is_empty()
                     {
+                        absorbed_empty_array = true;
                         combination.flags.remove(CombinationFlags::HAS_KEYED_ARRAY);
                         combination.flags.remove(CombinationFlags::KEYED_ARRAY_ALWAYS_FILLED);
                         combination.flags.remove(CombinationFlags::LIST_ARRAY_ALWAYS_FILLED);
@@ -793,6 +818,7 @@ fn scrape_type_properties(
                         for (candidate_element_index, (candidate_optional, candidate_element_type)) in
                             Arc::unwrap_or_clone(known_elements)
                         {
+                            let candidate_optional = candidate_optional || absorbed_empty_array;
                             let existing_entry = combination.list_array_entries.get(&candidate_element_index);
 
                             let new_entry = if let Some((existing_optional, existing_type)) = existing_entry {
@@ -1024,6 +1050,10 @@ fn scrape_type_properties(
                             .then(|| known_items.keys().enumerate().map(|(i, key)| (*key, i)).collect());
 
                         for (candidate_item_name, (cu, candidate_item_type)) in known_items {
+                            if !cu {
+                                has_defined_keys = true;
+                            }
+
                             if let Some((eu, existing_type)) =
                                 combination.keyed_array_entries.get_mut(&candidate_item_name)
                             {
@@ -1044,16 +1074,39 @@ fn scrape_type_properties(
                                                 })
                                         })
                                     {
-                                        adjust_keyed_array_parameters(
-                                            existing_value_param,
-                                            &candidate_item_type,
+                                        let earlier_may_hold_key = union_comparator::can_expression_types_be_identical(
                                             codebase,
-                                            options,
-                                            &candidate_item_name,
+                                            &TUnion::from_atomic(candidate_item_name.to_atomic()),
                                             existing_key_param,
+                                            false,
+                                            false,
                                         );
 
-                                        continue;
+                                        let item_type = if earlier_may_hold_key {
+                                            combine_union_types(
+                                                existing_value_param,
+                                                &candidate_item_type,
+                                                codebase,
+                                                options,
+                                            )
+                                        } else {
+                                            candidate_item_type
+                                        };
+
+                                        if &item_type == existing_value_param {
+                                            adjust_keyed_array_parameters(
+                                                existing_value_param,
+                                                &item_type,
+                                                codebase,
+                                                options,
+                                                &candidate_item_name,
+                                                existing_key_param,
+                                            );
+
+                                            continue;
+                                        }
+
+                                        (true, item_type)
                                     } else {
                                         (has_existing_entries || cu, candidate_item_type)
                                     };
@@ -1062,10 +1115,6 @@ fn scrape_type_properties(
                             }
 
                             possibly_undefined_entries.remove(&candidate_item_name);
-
-                            if !cu {
-                                has_defined_keys = true;
-                            }
                         }
 
                         if !has_defined_keys {
@@ -1082,8 +1131,20 @@ fn scrape_type_properties(
                         for possibly_undefined_type_key in possibly_undefined_entries {
                             let possibly_undefined_type =
                                 combination.keyed_array_entries.get_mut(&possibly_undefined_type_key);
-                            if let Some((pu, _)) = possibly_undefined_type {
+                            if let Some((pu, entry_type)) = possibly_undefined_type {
                                 *pu = true;
+
+                                if let Some((key_param, value_param)) = parameters.as_ref()
+                                    && union_comparator::can_expression_types_be_identical(
+                                        codebase,
+                                        &TUnion::from_atomic(possibly_undefined_type_key.to_atomic()),
+                                        key_param,
+                                        false,
+                                        false,
+                                    )
+                                {
+                                    *entry_type = combine_union_types(entry_type, value_param, codebase, options);
+                                }
                             }
                         }
                     } else if !options.overwrite_empty_array {
@@ -1132,7 +1193,7 @@ fn scrape_type_properties(
 
     // this probably won't ever happen, but the object top type
     // can eliminate variants
-    if atomic == TAtomic::Object(TObject::Any) {
+    if matches!(atomic, TAtomic::Object(TObject::Any)) {
         combination.flags.insert(CombinationFlags::HAS_OBJECT_TOP_TYPE);
         combination.named_objects.clear();
         combination.value_types.insert(atomic.get_id(), atomic);
@@ -1268,7 +1329,7 @@ fn scrape_type_properties(
         return;
     }
 
-    if atomic == TAtomic::Scalar(TScalar::Generic) {
+    if matches!(atomic, TAtomic::Scalar(TScalar::Generic)) {
         combination.literal_strings.clear();
         combination.integers.clear();
         combination.literal_floats.clear();
@@ -1286,7 +1347,7 @@ fn scrape_type_properties(
         return;
     }
 
-    if atomic == TAtomic::Scalar(TScalar::ArrayKey) {
+    if matches!(atomic, TAtomic::Scalar(TScalar::ArrayKey)) {
         if combination.value_types.contains_key(&*ATOM_SCALAR) {
             return;
         }
@@ -1667,6 +1728,17 @@ fn flush_sealed_keyed_arrays_into_combination(
     }
 
     combination.sealed_arrays = put_back;
+}
+
+fn has_array_or_derived_types(combination: &TypeCombination) -> bool {
+    combination.flags.contains(CombinationFlags::HAS_EMPTY_ARRAY)
+        || combination.flags.contains(CombinationFlags::HAS_KEYED_ARRAY)
+        || !combination.keyed_array_entries.is_empty()
+        || !combination.list_array_entries.is_empty()
+        || combination.keyed_array_parameters.is_some()
+        || combination.list_array_parameter.is_some()
+        || !combination.sealed_arrays.is_empty()
+        || !combination.derived_types.is_empty()
 }
 
 fn combine_string_scalars(left: TString, right: TString, codebase: &CodebaseMetadata) -> Option<TString> {

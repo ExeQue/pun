@@ -163,19 +163,13 @@ where
     }
 
     let static_class_type;
-    let self_class;
-    let function_is_final;
+    let mut self_class;
     let allow_mixin_static_rebind;
 
     if let Some(method_context) = invocation.target.get_method_context() {
         static_class_type = method_context.class_type.clone();
         allow_mixin_static_rebind = method_context.declaring_object_type.is_some();
         self_class = Some(method_context.class_like_metadata.name);
-        function_is_final = invocation
-            .target
-            .get_function_like_metadata()
-            .and_then(|metadata| metadata.method_metadata.as_ref())
-            .is_some_and(|metadata| metadata.is_final);
 
         if let Some(declaring_method_id) = &method_context.declaring_method_id {
             let declaring_class_name = declaring_method_id.get_class_name();
@@ -183,6 +177,19 @@ where
                 && let Some(declaring_class_meta) = context.codebase.get_class_like(declaring_class_name.as_bytes())
                 && declaring_class_meta.kind.is_trait()
             {
+                let mut trait_user = Some(method_context.class_like_metadata);
+                while let Some(candidate) = trait_user
+                    && !candidate.direct_trait_names().any(|name| name == declaring_class_meta.name)
+                {
+                    trait_user = candidate
+                        .direct_parent_class
+                        .and_then(|parent| context.codebase.get_class_like_by_name(parent));
+                }
+
+                let trait_user_name =
+                    trait_user.map_or(method_context.class_like_metadata.name, |user| user.original_name);
+                self_class = Some(trait_user_name);
+
                 let mut new_atomics = Vec::with_capacity(resulting_union.types.len());
                 for atomic in resulting_union.types.as_ref() {
                     match atomic {
@@ -190,7 +197,7 @@ where
                             if named_object.name.as_bytes().eq_ignore_ascii_case(declaring_class_name.as_bytes()) =>
                         {
                             let mut new_object = named_object.clone();
-                            new_object.name = method_context.class_like_metadata.name;
+                            new_object.name = trait_user_name;
                             new_atomics.push(TAtomic::Object(TObject::Named(new_object)));
                         }
                         _ => new_atomics.push(atomic.clone()),
@@ -203,7 +210,6 @@ where
     } else {
         static_class_type = StaticClassType::default();
         self_class = None;
-        function_is_final = false;
         allow_mixin_static_rebind = false;
     }
 
@@ -213,13 +219,7 @@ where
         expander::expand_union(
             context.codebase,
             &mut resulting_union,
-            &TypeExpansionOptions {
-                self_class,
-                static_class_type,
-                function_is_final,
-                allow_mixin_static_rebind,
-                ..Default::default()
-            },
+            &TypeExpansionOptions { self_class, static_class_type, allow_mixin_static_rebind, ..Default::default() },
         );
     }
 
@@ -634,6 +634,10 @@ where
         )));
     }
 
+    if !subject.is_never() && target.is_never() {
+        return if negated { then_type } else { otherwise_type };
+    }
+
     if !subject.is_never() {
         let mut comparison_result = ComparisonResult::new();
         let subject_is_contained = union_comparator::is_contained_by(
@@ -646,14 +650,21 @@ where
             &mut comparison_result,
         );
 
-        let are_int_float_disjoint = if target.is_single() && subject.is_single() {
+        let target_int_or_float = if target.is_single() { target.effective_int_or_float() } else { None };
+        let are_parts_disjoint = subject.types.iter().all(|subject_part| {
+            let subject_part = TUnion::from_atomic(subject_part.clone());
+
             matches!(
-                (subject.effective_int_or_float(), target.effective_int_or_float()),
+                (subject_part.effective_int_or_float(), target_int_or_float),
                 (Some(true), Some(false)) | (Some(false), Some(true))
+            ) || !union_comparator::can_expression_types_be_identical(
+                context.codebase,
+                &subject_part,
+                &target,
+                false,
+                false,
             )
-        } else {
-            false
-        };
+        });
 
         // ConditionalTypeForParameter: `null` is no supertype of `mixed~null` (a mixed excluding the whole target)
         let excluded_by_mixed = subject.types.iter().all(|atomic| {
@@ -669,9 +680,10 @@ where
                 )
             }))
         });
-        let are_disjoint = are_int_float_disjoint
+        let are_disjoint = are_parts_disjoint
             || excluded_by_mixed
-            || !union_comparator::can_expression_types_be_identical(context.codebase, &subject, &target, false, false);
+            || (subject.is_always_truthy() && target.is_always_falsy())
+            || shapes_are_disjoint(context, &subject, &target);
 
         if are_disjoint {
             return if negated { then_type } else { otherwise_type };
@@ -686,9 +698,80 @@ where
         if subject_is_contained && !unknown_class_name {
             return if negated { otherwise_type } else { then_type };
         }
+
+        let parts: Vec<TAtomic> = subject
+            .types
+            .iter()
+            .flat_map(|atomic| match atomic {
+                TAtomic::Scalar(scalar) if scalar.is_general_bool() => {
+                    vec![TAtomic::Scalar(TScalar::r#true()), TAtomic::Scalar(TScalar::r#false())]
+                }
+                _ => vec![atomic.clone()],
+            })
+            .collect();
+
+        if parts.len() > 1
+            && let [TAtomic::GenericParameter(parameter)] = conditional.subject.types.as_ref()
+        {
+            let mut resolved = get_never();
+            for part in parts {
+                let mut part_result = template_result.clone();
+                part_result
+                    .lower_bounds
+                    .entry(parameter.parameter_name)
+                    .or_default()
+                    .insert(parameter.defining_entity, vec![TemplateBound::new(TUnion::from_atomic(part), 0, None)]);
+
+                let part_type = resolve_conditional(
+                    context,
+                    invocation,
+                    &part_result,
+                    parameters,
+                    conditional.clone(),
+                );
+
+                resolved = add_union_type(resolved, &part_type, context.codebase, CombinerOptions::default());
+            }
+
+            return resolved;
+        }
     }
 
     add_union_type(then_type, &otherwise_type, context.codebase, CombinerOptions::default())
+}
+
+fn shapes_are_disjoint<A>(context: &Context<'_, '_, A>, subject: &TUnion, target: &TUnion) -> bool
+where
+    A: Arena,
+{
+    subject.types.iter().all(|subject_part| {
+        target.types.iter().all(|target_part| {
+            let (TAtomic::Array(TArray::Keyed(subject_shape)), TAtomic::Array(TArray::Keyed(target_shape))) =
+                (subject_part, target_part)
+            else {
+                return false;
+            };
+
+            let (Some(subject_items), Some(target_items)) = (&subject_shape.known_items, &target_shape.known_items)
+            else {
+                return false;
+            };
+
+            subject_items.iter().any(|(key, (subject_optional, subject_value))| {
+                !subject_optional
+                    && target_items.get(key).is_some_and(|(target_optional, target_value)| {
+                        !target_optional
+                            && !union_comparator::can_expression_types_be_identical(
+                                context.codebase,
+                                subject_value,
+                                target_value,
+                                false,
+                                false,
+                            )
+                    })
+            })
+        })
+    })
 }
 
 #[cfg(test)]

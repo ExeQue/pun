@@ -17,6 +17,7 @@ use mago_word::ascii_lowercase_constant_name_word;
 use mago_word::ascii_lowercase_word;
 use mago_word::empty_word;
 use mago_word::word;
+use rayon::prelude::*;
 
 use crate::diff::CodebaseDiff;
 use crate::identifier::method::MethodIdentifier;
@@ -692,6 +693,23 @@ impl CodebaseMetadata {
         self.constants.get(&lowercase_name)
     }
 
+    /// The constant a docblock type name refers to when no class-like has that name: the
+    /// namespaced constant, or else the global constant of the same short name.
+    #[inline]
+    #[must_use]
+    pub fn get_constant_name_of_type_reference(&self, name: &[u8]) -> Option<Word> {
+        let constant_name = ascii_lowercase_constant_name_word(name);
+        if self.constants.contains_key(&constant_name) {
+            return Some(constant_name);
+        }
+
+        let short_name =
+            name.rsplit(|byte| *byte == b'\\').next().filter(|short_name| short_name.len() < name.len())?;
+        let short_name = word(short_name);
+
+        self.constants.contains_key(&short_name).then_some(short_name)
+    }
+
     /// The declaration name span of a top-level symbol named `name`: a
     /// class-like (class/interface/trait/enum), a function, or a constant.
     ///
@@ -1298,11 +1316,16 @@ impl CodebaseMetadata {
         for (k, mut v) in other.constants {
             match self.constants.entry(k) {
                 Entry::Occupied(mut entry) => {
+                    let combined_type = combine_defined_constant_types(entry.get(), &v);
                     if should_replace_metadata(entry.get().flags, entry.get().span, v.flags, v.span) {
                         v.version_constraint.merge(entry.get().version_constraint.clone());
                         entry.insert(v);
                     } else {
                         entry.get_mut().version_constraint.merge(v.version_constraint);
+                    }
+
+                    if combined_type.is_some() {
+                        entry.get_mut().inferred_type = combined_type;
                     }
                 }
                 Entry::Vacant(entry) => {
@@ -1343,7 +1366,11 @@ impl CodebaseMetadata {
         }
 
         let mut function_likes = std::mem::take(&mut self.function_likes);
-        let functions: Vec<_> = others.iter_mut().map(|other| std::mem::take(&mut other.function_likes)).collect();
+        let mut symbols = std::mem::take(&mut self.symbols);
+        let (functions, partial_symbols): (Vec<_>, Vec<_>) = others
+            .par_iter_mut()
+            .map(|other| (std::mem::take(&mut other.function_likes), std::mem::take(&mut other.symbols)))
+            .unzip();
         rayon::join(
             || {
                 for incoming in functions {
@@ -1351,12 +1378,22 @@ impl CodebaseMetadata {
                 }
             },
             || {
-                for other in others {
-                    self.extend(other);
-                }
+                rayon::join(
+                    || {
+                        for incoming in partial_symbols {
+                            symbols.extend(incoming.into_inner());
+                        }
+                    },
+                    || {
+                        for other in others {
+                            self.extend(other);
+                        }
+                    },
+                );
             },
         );
         self.function_likes = function_likes;
+        self.symbols = symbols;
     }
 
     /// Extends this codebase with another by reference, cloning only individual entries.
@@ -1411,12 +1448,17 @@ impl CodebaseMetadata {
         for (k, v) in &other.constants {
             match self.constants.entry(*k) {
                 Entry::Occupied(mut entry) => {
+                    let combined_type = combine_defined_constant_types(entry.get(), v);
                     if should_replace_metadata(entry.get().flags, entry.get().span, v.flags, v.span) {
                         let mut new = v.clone();
                         new.version_constraint.merge(entry.get().version_constraint.clone());
                         entry.insert(new);
                     } else {
                         entry.get_mut().version_constraint.merge(v.version_constraint.clone());
+                    }
+
+                    if combined_type.is_some() {
+                        entry.get_mut().inferred_type = combined_type;
                     }
                 }
                 Entry::Vacant(entry) => {
@@ -1919,6 +1961,27 @@ fn merge_function_likes(
 ///   3. smaller span wins as a deterministic tie-breaker.
 ///
 /// Returns `true` if the new value should replace the existing one.
+fn combine_defined_constant_types(existing: &ConstantMetadata, new: &ConstantMetadata) -> Option<TUnion> {
+    if existing.flags.is_built_in() || new.flags.is_built_in() {
+        return None;
+    }
+
+    let (Some(existing_type), Some(new_type)) = (&existing.inferred_type, &new.inferred_type) else {
+        return None;
+    };
+
+    let missing: Vec<TAtomic> =
+        new_type.types.iter().filter(|atomic| !existing_type.types.contains(atomic)).cloned().collect();
+    if missing.is_empty() {
+        return None;
+    }
+
+    let mut types = existing_type.types.to_vec();
+    types.extend(missing);
+
+    Some(TUnion::from_vec(types))
+}
+
 fn should_replace_metadata(
     existing_flags: MetadataFlags,
     existing_span: Span,
@@ -1970,6 +2033,26 @@ fn should_replace_metadata(
 #[cfg(test)]
 mod should_replace_metadata_tests {
     use super::*;
+
+    #[test]
+    fn constants_defined_with_different_values_keep_every_value() {
+        let name = mago_word::word("MY_DEBUG");
+        let mut first = CodebaseMetadata::new();
+        let mut true_constant = ConstantMetadata::new(name, Span::zero(), MetadataFlags::USER_DEFINED);
+        true_constant.inferred_type = Some(crate::ttype::get_true());
+        first.constants.insert(name, true_constant);
+
+        let mut second = CodebaseMetadata::new();
+        let mut false_constant = ConstantMetadata::new(name, Span::zero(), MetadataFlags::USER_DEFINED);
+        false_constant.inferred_type = Some(crate::ttype::get_false());
+        second.constants.insert(name, false_constant);
+
+        first.extend(second);
+
+        let constant_types = first.constants[&name].inferred_type.as_ref().map(|union| union.types.to_vec());
+        assert!(constant_types.as_ref().is_some_and(|types| types.iter().any(TAtomic::is_true)));
+        assert!(constant_types.is_some_and(|types| types.iter().any(TAtomic::is_false)));
+    }
 
     #[test]
     fn replacing_file_signatures_keeps_map_capacity() {

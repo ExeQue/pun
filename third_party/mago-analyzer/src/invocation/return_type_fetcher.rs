@@ -2,10 +2,13 @@ use mago_allocator::Arena;
 use mago_codex::identifier::function_like::FunctionLikeIdentifier;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
+use mago_codex::ttype::atomic::object::TObject;
+use mago_codex::ttype::atomic::object::named::TNamedObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::template::TemplateResult;
 use mago_codex::ttype::union::TUnion;
+use mago_codex::ttype::wrap_atomic;
 use mago_word::WordMap;
 use mago_word::word;
 
@@ -198,6 +201,8 @@ where
         } else {
             resolved
         }
+    } else if invocation.target.get_function_like_metadata().is_some_and(|metadata| metadata.flags.has_yield()) {
+        wrap_atomic(TAtomic::Object(TObject::Named(TNamedObject::new(word("Generator")))))
     } else {
         get_mixed()
     };

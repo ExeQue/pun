@@ -14,6 +14,7 @@ use mago_codex::ttype::TType;
 use mago_codex::ttype::combine_optional_union_types;
 use mago_codex::ttype::combine_union_types;
 use mago_codex::ttype::get_mixed;
+use mago_codex::ttype::union::TUnion;
 use mago_reporting::Annotation;
 use mago_reporting::Issue;
 use mago_span::HasSpan;
@@ -31,12 +32,14 @@ use crate::context::Context;
 use crate::context::block::BlockContext;
 use crate::context::scope::if_scope::IfScope;
 use crate::context::utils::inherit_branch_context_properties;
+use crate::context::utils::inherit_thrown_exceptions;
 use crate::error::AnalysisError;
 use crate::formula::get_formula;
 use crate::formula::negate_or_synthesize;
 use crate::reconciler::assertion_reconciler;
 use crate::reconciler::reconcile_keyed_types;
 use crate::utils::conditional;
+use crate::utils::expression::get_cleared_members;
 use crate::utils::expression::is_derived_access_path;
 use crate::utils::expression::is_offset_access_path;
 use crate::utils::symbol_existence::extract_function_constant_existence;
@@ -172,7 +175,7 @@ where
     extract_function_constant_existence(condition, artifacts, &mut if_block_context, false);
 
     if_scope.negated_clauses = negate_or_synthesize(
-        if_clauses,
+        &if_clauses,
         condition,
         context.get_assertion_context_from_block(block_context),
         artifacts,
@@ -197,6 +200,7 @@ where
         &mut conditionally_referenced_variable_ids,
     );
 
+    if_block_context.clauses.clone_from(&conditional_context_clauses);
     if !reconcilable_if_types.is_empty() {
         let mut changed_variable_ids = WordSet::default();
 
@@ -211,6 +215,8 @@ where
             false,
             false,
         );
+
+        BlockContext::retain_unreconciled_clauses(&mut if_block_context.clauses, &changed_variable_ids);
     }
 
     conditional::apply_boolean_branch(condition, true, artifacts, &mut if_block_context);
@@ -259,103 +265,173 @@ where
     r#else.analyze(context, &mut else_block_context, artifacts)?;
     else_block_context.flags.set_inside_general_use(was_inside_general_use);
 
-    // PHPStan chooses continuation edges only for full literal booleans, not truthy scalars.
-    // The native expression's value below instead selects arms using native truthiness.
+    let then_finishes = then.as_ref().is_some_and(|then| {
+        if_block_context.flags.has_returned() || artifacts.get_expression_type(then).is_some_and(TUnion::is_never)
+    });
+    let else_finishes =
+        else_block_context.flags.has_returned() || artifacts.get_expression_type(r#else).is_some_and(TUnion::is_never);
+
+    // PHPStan chooses continuation edges only for full literal booleans, not truthy scalars, or for the arm that
+    // continues when the other one never does. The native expression's value below instead selects arms using
+    // native truthiness.
     let full_condition = artifacts.get_expression_type(condition);
     block_context.native_locals = if full_condition.is_some_and(|ty| ty.is_true()) {
         if_block_context.native_locals.clone()
     } else if full_condition.is_some_and(|ty| ty.is_false()) {
         else_block_context.native_locals.clone()
     } else {
-        crate::native::join(
-            &[if_block_context.native_locals.clone(), else_block_context.native_locals.clone()],
-            context.codebase,
-        )
+        match (then_finishes, else_finishes) {
+            (false, true) => if_block_context.native_locals.clone(),
+            (true, false) => else_block_context.native_locals.clone(),
+            _ => crate::native::join(
+                &[if_block_context.native_locals.clone(), else_block_context.native_locals.clone()],
+                context.codebase,
+            ),
+        }
     };
 
-    let if_assigned_variables = if_block_context.assigned_variable_ids.keys().copied().collect::<WordSet>();
-    let else_assigned_variables = else_block_context.assigned_variable_ids.keys().copied().collect::<WordSet>();
-    let assigned_variables = if_assigned_variables.intersection(&else_assigned_variables).copied().collect::<WordSet>();
+    let continuing_context = match (then_finishes, else_finishes) {
+        (false, true) => Some(&if_block_context),
+        (true, false) => Some(&else_block_context),
+        _ => None,
+    };
 
-    for assigned_variable in assigned_variables {
-        let Some(if_type) = if_block_context.locals.get(&assigned_variable) else {
-            continue;
-        };
+    if let Some(continuing_context) = continuing_context {
+        // A terminating branch cannot contribute locals, but its exceptions can still escape.
+        inherit_thrown_exceptions(context, block_context, &if_block_context);
+        inherit_thrown_exceptions(context, block_context, &else_block_context);
 
-        let Some(else_type) = else_block_context.locals.get(&assigned_variable) else {
-            continue;
-        };
+        for (variable_id, variable_type) in &continuing_context.locals {
+            block_context.locals.insert(*variable_id, Rc::clone(variable_type));
+        }
 
-        block_context.locals.insert(
-            assigned_variable,
-            Rc::new(combine_union_types(
-                if_type.as_ref(),
-                else_type.as_ref(),
+        block_context
+            .assigned_variable_ids
+            .extend(continuing_context.assigned_variable_ids.iter().map(|(k, v)| (*k, *v)));
+    } else {
+        let if_assigned_variables = if_block_context.assigned_variable_ids.keys().copied().collect::<WordSet>();
+        let else_assigned_variables = else_block_context.assigned_variable_ids.keys().copied().collect::<WordSet>();
+        let assigned_variables =
+            if_assigned_variables.intersection(&else_assigned_variables).copied().collect::<WordSet>();
+
+        for assigned_variable in assigned_variables {
+            let Some(if_type) = if_block_context.locals.get(&assigned_variable) else {
+                continue;
+            };
+
+            let Some(else_type) = else_block_context.locals.get(&assigned_variable) else {
+                continue;
+            };
+
+            block_context.locals.insert(
+                assigned_variable,
+                Rc::new(combine_union_types(
+                    if_type.as_ref(),
+                    else_type.as_ref(),
+                    context.codebase,
+                    context.settings.combiner_options(),
+                )),
+            );
+
+            if let Some(offset) = if_block_context.assigned_variable_ids.get(&assigned_variable) {
+                block_context.assigned_variable_ids.insert(assigned_variable, *offset);
+            }
+        }
+
+        for (assigned_variable, branch_context) in if_assigned_variables
+            .difference(&else_assigned_variables)
+            .map(|variable| (variable, &if_block_context))
+            .chain(
+                else_assigned_variables
+                    .difference(&if_assigned_variables)
+                    .map(|variable| (variable, &else_block_context)),
+            )
+        {
+            if block_context.locals.contains_key(assigned_variable)
+                || assigned_variable.as_bytes().iter().any(|byte| matches!(byte, b'[' | b'-' | b':'))
+            {
+                continue;
+            }
+
+            let Some(branch_type) = branch_context.locals.get(assigned_variable) else {
+                continue;
+            };
+
+            let mut possibly_undefined_type = (**branch_type).clone();
+            possibly_undefined_type.set_possibly_undefined(true, None);
+            block_context.locals.insert(*assigned_variable, Rc::new(possibly_undefined_type));
+            block_context.possibly_undefined_variable_ids.insert(*assigned_variable);
+        }
+
+        let if_redefined_variables = if_block_context
+            .get_redefined_locals(&block_context.locals, false, &mut WordSet::default())
+            .keys()
+            .copied()
+            .collect::<WordSet>();
+
+        let else_redefined_variables = else_block_context
+            .get_redefined_locals(&block_context.locals, false, &mut WordSet::default())
+            .keys()
+            .copied()
+            .collect::<WordSet>();
+
+        let redefined_variable_ids =
+            if_redefined_variables.intersection(&else_redefined_variables).copied().collect::<WordSet>();
+
+        for redefined_variable_id in redefined_variable_ids {
+            let if_type = if_block_context.locals.get(&redefined_variable_id);
+            let else_type = else_block_context.locals.get(&redefined_variable_id);
+
+            let combined_type = combine_optional_union_types(
+                if_type.map(std::convert::AsRef::as_ref),
+                else_type.map(std::convert::AsRef::as_ref),
                 context.codebase,
-                context.settings.combiner_options(),
-            )),
-        );
+            );
+
+            block_context.locals.insert(redefined_variable_id, Rc::new(combined_type));
+        }
+
+        inherit_branch_context_properties(context, block_context, &if_block_context);
+        inherit_branch_context_properties(context, block_context, &else_block_context);
+
+        for if_redefined_variable in if_redefined_variables {
+            let Some(if_type) = if_block_context.locals.get(&if_redefined_variable) else {
+                continue;
+            };
+
+            let Some(previous_type) = block_context.locals.get(&if_redefined_variable) else {
+                continue;
+            };
+
+            let combined_type =
+                combine_optional_union_types(Some(if_type.as_ref()), Some(previous_type.as_ref()), context.codebase);
+
+            block_context.locals.insert(if_redefined_variable, Rc::new(combined_type));
+        }
+
+        for else_redefined_variable in else_redefined_variables {
+            let Some(else_type) = else_block_context.locals.get(&else_redefined_variable) else {
+                continue;
+            };
+
+            let Some(previous_type) = block_context.locals.get(&else_redefined_variable) else {
+                continue;
+            };
+
+            let combined_type =
+                combine_optional_union_types(Some(else_type.as_ref()), Some(previous_type.as_ref()), context.codebase);
+
+            block_context.locals.insert(else_redefined_variable, Rc::new(combined_type));
+        }
     }
 
-    let if_redefined_variables = if_block_context
-        .get_redefined_locals(&block_context.locals, false, &mut WordSet::default())
-        .keys()
-        .copied()
-        .collect::<WordSet>();
-
-    let else_redefined_variables = else_block_context
-        .get_redefined_locals(&block_context.locals, false, &mut WordSet::default())
-        .keys()
-        .copied()
-        .collect::<WordSet>();
-
-    let redefined_variable_ids =
-        if_redefined_variables.intersection(&else_redefined_variables).copied().collect::<WordSet>();
-
-    for redefined_variable_id in redefined_variable_ids {
-        let if_type = if_block_context.locals.get(&redefined_variable_id);
-        let else_type = else_block_context.locals.get(&redefined_variable_id);
-
-        let combined_type = combine_optional_union_types(
-            if_type.map(std::convert::AsRef::as_ref),
-            else_type.map(std::convert::AsRef::as_ref),
-            context.codebase,
-        );
-
-        block_context.locals.insert(redefined_variable_id, Rc::new(combined_type));
-    }
-
-    inherit_branch_context_properties(context, block_context, &if_block_context);
-    inherit_branch_context_properties(context, block_context, &else_block_context);
-
-    for if_redefined_variable in if_redefined_variables {
-        let Some(if_type) = if_block_context.locals.get(&if_redefined_variable) else {
-            continue;
-        };
-
-        let Some(previous_type) = block_context.locals.get(&if_redefined_variable) else {
-            continue;
-        };
-
-        let combined_type =
-            combine_optional_union_types(Some(if_type.as_ref()), Some(previous_type.as_ref()), context.codebase);
-
-        block_context.locals.insert(if_redefined_variable, Rc::new(combined_type));
-    }
-
-    for else_redefined_variable in else_redefined_variables {
-        let Some(else_type) = else_block_context.locals.get(&else_redefined_variable) else {
-            continue;
-        };
-
-        let Some(previous_type) = block_context.locals.get(&else_redefined_variable) else {
-            continue;
-        };
-
-        let combined_type =
-            combine_optional_union_types(Some(else_type.as_ref()), Some(previous_type.as_ref()), context.codebase);
-
-        block_context.locals.insert(else_redefined_variable, Rc::new(combined_type));
+    // A call in a branch may clear a member narrowed before the ternary.
+    for (branch_context, finishes) in [(&if_block_context, then_finishes), (&else_block_context, else_finishes)] {
+        if !finishes {
+            for cleared_member in get_cleared_members(&block_context.locals, &branch_context.locals) {
+                block_context.locals.remove(&cleared_member);
+            }
+        }
     }
 
     block_context.variables_possibly_in_scope.extend(if_block_context.variables_possibly_in_scope);
