@@ -758,9 +758,8 @@ where
         // true || x → true (no fix)
         report_redundant_logical_operation(context, binary, "always true", "not evaluated", "`true`", None);
         result_type = get_true();
-        let mut dead_rhs_context = right_block_context.clone();
-        dead_rhs_context.flags.set_has_returned(true);
-        binary.rhs.analyze(context, &mut dead_rhs_context, artifacts)?;
+        right_block_context.flags.set_has_returned(true);
+        binary.rhs.analyze(context, &mut right_block_context, artifacts)?;
     } else {
         if !negated_type_assertions.is_empty() {
             reconciler::reconcile_keyed_types(

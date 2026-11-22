@@ -4234,3 +4234,8 @@ keeps the pre-merge behaviour.
   the body context again, and the raw-assignment write-back is removed. Only the last condition still decides
   whether the loop is entered (`set_inside_conditional`, the entry-falsey scope), as upstream does.
   `tests/variables.rs` (`loop-pollution/matrix.php` lines 142, 206 and 232) checks that.
+- `expression/binary/logical.rs` `analyze_logical_or_operation()`: upstream 1.61 analyzes the never-evaluated right
+  operand of `true || ...` in a throwaway copy of the scope, so its assignments are lost. PHPStan's BooleanOrHandler
+  keeps them: after `$query = 1; true || ($query = 2);` it dumps `1|2`, and after a further `false && ($query = 3);`
+  `1|2|3`. The right operand is analyzed in the right-hand scope again, as in 1.57.0, so the merge sees its
+  assignments. `tests/object_intersections.rs` (`transfer.php`) checks that.
