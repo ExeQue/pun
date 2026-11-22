@@ -28,3 +28,13 @@ Public scanner, inline-annotation, and duplicate-key controls live in
 capture under `tests/fixtures/duplicate-array-keys/` retain hexadecimal key and value bytes separately
 from UTF-8 diagnostic presentation. Bare float spellings are parser controls, not a claim that
 PHPStan accepts float keys in PHPDoc shapes.
+
+## Mago 1.61.0 changes rejected for PHPStan parity
+
+- `parser/internal/type/keyword.rs`: upstream 1.61 reads `decimal-int-string` as the `numeric-string` keyword and
+  `non-decimal-int-string` as the `string` keyword. PHPStan keeps both as their own accessories
+  (`AccessoryDecimalIntegerStringType` and its inverse), so `@param decimal-int-string $s` dumps as
+  `decimal-int-string`, not `numeric-string`. The two lookups are removed, as in 1.57.0. The names stay type
+  references, and codex's `builder.rs` builds `TString::decimal_integer()` from them (see codex PATCHES.md
+  "Decimal-integer string accessories"). `tests/decimal_string_producers.rs` and `tests/refined_isset_keys.rs` check
+  this, as does the `levels` case `NonexistentOffsetInArrayDimFetchRuleTest::testUnsealedArrayShapes`.
