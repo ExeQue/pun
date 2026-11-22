@@ -137,6 +137,47 @@ mago! {
     no_controller_middleware "laravel" "no-controller-middleware";
     prefer_view_array "laravel" "prefer-view-array";
     prefer_test_attribute "phpunit" "prefer-test-attribute";
+    // Expectations from Mago 1.61.0 (.oracle/mago/mago-1.61.0-x86_64-unknown-linux-gnu/mago).
+    prefer_coalesce_assign_over_fallback "operators" "prefer-coalesce-assign-over-fallback";
+}
+
+/// The fix safety Mago 1.61.0 gives each report, in order (`edits[].safety` of `--reporting-format json`): safe for a
+/// plain reference, potentially unsafe (Pun's unsafe) when evaluating the target twice may differ. Mago's fix for a
+/// by-reference assignment does not parse and is rejected, so Pun has none.
+#[test]
+fn prefer_coalesce_assign_over_fallback_safety() {
+    use pun_problem::Safety::{Safe, Unsafe};
+    let id = "lint/operators/prefer-coalesce-assign-over-fallback";
+    let rule = rules::all().into_iter().filter(|r| r.id() == id).collect();
+    let linter = Linter::new(rule, pun_lint::PhpVersion::from_id(80400));
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/mago/operators-prefer-coalesce-assign-over-fallback");
+    for (case, expected) in [
+        (
+            "Mago/marks_fixes_unsafe_when_the_target_is_evaluated_with_effects.php",
+            vec![Some(Safe), Some(Unsafe), Some(Unsafe)],
+        ),
+        ("Own/operators.php", vec![None, Some(Safe)]),
+        (
+            "Own/targets.php",
+            [
+                Safe, Safe, Safe, Unsafe, Unsafe, Safe, Safe, Unsafe, Unsafe, Unsafe, Unsafe, Safe,
+                Unsafe, Unsafe,
+            ]
+            .map(Some)
+            .to_vec(),
+        ),
+    ] {
+        let path = root.join(case);
+        let input = std::fs::read_to_string(&path).unwrap();
+        let got: Vec<_> = linter
+            .check(&path, &input)
+            .unwrap()
+            .iter()
+            .map(|p| p.fix.as_ref().map(|f| f.safety))
+            .collect();
+        assert_eq!(got, expected, "{case}");
+    }
 }
 
 #[test]

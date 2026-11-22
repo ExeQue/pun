@@ -27541,6 +27541,16 @@
         "unsupported": true
       },
       {
+        "name": "prefer-null-coalescing-assignment",
+        "tool": "mago-linter",
+        "url": "https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-null-coalescing-assignment",
+        "rules": [
+          "lint/operators/prefer-coalesce-assign-over-fallback"
+        ],
+        "note": "Same. Options: same.",
+        "unsupported": false
+      },
+      {
         "name": "prefer-pre-increment",
         "tool": "mago-linter",
         "url": "https://mago.carthage.software/1.61.0/en/tools/linter/rules/#prefer-pre-increment",

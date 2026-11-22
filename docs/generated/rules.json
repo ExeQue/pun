@@ -8577,6 +8577,24 @@
       "ported": true
     },
     {
+      "id": "lint/operators/prefer-coalesce-assign-over-fallback",
+      "command": "lint",
+      "group": "operators",
+      "summary": "Suggests the null coalescing assignment operator (??=) when the right operand of ?? assigns to the same variable or property as its left operand.",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "mixed",
+      "ecosystem": "core",
+      "tools": [
+        "mago"
+      ],
+      "upstream": [
+        "prefer-null-coalescing-assignment"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/performance/prefer-explode-over-preg-split",
       "command": "lint",
       "group": "performance",

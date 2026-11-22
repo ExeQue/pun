@@ -514,6 +514,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "operators/no-useless-nullsafe" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", summary = "There should not be useless Null-safe operator `?->` used." }
 "operators/prefer-coalesce" = { fix = "safe", sets = ["modernize"], ported = true, status = "decided", summary = "Use `null` coalescing operator `??` where possible." }
 "operators/prefer-coalesce-assign" = { fix = "safe", sets = ["modernize"], ported = true, status = "decided", summary = "Use the null coalescing assignment operator `??=` where possible." }
+"operators/prefer-coalesce-assign-over-fallback" = { fix = "mixed", sets = ["modernize"], ported = true, origin = "mago", status = "decided", summary = "Suggests the null coalescing assignment operator (`??=`) when the right operand of `??` assigns to the same variable or property as its left operand.", note = "fix is safe when the target is a plain variable, property, static property or literal/variable array offset, and unsafe when evaluating it twice may differ; no fix when the assigned value is a reference (`$x ?? ($x = &$y)`), whose `??=` form does not parse" }
 "performance/prefer-explode-over-preg-split" = { fix = "safe", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects calls to `preg_split()` whose pattern has no regex meta-characters and no modifiers, which means the split could be done with `explode()`." }
 "performance/prefer-static-closure" = { fix = "unsafe", ported = true, status = "decided", summary = "Lambdas not (indirectly) referencing `$this` must be declared `static`." }
 "performance/require-qualified-native-constant" = { fix = "unsafe", ported = true, status = "decided", summary = "Add leading `\\` before constant invocation of internal constant to speed up resolving. Constant name match is case-sensitive, except for `null`, `false` and `true`." }
@@ -4706,6 +4707,7 @@ prefer-explode-over-preg-split = { pun = "lint/performance/prefer-explode-over-p
 prefer-fake-helper = { pun = "lint/laravel/prefer-fake-helper", options = "same", status = "decided" }
 prefer-first-class-callable = { pun = "lint/php-8.1/prefer-first-class-callable", options = "same", status = "decided" }
 prefer-interface = { unsupported = "Symfony integration: out of scope (Laravel-first)", status = "decided" }
+prefer-null-coalescing-assignment = { pun = "lint/operators/prefer-coalesce-assign-over-fallback", options = "same", status = "decided" }
 prefer-pre-increment = { pun = "format/operators/increment-style", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
 prefer-self = { pun = "lint/style/prefer-self-reference", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }
 prefer-self-return-type = { pun = "lint/style/prefer-self-reference", options = "none (Mago options do not carry; Pun uses the CS-Fixer rule options)", status = "decided" }

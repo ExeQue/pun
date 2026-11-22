@@ -1,0 +1,5 @@
+<?php
+
+$a = $this->ids ??= [];
+$b = $this->load()->ids ??= [];
+$c = $map[next_key()] ??= [];

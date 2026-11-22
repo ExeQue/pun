@@ -1,0 +1,5 @@
+<?php
+
+return $this->ids ??= $this->readIds();
+return $ids ??= [];
+return $map[$key] ??= compute($key);

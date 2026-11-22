@@ -1,0 +1,29 @@
+<?php
+
+final class Cache
+{
+    private static ?array $items = null;
+    private ?array $map = null;
+
+    public function get(string $key, string $class, string $name): mixed
+    {
+        $a = static::$items ??= [];
+        $b = parent::$items ??= [];
+        $c = Cache::$items ??= [];
+        $d = $class::$items ??= [];
+        $e = self::$$name ??= [];
+        $f = $this->map[$key] ??= 1;
+        $g = $this->map['a'][2] ??= 1;
+        $h = $this->map[KEY] ??= 1;
+        $i = $this->map[$key . 'x'] ??= 1;
+        $j = $this->{$name} ??= 1;
+        $k = $$name ??= 1;
+        $l = $this->map ?? ($this ->map = []);
+        $m = $this->map ?? ($this->MAP = []);
+        $n = $GLOBALS['x'] ??= 1;
+        $o = Cache::get()->map ??= 1;
+        $p = $this->map[$this->key] ??= 1;
+
+        return [$a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p];
+    }
+}

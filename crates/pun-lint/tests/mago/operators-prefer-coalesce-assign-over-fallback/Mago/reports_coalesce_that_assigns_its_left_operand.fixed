@@ -1,0 +1,16 @@
+<?php
+
+final class Ids
+{
+    private ?array $ids = null;
+    private static ?array $cache = null;
+
+    public function get(): array
+    {
+        $local = $this->ids ??= $this->read();
+        $cached = self::$cache ??= $this->read();
+        $item = $local['key'] ??= 1;
+
+        return $this->load()->ids ??= [];
+    }
+}
