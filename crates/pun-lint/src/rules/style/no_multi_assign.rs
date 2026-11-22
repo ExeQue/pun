@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{Assignment, AssignmentOperator, Expression, Node, NodeKind, Statement};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::expressions::text;
 use crate::rules::support::statement_edits::replace_run;

@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{LiteralStringKind, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::annotations::{Annotated, TagValue, named_tags};
 use super::is_in_test_class;

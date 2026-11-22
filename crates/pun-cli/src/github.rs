@@ -8,7 +8,7 @@
 //! Decisions).
 
 use pcre2::bytes::Regex;
-use pun_problem::{Level, LineIndex, Problem};
+use pun_lint::problem::{Level, LineIndex, Problem};
 use std::sync::LazyLock;
 
 pub(crate) fn escape_data(message: &str) -> String {
@@ -103,7 +103,7 @@ pub(crate) fn first_changed_line(old: &[u8], new: &[u8]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pun_problem::Span;
+    use pun_lint::problem::Span;
 
     #[test]
     fn escapes_like_github() {

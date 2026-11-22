@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{ArgumentList, Expression, Literal, Node, NodeKind, Variable};
-use pun_problem::{Edit, Safety};
 use pun_tokens::php_compat::{intval, sprintf_g};
 
 use super::{AnyCall, class_is, class_parents, is_in_test_class, own_class, resolve};

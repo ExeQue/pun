@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Expression, FunctionLikeParameter, Hint, MethodBody, Modifier, Node, NodeKind, Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::annotations::Annotated;
 use super::no_bare_mock_assign::scoped;

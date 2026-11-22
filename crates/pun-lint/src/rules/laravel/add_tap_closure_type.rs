@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::ttype::TType;
@@ -10,7 +11,6 @@ use mago_span::HasSpan;
 use mago_syntax::cst::{
     Access, Argument, ClassLikeMemberSelector, Closure, Expression, Hint, Node, NodeKind,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::names::resolve_class_name;
 use super::object_type::{is_object_type, object_class};

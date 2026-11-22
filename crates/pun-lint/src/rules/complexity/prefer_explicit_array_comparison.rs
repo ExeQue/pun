@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use crate::rules::support::expressions::text;
 use crate::rules::types::facts::facts;

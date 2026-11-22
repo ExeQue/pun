@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{Expression, Node, NodeKind, Statement};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::dead_code::no_empty_block::inverted_condition;
 use crate::rules::support::side_effects::has_side_effect;

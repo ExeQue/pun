@@ -1,5 +1,6 @@
 //! Rector 2.8.4's `FilesystemIteratorSkipDotsRector`.
 
+use crate::problem::{Edit, Safety};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::reference::{TReference, TReferenceMemberSelector};
@@ -8,7 +9,6 @@ use mago_syntax::cst::{
     Access, BinaryOperator, ClassConstantAccess, ClassLikeConstantSelector, Expression, Node,
     NodeKind,
 };
-use pun_problem::{Edit, Safety};
 
 use super::super::types::facts::facts;
 use crate::rules::support::arguments::value;

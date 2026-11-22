@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_syntax::cst::{
     Block, Call, ClassLikeMemberSelector, Construct, Expression, FunctionLikeReturnTypeHint, Hint,
     Identifier, Method, Modifier, Node, Statement,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::facts::{Facts, facts, is_builtin_class, is_vendor_file};
 use super::{ClassScope, MAGIC, class_scope, namespace_of};

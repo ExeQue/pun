@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::{Context, Report, Rule};
 

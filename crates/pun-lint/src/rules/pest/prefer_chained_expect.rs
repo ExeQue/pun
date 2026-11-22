@@ -1,9 +1,9 @@
+use crate::problem::{Safety, Span};
 use mago_syntax::cst::{
     Access, ArgumentList, ArrayElement, Call, ClassLikeConstantSelector, ClassLikeMemberSelector,
     CompositeString, Expression, Literal, MethodCall, Node, NodeKind, PropertyAccess, StringPart,
     TokenSeparatedSequence,
 };
-use pun_problem::{Safety, Span};
 
 use super::{
     Item, Link, STATEMENT_LISTS, chain_links, expect_argument, has_comments, identifier,

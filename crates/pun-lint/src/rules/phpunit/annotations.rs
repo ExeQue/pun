@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::{
     AttributeList, LiteralStringKind, Namespace, NamespaceBody, Node, Property, Sequence,
     Statement, UseItem, UseItems,
 };
-use pun_problem::{Edit, Span};
 
 use crate::Context;
 use crate::rules::complexity::prefer_absolute_include::print_string;

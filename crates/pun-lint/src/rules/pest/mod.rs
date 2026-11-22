@@ -54,6 +54,7 @@ mod prefer_to_throw;
 mod prefer_type_matchers;
 mod require_type_matcher_first;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::atomic::TAtomic;
@@ -64,7 +65,6 @@ use mago_syntax::cst::{
     Expression, FunctionCall, Identifier, Keyword, MethodCall, Node, NodeKind, PropertyAccess,
     Statement,
 };
-use pun_problem::{Edit, Safety, Span};
 use std::fmt::Write as _;
 
 use super::types::facts::facts;

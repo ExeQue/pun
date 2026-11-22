@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Expression, FunctionCall, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{
     assert_class, assert_function, assert_method, function_name, is_name, items, object, string,

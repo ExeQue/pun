@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Assignment, AssignmentOperator, Call, ClassLikeMemberSelector, Expression, MethodCall, Node,
     NodeKind,
 };
 use pun_phpstan::types::Type;
-use pun_problem::{Edit, Safety, Span};
 
 use super::compare::classes::with_classes;
 use super::compare::mapper::{TypeScope, expr_type};

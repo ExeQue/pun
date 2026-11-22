@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{
     BinaryOperator, Call, Expression, FunctionCall, Identifier, Node, NodeKind, Variable,
 };
-use pun_problem::{Edit, Safety};
 
 use crate::rules::dead_code::no_useless_cast::{names_variable, within};
 use crate::rules::support::expressions::{args, equal, is_constant, text};

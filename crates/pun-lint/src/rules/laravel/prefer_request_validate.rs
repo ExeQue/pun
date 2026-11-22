@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     ArgumentList, Expression, FunctionCall, FunctionLikeParameter, FunctionLikeParameterList,
     Identifier, Method, MethodBody, Node, NodeKind, StaticMethodCall,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::object_type::{is_hint_type, is_object_type};
 use super::print::kept_arguments;

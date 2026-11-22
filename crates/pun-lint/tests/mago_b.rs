@@ -147,7 +147,7 @@ mago! {
 /// by-reference assignment does not parse and is rejected, so Pun has none.
 #[test]
 fn prefer_coalesce_assign_over_fallback_safety() {
-    use pun_problem::Safety::{Safe, Unsafe};
+    use pun_lint::problem::Safety::{Safe, Unsafe};
     let id = "lint/operators/prefer-coalesce-assign-over-fallback";
     let rule = rules::all().into_iter().filter(|r| r.id() == id).collect();
     let linter = Linter::new(rule, pun_lint::PhpVersion::from_id(80400));

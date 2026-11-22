@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -5,7 +6,6 @@ use mago_codex::ttype::atomic::reference::TReference;
 use mago_codex::ttype::union::TUnion;
 use mago_span::HasSpan;
 use mago_syntax::cst::{Argument, Expression, Instantiation, Node, NodeKind, Variable};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::conditions::{indentation, print_comments, reprint};
 use crate::rules::support::names::resolve_class_name;

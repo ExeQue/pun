@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{Node, NodeKind, Statement};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::statement_edits::{HOLDERS, holder_list};
 use crate::rules::support::statement_edits::{contains_html, lines_between};

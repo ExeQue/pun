@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     ArrayElement, Assignment, AssignmentOperator, Block, Expression, ForeachTarget, Hint, Node,
     NodeKind, Statement, Try, UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::{
     Item, comments_start, expect_argument, function_name, indent_at, is_expect_chain, is_name,

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::{Node, NodeKind, PartialArgument};
-use pun_problem::{Edit, Span};
 
 use crate::rules::complexity::require_named_argument_order::{report, sorted};
 use crate::rules::support::names::resolve_class_name;

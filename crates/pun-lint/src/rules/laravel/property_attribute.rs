@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Safety, Span};
 use std::fmt::Write as _;
 
 use crate::rules::support::class_members::member_from;

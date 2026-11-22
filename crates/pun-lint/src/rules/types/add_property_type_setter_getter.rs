@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Access, ClassLikeMember, ClassLikeMemberSelector, Expression, Hint, Method, MethodBody, Node,
     NodeKind, Statement, Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::facts::facts;
 use super::property_type::{

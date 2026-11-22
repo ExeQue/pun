@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Method, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::annotations::{Annotated, TagValue, is_class_constant_item, map_item, named_tags};
 use super::{class_body, is_in_test_class};

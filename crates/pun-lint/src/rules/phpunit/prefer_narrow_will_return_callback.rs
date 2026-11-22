@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Argument, ArrayElement, Call, Expression, Literal, Match, MatchArm, Node, NodeKind, Statement,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::{AnyCall, NewArg, expr_text, is_in_test_class, is_test_case_call_named, rewrite_args};
 use crate::rules::support::rewrites::merge;

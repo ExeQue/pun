@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Span};
 use std::fmt::Write as _;
 
 use crate::rules::support::docblocks::doc_comment;

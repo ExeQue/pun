@@ -1,5 +1,5 @@
+use crate::problem::{Safety, Span};
 use mago_syntax::cst::{Expression, MethodCall, Node, NodeKind};
-use pun_problem::{Safety, Span};
 
 use super::{
     Is, Item, STATEMENT_LISTS, Trinary, comment_spans, expect_argument, expect_call, has_not,

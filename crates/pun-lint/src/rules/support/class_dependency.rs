@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -9,7 +10,6 @@ use mago_codex::ttype::union::TUnion;
 use mago_codex::visibility::Visibility;
 use mago_names::ResolvedNames;
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::complexity::prefer_absolute_include::print_string;
 use crate::rules::laravel::property_attribute::ClassView;

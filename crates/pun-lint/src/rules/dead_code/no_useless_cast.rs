@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::object::TObject;
@@ -8,7 +9,6 @@ use mago_syntax::cst::{
     Access, BinaryOperator, ClassLikeMemberSelector, Expression, Literal, Node, NodeKind,
     UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::class_members::{object_class_names, qualified, walk};
 use crate::rules::support::names::resolve_class_name;

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Span};
 
 use crate::rules::support::class_members::method_without_params;
 use crate::rules::support::docblocks::{doc_comment, doc_without_params};

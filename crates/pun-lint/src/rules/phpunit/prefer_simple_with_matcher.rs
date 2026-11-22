@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{AnyCall, NewArg, is_in_test_class, rewrite_args, text};
 use crate::syntax::unparenthesize;

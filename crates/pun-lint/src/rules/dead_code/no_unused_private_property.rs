@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::class_members::{member_from, remove_members};
 use crate::rules::support::docblocks::doc_comment;

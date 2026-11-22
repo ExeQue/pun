@@ -1,10 +1,10 @@
+use crate::problem::Span;
 use mago_database::file::FileId;
 use mago_span::HasSpan;
 use mago_syntax::cst::{Expression, Node, Statement};
 use mago_syntax::lexer::Lexer;
 use mago_syntax::settings::LexerSettings;
 use mago_syntax_core::input::Input;
-use pun_problem::Span;
 
 pub fn span(s: mago_span::Span) -> Span {
     Span::new(s.start.offset as usize, s.end.offset as usize)

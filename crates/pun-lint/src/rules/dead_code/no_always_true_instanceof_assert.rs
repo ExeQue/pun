@@ -1,7 +1,7 @@
+use crate::problem::{Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Access, BinaryOperator, Call, Expression, Node, NodeKind, Statement};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::class_members::type_of;
 use crate::rules::support::docblocks::doc_comment;

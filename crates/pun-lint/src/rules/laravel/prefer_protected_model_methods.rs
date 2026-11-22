@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Method, Modifier, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::is_a;
 use super::object_type::{is_hint_type, object_class};

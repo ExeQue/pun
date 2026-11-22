@@ -39,8 +39,8 @@ impl std::error::Error for PintError {}
 
 impl Thrown {
     pub(crate) fn of(e: &anyhow::Error) -> Thrown {
+        use crate::finder::FinderError as F;
         use pun_format::AnnotationError as A;
-        use pun_workspace::FinderError as F;
         if let Some(f) = e.downcast_ref::<F>() {
             return match f {
                 F::NotReadable(_) => Thrown::NotReadable,

@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{
     Block, Expression, FunctionLikeReturnTypeHint, Hint, Modifier, Node, NodeKind,
 };
 use pun_phpstan::types::{Tri, Type, sort_types, to_phpdoc};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::phpdoc_writer::type_mapper::map_to_phpdoc;
 use crate::rules::support::phpdoc_writer::{DocTarget, TypeNode};
@@ -33,7 +33,7 @@ struct FunctionLike<'ast, 'arena> {
     hint: &'ast FunctionLikeReturnTypeHint<'arena>,
     body: Body<'ast, 'arena>,
     start: usize,
-    span: pun_problem::Span,
+    span: crate::problem::Span,
 }
 
 enum Body<'ast, 'arena> {

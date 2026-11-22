@@ -1,3 +1,4 @@
+use crate::problem::{Fix, Safety};
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::metadata::parameter::FunctionLikeParameterMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -13,7 +14,6 @@ use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{
     Accessory, NeverKind, StrictMixed, Type, accepts_with, decide_type, intersect, mixed,
 };
-use pun_problem::{Fix, Safety};
 
 use crate::rules::phpunit::require_strict_types_in_tests::{
     declare_strict_types, has_strict_types,
@@ -338,7 +338,7 @@ impl At<'_, '_, '_> {
 
     fn single_class(&self, expr: &Expression<'_>) -> Option<String> {
         let span = mago_span::HasSpan::span(expr);
-        let span = pun_problem::Span::new(span.start.offset as usize, span.end.offset as usize);
+        let span = crate::problem::Span::new(span.start.offset as usize, span.end.offset as usize);
         self.facts.native_type(span)?;
         let t = self.facts.full_type(span)?;
         match t.types.as_ref() {

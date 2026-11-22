@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{
     Access, AssignmentOperator, BinaryOperator, Expression, Literal, Node, NodeKind,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::statements::{keeps_parentheses, operand_precedence, parent_of, tokens};
 use crate::rules::types::facts::{Facts, facts};

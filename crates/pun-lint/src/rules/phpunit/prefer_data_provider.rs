@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, LiteralStringKind, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
 use std::fmt::Write as _;
 

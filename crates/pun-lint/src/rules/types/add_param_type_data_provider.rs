@@ -1,3 +1,4 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::object::TObject;
@@ -9,7 +10,6 @@ use mago_syntax::cst::{
     ArrayElement, ClassLikeMember, Expression, Method, MethodBody, Modifier, Node, NodeKind,
     UnaryPrefixOperator,
 };
-use pun_problem::Safety;
 
 use super::add_param_type_method_call::push_unique;
 use super::class_scope;

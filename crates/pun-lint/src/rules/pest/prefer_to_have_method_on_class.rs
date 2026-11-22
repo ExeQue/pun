@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Access, Call, Expression, Literal, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use super::{Is, Trinary, expect_call, is_name, type_is};
 use crate::rules::phpunit::expr_text;

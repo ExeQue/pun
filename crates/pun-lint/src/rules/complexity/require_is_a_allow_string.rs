@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::complexity::no_sole_value_sprintf::is_string;
 use crate::rules::support::names::called_function_name;

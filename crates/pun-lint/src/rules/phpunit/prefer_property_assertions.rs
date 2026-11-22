@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
     Array, ArrayElement, Call, Expression, Node, NodeKind, Statement, UnaryPrefixOperator,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::print_float;
 use super::{AnyCall, is_in_test_class};

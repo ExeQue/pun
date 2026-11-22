@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_span::HasSpan;
 use mago_syntax::cst::{
     Binary, BinaryOperator, Conditional, Expression, Node, NodeKind, UnaryPrefix,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::syntax::span;
 use crate::{Context, Report, Rule};

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{BinaryOperator, Call, Expression, Node, NodeKind, Statement};
-use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_in_test_class, resolve};
 use crate::rules::support::statement_edits::block_list;

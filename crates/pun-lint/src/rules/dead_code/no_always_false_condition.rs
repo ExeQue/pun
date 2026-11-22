@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Access, BinaryOperator, Expression, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::complexity::prefer_empty_array_identical::is_non_typed_from_param;
 use crate::rules::support::side_effects::any_node;

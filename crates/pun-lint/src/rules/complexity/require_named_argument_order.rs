@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -5,7 +6,6 @@ use mago_syntax::cst::{
     Argument, ArgumentList, ClassLikeMemberSelector, Expression, Identifier, Node, NodeKind,
     Variable,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::names::resolve_class_name;
 use crate::rules::types::class_scope;

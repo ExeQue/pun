@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, is_in_test_class, text};
 use crate::rules::laravel::is_variable;

@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Expression, Node, NodeKind, UnaryPrefixOperator};
-use pun_problem::Safety;
 
 use super::{func_call, is_name, matcher_subject, rename, subject_holder};
 use crate::rules::support::expressions::named;

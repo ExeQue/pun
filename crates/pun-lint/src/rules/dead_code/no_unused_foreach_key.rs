@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{Expression, ForeachBody, ForeachTarget, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::statements::{Token, enclosing, previous_token_end, tokens};
 use crate::rules::support::variable_usage::{try_of, used_in, used_in_next};

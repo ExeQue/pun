@@ -5,9 +5,9 @@ use mago_allocator::LocalArena;
 use mago_database::file::FileId;
 use mago_span::HasSpan;
 use mago_syntax::cst::Node;
+use pun_lint::problem::Span;
 use pun_lint::syntax::node_span;
 use pun_lint::{Context, Linter, Report, Rule};
-use pun_problem::Span;
 
 struct Record;
 

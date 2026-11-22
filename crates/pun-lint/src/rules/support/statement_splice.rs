@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Span};
 use mago_span::HasSpan;
 use mago_syntax::cst::{Expression, ForeachTarget, Node, Statement};
-use pun_problem::{Edit, Span};
 
 use crate::rules::complexity::no_redundant_null_check::reprint_function_like;
 use crate::rules::support::conditions::{comments_between, indentation, print_comments, reprint};

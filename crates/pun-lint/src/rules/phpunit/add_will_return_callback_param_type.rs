@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::metadata::ttype::TypeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -5,7 +6,6 @@ use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
     Argument, Call, Expression, FunctionLikeParameterList, Literal, MethodCall, Node, NodeKind,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::prefer_will_return_callback::{
     is_named, mocked_classes, setup_assigned_mock_types, test_classes,

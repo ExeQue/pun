@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Argument, ArrowFunction, Binary, BinaryOperator, Call, Closure, Construct, Expression, Node,
     NodeKind, Statement,
 };
-use pun_problem::{Edit, Safety, Span};
 use std::fmt::Write as _;
 
 use super::{AnyCall, is_in_test_class, maybe_multiline, resolve};

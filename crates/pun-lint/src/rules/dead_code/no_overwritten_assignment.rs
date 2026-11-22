@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::rewrites::remove_statements;
 use crate::rules::support::side_effects::{any_node, call_has_side_effect};

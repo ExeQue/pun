@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::options::configure;
 use crate::syntax::span;
@@ -47,7 +47,10 @@ impl Rule for RequireInterpolationStyle {
 }
 
 fn edit(start: u32, end: u32, text: &str) -> Edit {
-    Edit::new(pun_problem::Span::new(start as usize, end as usize), text)
+    Edit::new(
+        crate::problem::Span::new(start as usize, end as usize),
+        text,
+    )
 }
 
 fn prefer_interpolation(node: Node<'_, '_>, ancestors: &[Node<'_, '_>], out: &mut Vec<Report>) {

@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::phpunit::is_in_test_class;
 use crate::rules::support::class_members::member_from;

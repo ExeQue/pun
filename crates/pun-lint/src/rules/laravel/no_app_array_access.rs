@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{AssignmentOperator, Expression, ExpressionStatement, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::object_type::is_object_type;
 use super::prefer_latest_oldest::{Got, get_value};

@@ -1,9 +1,9 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{
     Access, Argument, ArrayElement, BinaryOperator, Call, ClassLikeConstantSelector,
     ClassLikeMemberSelector, CompositeString, Expression, Node, NodeKind, TokenSeparatedSequence,
     UnaryPrefixOperator,
 };
-use pun_problem::Safety;
 
 use super::{AnyCall, NewArg, is_test_case_call_named, old_args, rewrite_args};
 use crate::syntax::unparenthesize;

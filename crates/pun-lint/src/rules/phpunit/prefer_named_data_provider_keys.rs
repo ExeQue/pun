@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     ArrayElement, ClassLikeMember, Expression, Literal, Method, MethodBody, Node, NodeKind,
     Statement, Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::{is_in_test_class, is_public, resolve};
 use crate::rules::support::statement_edits::assign;

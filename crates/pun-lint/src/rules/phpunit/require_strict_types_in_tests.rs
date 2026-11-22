@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Namespace, NamespaceBody, Node, NodeKind, Sequence, Statement};
-use pun_problem::{Edit, Safety, Span};
 
 use super::is_in_test_class;
 use crate::rules::support::statement_edits::contains_html;

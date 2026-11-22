@@ -1,3 +1,4 @@
+use crate::finder::{Command, Exclusions};
 use crate::render::{Look, Renderer, Summary};
 use crate::report::Abort;
 use crate::{Exit, agent, analyse_report, baseline, github, render, root};
@@ -5,10 +6,9 @@ use anyhow::Result;
 use clap::Args;
 use pun_config::rule_of_identifier;
 use pun_config::{Config, Options};
+use pun_lint::problem::ignore::Ignores;
+use pun_lint::problem::{Level, LineIndex, Problem, Span};
 use pun_phpstan::php::normalize_path;
-use pun_problem::ignore::Ignores;
-use pun_problem::{Level, LineIndex, Problem, Span};
-use pun_workspace::{Command, Exclusions};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -215,7 +215,7 @@ fn project(
         .collect();
     if !from_config.is_empty() && analysed_paths != from_config {
         let analysing: std::collections::HashSet<&PathBuf> = analysed.iter().collect();
-        let configured = pun_workspace::files(cfg, Some(Command::Analyse), &[])?;
+        let configured = crate::finder::files(cfg, Some(Command::Analyse), &[])?;
         (project.scanned).extend(configured.into_iter().filter(|f| !analysing.contains(f)));
     }
     let excluded = Exclusions::new(cfg, Command::Analyse)?;
@@ -288,7 +288,7 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
         libmimalloc_sys::mi_option_set(15, 100);
         libmimalloc_sys::mi_collect(true);
     }
-    let files = pun_workspace::files(cfg, Some(Command::Analyse), paths)?;
+    let files = crate::finder::files(cfg, Some(Command::Analyse), paths)?;
     let count = files.len();
     let configured: Vec<PathBuf> = if paths.is_empty() {
         cfg.analyse.paths.iter().map(PathBuf::from).collect()
@@ -429,7 +429,7 @@ fn apply_ignores(findings: &mut Vec<Finding>, root: &Path) -> Vec<Problem> {
 /// The engine's rule for an `@pun-ignore` comment without a rule ID (rules.md §4).
 const INVALID_IGNORE: &str = "invalid-ignore-comment";
 
-pub(crate) fn ignore_problem(rel: &str, m: &pun_problem::ignore::Malformed) -> Problem {
+pub(crate) fn ignore_problem(rel: &str, m: &pun_lint::problem::ignore::Malformed) -> Problem {
     Problem {
         rule: INVALID_IGNORE.into(),
         path: rel.into(),

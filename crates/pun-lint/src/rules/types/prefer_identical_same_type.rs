@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -8,7 +9,6 @@ use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
     Access, BinaryOperator, ClassLikeConstantSelector, Expression, Node, NodeKind,
 };
-use pun_problem::{Edit, Safety};
 
 use super::facts::{Facts, facts};
 use super::native::native_type;

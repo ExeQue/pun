@@ -12,6 +12,7 @@ mod cache;
 mod composer;
 mod console;
 mod extensions;
+pub mod finder;
 mod fix_report;
 mod github;
 mod init;

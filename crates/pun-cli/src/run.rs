@@ -6,8 +6,8 @@ use crate::{Exit, FormatArgs, root};
 use anyhow::Result;
 use pun_config::{Config, Options, Rule};
 use pun_format::{LintError, Pipeline};
-use pun_problem::ignore::{Ignores, covers};
-use pun_problem::{LineIndex, Problem};
+use pun_lint::problem::ignore::{Ignores, covers};
+use pun_lint::problem::{LineIndex, Problem};
 use rayon::prelude::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::{IsTerminal, Read, Write};
@@ -293,19 +293,19 @@ fn ported_plan(a: &FormatArgs, cfg: &Config, lint: &LintOpts) -> Result<Plan> {
 /// The files `--dirty`, `--diff`, `--staged` or `--since` selects from git, when one of them is given.
 fn selected_files(a: &FormatArgs, cfg: &Config) -> Result<Option<Vec<PathBuf>>> {
     let selection = if a.dirty {
-        Some(pun_workspace::GitSelect::Dirty)
+        Some(crate::finder::GitSelect::Dirty)
     } else if let Some(b) = &a.diff {
-        Some(pun_workspace::GitSelect::Diff(b.clone()))
+        Some(crate::finder::GitSelect::Diff(b.clone()))
     } else if a.pun.staged {
-        Some(pun_workspace::GitSelect::Staged)
+        Some(crate::finder::GitSelect::Staged)
     } else {
         a.pun
             .since
             .as_ref()
-            .map(|r| pun_workspace::GitSelect::Since(r.clone()))
+            .map(|r| crate::finder::GitSelect::Since(r.clone()))
     };
     Ok(match &selection {
-        Some(sel) => Some(pun_workspace::git_paths(cfg, sel)?),
+        Some(sel) => Some(crate::finder::git_paths(cfg, sel)?),
         None => None,
     })
 }
@@ -321,18 +321,18 @@ fn file_sets(
     let format_set = match (formats, selected) {
         (false, _) => vec![],
         (true, Some(files)) => files.clone(),
-        (true, None) => pun_workspace::discover(cfg, &a.paths)?,
+        (true, None) => crate::finder::discover(cfg, &a.paths)?,
     };
     let lint_set = match (lints, selected) {
         (false, _) => vec![],
         (true, Some(files)) => {
             let all: HashSet<PathBuf> =
-                pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &[])?
+                crate::finder::files(cfg, Some(crate::finder::Command::Lint), &[])?
                     .into_iter()
                     .collect();
             files.iter().filter(|f| all.contains(*f)).cloned().collect()
         }
-        (true, None) => pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &a.paths)?,
+        (true, None) => crate::finder::files(cfg, Some(crate::finder::Command::Lint), &a.paths)?,
     };
     Ok((format_set, lint_set))
 }
@@ -360,7 +360,7 @@ fn native_rules(
     }
     let project = match (selected, a.paths.is_empty()) {
         (None, true) => lint_set.to_vec(),
-        _ => pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &[])?,
+        _ => crate::finder::files(cfg, Some(crate::finder::Command::Lint), &[])?,
     };
     project_codebase(cfg, project.clone());
     Ok((natives, Some(project)))
@@ -1037,7 +1037,7 @@ fn process_file(
         }
     }
     let warned: Vec<&'static str> = (token_on.iter())
-        .filter(|(_, o)| o.level == pun_problem::Level::Warning)
+        .filter(|(_, o)| o.level == pun_lint::problem::Level::Warning)
         .filter_map(|(id, _)| lint_plan::token_rules().get(id.as_str()).copied())
         .collect();
     r.warned.clone_from(&warned);
@@ -1259,7 +1259,7 @@ fn fix_text(
     check_excluded: bool,
     code: &[u8],
 ) -> Result<Option<Vec<u8>>> {
-    if check_excluded && pun_workspace::is_path_excluded(cfg, path) {
+    if check_excluded && crate::finder::is_path_excluded(cfg, path) {
         return Ok(None);
     }
     let Ok(run) = isolated(|| run_file(engine, path, code)) else {

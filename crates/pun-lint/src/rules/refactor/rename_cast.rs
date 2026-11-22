@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Safety};
 use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind, UnaryPrefixOperator};
-use pun_problem::{Edit, Safety};
 
 use super::{assert_class, int, items, object, string};
 use crate::rules::support::expressions::{operand, text};

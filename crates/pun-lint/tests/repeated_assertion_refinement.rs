@@ -39,9 +39,9 @@ fn asserted_impossible_repeated_call_does_not_declare_a_callback_return() {
     );
     let fixed = with_sources(extra.clone(), || linter.fix(Path::new("input.php"), input)).unwrap();
     assert_eq!(fixed.source, expected);
-    assert_ne!(fixed.applied, [] as [pun_problem::Problem; 0]);
+    assert_ne!(fixed.applied, [] as [pun_lint::problem::Problem; 0]);
     let repeated =
         with_sources(extra, || linter.fix(Path::new("input.php"), &fixed.source)).unwrap();
     assert_eq!(repeated.source, expected);
-    assert_eq!(repeated.applied, [] as [pun_problem::Problem; 0]);
+    assert_eq!(repeated.applied, [] as [pun_lint::problem::Problem; 0]);
 }

@@ -1,5 +1,5 @@
+use crate::problem::Span;
 use mago_syntax::token::TokenKind;
-use pun_problem::Span;
 
 use crate::rules::phpunit::annotations::reformatted;
 use crate::rules::support::conditions::indentation;

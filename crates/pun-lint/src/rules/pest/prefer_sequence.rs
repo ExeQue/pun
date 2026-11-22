@@ -1,5 +1,5 @@
+use crate::problem::{Safety, Span};
 use mago_syntax::cst::{Expression, Literal, MethodCall, Node, NodeKind};
-use pun_problem::{Safety, Span};
 use std::fmt::Write as _;
 
 use super::{

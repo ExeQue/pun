@@ -1,6 +1,6 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{Node, NodeKind};
 use pun_phpstan::phpdoc::{Node as DocNode, TagValue, tags};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::phpdoc::no_useless_param_tag::function_like;
 use crate::rules::support::docblocks::Doc;

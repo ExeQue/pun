@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{AssignmentOperator, Expression, Node, NodeKind, Statement};
 use pun_phpstan::types::{Accessory, Type, intersect, mixed};
-use pun_problem::{Edit, Safety, Span};
 
 use super::declare::expression_order;
 use super::docblock::{FunctionLike, assignments, class_name, variable_name};

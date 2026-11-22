@@ -265,7 +265,7 @@ Pun's source ports the behaviour of the projects below, and the repository's tes
 | Project | Ported into | Copied test data |
 | --- | --- | --- |
 | [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer) 3.95.25 | `crates/pun-tokens`, `crates/pun-format`, `crates/pun-fixers` | `crates/pun-fixers/tests/fixtures` |
-| [Laravel Pint](https://github.com/laravel/pint) 1.32 | `crates/pun-fixers`, `crates/pun-config/presets`, `crates/pun-workspace`, `crates/pun-cli` | `crates/pun-fixers/tests/cases` (its output) |
+| [Laravel Pint](https://github.com/laravel/pint) 1.32 | `crates/pun-fixers`, `crates/pun-config/presets`, `crates/pun-cli` | `crates/pun-fixers/tests/cases` (its output) |
 | [PHPStan](https://github.com/phpstan/phpstan-src) 2.3.5 | `crates/pun-phpstan`, `crates/pun-analyse` | `crates/pun-analyse/tests/fixtures/rules`, `levels` and `nsrt`, `crates/pun-phpstan/tests/fixtures` |
 | [Larastan](https://github.com/larastan/larastan) 3.14.0 | `crates/pun-analyse`, which also bundles its `stubs` (`crates/pun-analyse/data/larastan-stubs`, with its license file) | `crates/pun-analyse/tests/fixtures/larastan` and `larastan-types` |
 | [Rector](https://github.com/rectorphp/rector-src) 2.8.4, with [rector-phpunit](https://github.com/rectorphp/rector-phpunit) | `crates/pun-lint` | `crates/pun-lint/tests/rector`, `rector-phpunit-stubs`, `doctrine-stubs` |

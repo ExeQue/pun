@@ -1,10 +1,10 @@
+use crate::problem::Span;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
     AnonymousClass, Expression, Node, NodeKind, Return, Statement, UnaryPostfix, UnaryPrefix,
     Variable,
 };
-use pun_problem::Span;
 
 use super::facts::{Facts, facts};
 use super::native::native_type;

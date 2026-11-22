@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     BinaryOperator, Call, ClassLikeMemberSelector, Expression, ExpressionStatement, Node, NodeKind,
 };
-use pun_problem::{Edit, Safety};
 
 use crate::rules::support::expressions::{call_to, inverse_node, text};
 use crate::rules::support::statement_edits::reindent;

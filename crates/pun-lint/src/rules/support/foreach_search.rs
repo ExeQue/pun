@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::{
     Expression, Foreach, ForeachBody, ForeachTarget, Node, Statement, Variable,
 };
-use pun_problem::{Edit, Span};
 
 use crate::Context;
 use crate::rules::support::expressions::{equal, is_constant, operand, text};

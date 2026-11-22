@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{Array, Call, Expression, MethodBody, Node, NodeKind, Statement};
-use pun_problem::{Edit, Safety, Span};
 
 use super::annotations::named_tags;
 use super::prefer_create_stub_expression::is_mock_object;

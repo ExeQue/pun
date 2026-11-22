@@ -1,10 +1,10 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{
     Access, Argument, BinaryOperator, ClassConstantAccess, ClassLikeConstantSelector, Expression,
     Literal, Node, NodeKind, Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 use pun_tokens::php_compat::float_to_string;
 use pun_tokens::php_compat::fnmatch;
 

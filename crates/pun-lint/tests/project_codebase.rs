@@ -60,7 +60,7 @@ fn a_deferred_scan_runs_when_a_rule_reads_facts() {
     let goto = Linter::new(vec![Box::new(NoGoto)], pun_lint::PhpVersion::from_id(80400));
     assert_eq!(
         goto.check(Path::new("holder.php"), HOLDER).unwrap(),
-        [] as [pun_problem::Problem; 0]
+        [] as [pun_lint::problem::Problem; 0]
     );
     let scanned_before = SCANNED.load(Ordering::SeqCst);
     let typed = fix();

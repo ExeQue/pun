@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{
     Access, AssignmentOperator, Call, ClassLikeMemberSelector, Expression, MethodBody, Node,
     NodeKind, Statement, Variable,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::statement_edits::block_list;
 use crate::rules::support::statement_edits::{contains_html, lines_between};

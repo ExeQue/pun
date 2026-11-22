@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Modifier, Node, NodeKind, Property};
-use pun_problem::{Edit, Safety, Span};
 
 use super::super::types::facts::facts;
 use crate::rules::support::class_members::qualified;

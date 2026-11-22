@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{ClassLikeMember, Expression, Literal, Method, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::add_mock_object_type::type_edit;
 use super::annotations::{TagValue, named_tags};

@@ -24,7 +24,7 @@ A file goes through two engines in one run (crates/pun-cli/src/run.rs):
 
 1. **The native rules** (crates/pun-lint) on Mago's syntax tree (§6): each rule returns problems with a span,
    message and help, and fixes as text edits on byte ranges. `Linter::fix` applies them with
-   `pun_problem::apply_fixes` in rounds until no rule has a fix left (at most 100 rounds). `@pun-ignore` comments
+   `pun_lint::problem::apply_fixes` in rounds until no rule has a fix left (at most 100 rounds). `@pun-ignore` comments
    (rules.md §4) and the per-file levels of `[[lint.overrides]]` (crates/pun-cli/src/lint_plan.rs) apply here.
 2. **The token path:** the lint rules that are PHP-CS-Fixer fixers (the risky fixers, the 40 rules moved from
    format and the 17 `Pun/*` ports of Mago rules) run in the formatter's pipeline (format.md §2), in PHP-CS-Fixer's
@@ -240,7 +240,7 @@ Answered 2026-10-17 (Pushpak):
 Lint spike (Build 1, 2026-10-17):
 
 - **Assistant's call: the rule shape.** A rule is called for every node with its ancestor stack and returns reports
-  (span, message, help, optional `pun_problem::Fix`); it declares a lowest PHP version like Rector's
+  (span, message, help, optional `pun_lint::problem::Fix`); it declares a lowest PHP version like Rector's
   `MinPhpVersionInterface`. The fix loop stops after 100 rounds (Ruff's limit); a round whose fixes break the syntax
   leaves the file unchanged and is an error naming the rules.
 - **Assistant's call: the sample rules** are `CombinedAssignRector` (unsafe) and `RemoveUnusedVariableInCatchRector`

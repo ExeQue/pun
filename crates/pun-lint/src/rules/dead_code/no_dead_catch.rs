@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{Expression, Hint, Node, NodeKind, Statement, TryCatchClause, Variable};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::laravel::is_a;
 use crate::rules::support::names::resolve_class_name;

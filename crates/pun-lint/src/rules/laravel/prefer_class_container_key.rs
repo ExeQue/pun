@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     Access, CompositeString, Expression, FunctionCall, Identifier, Literal, Node, NodeKind,
 };
-use pun_problem::{Edit, Safety};
 use serde_json::Value;
 
 use super::document_string::document_value;

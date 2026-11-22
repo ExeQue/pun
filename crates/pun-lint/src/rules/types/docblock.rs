@@ -1,10 +1,10 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Access, Assignment, AssignmentOperator, Block, ClassLikeMember, ClassLikeMemberSelector,
     Expression, FunctionLikeParameterList, FunctionLikeReturnTypeHint, Hint, Method, MethodBody,
     Node, Property, PropertyItem, Return, Sequence, Statement, Variable,
 };
 use pun_phpstan::types::Type;
-use pun_problem::{Edit, Safety, Span};
 
 use super::silent_void::Place;
 use super::{class_scope, has_only_return_with_expr, returns_scoped};

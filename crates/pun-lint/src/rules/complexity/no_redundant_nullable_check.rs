@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{
     BinaryOperator, Expression, Node, NodeKind, Statement, UnaryPrefixOperator,
 };
 use pun_phpstan::types::Type;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::phpdoc::no_useless_var_tag::var_removal_if_not_comment;
 use crate::rules::support::conditions::{if_parts, is_stmts_aware};

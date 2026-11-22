@@ -1,10 +1,10 @@
+use crate::problem::{Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
     AssignmentOperator, BinaryOperator, ClassLikeMemberSelector, Expression, IfBody, Literal,
     MethodBody, Modifier, Node, NodeKind, UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Safety, Span};
 
 use super::class_scope;
 use super::facts::{Facts, facts};

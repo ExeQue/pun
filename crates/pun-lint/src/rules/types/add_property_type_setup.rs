@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Property};
-use pun_problem::{Edit, Safety, Span};
 
 use super::add_property_type_constructor::{infer, is_test_case};
 use super::doctrine_repository::{doc_class, object_name};

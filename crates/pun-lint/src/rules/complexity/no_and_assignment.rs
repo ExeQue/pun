@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{BinaryOperator, Expression, ExpressionStatement, Node, NodeKind};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::expressions::{statements_edit, text};
 use crate::rules::support::statement_edits::is_plain_assign;

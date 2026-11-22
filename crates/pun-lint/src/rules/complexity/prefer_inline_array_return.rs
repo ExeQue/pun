@@ -1,10 +1,10 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{
     Access, AssignmentOperator, ClassLikeConstantSelector, Expression, Literal, Node, NodeKind,
     Statement, UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::class_members::{qualified, type_of};
 use crate::rules::support::conditions::{comments_between, indentation, reprint};

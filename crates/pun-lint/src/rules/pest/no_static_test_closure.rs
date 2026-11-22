@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{function_name, pest_callback, requires_instance_binding};
 use crate::syntax::node_span;

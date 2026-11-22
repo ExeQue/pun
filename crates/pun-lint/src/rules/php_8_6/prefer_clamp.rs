@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{Argument, Call, Expression, FunctionCall, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::arguments::{unpacked, value};
 use crate::rules::support::expressions::{args, named};

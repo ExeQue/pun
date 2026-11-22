@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
@@ -5,7 +6,6 @@ use mago_syntax::cst::{
     Argument, BinaryOperator, ClassLikeConstantSelector, Expression, Node, NodeKind,
     UnaryPrefixOperator,
 };
-use pun_problem::{Edit, Safety};
 
 use super::facts::{Facts, facts};
 use super::names::resolve_class_name;

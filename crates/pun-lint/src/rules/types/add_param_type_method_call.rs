@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -6,7 +7,6 @@ use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{
     ClassLikeMember, ClassLikeMemberSelector, Expression, Literal, Method, Modifier, Node, NodeKind,
 };
-use pun_problem::{Edit, Safety};
 
 use super::facts::{Facts, facts};
 use super::names::resolve_class_name;

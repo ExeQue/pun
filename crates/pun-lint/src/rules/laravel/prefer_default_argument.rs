@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ArgumentList, BinaryOperator, Call, Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{class_name, is_a, is_name, member_name};
 use crate::rules::support::arguments::append_argument;

@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Hint, Node, NodeKind, Property};
-use pun_problem::Safety;
 
 use super::annotations::Annotated;
 use super::phpdoc_type::{TagType, is_name, short_name, typed_tag, with_tag_type};

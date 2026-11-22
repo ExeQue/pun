@@ -1,10 +1,10 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::comparator::ComparisonResult;
 use mago_codex::ttype::comparator::union_comparator::is_contained_by;
 use mago_codex::ttype::get_iterable_parameters;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{Argument, Expression, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::refactor::{function_name, is_name};
 use crate::rules::types::facts::facts;

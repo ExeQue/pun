@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{
     Access, BinaryOperator, Call, Expression, Node, NodeKind, Statement, Variable,
 };
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::complexity::prefer_empty_array_identical::is_non_typed_from_param;
 use crate::rules::dead_code::no_always_false_condition::is_safe;

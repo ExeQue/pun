@@ -10,7 +10,7 @@ pub(crate) use look::{ColorChoice, Look, Role, Step};
 pub(crate) use look::{Depth, Theme, nearest_256};
 pub(crate) use spinner::Spinner;
 
-use pun_problem::{Level, LineIndex, Problem, Safety};
+use pun_lint::problem::{Level, LineIndex, Problem, Safety};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;

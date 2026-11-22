@@ -2,13 +2,13 @@
 
 use std::collections::HashSet;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_syntax::cst::{
     Class, ClassLikeMember, FunctionLikeParameter, Method, Modifier, Node, NodeKind, Property,
     Sequence,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::super::types::facts::facts;
 use crate::rules::support::names::{has_attribute, resolve_class_name};

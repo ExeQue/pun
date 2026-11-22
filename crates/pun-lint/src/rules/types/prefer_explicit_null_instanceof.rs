@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{BinaryOperator, Construct, Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::facts::facts;
 use super::prefer_instanceof::needs_parentheses;

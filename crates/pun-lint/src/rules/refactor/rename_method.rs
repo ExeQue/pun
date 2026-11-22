@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
     ClassLikeMember, ClassLikeMemberSelector, Expression, LocalIdentifier, Node, NodeKind, Sequence,
 };
-use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
 
 use super::super::types::facts::facts;

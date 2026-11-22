@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{FunctionLikeParameterList, Hint, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};

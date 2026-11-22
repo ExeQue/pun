@@ -334,7 +334,7 @@ fn below_php_83(rule: Box<dyn Rule>, code: &str) {
     let found = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80200))
         .check(Path::new("f.php"), code)
         .unwrap();
-    assert_eq!(found, [] as [pun_problem::Problem; 0]);
+    assert_eq!(found, [] as [pun_lint::problem::Problem; 0]);
 }
 
 #[test]
@@ -402,7 +402,7 @@ fn add_override_attribute_to_overridden_properties() {
     )
     .check(std::path::Path::new("f.php"), code)
     .unwrap();
-    assert_eq!(found, [] as [pun_problem::Problem; 0]);
+    assert_eq!(found, [] as [pun_lint::problem::Problem; 0]);
 }
 
 #[test]

@@ -5,10 +5,10 @@
 //! value as a variable name, so Pun escapes that `$` too (`"\${$v}"`, as PHP-CS-Fixer's
 //! `simple_to_complex_string_variable` writes it).
 
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     ArrayAccess, Expression, Identifier, IndirectVariable, Node, NodeKind, StringPart, Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use crate::rules::support::expressions::text;
 use crate::syntax::{node_span, span};

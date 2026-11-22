@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::expressions::call_to;
 use crate::rules::support::statement_edits::{block_list, remove};

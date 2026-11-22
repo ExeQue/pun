@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::union::TUnion;
@@ -6,7 +7,6 @@ use mago_syntax::cst::{
     Access, ClassLikeConstant, ClassLikeMember, CompositeString, Expression, Literal, Modifier,
     Node, NodeKind, StringPart, UnaryPrefixOperator,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use crate::rules::phpdoc::no_useless_var_tag::{Target, is_dead};
 use crate::rules::support::class_members::qualified;

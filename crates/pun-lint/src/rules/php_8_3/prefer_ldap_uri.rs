@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_span::HasSpan;
 use mago_syntax::cst::{Access, BinaryOperator, Call, Expression, Literal, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::arguments::{remove_argument, value};
 use crate::rules::support::expressions::{binary, operand, text};

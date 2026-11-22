@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Method, MethodBody, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{class_body, is_in_test_class, is_public};
 use crate::rules::support::class_members::member_from;

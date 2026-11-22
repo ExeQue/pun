@@ -1,8 +1,8 @@
+use crate::problem::Span;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Node, NodeKind, Variable};
-use pun_problem::Span;
 
 use crate::rules::support::names::resolve_class_name;
 use crate::rules::support::type_description::describe;

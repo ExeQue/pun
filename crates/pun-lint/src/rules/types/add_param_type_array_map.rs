@@ -1,6 +1,6 @@
+use crate::problem::Safety;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{Argument, Expression, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::class_scope;
 use super::facts::facts;

@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::atomic::TAtomic;
@@ -5,7 +6,6 @@ use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{Hint, Modifier, Node, NodeKind};
 use pun_phpstan::types::{Type, is_super_type_of};
-use pun_problem::{Edit, Safety};
 
 use super::compare::classes::with_classes;
 use super::compare::mapper::{TypeScope, expr_type};

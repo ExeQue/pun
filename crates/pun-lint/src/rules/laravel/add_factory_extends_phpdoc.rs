@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Access, ClassLikeMember, CompositeString, Expression, Literal, Node, NodeKind, Property,
     PropertyItem,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::document_string::document_value;
 use super::is_a;

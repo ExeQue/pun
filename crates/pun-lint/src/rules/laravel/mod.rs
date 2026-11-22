@@ -62,11 +62,11 @@ mod query_builder;
 pub use prefer_class_container_key::ContainerService;
 pub use prefer_constructor_injection::Injection;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Argument, ArgumentList, Assignment, AssignmentOperator, Call, ClassLikeMemberSelector,
     CompositeString, Expression, Node, UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report};

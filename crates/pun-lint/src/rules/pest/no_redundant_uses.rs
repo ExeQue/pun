@@ -2,13 +2,13 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use crate::problem::{Edit, Safety, Span};
 use mago_allocator::LocalArena;
 use mago_database::file::{File, FileType};
 use mago_syntax::cst::{
     Access, Argument, ArgumentList, ClassLikeConstantSelector, CompositeString, Expression,
     Literal, MethodCall, NamespaceBody, Node, NodeKind, Statement, StringPart, UseItems,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::{
     Item, func_call, function_name, identifier, method_call, old_statements, p_stmts, rewrite_list,

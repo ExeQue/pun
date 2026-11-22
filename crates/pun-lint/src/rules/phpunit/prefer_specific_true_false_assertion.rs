@@ -1,6 +1,6 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Argument, Call, Construct, Expression, Identifier, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{
     ASSERT, AnyCall, NewArg, expr_text, is_test_case_call_named, old_args, rewrite_args, text,

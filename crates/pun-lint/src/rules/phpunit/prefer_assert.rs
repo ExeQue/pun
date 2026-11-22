@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     BinaryOperator, Call, Expression, Method, MethodBody, Modifier, Node, NodeKind,
     UnaryPrefixOperator,
 };
-use pun_problem::{Edit, Safety};
 
 use super::{class_body, expr_text, is_in_test_class, own_class_reflection};
 use crate::rules::laravel::is_a;

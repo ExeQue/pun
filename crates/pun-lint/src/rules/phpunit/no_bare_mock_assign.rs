@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
     Argument, Call, Expression, ForeachBody, MethodBody, Node, NodeKind, PartialArgument,
 };
-use pun_problem::{Edit, Safety};
 
 use super::prefer_this_call::NON_ASSERT;
 use super::{

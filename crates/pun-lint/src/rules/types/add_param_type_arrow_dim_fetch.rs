@@ -1,6 +1,6 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Argument, BinaryOperator, Expression, Node, NodeKind, Variable};
-use pun_problem::Safety;
 
 use super::add_param_type_array_function::ARRAY_AND_CALLBACK_POSITIONS;
 use super::facts::facts;

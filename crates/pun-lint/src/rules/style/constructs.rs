@@ -8,7 +8,7 @@ use crate::rules::support::options::{boolean, configure};
 use crate::syntax::{node_span, span};
 use crate::{Context, OptionsError, Report, Rule};
 
-fn report(at: pun_problem::Span, message: String, help: &str) -> Report {
+fn report(at: crate::problem::Span, message: String, help: &str) -> Report {
     Report {
         span: at,
         message,
@@ -137,7 +137,7 @@ impl Rule for NoMultipleClassesPerFile {
     }
 }
 
-struct ClassLikeCollector<'arena>(Vec<(&'static str, &'arena [u8], pun_problem::Span)>);
+struct ClassLikeCollector<'arena>(Vec<(&'static str, &'arena [u8], crate::problem::Span)>);
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for ClassLikeCollector<'arena> {
     fn walk_in_class(&mut self, class: &'ast Class<'arena>, (): &mut ()) {

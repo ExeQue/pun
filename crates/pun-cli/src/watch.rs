@@ -31,7 +31,7 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<Exit> {
     let hasher = RandomState::new();
     let hash = |p: &PathBuf| std::fs::read(p).ok().map(|c| hasher.hash_one(&c));
     let mut done: HashMap<PathBuf, u64> = load_config(&a, &root)
-        .and_then(|cfg| pun_workspace::discover(&cfg, &a.paths))
+        .and_then(|cfg| crate::finder::discover(&cfg, &a.paths))
         .unwrap_or_default()
         .into_iter()
         .filter_map(|f| Some((f.clone(), hash(&f)?)))
@@ -61,7 +61,7 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<Exit> {
             return Ok(Exit::Success);
         }
         let files =
-            match load_config(&a, &root).and_then(|cfg| pun_workspace::discover(&cfg, &a.paths)) {
+            match load_config(&a, &root).and_then(|cfg| crate::finder::discover(&cfg, &a.paths)) {
                 Ok(f) => f,
                 Err(e) => {
                     report(&a, Err(e));

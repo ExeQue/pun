@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::statement_edits::{
     HOLDERS, List, block_list, holder_list, if_view, is_exit_or_throw,

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Argument, Call, Expression, Literal, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use super::{is_object, member_name};
 use crate::rules::support::arguments::{remove_argument, value};
@@ -64,7 +64,7 @@ impl Rule for PreferExplicitJsonCall {
             }
             let list = &call.argument_list;
             edits.push(Edit::new(
-                pun_problem::Span::new(
+                crate::problem::Span::new(
                     list.left_parenthesis.end.offset as usize,
                     list.right_parenthesis.start.offset as usize,
                 ),

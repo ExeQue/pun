@@ -89,10 +89,10 @@ mod union_method;
 pub(crate) use add_closure_return::closure_return;
 pub(crate) use never::has_parent_class_method;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Block, Expression, Extends, Identifier, MethodBody, Modifier, Node, Return, Sequence, Statement,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use crate::Report;
 use crate::syntax::node_span;

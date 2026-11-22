@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Call, Expression, MethodBody, Node, NodeKind, Statement};
-use pun_problem::Safety;
 
 use super::{AnyCall, is_in_test_class};
 use crate::rules::support::rewrites::remove_statements;

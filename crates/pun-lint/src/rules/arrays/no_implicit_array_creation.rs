@@ -1,5 +1,5 @@
+use crate::problem::Span;
 use mago_syntax::cst::{Node, NodeKind};
-use pun_problem::Span;
 
 use crate::rules::types::facts::facts;
 use crate::{Context, Report, Rule};

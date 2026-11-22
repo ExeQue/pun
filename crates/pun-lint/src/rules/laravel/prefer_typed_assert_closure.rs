@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Node, NodeKind, StaticMethodCall};
-use pun_problem::{Edit, Safety};
 
 use super::is_name;
 use super::object_type::{class_string_class, is_object_type};

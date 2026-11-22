@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use super::{called, fully_qualified, function_name, is_name, string_map};
 use crate::syntax::node_span;

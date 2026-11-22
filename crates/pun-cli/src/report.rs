@@ -7,7 +7,7 @@ use crate::render::{
 };
 use crate::{github, pint_error};
 use anyhow::{Result, bail};
-use pun_problem::{Level, LineIndex, Problem, Span};
+use pun_lint::problem::{Level, LineIndex, Problem, Span};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -716,8 +716,8 @@ fn agent(ctx: &Ctx, results: &[FileResult]) -> String {
             for p in &r.problems {
                 let at = index.line_col(p.span.start);
                 let fix = match p.fix.as_ref().map(|f| f.safety) {
-                    Some(pun_problem::Safety::Safe) => " [fix:safe]",
-                    Some(pun_problem::Safety::Unsafe) => " [fix:unsafe]",
+                    Some(pun_lint::problem::Safety::Safe) => " [fix:safe]",
+                    Some(pun_lint::problem::Safety::Unsafe) => " [fix:unsafe]",
                     None => "",
                 };
                 match p.level {

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Expression, MethodBody, Node, NodeKind, Statement};
-use pun_problem::{Edit, Safety};
 
 use super::{is_in_test_class, method_anew, resolve};
 use crate::rules::support::names::has_attribute;

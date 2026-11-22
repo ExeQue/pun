@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{
     Is, Trinary, first_value, is_name, set_call_arguments, subject_holder, texts, type_is,

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::syntax_types::is_int;
 use crate::syntax::{node_span, same_expression, unparenthesize};

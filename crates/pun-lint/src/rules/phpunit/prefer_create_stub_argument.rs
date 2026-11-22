@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     Access, Argument, ArgumentList, ArrayElement, Call, ClassLikeMemberSelector, Expression,
     Method, MethodBody, Node, NodeKind, PartialArgument, Variable,
 };
-use pun_problem::{Edit, Safety};
 
 use super::no_stub_with_expectations::called_classes;
 use super::prefer_create_stub_expression::{

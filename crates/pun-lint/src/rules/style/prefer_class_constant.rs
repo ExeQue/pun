@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{Literal, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::options::{boolean, configure, part_on};
 use crate::rules::types::facts::facts;

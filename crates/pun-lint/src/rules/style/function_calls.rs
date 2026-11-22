@@ -6,7 +6,7 @@ use crate::rules::support::names::{function_call_matches, is_imported, resolve_c
 use crate::syntax::{node_span, span};
 use crate::{Context, Report, Rule};
 
-fn report(at: pun_problem::Span, message: &str, help: String) -> Report {
+fn report(at: crate::problem::Span, message: &str, help: String) -> Report {
     Report {
         span: at,
         message: message.into(),

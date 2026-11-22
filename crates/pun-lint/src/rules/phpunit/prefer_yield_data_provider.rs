@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 use std::fmt::Write as _;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     ArrayElement, ClassLikeMember, Expression, Literal, Method, MethodBody, Node, NodeKind,
     Statement, TokenSeparatedSequence, UnaryPrefixOperator, Yield,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::annotations::{Annotated, TagValue, named_tags};
 use super::{TEST_CASE, class_parents, is_in_test_class, resolve};

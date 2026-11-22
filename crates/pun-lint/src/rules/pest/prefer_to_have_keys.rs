@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{Is, Trinary, has_not, is_name, matcher_subject, method_call, rename, type_is};
 use crate::rules::phpunit::expr_text;

@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::{
     Access, ClassLikeMemberSelector, CompositeString, Expression, Node, NodeKind,
 };
-use pun_problem::{Edit, Span};
 
 use super::{is_name, is_written, member_name, replace};
 use crate::rules::support::expressions::{Prec, call_to, is_constant, prec, text};

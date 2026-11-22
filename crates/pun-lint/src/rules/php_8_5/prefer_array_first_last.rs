@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{BinaryOperator, Expression, Literal, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::arguments::value;
 use crate::rules::support::expressions::{args, call_to, equal, named};
@@ -93,7 +93,7 @@ impl Rule for PreferArrayFirstLast {
     }
 }
 
-fn written(span: pun_problem::Span, ancestors: &[Node<'_, '_>]) -> bool {
+fn written(span: crate::problem::Span, ancestors: &[Node<'_, '_>]) -> bool {
     ancestors.iter().any(|a| match a {
         Node::Assignment(assignment) => {
             let lhs = node_span(assignment.lhs);

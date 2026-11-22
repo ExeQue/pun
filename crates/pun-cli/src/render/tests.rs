@@ -1,5 +1,5 @@
 use super::*;
-use pun_problem::{Edit, Fix, Span};
+use pun_lint::problem::{Edit, Fix, Span};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 

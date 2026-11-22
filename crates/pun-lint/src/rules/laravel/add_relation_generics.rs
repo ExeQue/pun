@@ -1,10 +1,10 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::reference::TReference;
 use mago_syntax::cst::{
     Argument, Call, ClassLikeMemberSelector, Expression, Hint, MethodBody, Node, NodeKind,
 };
-use pun_problem::Safety;
 
 use super::add_factory_extends_phpdoc::tag_name;
 use super::names::{resolve_class_name, resolve_doc_class_name, resolve_doc_string_name};

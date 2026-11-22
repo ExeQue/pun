@@ -11,8 +11,10 @@ use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind};
 use mago_syntax::settings::ParserSettings;
 use mago_syntax::walker::Walker;
-use pun_problem::{Edit, Fix, Level, Problem, Safety, Span, apply_fixes};
 
+use crate::problem::{Edit, Fix, Level, Problem, Safety, Span, apply_fixes};
+
+pub mod problem;
 pub mod rules;
 pub mod syntax;
 

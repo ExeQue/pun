@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::object_type::is_object_type;
 use super::{is_name, member_name};

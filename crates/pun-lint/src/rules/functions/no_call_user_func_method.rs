@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{
     ArrayElement, Call, Expression, Hint, Literal, Modifier, Node, NodeKind, Variable,
 };
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::arguments::{unpacked, value};
 use crate::rules::support::expressions::named;

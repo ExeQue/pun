@@ -1,6 +1,6 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Expression, FunctionLikeParameterList, Hint, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::facts::facts;
 use super::param::{
@@ -141,7 +141,7 @@ fn visit(
         return;
     };
     let edit = match hint_span {
-        Some(span) => pun_problem::Edit::new(span, declaration),
+        Some(span) => crate::problem::Edit::new(span, declaration),
         None => add_hint(param, &declaration),
     };
     out.push(Report::fixed(

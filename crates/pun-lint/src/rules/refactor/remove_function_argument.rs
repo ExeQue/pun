@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{Kind, assert_function, called, int, is_name, items, name_of, object, string};
 use crate::rules::support::rewrites::list_removal;

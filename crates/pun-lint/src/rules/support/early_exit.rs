@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{
     BinaryOperator, Block, Expression, If, IfBody, Statement, UnaryPrefixOperator,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::Report;
 use crate::syntax::node_span;

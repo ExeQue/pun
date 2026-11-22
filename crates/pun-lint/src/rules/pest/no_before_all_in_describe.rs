@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Closure, Node, NodeKind, Statement};
-use pun_problem::{Edit, Safety};
 
 use super::{Callback, func_call, function_name, pest_callback};
 use crate::syntax::{node_span, unparenthesize};

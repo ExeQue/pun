@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Fix, Safety};
 use pun_tokens::php_compat::float_to_string;
 
 use crate::rules::support::expressions::call_to;

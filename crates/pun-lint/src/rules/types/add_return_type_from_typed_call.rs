@@ -163,7 +163,7 @@ impl Rule for AddReturnTypeFromTypedCall {
 
 fn call_return(
     facts: &Facts,
-    call: pun_problem::Span,
+    call: crate::problem::Span,
     target: Target<'_>,
     ancestors: &[Node<'_, '_>],
     current: Option<&str>,

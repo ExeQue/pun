@@ -1,8 +1,8 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{
     Argument, ClassLikeMember, Expression, Hint, Method, MethodBody, Modifier, Node, NodeKind,
     Variable,
 };
-use pun_problem::Safety;
 
 use super::add_mock_intersection_type::mocked_class;
 use super::annotations::Annotated;

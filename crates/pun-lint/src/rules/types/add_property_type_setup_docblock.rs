@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Modifier, Node, NodeKind};
 use pun_phpstan::phpdoc::Node as PhpDocNode;
-use pun_problem::{Edit, Safety, Span};
 
 use super::add_property_type_constructor::is_test_case;
 use super::add_property_type_setup::untyped_properties;

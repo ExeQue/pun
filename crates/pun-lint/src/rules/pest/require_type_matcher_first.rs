@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{ClassLikeMemberSelector, Node, NodeKind, Variable};
-use pun_problem::Safety;
 
 use super::{
     Item, Link, STATEMENT_LISTS, chain_links, chain_root, expect_argument, has_not,

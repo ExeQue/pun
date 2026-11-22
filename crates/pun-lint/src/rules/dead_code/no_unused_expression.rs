@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::docblocks::doc_comment;
 use crate::rules::support::side_effects::any_node;
@@ -70,7 +70,7 @@ impl Rule for NoUnusedExpression {
                 Some(doc) if list.frame != Frame::Bare => {
                     let span = list.with_comments(ctx, key);
                     vec![Edit::new(
-                        pun_problem::Span::new(span.start, node_span(*stmt).end),
+                        crate::problem::Span::new(span.start, node_span(*stmt).end),
                         format!("{}\n", &source[doc.start..doc.end]),
                     )]
                 }

@@ -1492,6 +1492,7 @@ dependencies = [
  "dialoguer",
  "flate2",
  "libmimalloc-sys",
+ "mago-database",
  "md-5",
  "mimalloc",
  "notify",
@@ -1505,9 +1506,7 @@ dependencies = [
  "punphp-lint",
  "punphp-packages",
  "punphp-phpstan",
- "punphp-problem",
  "punphp-tokens",
- "punphp-workspace",
  "rayon",
  "serde",
  "serde_json",
@@ -1515,6 +1514,7 @@ dependencies = [
  "tar",
  "toml",
  "ureq",
+ "walkdir",
 ]
 
 [[package]]
@@ -1637,7 +1637,6 @@ dependencies = [
  "punphp-fixers",
  "punphp-format",
  "punphp-phpstan",
- "punphp-problem",
  "punphp-tokens",
  "rayon",
  "regex",
@@ -1676,13 +1675,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "punphp-problem"
-version = "0.2.6"
-dependencies = [
- "punphp-tokens",
-]
-
-[[package]]
 name = "punphp-tokens"
 version = "0.2.6"
 dependencies = [
@@ -1691,19 +1683,6 @@ dependencies = [
  "mago-php-version",
  "pcre2",
  "serde_json",
-]
-
-[[package]]
-name = "punphp-workspace"
-version = "0.2.6"
-dependencies = [
- "anyhow",
- "mago-database",
- "pcre2",
- "punphp-config",
- "punphp-tokens",
- "rayon",
- "walkdir",
 ]
 
 [[package]]

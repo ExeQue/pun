@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{FunctionLikeParameter, Modifier, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::class_scope;
 use super::facts::facts;

@@ -1,10 +1,10 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
     Argument, Call, ClassLikeMemberSelector, Expression, Literal, MethodBody, Node, NodeKind,
     PartialApplication, StringPart, Variable,
 };
 use mago_syntax::token::TokenKind;
-use pun_problem::{Edit, Safety, Span};
 
 use super::class_string;
 use crate::rules::support::class_members::walk;

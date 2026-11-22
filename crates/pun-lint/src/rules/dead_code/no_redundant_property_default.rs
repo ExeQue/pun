@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::Type;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::class_members::method;
 use crate::rules::support::docblocks::doc_comment;

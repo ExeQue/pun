@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Argument, Closure, Expression, Node, NodeKind, Variable};
-use pun_problem::{Edit, Safety, Span};
 use std::fmt::Write as _;
 
 use super::object_type::{

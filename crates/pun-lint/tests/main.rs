@@ -7,6 +7,8 @@ mod mago_b;
 mod merged_checks;
 mod numeric_admission;
 mod oracle;
+mod problem;
+mod problem_ignore;
 mod rector;
 mod rector_a;
 mod rector_dead;

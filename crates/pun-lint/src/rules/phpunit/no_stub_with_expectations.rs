@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::metadata::parameter::FunctionLikeParameterMetadata;
 use mago_syntax::cst::{
     Argument, Call, ClassLikeMemberSelector, Expression, MethodBody, Node, NodeKind, Variable,
 };
-use pun_problem::{Edit, Safety};
 
 use super::no_bare_mock_assign::scoped;
 use super::prefer_create_stub_expression::is_mock_object;

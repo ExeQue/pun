@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{
     Access, ClassLikeMemberSelector, Construct, Expression, Node, NodeKind, UnaryPrefixOperator,
     Variable,
 };
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::class_members::{object_class_names, qualified, type_of};
 use crate::rules::support::expressions::{Prec, in_parent, text, wrap};

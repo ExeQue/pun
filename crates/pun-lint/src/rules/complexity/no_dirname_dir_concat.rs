@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{BinaryOperator, Call, Expression, Literal, MagicConstant, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use crate::rules::complexity::prefer_absolute_include::print_string;
 use crate::rules::support::names::called_function_name;

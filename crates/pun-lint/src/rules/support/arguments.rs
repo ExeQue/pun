@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::{Argument, ArgumentList, Expression};
-use pun_problem::{Edit, Span};
 
 use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;

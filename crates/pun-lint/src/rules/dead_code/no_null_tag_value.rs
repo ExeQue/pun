@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Statement};
 use mago_syntax::token::TokenKind;
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::docblocks::doc_without_tags;
 use crate::rules::support::statement_edits::{previous_token_end, tokens};

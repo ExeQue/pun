@@ -149,7 +149,7 @@ silent:
   `:23:16` shows as 4). The cut never passes the span's start column, and a blank line inside a multi-line span gets no
   marker. A span over more than 3 lines shows its first two lines, `…`, and its last. An empty span, or
   one at the line end, gets a one-column marker. No help closes the frame with a bare `╰─`. Columns count bytes, as
-  `pun_problem::LineIndex` does.
+  `pun_lint::problem::LineIndex` does.
 - **`--concise`:** ` ✖ path:line:col  rule  message  fixable`.
 - **Summary glyph:** ✖ with any error or file needing formatting, ⚠ with only warnings, ✔ `No problems` otherwise.
 - **Token roles:** error `bad`, success `ok`, rule IDs `lilac-deep`, dim `ink-3`, warning `zap` on dark. The tokens

@@ -89,13 +89,13 @@ pub(crate) use crate::rules::support::expressions::text;
 pub(crate) use crate::rules::support::names::resolve_class_name as resolve;
 pub(crate) use prefer_test_with_attribute::print_float;
 
+use crate::problem::{Edit, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
     Argument, ArgumentList, ClassLikeMemberSelector, Expression, Identifier, Method, Modifier,
     Node, Variable,
 };
-use pun_problem::{Edit, Span};
 use std::fmt::Write as _;
 
 use crate::Context;

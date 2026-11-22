@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{
     CompositeString, Expression, Identifier, Literal, Node, NodeKind, StringPart,
 };
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::refactor::{is_name, items};
 use crate::rules::types::facts::facts;
@@ -59,7 +59,7 @@ fn fnmatch(pattern: &[u8], name: &[u8]) -> bool {
     }
 }
 
-fn is_a_argument(ancestors: &[Node<'_, '_>], span: pun_problem::Span) -> bool {
+fn is_a_argument(ancestors: &[Node<'_, '_>], span: crate::problem::Span) -> bool {
     let Some(Node::FunctionCall(call)) = ancestors
         .iter()
         .rev()

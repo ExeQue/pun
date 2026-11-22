@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety};
 use crate::syntax::is_this;
 use mago_syntax::cst::{
     Access, ClassLikeMember, ClassLikeMemberSelector, Expression, Method, Modifier, Node, NodeKind,
     Property, Variable,
 };
-use pun_problem::{Edit, Safety};
 
 use super::no_unused_mock_property::traits_in_file;
 use super::{class_body, is_in_test_class, remove_class_members};
@@ -107,7 +107,7 @@ impl Rule for PreferLocalOverSetupProperty {
     }
 }
 
-fn fetches(node: Node<'_, '_>, name: &[u8]) -> Vec<pun_problem::Span> {
+fn fetches(node: Node<'_, '_>, name: &[u8]) -> Vec<crate::problem::Span> {
     let mut found = Vec::new();
     let mut stack = vec![node];
     while let Some(node) = stack.pop() {

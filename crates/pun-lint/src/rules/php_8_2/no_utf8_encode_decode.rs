@@ -1,7 +1,7 @@
 //! Rector 2.8.4's `Utf8DecodeEncodeToMbConvertEncodingRector`.
 
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use crate::rules::support::arguments::append_argument;
 use crate::rules::support::expressions::named;

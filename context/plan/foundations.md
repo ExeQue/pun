@@ -5,7 +5,7 @@ Status: housekeeping parts that every command depends on (old components C0, C10
 
 ## 1. CI, gates and how threads work (C0)
 
-**Today.** Cargo workspace (12 crates, `punphp-<x>` packages, all `publish = false`, every one on the shared
+**Today.** Cargo workspace (11 crates, `punphp-<x>` packages, all `publish = false`, every one on the shared
 `[workspace.lints]`; Mago pinned at `=1.57.0`). CI runs the rule-mapping and docs checks, rustfmt, clippy with
 `-D warnings`, the tests under cargo-nextest (`punphp-analyse` in its own job), parity and fuzz; a Coverage
 workflow, run on request, runs `scripts/coverage.sh` (100% per crate); cargo-dist releases on tags. CI is enabled on GitHub and green

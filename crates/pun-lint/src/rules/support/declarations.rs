@@ -1,6 +1,6 @@
+use crate::problem::Span;
 use mago_span::HasSpan;
 use mago_syntax::cst::{Access, Expression, Method, MethodBody, Node, Statement, Variable};
-use pun_problem::Span;
 
 use crate::syntax::span;
 

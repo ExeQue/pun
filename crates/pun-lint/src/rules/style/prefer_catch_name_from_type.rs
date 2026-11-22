@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::control_flow::no_for_init_overwrite::defined;
 use crate::rules::support::names::resolve_class_name;
@@ -149,7 +149,7 @@ fn is_rector_holder(holder: Node<'_, '_>, above: &[Node<'_, '_>]) -> bool {
     }
 }
 
-fn collect(node: Node<'_, '_>, name: &[u8], out: &mut Vec<pun_problem::Span>) {
+fn collect(node: Node<'_, '_>, name: &[u8], out: &mut Vec<crate::problem::Span>) {
     if let Node::DirectVariable(v) = node
         && v.name == name
     {
@@ -163,7 +163,7 @@ fn next_usages(
     node: Node<'_, '_>,
     old: &str,
     new: &str,
-    out: &mut Vec<pun_problem::Span>,
+    out: &mut Vec<crate::problem::Span>,
     stopped: &mut bool,
 ) {
     if *stopped {

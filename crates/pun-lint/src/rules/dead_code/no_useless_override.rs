@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::class_members::remove_members;
 use crate::rules::support::class_members::{

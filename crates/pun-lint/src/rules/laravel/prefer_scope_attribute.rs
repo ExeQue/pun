@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::{ClassLikeMember, Hint, Method, MethodBody, Modifier, Node, NodeKind};
-use pun_problem::{Edit, Span};
 
 use super::property_attribute::{ClassView, MODEL, report};
 use crate::rules::support::names::{has_attribute, resolve_class_name};

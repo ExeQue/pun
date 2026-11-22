@@ -294,18 +294,18 @@ fn return_type_from_strict_typed_call_never_is_not_propagated() {
         assert_eq!(problem.path, path);
         assert_eq!(&input[problem.span.start..problem.span.end], "numbered");
         let fix = problem.fix.as_ref().unwrap();
-        assert_eq!(fix.safety, pun_problem::Safety::Unsafe);
+        assert_eq!(fix.safety, pun_lint::problem::Safety::Unsafe);
         assert_eq!(fix.edits.len(), 1);
         let edit = &fix.edits[0];
         let at = input.find("numbered()").unwrap() + "numbered()".len();
-        assert_eq!(edit.span, pun_problem::Span::new(at, at));
+        assert_eq!(edit.span, pun_lint::problem::Span::new(at, at));
         assert_eq!(edit.text, ": int");
         let fixed = linter.fix(path, input).unwrap();
         assert_eq!(fixed.source, expected, "PHP {version}");
         assert_eq!(fixed.applied, problems);
         assert_eq!(
             linter.check(path, expected).unwrap(),
-            [] as [pun_problem::Problem; 0]
+            [] as [pun_lint::problem::Problem; 0]
         );
     }
 }

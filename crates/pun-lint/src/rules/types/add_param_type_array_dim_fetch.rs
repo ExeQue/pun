@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 
+use crate::problem::{Safety, Span};
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -11,7 +12,6 @@ use mago_syntax::cst::{
     FunctionLikeParameterList, Instantiation, MethodBody, Modifier, Node, NodeKind,
     UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Safety, Span};
 
 use super::add_param_type_method_call::walk;
 use super::class_scope;

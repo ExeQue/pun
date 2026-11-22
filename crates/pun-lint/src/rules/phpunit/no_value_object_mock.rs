@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     Argument, ArgumentList, ArrayElement, Call, Expression, Node, NodeKind, PartialArgument,
 };
-use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, TEST_CASE, class_is, class_string};
 use crate::syntax::{node_span, unparenthesize};

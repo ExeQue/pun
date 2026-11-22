@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Expression, Node, NodeKind, Variable};
-use pun_problem::{Edit, Safety};
 
 use super::{identifier, indent_at, kept_text};
 use crate::syntax::{node_span, unparenthesize};

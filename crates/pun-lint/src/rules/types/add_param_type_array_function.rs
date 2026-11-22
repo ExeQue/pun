@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Node, NodeKind};
-use pun_problem::Safety;
 
 use super::add_param_type_array_any_all::closure_params;
 use super::facts::facts;

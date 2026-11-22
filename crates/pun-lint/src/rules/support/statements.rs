@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Span};
 use mago_database::file::FileId;
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
@@ -5,7 +6,6 @@ use mago_syntax::lexer::Lexer;
 use mago_syntax::settings::LexerSettings;
 use mago_syntax::token::TokenKind;
 use mago_syntax_core::input::Input;
-use pun_problem::{Edit, Span};
 
 use crate::syntax::{node_span, statements, unparenthesize};
 

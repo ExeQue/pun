@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
     Access, BinaryOperator, Expression, Node, NodeKind, Statement, UnaryPrefixOperator,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::conditions::if_parts;
 use crate::rules::support::names::resolve_class_name;

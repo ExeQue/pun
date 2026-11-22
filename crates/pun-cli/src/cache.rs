@@ -11,7 +11,7 @@
 //! missing, truncated, from another version or otherwise unreadable is an empty cache.
 
 use crate::report::{FileResult, Status};
-use pun_problem::{Edit, Fix, Level, Problem, Safety, Span};
+use pun_lint::problem::{Edit, Fix, Level, Problem, Safety, Span};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;

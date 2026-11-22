@@ -15,9 +15,7 @@ sections after it are kept by hand. The gate notes that used to open this file a
 | punphp-lint | 71573 | 70512 | 98.52% | ok |
 | punphp-packages | 12870 | 12870 | 100.00% | ok |
 | punphp-phpstan | 11723 | 11463 | 97.78% | ok |
-| punphp-problem | 290 | 290 | 100.00% | ok |
 | punphp-tokens | 3958 | 3892 | 98.33% | ok |
-| punphp-workspace | 457 | 457 | 100.00% | ok |
 
 Uncovered lines:
 

@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use mago_span::HasSpan;
 use mago_syntax::cst::Node;
+use pun_lint::problem::{Edit, Fix, Level, Safety, Span};
 use pun_lint::{Context, LintError, Linter, MAX_ROUNDS, Report, Rule, rules};
-use pun_problem::{Edit, Fix, Level, Safety, Span};
 
 #[test]
 fn check_reports_each_problem_once_with_rule_path_span_and_fix() {

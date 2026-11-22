@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
     Access, ArgumentList, Expression, FunctionCall, MethodCall, Node, NodeKind,
 };
-use pun_problem::{Edit, Safety, Span};
 use std::fmt::Write as _;
 
 use super::{

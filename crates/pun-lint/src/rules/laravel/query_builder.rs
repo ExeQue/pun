@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Expression, FunctionLikeParameter, Hint, Node};
-use pun_problem::Safety;
 
 use super::object_type::{is_object_type, name_class, object_class, special_class};
 use super::print::set_param_type;

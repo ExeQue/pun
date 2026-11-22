@@ -1,8 +1,8 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{
     Access, Call, ClassLikeMember, ClassLikeMemberSelector, Expression, MethodBody, Node, NodeKind,
     Property, Statement, Variable,
 };
-use pun_problem::Safety;
 
 use super::no_bare_mock_assign::scoped;
 use super::{

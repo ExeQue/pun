@@ -490,9 +490,9 @@ fn ignore_rewrites(
 ) -> Vec<(PathBuf, Vec<u8>, Vec<u8>)> {
     let mut edits = vec![];
     let mut unknown = vec![];
-    let mut files = pun_workspace::discover(cfg, &[]).unwrap_or_default();
+    let mut files = crate::finder::discover(cfg, &[]).unwrap_or_default();
     let analysed: std::collections::HashSet<PathBuf> = if phpstan {
-        let analysed = pun_workspace::files(cfg, Some(pun_workspace::Command::Analyse), &[]);
+        let analysed = crate::finder::files(cfg, Some(crate::finder::Command::Analyse), &[]);
         analysed.unwrap_or_default().into_iter().collect()
     } else {
         std::collections::HashSet::new()
@@ -547,7 +547,7 @@ fn rector_lint(
 ) -> Result<String> {
     let mut r = migrate::from_rector(root, &rector_config(root, config)?);
     let cfg = pun_config::from_toml(root, &parts.render())?;
-    let files = pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &[])?;
+    let files = crate::finder::files(&cfg, Some(crate::finder::Command::Lint), &[])?;
     r.exclude.extend(outside(root, &files, &r.paths));
     let done = migrate::compose(root, parts, &r)?;
     let mut skipped = r.unsupported;
@@ -1037,7 +1037,7 @@ fn newlines(text: &[u8]) -> i64 {
 }
 
 /// Whether the comment at `span` of `code` has nothing but blanks before it on its first line and after it on its last,
-/// as crates/pun-problem/src/ignore.rs decides where a plain `@pun-ignore` points.
+/// as crates/pun-lint/src/problem/ignore.rs decides where a plain `@pun-ignore` points.
 fn own_line(code: &[u8], span: std::ops::Range<usize>) -> bool {
     let start = code[..span.start]
         .iter()
@@ -1052,7 +1052,7 @@ fn own_line(code: &[u8], span: std::ops::Range<usize>) -> bool {
 /// `text`, a comment starting on line `first`, with its `@phpstan-ignore-line` turned into `@pun-ignore` and its
 /// `@phpstan-ignore-next-line` into `@pun-ignore-next-line`, naming the rules of the errors on the line PHPStan ignores
 /// (`hidden`), with any text after the tag as the reason. It stays as it is, noted in `unknown`, when that line has
-/// none, when the Pun comment would cover another line (crates/pun-problem/src/ignore.rs), or with two tags in one
+/// none, when the Pun comment would cover another line (crates/pun-lint/src/problem/ignore.rs), or with two tags in one
 /// comment, which Pun reads only the first of.
 fn line_ignore(
     text: Vec<u8>,

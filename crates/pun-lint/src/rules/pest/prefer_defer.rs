@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{is_expect_chain, is_name, rename};
 use crate::syntax::node_span;

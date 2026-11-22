@@ -1,4 +1,4 @@
-use pun_problem::{Edit, Fix, LineCol, LineIndex, Safety, Span, apply_fixes};
+use pun_lint::problem::{Edit, Fix, LineCol, LineIndex, Safety, Span, apply_fixes};
 
 fn lc(line: usize, column: usize) -> LineCol {
     LineCol { line, column }

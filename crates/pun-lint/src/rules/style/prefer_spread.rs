@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::{named, text};
 use crate::rules::types::facts::facts;

@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{ClassLikeConstantSelector, Expression, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;

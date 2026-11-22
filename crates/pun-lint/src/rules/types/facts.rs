@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
+use crate::problem::Span;
 use mago_allocator::LocalArena;
 use mago_analyzer::Analyzer;
 use mago_analyzer::analysis_result::AnalysisResult;
@@ -35,7 +36,6 @@ use mago_syntax::cst::{
     Program, Sequence, Trivia, TriviaKind, UnaryPrefixOperator, Variable,
 };
 use mago_syntax::parser::parse_file;
-use pun_problem::Span;
 use rayon::prelude::*;
 
 use crate::Context;

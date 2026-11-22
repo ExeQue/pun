@@ -42,7 +42,7 @@ impl Rule for NoUnusedLabel {
 
 #[derive(Default)]
 struct LabelsAndGotos<'arena> {
-    labels: Vec<(&'arena [u8], pun_problem::Span)>,
+    labels: Vec<(&'arena [u8], crate::problem::Span)>,
     gotos: Vec<&'arena [u8]>,
 }
 

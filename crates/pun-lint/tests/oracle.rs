@@ -241,7 +241,7 @@ fn file_with_only_an_opening_tag_gets_no_strict_types_declaration() {
         let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
         assert_eq!(
             linter.check(Path::new("a.php"), "<?php\n").unwrap(),
-            [] as [pun_problem::Problem; 0]
+            [] as [pun_lint::problem::Problem; 0]
         );
     }
 }

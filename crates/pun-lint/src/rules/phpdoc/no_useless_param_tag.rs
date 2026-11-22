@@ -1,8 +1,8 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{
     FunctionLikeParameterList, FunctionLikeReturnTypeHint, Hint, Node, NodeKind,
 };
 use pun_phpstan::phpdoc::Node as DocNode;
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::docblocks::Doc;
 use crate::rules::types::compare::classes::with_classes;

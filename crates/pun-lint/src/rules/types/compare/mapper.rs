@@ -560,7 +560,7 @@ pub(crate) fn expr_type(
     native: bool,
 ) -> Type {
     let span = expr.span();
-    let span = pun_problem::Span::new(span.start.offset as usize, span.end.offset as usize);
+    let span = crate::problem::Span::new(span.start.offset as usize, span.end.offset as usize);
     let t = if native {
         facts.native_type(span)
     } else {

@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -9,7 +10,6 @@ use mago_phpdoc_syntax::cst::r#type::{ReferenceKind, Type};
 use mago_syntax::cst::{
     Argument, AssignmentOperator, Call, Expression, Node, NodeKind, Statement, StaticItem,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::class_members::{object_class_names, type_of};
 use crate::rules::support::conditions::comments_between;
@@ -425,7 +425,7 @@ fn constant_array(atomic: &TAtomic) -> Option<Vec<String>> {
     Some(keys)
 }
 
-fn holder_span(ancestors: &[Node<'_, '_>]) -> Option<pun_problem::Span> {
+fn holder_span(ancestors: &[Node<'_, '_>]) -> Option<crate::problem::Span> {
     let mut i = ancestors.len() - 1;
     loop {
         let node = ancestors[i];

@@ -130,7 +130,7 @@ Each step ends with the existing gates green (`cargo test -p punphp-config`, the
 6. **Remove delegate mode:** delete pun-delegate, `--native-only` and the delegated part of `--explain`, and update
    AGENTS.md and reference/oracle.md. An unported rule in pun.toml is a config error naming the rule.
    *Done when* no crate depends on pun-delegate and the coverage gate passes.
-7. **`[files]` and per-command `exclude`** in pun-workspace's finder, and **`pun list-files`** (§7).
+7. **`[files]` and per-command `exclude`** in pun-cli's finder (`finder.rs`), and **`pun list-files`** (§7).
    *Done when* the §7 example gives exactly the listed sets, and Pint's finder rules still hold for format.
 8. **`pun config`** prints the new resolved schema, and **`pun explain <rule>`** prints a rule's summary, group, sets,
    fix safety, upstream names and docs link from mapping.toml.

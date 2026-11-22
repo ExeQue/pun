@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{ArgumentList, ClassLikeMemberSelector, Expression, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::refactor::{function_name, object_class_name};
 use crate::rules::support::names::resolve_class_name;

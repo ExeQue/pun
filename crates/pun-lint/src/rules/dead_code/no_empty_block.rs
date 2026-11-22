@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{
     AssignmentOperator, Binary, BinaryOperator, Expression, ForBody, ForeachBody, ForeachTarget,
     IfBody, Node, NodeKind, Sequence, Statement, UnaryPrefixOperator,
 };
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::options::part_on;
 use crate::rules::support::statements::{

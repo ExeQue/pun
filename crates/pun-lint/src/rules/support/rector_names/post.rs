@@ -1,5 +1,5 @@
+use crate::problem::Span;
 use mago_syntax::cst::Program;
-use pun_problem::Span;
 use std::fmt::Write as _;
 
 use crate::Context;

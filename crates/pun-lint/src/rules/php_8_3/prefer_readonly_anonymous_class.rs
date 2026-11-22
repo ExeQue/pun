@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Modifier, Node, NodeKind, Sequence};
-use pun_problem::{Edit, Safety, Span};
 
 use crate::rules::support::class_members::method;
 use crate::rules::support::names::resolve_class_name;

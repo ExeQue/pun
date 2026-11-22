@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::visibility::Visibility;
 use mago_syntax::cst::{ClassLikeMember, Modifier, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::class_members::{is_magic, qualified};
 use crate::rules::types::facts::facts;

@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::expressions::{is_constant, text};
 use crate::rules::support::rewrites::{foreach_list, replace_run};

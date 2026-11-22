@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{
     AnyCall, NewArg, expr_name, is_test_case_call_named, old_args, renamed, rewrite_args, text,
@@ -85,7 +85,7 @@ impl Rule for PreferAssertStringContains {
                 call.span,
                 format!("Use `{name}()` instead of comparing `strpos()` with `false`."),
                 Safety::Safe,
-                vec![pun_problem::Edit::new(call.name_span(), name)],
+                vec![crate::problem::Edit::new(call.name_span(), name)],
             ));
             return;
         };

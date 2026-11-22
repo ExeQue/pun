@@ -152,7 +152,7 @@ them (§5).
 | `// @pun-ignore-start <id>` ... `// @pun-ignore-end` | a region |
 
 - One or more IDs, comma-separated: a full ID, a rule's `group/name`, or a group (`lint/security` or `security`).
-  A bare `@pun-ignore` with no ID is an error. Every form is built (crates/pun-problem/src/ignore.rs).
+  A bare `@pun-ignore` with no ID is an error. Every form is built (crates/pun-lint/src/problem/ignore.rs).
 - Free text after ` -- ` is the reason: `// @pun-ignore lint/security/no-eval -- legacy plugin loader`.
 - `/* */` and `/** */` forms work too, so PHPDoc-placed `@phpstan-ignore` ports one to one.
 - Unused ignores are reported by `no-unused-ignore` (safe fix: delete); malformed ones by `invalid-ignore-comment`.

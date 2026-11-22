@@ -1,10 +1,10 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
     Argument, AssignmentOperator, Closure, Expression, MethodBody, Node, NodeKind, Variable,
 };
-use pun_problem::Safety;
 
 use super::facts::{Facts, facts};
 use super::param::{Flow, add_hint, param_declaration, traverse};

@@ -1,7 +1,6 @@
-extern crate punphp_workspace as pun_workspace;
 mod common;
 
-use pun_workspace::{Command, Exclusions, FinderError, files, is_path_excluded};
+use punphp::finder::{Command, Exclusions, FinderError, files, is_path_excluded};
 use std::path::{Path, PathBuf};
 
 fn tree(files: &[&str]) -> PathBuf {

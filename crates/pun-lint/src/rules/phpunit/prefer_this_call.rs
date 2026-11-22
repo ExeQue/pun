@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Modifier, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{ASSERT, TEST_CASE, is_in_test_class, maybe_multiline};
 use crate::rules::laravel::is_a;

@@ -5,6 +5,7 @@ pub(crate) mod type_node;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::problem::{Edit, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::object::TObject;
@@ -20,7 +21,6 @@ use pun_phpstan::phpdoc::Node as DocNode;
 use pun_phpstan::resolve::{Scope, resolve_in};
 use pun_phpstan::symbols::{Class, with_classes};
 use pun_phpstan::types::{NeverKind, ShapeBuilder, Template, Type, is_super_type_of, union};
-use pun_problem::{Edit, Span};
 
 pub(crate) use doc_info::{PhpDocInfo, TypedValue};
 pub(crate) use type_node::TypeNode;

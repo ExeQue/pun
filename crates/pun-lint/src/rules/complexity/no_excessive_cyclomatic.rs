@@ -79,7 +79,7 @@ impl NoExcessiveCyclomatic {
         &self,
         kind: &str,
         members: &[ClassLikeMember<'_>],
-        header: pun_problem::Span,
+        header: crate::problem::Span,
         out: &mut Vec<Report>,
     ) {
         let methods = members.iter().filter_map(|m| match m {
@@ -114,7 +114,7 @@ impl NoExcessiveCyclomatic {
         &self,
         kind: &str,
         body: &Block<'_>,
-        header: pun_problem::Span,
+        header: crate::problem::Span,
         out: &mut Vec<Report>,
     ) {
         let mut complexity = 0;
@@ -125,7 +125,7 @@ impl NoExcessiveCyclomatic {
     }
 }
 
-fn report(message: String, at: pun_problem::Span) -> Report {
+fn report(message: String, at: crate::problem::Span) -> Report {
     Report {
         span: at,
         message,

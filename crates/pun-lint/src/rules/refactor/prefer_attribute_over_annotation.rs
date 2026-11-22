@@ -1,6 +1,6 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Node, NodeKind, Program};
-use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
 
 use super::{items, object};

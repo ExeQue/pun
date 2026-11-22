@@ -1,7 +1,7 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{
     Expression, Identifier, IndirectVariable, Node, NodeKind, Statement, Variable,
 };
-use pun_problem::Safety;
 
 use crate::rules::dead_code::no_unused_assignment::is_native_variable;
 use crate::rules::support::expressions::named;

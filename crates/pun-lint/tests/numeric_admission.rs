@@ -190,7 +190,7 @@ fn strict_lexer_linter_and_formatter_still_reject_native_invalid_octals() {
         let source = format!("<?php $a={literal};");
         assert_eq!(
             linter.check(Path::new("numeric.php"), &source).unwrap(),
-            [] as [pun_problem::Problem; 0]
+            [] as [pun_lint::problem::Problem; 0]
         );
         assert!(pun_format::lint(source.as_bytes()).is_ok());
     }

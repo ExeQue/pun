@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -7,7 +8,6 @@ use mago_syntax::cst::{
     Call, ClassLikeMemberSelector, Expression, ForeachBody, MethodBody, Node, NodeKind, Statement,
     Variable,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::is_in_test_class;
 use crate::rules::support::statement_edits::{

@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{BinaryOperator, Call, Expression, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{
     AnyCall, NewArg, expr_name, expr_text, is_test_case_call_named, old_args, renamed, resolve,

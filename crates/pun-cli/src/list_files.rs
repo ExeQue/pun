@@ -1,9 +1,9 @@
 use crate::Exit;
 use crate::agent;
+use crate::finder::Command;
 use anyhow::{Result, bail};
 use clap::Args;
 use pun_config::Options;
-use pun_workspace::Command;
 use std::fmt::Write as _;
 use std::io::Write;
 use std::path::PathBuf;
@@ -53,7 +53,7 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<Exit> {
         CommandArg::Lint => (Command::Lint, "lint"),
         CommandArg::Analyse => (Command::Analyse, "analyse"),
     });
-    let files: Vec<String> = pun_workspace::files(&cfg, command.map(|c| c.0), &a.paths)?
+    let files: Vec<String> = crate::finder::files(&cfg, command.map(|c| c.0), &a.paths)?
         .iter()
         .map(|f| f.strip_prefix(&root).unwrap_or(f).display().to_string())
         .collect();

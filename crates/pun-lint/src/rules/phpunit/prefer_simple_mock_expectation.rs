@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{ArrayElement, Expression, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{
     AnyCall, NewArg, contains, inner_without_equal_to, is_in_test_class, is_method_call_named,

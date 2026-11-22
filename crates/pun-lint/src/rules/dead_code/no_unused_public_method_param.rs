@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::class_members::is_magic;
 use crate::rules::support::class_members::{member_from, param_used};

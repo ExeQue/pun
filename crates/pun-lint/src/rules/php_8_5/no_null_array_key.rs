@@ -1,10 +1,10 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
     Access, Argument, BinaryOperator, ClassLikeMemberSelector, Expression, Literal, Node, NodeKind,
     Variable,
 };
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::arguments::value;
 use crate::rules::support::class_members::type_of;
@@ -99,7 +99,7 @@ fn is_undefined(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], expr: &Expression
                 Node::Function(_) | Node::Method(_) | Node::Closure(_) | Node::ArrowFunction(_)
             )
         })
-        .map_or_else(|| pun_problem::Span::new(0, ctx.source.len()), node_span);
+        .map_or_else(|| crate::problem::Span::new(0, ctx.source.len()), node_span);
     let text = &ctx.source.as_bytes()[outer.start..outer.end];
     let name = v.name;
     let mut count = 0;

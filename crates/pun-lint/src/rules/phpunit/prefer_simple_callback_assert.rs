@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Call, Expression, Node, NodeKind, Statement, Variable};
-use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_in_test_class};
 use crate::rules::support::expressions::is_constant;

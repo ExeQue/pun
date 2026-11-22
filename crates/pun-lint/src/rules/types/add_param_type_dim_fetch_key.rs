@@ -1,3 +1,4 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -8,7 +9,6 @@ use mago_syntax::cst::{
     Access, ArrayAccess, ArrayElement, ClassLikeMemberSelector, Expression, Literal, MethodBody,
     Modifier, Node, NodeKind, Variable,
 };
-use pun_problem::Safety;
 
 use super::add_param_type_property::is_legal;
 use super::class_scope;

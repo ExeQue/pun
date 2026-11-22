@@ -1,7 +1,7 @@
+use crate::problem::Safety;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Construct, Expression, Node, NodeKind, Variable};
-use pun_problem::Safety;
 
 use super::{AnyCall, NewArg, expr_text, is_test_case_call_named, old_args, renamed, rewrite_args};
 use crate::rules::laravel::is_a;

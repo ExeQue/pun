@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{Expression, Node, NodeKind, Statement};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::statements::{
     Frame, block_list, enclosing, line_indent, moved_text, remove, statement_lines, tokens,

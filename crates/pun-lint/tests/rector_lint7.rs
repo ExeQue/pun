@@ -242,7 +242,7 @@ fn func_get_args_to_variadic_param() {
     );
     assert_eq!(
         old.fix(path, code).unwrap().applied,
-        [] as [pun_problem::Problem; 0]
+        [] as [pun_lint::problem::Problem; 0]
     );
     let new = Linter::new(
         vec![Box::new(PreferVariadicParam)],
@@ -250,7 +250,7 @@ fn func_get_args_to_variadic_param() {
     );
     assert_ne!(
         new.fix(path, code).unwrap().applied,
-        [] as [pun_problem::Problem; 0]
+        [] as [pun_lint::problem::Problem; 0]
     );
 }
 

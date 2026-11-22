@@ -1,6 +1,6 @@
+use crate::problem::Span;
 use mago_syntax::cst::{BinaryOperator, Expression, If, IfBody, Node, Statement};
 use mago_syntax::token::TokenKind;
-use pun_problem::Span;
 
 use crate::Context;
 use crate::rules::support::expressions::{equal, is_constant};

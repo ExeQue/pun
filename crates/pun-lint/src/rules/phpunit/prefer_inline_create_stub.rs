@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Access, Argument, ArrayElement, Call, ClassLikeMember, ClassLikeMemberSelector, Expression,
     Hint, MethodBody, Node, NodeKind, PartialArgument, Property,
 };
-use pun_problem::{Edit, Safety, Span};
 use std::fmt::Write as _;
 
 use super::no_bare_mock_assign::scoped;

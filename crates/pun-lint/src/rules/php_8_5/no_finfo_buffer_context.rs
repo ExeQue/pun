@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{Argument, ArgumentList, ClassLikeMemberSelector, Node, NodeKind};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::arguments::remove_argument;
 use crate::rules::support::expressions::named;

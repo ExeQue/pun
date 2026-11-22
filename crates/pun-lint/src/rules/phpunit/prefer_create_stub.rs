@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     Call, ClassLikeMember, Expression, Hint, MethodBody, Modifier, Node, NodeKind, Property,
 };
-use pun_problem::{Edit, Safety};
 
 use super::no_unused_mock_property::property_fetch_name;
 use super::{AnyCall, class_body, is_in_test_class, resolve, text};
@@ -120,7 +120,7 @@ impl Rule for PreferCreateStub {
                     };
                     let at = node_span(variable).start;
                     edits.push(Edit::new(
-                        pun_problem::Span::new(at, at),
+                        crate::problem::Span::new(at, at),
                         format!("{STUB} "),
                     ));
                 }

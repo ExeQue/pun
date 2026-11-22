@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Span};
 use mago_span::HasSpan;
 use mago_syntax::cst::{
     Argument, BinaryOperator, Call, Construct, Expression, ExpressionStatement, FunctionCall,
     Identifier, Literal, Node, UnaryPrefixOperator, Yield,
 };
-use pun_problem::{Edit, Span};
 
 use crate::Context;
 use crate::syntax::{node_span, same_code, unparenthesize};

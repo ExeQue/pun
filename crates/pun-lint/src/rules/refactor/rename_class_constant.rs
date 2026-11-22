@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{ClassLikeConstantSelector, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use super::{assert_class, assert_constant, is_object_type, items, object, string};
 use crate::syntax::node_span;

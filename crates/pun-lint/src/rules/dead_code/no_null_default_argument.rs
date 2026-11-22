@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_syntax::cst::{Argument, ArgumentList, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::complexity::require_named_argument_order::{Target, callee};
 use crate::rules::support::arguments::{unpacked, value};

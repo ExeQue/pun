@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -5,7 +6,6 @@ use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
     Argument, Call, Expression, Method, MethodBody, Node, NodeKind, Statement, Variable,
 };
-use pun_problem::{Edit, Safety};
 
 use super::annotations::named_tags;
 use super::no_bare_mock_assign::scoped;

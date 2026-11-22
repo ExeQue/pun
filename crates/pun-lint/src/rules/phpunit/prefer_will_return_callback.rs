@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::TType;
@@ -9,7 +10,6 @@ use mago_syntax::cst::{
     Expression, Literal, MethodBody, MethodCall, Node, NodeKind, Statement, Variable,
 };
 use mago_syntax::token::TokenKind;
-use pun_problem::{Edit, Safety, Span};
 
 use super::{TEST_CASE, TEST_CASE_LEGACY, class_body, class_is, resolve, string_value};
 use crate::rules::support::options::part_on;

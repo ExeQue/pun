@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use pun_tokens::Kind;
 
-use crate::{Edit, Fix, LineIndex, Problem, Safety, Span};
+use crate::problem::{Edit, Fix, LineIndex, Problem, Safety, Span};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Scope {

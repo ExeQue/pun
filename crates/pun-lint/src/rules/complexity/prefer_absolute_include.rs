@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{
     BinaryOperator, Construct, Expression, IncludeConstruct, IncludeOnceConstruct, Literal,
     LiteralString, LiteralStringKind, Node, NodeKind, RequireConstruct, RequireOnceConstruct,
 };
-use pun_problem::{Edit, Fix, Safety};
 use std::fmt::Write as _;
 
 use crate::syntax::{node_span, unparenthesize};

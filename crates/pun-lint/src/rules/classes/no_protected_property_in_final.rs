@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Property};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::visibility::{final_class, is_protected, make_private};
 use crate::syntax::node_span;

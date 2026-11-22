@@ -3,11 +3,11 @@
 //! a reference (`$x ?? ($x = &$y)`), Mago's fix would write `$x ??= &$y`, which does not parse, so Mago rejects it;
 //! Pun reports the same issue without a fix.
 
+use crate::problem::{Edit, Fix, Safety};
 use mago_span::HasSpan;
 use mago_syntax::cst::{
     Access, ClassLikeMemberSelector, Expression, Node, NodeKind, UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::syntax::{span, unparenthesize};
 use crate::{Context, Report, Rule};

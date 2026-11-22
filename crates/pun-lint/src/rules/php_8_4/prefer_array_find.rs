@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{Node, NodeKind, Statement};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::foreach_search::{Kind, refactor};
 use crate::rules::support::options::part_on;

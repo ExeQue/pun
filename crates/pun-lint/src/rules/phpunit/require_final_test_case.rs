@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{Modifier, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 
 use super::{TEST_CASE, class_is};
 use crate::syntax::node_span;

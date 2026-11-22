@@ -30,8 +30,6 @@ pun-config.workspace = true
 pun-extension.workspace = true
 pun-format.workspace = true
 pun-fixers.workspace = true
-pun-workspace.workspace = true
-pun-problem.workspace = true
 pun-analyse.workspace = true
 pun-lint.workspace = true
 pun-phpstan.workspace = true
@@ -42,6 +40,8 @@ mimalloc.workspace = true
 libmimalloc-sys = { version = "0.1.49", features = ["extended"] }
 pun-tokens.workspace = true
 pun-packages.workspace = true
+mago-database.workspace = true
+walkdir.workspace = true
 ureq.workspace = true
 tar.workspace = true
 flate2.workspace = true

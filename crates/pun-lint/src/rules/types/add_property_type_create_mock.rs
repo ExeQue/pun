@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Hint, Node, NodeKind, Property, PropertyItem};
-use pun_problem::{Edit, Safety, Span};
 
 use super::add_property_type_constructor::is_test_case;
 use super::add_property_type_setup::MOCK_OBJECT;

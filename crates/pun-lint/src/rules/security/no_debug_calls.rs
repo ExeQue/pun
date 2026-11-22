@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{Access, Call, ClassLikeMemberSelector, Expression, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::expressions::call_to;
 use crate::rules::support::names::function_call_matches_any;

@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
@@ -15,7 +16,6 @@ use mago_syntax::cst::{
     Property, PropertyAccess, PropertyItem, Sequence, StaticPropertyAccess, UnaryPrefixOperator,
     Variable,
 };
-use pun_problem::{Edit, Span};
 
 use super::facts::Facts;
 use super::names::resolve_class_name;

@@ -191,3 +191,14 @@ pub(crate) fn strip_ansi(out: &str) -> String {
     }
     plain
 }
+
+/// A scratch tree holding `files`, each with `content`, for the finder tests.
+pub(crate) fn tree(prefix: &str, files: &[&str], content: &str) -> PathBuf {
+    let root = scratch(prefix, "tree");
+    for f in files {
+        let p = root.join(f);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, content).unwrap();
+    }
+    root
+}

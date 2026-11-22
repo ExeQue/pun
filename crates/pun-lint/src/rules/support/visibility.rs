@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Span};
 use mago_syntax::cst::{Class, ClassLikeMember, Modifier, Node, Sequence};
-use pun_problem::{Edit, Span};
 
 use crate::rules::support::class_members::modifiers_text;
 use crate::syntax::node_span;

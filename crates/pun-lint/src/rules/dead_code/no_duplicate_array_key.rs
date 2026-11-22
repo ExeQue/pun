@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{ArrayElement, Expression, Node, NodeKind, TokenSeparatedSequence};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::statements::{Token, is_dynamic_expr, previous_token_end, tokens};
 use crate::syntax::{node_span, same_code, unparenthesize};

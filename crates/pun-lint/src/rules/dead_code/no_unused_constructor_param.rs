@@ -1,6 +1,6 @@
+use crate::problem::{Fix, Safety};
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::class_members::qualified;
 use crate::rules::support::class_members::{member_from, param_used};

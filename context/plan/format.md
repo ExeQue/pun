@@ -34,7 +34,7 @@ For each file:
    repeat-until-stable loop, because upstream has none. Each fixer is a function-by-function port of the upstream PHP.
 5. **Print** the tokens back. Unchanged tokens keep their original bytes.
 
-Around that: file discovery copies Pint's finder rules (pun-workspace), and files run in parallel. A result
+Around that: file discovery copies Pint's finder rules (pun-cli's `finder.rs`), and files run in parallel. A result
 cache reuses each file's result from an earlier run with the same key (Pushpak, 2026-11-15, reversing "no result
 cache" of 2026-11-05; PLAN.md §1, `crates/pun-cli/src/cache.rs`).
 

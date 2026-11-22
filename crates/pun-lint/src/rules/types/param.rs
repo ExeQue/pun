@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Span};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -5,7 +6,6 @@ use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{Expression, FunctionLikeParameter, Node};
-use pun_problem::{Edit, Span};
 
 use super::declare::{atomic_declaration, union_order};
 use super::facts::Facts;

@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Call, ClassLikeMemberSelector, Expression, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use super::facts::{Facts, facts, is_builtin_class, is_builtin_function};
 use super::names::resolve_class_name;

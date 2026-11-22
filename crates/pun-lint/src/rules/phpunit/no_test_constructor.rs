@@ -1,9 +1,9 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_codex::ttype::TType;
 use mago_syntax::cst::{
     Block, ClassLikeMember, ClassLikeMemberSelector, Expression, Method, MethodBody, Modifier,
     Node, NodeKind, Statement,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::{TEST_CASE, class_parents, is_in_test_class, own_class, remove_class_members};
 use crate::rules::support::rewrites::{merge, remove_statements};

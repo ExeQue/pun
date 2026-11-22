@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
-use pun_problem::{Edit, Safety};
 
 use super::ptype::{native_is_integer, native_is_string};
 use super::{AnyCall, is_test_case_call_named};

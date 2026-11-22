@@ -1,5 +1,5 @@
+use crate::problem::{Fix, Safety};
 use mago_syntax::cst::{ClassLikeMember, Expression, Hint, Node, NodeKind, Property, Statement};
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::docblocks::Doc;
 use crate::rules::types::compare::classes::with_classes;

@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Method, Node, NodeKind};
-use pun_problem::Safety;
 use pun_tokens::php_compat::sprintf_g;
 use serde_json::Value;
 

@@ -1,3 +1,4 @@
+use crate::problem::{Edit, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::callable::TCallable;
 use mago_codex::ttype::atomic::object::TObject;
@@ -7,7 +8,6 @@ use mago_syntax::cst::{
     AssignmentOperator, BinaryOperator, Closure, Expression, FunctionLikeParameter, Identifier,
     Node, NodeKind,
 };
-use pun_problem::{Edit, Safety};
 
 use super::add_param_type_array_dim_fetch::is_variable;
 use super::facts::{Facts, facts};

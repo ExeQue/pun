@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::*;
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::complexity::no_boolean_literal_compare::truth;
 use crate::rules::support::expressions::inverse;

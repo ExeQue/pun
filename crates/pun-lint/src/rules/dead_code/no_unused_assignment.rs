@@ -1,8 +1,8 @@
+use crate::problem::{Fix, Safety};
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::*;
-use pun_problem::{Fix, Safety};
 
 use crate::rules::support::conditions::comments_between;
 use crate::rules::support::expressions::is_constant;
@@ -374,7 +374,7 @@ fn parent_of(codebase: &CodebaseMetadata, class: &str) -> Option<String> {
     )
 }
 
-fn object_class(facts: &Facts, span: pun_problem::Span) -> Option<&[u8]> {
+fn object_class(facts: &Facts, span: crate::problem::Span) -> Option<&[u8]> {
     match facts.full_type(span)?.types.as_ref() {
         [TAtomic::Object(TObject::Named(object))] if !object.is_this => {
             Some(object.name.as_bytes())
@@ -424,7 +424,7 @@ pub(crate) fn find_last(
     node: Node<'_, '_>,
     name: &[u8],
     before: usize,
-    found: &mut Option<pun_problem::Span>,
+    found: &mut Option<crate::problem::Span>,
 ) {
     node.visit_children(|child| {
         if node_span(&child).start >= before

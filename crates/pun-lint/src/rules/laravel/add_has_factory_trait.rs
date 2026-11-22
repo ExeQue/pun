@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     AttributeList, ClassLikeMember, Extends, Implements, Modifier, Node, NodeKind, Sequence,
 };
-use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
 use std::fmt::Write as _;
 

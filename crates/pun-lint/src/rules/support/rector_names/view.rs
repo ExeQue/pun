@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use crate::problem::Span;
 use mago_syntax::cst::*;
-use pun_problem::Span;
 
 use crate::rules::support::statement_edits::tokens;
 use crate::syntax::node_span;

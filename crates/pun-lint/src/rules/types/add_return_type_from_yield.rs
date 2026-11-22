@@ -1,8 +1,8 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
     Block, Expression, FunctionLikeReturnTypeHint, Hint, Method, MethodBody, Node, NodeKind,
     Statement,
 };
-use pun_problem::{Edit, Safety, Span};
 
 use super::facts::facts;
 use super::names::resolve_class_name;

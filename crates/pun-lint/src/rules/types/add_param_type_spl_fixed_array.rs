@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{FunctionLikeParameterList, Hint, Node, NodeKind};
-use pun_problem::Safety;
 
 use super::names::resolve_class_name;
 use crate::rules::phpunit::annotations::Annotated;

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{Argument, BinaryOperator, Call, Expression, FunctionCall, Node, NodeKind};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::arguments::{remove_argument, unpacked, value as arg_value};
 use crate::rules::support::expressions::is_constant;

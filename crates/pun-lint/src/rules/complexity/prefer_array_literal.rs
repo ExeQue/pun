@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety};
 use mago_syntax::cst::{ArrayElement, Expression, Node, NodeKind, UnaryPrefixOperator};
-use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::{args, named, text};
 use crate::syntax::{node_span, unparenthesize};

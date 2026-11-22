@@ -1,3 +1,4 @@
+use crate::problem::{Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -6,7 +7,6 @@ use mago_syntax::cst::{
     Expression, Extends, If, MethodBody, Modifier, Node, NodeKind, Property, Sequence, Statement,
     UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Fix, Safety};
 
 use crate::rules::dead_code::no_redundant_property_default::is_assigned_in_constructor;
 use crate::rules::support::class_members::method;
@@ -209,7 +209,7 @@ fn property_type(
     source: &str,
     facts: &Facts,
     class: &Class<'_, '_, '_>,
-    fetch: pun_problem::Span,
+    fetch: crate::problem::Span,
     name: &[u8],
 ) -> Option<TUnion> {
     let members = class.members;

@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Fix, Safety, Span};
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind, Statement, SwitchBody, SwitchCase};
-use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::conditions::{comments_between, indentation, print_comments, reprint};
 use crate::rules::support::expressions::infix;

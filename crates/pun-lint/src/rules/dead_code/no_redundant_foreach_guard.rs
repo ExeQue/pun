@@ -1,3 +1,4 @@
+use crate::problem::{Fix, Safety};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -8,7 +9,6 @@ use mago_syntax::cst::{
     Access, ArrayAccess, AssignmentOperator, BinaryOperator, Construct, Expression, Literal, Node,
     NodeKind, Statement, UnaryPrefixOperator, Variable,
 };
-use pun_problem::{Fix, Safety};
 
 use crate::rules::dead_code::no_implode_ternary::is_empty_array;
 use crate::rules::support::class_members::{type_of, walk};

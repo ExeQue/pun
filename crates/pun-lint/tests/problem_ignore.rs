@@ -1,5 +1,5 @@
-use pun_problem::ignore::{Ignores, covers};
-use pun_problem::{Level, LineIndex, Problem, Span, apply_fixes};
+use pun_lint::problem::ignore::{Ignores, covers};
+use pun_lint::problem::{Level, LineIndex, Problem, Span, apply_fixes};
 
 fn at(source: &str, rule: &str, line: usize) -> Problem {
     let start = LineIndex::new(source).line_range(line).unwrap().start;

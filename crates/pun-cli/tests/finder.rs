@@ -2,10 +2,9 @@
 //! files all start with `<?PHP` (pint.json enables only `full_opening_tag`), so `pint --test --format=txt` lists
 //! every discovered regular file ("N) path") and counts every discovered file, symlinks included ("Found x of N").
 //! Our side must produce the same set and count. Skipped when the oracle is not installed.
-extern crate punphp_workspace as pun_workspace;
 mod common;
 
-use pun_workspace::{GitSelect, discover, git_paths, is_path_excluded};
+use punphp::finder::{GitSelect, discover, git_paths, is_path_excluded};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;

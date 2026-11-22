@@ -1,5 +1,5 @@
+use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind};
-use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
 
 use super::annotations::{Annotated, TagValue, map_item, named_tags};

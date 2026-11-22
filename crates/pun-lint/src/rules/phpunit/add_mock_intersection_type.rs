@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     Access, Call, ClassLikeMember, Expression, Hint, MethodBody, Node, NodeKind, Property,
 };
-use pun_problem::{Edit, Safety};
 
 use super::annotations::Annotated;
 use super::phpdoc_type::{TagType, typed_tag, with_tag_type};

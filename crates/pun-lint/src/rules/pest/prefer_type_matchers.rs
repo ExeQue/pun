@@ -1,5 +1,5 @@
+use crate::problem::Safety;
 use mago_syntax::cst::{Node, NodeKind};
-use pun_problem::Safety;
 
 use super::{func_call, function_name, is_name, matcher_subject, rename, subject_holder};
 use crate::syntax::node_span;

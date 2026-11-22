@@ -1,7 +1,7 @@
+use crate::problem::{Edit, Safety};
 use mago_syntax::cst::{
     CompositeString, Expression, Literal, MethodCall, Node, NodeKind, StringPart,
 };
-use pun_problem::{Edit, Safety};
 
 use super::{func_call, has_comments, identifier, is_expect_chain, method_call, property_fetch};
 use crate::rules::phpunit::expr_text;
