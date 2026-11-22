@@ -129,8 +129,8 @@ jobs:
           fi
       - name: "Install the Rust toolchain the workspace needs"
         run: |
-          rustup toolchain install 1.99 --profile minimal --no-self-update
-          rustup default 1.99
+          rustup toolchain install 1.100 --profile minimal --no-self-update
+          rustup default 1.100
           echo "PCRE2_SYS_STATIC=1" >> "$GITHUB_ENV"
         shell: "bash"
       - name: Install dist
