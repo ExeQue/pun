@@ -235,22 +235,14 @@ tests/Type/data/helpers.php:191
 tests/Type/data/helpers.php:222
 # Larastan 3.11+ collection changes (benevolent `(int|string)` keys of `collection-of`, typed keys of the generic static
 # constructors, `map()` on Eloquent collections, paginator collections, null-safe chains) are not ported
-tests/Type/data/bug-1830.php:17
 tests/Type/data/collection-generic-static-methods.php:90
 tests/Type/data/collection-generic-static-methods.php:91
 tests/Type/data/collection-generic-static-methods.php:92
-tests/Type/data/collection-generic-static-methods.php:102
 tests/Type/data/collection-generic-static-methods.php:131
 tests/Type/data/collection-generic-static-methods.php:132
 tests/Type/data/collection-generic-static-methods.php:134
-tests/Type/data/collection-key-types.php:30
-tests/Type/data/collection-key-types.php:33
-tests/Type/data/collection-key-types.php:35
-tests/Type/data/collection-key-types.php:43
 tests/Type/data/collection-key-types.php:52
 tests/Type/data/collection-key-types.php:53
-tests/Type/data/collection-key-types.php:54
-tests/Type/data/collection-key-types.php:93
 tests/Type/data/collection-key-types.php:97
 tests/Type/data/collection-nullsafe-chain.php:20
 tests/Type/data/collection-nullsafe-chain.php:21
@@ -291,7 +283,6 @@ tests/Type/data/paginator-extension.php:116
 tests/Integration/data/framework-docblock-types.php
 tests/Integration/data/view-string-content.php
 tests/Type/data/auth.php:22
-tests/Type/data/event-dispatcher.php:27
 tests/Type/data/form-request.php:15
 tests/Type/data/model-date-column-casts.php:11
 tests/Type/data/model-date-column-casts.php:12
