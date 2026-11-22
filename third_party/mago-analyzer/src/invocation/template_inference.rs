@@ -1108,7 +1108,11 @@ fn infer_templates_from_input_and_container_types<A>(
                 continue;
             }
 
-            TUnion::from_vec(unmatched)
+            if unmatched.len() == residual_input_type.types.len() {
+                residual_input_type.clone()
+            } else {
+                TUnion::from_vec(unmatched).with_never_kind(residual_input_type.never_kind().unwrap_or_default())
+            }
         };
 
         let template_parameter_name = &container_generic.parameter_name;

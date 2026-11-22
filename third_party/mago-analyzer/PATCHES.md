@@ -4217,3 +4217,11 @@ keeps the pre-merge behaviour.
   recorded `hasOffsetValue(1, string)`, where PHPStan intersects the offset with its existing `non-falsy-string`
   (`hasOffsetValue(1, non-falsy-string)`). Callable arrays keep `get_iterable_value_parameter()`, as in 1.57.0.
   `tests/callable_branches.rs` (`narrowing_projections_copies_mutations_and_replacement_negatives`) checks this.
+- `invocation/template_inference.rs`: upstream 1.61's naked-template loop in
+  `infer_templates_from_input_and_container_types()` rebuilds the residual input with `TUnion::from_vec()` even when no
+  member is absorbed by a sibling, which drops the input's never kind and its other flags. PHPStan's
+  `TemplateTypeTrait::inferTemplateTypes()` binds the received type itself, so `call_user_func(fn () => exit())` binds
+  `R` to the closure's non-accepting `never`, and the call is a terminating statement (`deadCode.unreachable` after
+  it). The residual is now the input unchanged when nothing is absorbed, and a smaller union keeps the input's never
+  kind, as the residual a few lines above already does. `tests/never_identity.rs`, `tests/clone_inference.rs` and
+  `tests/never_calls.rs` check that.
