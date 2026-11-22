@@ -1627,8 +1627,15 @@ where
                                 return None;
                             }
 
+                            // Pun: a callable array keeps reading its values through its callable view
+                            // (`get_array_value_parameter()`), so `is_string($callable[1])` narrows to
+                            // non-falsy-string.
+                            let callable_array =
+                                matches!(existing_key_type_part, TAtomic::Array(array) if array.callable().is_some());
                             new_base_type_candidate = match parameters {
-                                Some((_, fallback_value)) if resolved_key.is_some() => (**fallback_value).clone(),
+                                Some((_, fallback_value)) if resolved_key.is_some() && !callable_array => {
+                                    (**fallback_value).clone()
+                                }
                                 _ => get_iterable_value_parameter(existing_key_type_part, context.codebase)?,
                             };
 

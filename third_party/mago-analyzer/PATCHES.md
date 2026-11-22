@@ -4211,3 +4211,9 @@ keeps the pre-merge behaviour.
   `??=` skips the re-read, as in 1.57.0. Other assignments keep upstream's invalidation.
   `tests/refined_isset_keys.rs` (`coalesce_produces_expression_holders_without_replaying_indexes`,
   `written_offset_holders_do_not_require_array_receivers`) checks this.
+- `reconciler/mod.rs` `get_value_for_key()`: upstream 1.61 reads a missing literal offset of an unsealed keyed array
+  as the array's raw value parameter. For a callable array (`is_array($callable)`: `non-empty-array&callable`), that
+  is `mixed` rather than the callable view's `class-string|object|non-falsy-string`. So `is_string($callback[1])`
+  recorded `hasOffsetValue(1, string)`, where PHPStan intersects the offset with its existing `non-falsy-string`
+  (`hasOffsetValue(1, non-falsy-string)`). Callable arrays keep `get_iterable_value_parameter()`, as in 1.57.0.
+  `tests/callable_branches.rs` (`narrowing_projections_copies_mutations_and_replacement_negatives`) checks this.
