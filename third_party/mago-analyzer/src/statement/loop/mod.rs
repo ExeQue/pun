@@ -1442,24 +1442,6 @@ where
             context.settings.formula_size_threshold,
         );
 
-        let mut assignments = vec![];
-        for pre_condition in pre_conditions {
-            collect_condition_assignments(pre_condition, &mut assignments);
-        }
-
-        for (variable, value) in assignments {
-            let variable_id = word(variable.name);
-            if only_condition_variables.is_none_or(|variable_ids| variable_ids.contains(&variable_id))
-                && let Some(value_type) = artifacts.get_rc_expression_type(value)
-            {
-                if let Some(inner_do_context) = inner_do_context.as_mut() {
-                    inner_do_context.locals.insert(variable_id, Rc::clone(value_type));
-                }
-
-                continue_context.locals.insert(variable_id, Rc::clone(value_type));
-            }
-        }
-
         let (mut negated_pre_condition_types, _) =
             find_satisfying_assignments(negated_pre_condition_clauses.iter().as_slice(), None, &mut WordSet::default());
         if let Some(variable_ids) = only_condition_variables {
@@ -2216,7 +2198,8 @@ where
     // post-condition must not constrain that first body through evaluated operand artifacts.
     let stored_clauses = is_do.then(|| pre_condition_clauses.clone());
     let rebuilds_stored_clauses = first_application && tested && condition_needs_analyzed_types(pre_condition);
-    let evaluated_clauses = if tested && (!is_do || rebuilds_stored_clauses) {
+    // ForHandler walks each condition on the previous one's truthy scope, so a leading condition narrows the body too.
+    let evaluated_clauses = if !is_do || rebuilds_stored_clauses {
         get_formula(
             pre_condition_span,
             pre_condition_span,
@@ -2295,10 +2278,6 @@ where
                 })
                 .copied(),
         );
-    }
-
-    if !tested {
-        return Ok(always_assigned_before_loop_body_variables);
     }
 
     loop_context.clauses = saturate_shared_clauses(

@@ -4225,3 +4225,12 @@ keeps the pre-merge behaviour.
   it). The residual is now the input unchanged when nothing is absorbed, and a smaller union keeps the input's never
   kind, as the residual a few lines above already does. `tests/never_identity.rs`, `tests/clone_inference.rs` and
   `tests/never_calls.rs` check that.
+- `statement/loop/mod.rs`: upstream 1.61's `apply_pre_condition_to_loop_context()` returns before reconciling a
+  `for` condition that is not the last one (`!tested`), and `analyze()` then writes each condition assignment's raw
+  value type into the loop's exit context. PHPStan's `ForHandler` walks every condition on the previous condition's
+  truthy scope, so `$discarded = false, $condition = true` makes `$discarded` `*NEVER*` in the body and after a
+  `break`. Its exit scope keeps the narrowed break-scope types: with `polluteScopeWithLoopInitialAssignments: false`,
+  `$condition = $enter` with a `break` is `true` after the loop, not `bool`. Every condition is now reconciled into
+  the body context again, and the raw-assignment write-back is removed. Only the last condition still decides
+  whether the loop is entered (`set_inside_conditional`, the entry-falsey scope), as upstream does.
+  `tests/variables.rs` (`loop-pollution/matrix.php` lines 142, 206 and 232) checks that.
