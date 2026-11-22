@@ -376,13 +376,7 @@ fn scan_function_like_docblock<A>(
 ) where
     A: Arena,
 {
-    let docblock = if matches!(metadata.kind, FunctionLikeKind::Closure | FunctionLikeKind::ArrowFunction) {
-        context.get_closure_docblock(span)
-    } else {
-        context.get_docblock(span)
-    };
-
-    let Some(document) = docblock.map(|docblock| parse_docblock_trivia(context, docblock)) else {
+    let Some(document) = context.get_docblock(span).map(|docblock| parse_docblock_trivia(context, docblock)) else {
         metadata.has_docblock = false;
 
         return;

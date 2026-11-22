@@ -1277,3 +1277,11 @@ Upstream ran `retain()` over every collected literal for each new one, which is 
 `Illuminate\Translation\MessageSelector` (the locale lists of its plural rules) spent about three quarters of its
 analysis time there.
 Nonliteral strings still go through `retain()`.
+
+## Mago 1.61.0 changes rejected for PHPStan parity
+
+- `scanner/function_like.rs` `scan_function_like_docblock()`: upstream 1.61 reads a closure's or arrow function's
+  docblock from the `$name = ` assignment it is the value of (`Context::get_closure_docblock()`, removed). PHPStan
+  reads only the docblock attached to the closure node itself, so `/** @param int $x */ $f = function ($x) {...};`
+  keeps `$x` as `mixed` and `/** @param-closure-this \stdClass $cb */ $h = function (\Closure $cb) {...};` reports
+  no `argument.staticClosure` for `$h(static fn () => 1)`. `tests/argument_contracts.rs` checks the second.
