@@ -1285,3 +1285,10 @@ Nonliteral strings still go through `retain()`.
   reads only the docblock attached to the closure node itself, so `/** @param int $x */ $f = function ($x) {...};`
   keeps `$x` as `mixed` and `/** @param-closure-this \stdClass $cb */ $h = function (\Closure $cb) {...};` reports
   no `argument.staticClosure` for `$h(static fn () => 1)`. `tests/argument_contracts.rs` checks the second.
+- `ttype/expander.rs` `use_own_template_bounds()`: upstream 1.61 replaces the arguments of a `static<...>` return
+  bound to a subclass with the subclass's template bounds, dropping the arguments the call resolved. PHPStan's
+  `GenericStaticType::changeBaseClass()` maps them through the subclass's `@extends`: a subclass template bound to
+  one of the declaring class's templates takes that template's argument, any other its default, else its bound. So
+  `ModelCollection::make($collection)` with `Collection<int, User<int>>` is `ModelCollection<int, User<int>>`, and
+  `TransactionCollection::wrap([...])` keeps `<(int|string), Transaction>` (Larastan's bug-2073.php and
+  collection-generic-static-methods.php).

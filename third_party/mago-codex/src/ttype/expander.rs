@@ -1157,15 +1157,51 @@ fn resolve_static_type(
     }
 }
 
-/// Replaces the type arguments of a class with the template bounds of the subclass `static` resolves to.
+/// Replaces the type arguments of a class with those of the subclass `static` resolves to.
+///
+/// Pun: PHPStan's `GenericStaticType::changeBaseClass()`. A subclass template that the subclass binds to one of
+/// the class's templates takes that template's argument; any other takes its default, else its bound.
 fn use_own_template_bounds(named: &mut TNamedObject, static_class: Word, codebase: &CodebaseMetadata) {
     if named.type_parameters.is_none() || named.name.as_bytes().eq_ignore_ascii_case(static_class.as_bytes()) {
         return;
     }
 
+    let arguments = named.type_parameters.take().unwrap_or_default();
+    let ancestor = codebase.get_class_like_by_name(named.name);
     named.type_parameters = codebase.get_class_like_by_name(static_class).and_then(|metadata| {
-        (!metadata.template_types.is_empty())
-            .then(|| metadata.template_types.values().map(|template| template.constraint.clone()).collect())
+        let extended = ancestor.and_then(|ancestor| {
+            metadata.template_extended_parameters.get(&ancestor.name).map(|extended| (ancestor, extended))
+        });
+        let bound_argument = |template_name: Word| {
+            let (ancestor, extended) = extended?;
+            let index = ancestor.template_types.keys().rposition(|ancestor_template| {
+                extended.get(ancestor_template).is_some_and(|bound| {
+                    bound.is_single()
+                        && matches!(
+                            bound.get_single(),
+                            TAtomic::GenericParameter(TGenericParameter {
+                                parameter_name,
+                                defining_entity: GenericParent::ClassLike(defining_class),
+                                ..
+                            }) if *parameter_name == template_name && *defining_class == metadata.name
+                        )
+                })
+            })?;
+
+            arguments.get(index).cloned()
+        };
+
+        (!metadata.template_types.is_empty()).then(|| {
+            metadata
+                .template_types
+                .iter()
+                .map(|(template_name, template)| {
+                    bound_argument(*template_name)
+                        .or_else(|| template.default.clone())
+                        .unwrap_or_else(|| template.constraint.clone())
+                })
+                .collect()
+        })
     });
 }
 
