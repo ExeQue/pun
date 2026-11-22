@@ -57,7 +57,6 @@ use crate::visibility::check_resolved_property_read_visibility;
 use crate::visibility::check_resolved_property_write_visibility;
 use crate::visibility::effective_write_visibility;
 use crate::visibility::is_visible_from_scope;
-use crate::visibility::private_member_scope;
 
 /// Represents a successfully resolved instance property.
 #[derive(Debug)]
@@ -808,21 +807,14 @@ pub(crate) fn resolve_declared_property<'ctx>(
         None
     };
 
-    let Some((declaring_metadata, real_property)) = class_metadata
-        .declaring_property_ids
-        .get(&prop_name)
-        .copied()
-        .and_then(|declaring_class| {
+    // Pun: no upstream 1.61 fallback to the scope class's private property on a subclass instance. PHPStan's
+    // reflection of the subclass has no such property, so the read is an error type, as in Mago 1.57.0.
+    let Some((declaring_metadata, real_property)) =
+        class_metadata.declaring_property_ids.get(&prop_name).copied().and_then(|declaring_class| {
             let declaring_metadata = codebase.get_class_like_by_name(declaring_class)?;
             let real_property = declaring_metadata.properties.get(&prop_name)?;
 
             Some((declaring_metadata, real_property))
-        })
-        .or_else(|| {
-            let scope_metadata = private_member_scope(codebase, class_metadata.name, scope)?;
-            let real_property = scope_metadata.properties.get(&prop_name)?;
-
-            real_property.read_visibility.is_private().then_some((scope_metadata, real_property))
         })
     else {
         return annotation.map(|(tag_metadata, annotation)| DeclaredProperty {

@@ -4260,3 +4260,8 @@ keeps the pre-merge behaviour.
   truthy branch, to `hasOffsetValue('k', <declared>)`: after `if ($a['k']['u'] ?? false) {}`, `$a` is the declared
   `array<string, array{u: bool}>` again. The shortcut is removed (`Variables/IssetRuleTest::testBug7318` and its
   Empty and NullCoalesce copies).
+- `resolver/property.rs` `resolve_declared_property()`: upstream 1.61 falls back to the scope class's private
+  property on an instance of a subclass, which does not inherit it. PHPStan's reflection of the subclass has no
+  such property, so `$this->root->root` (Bug2435, `root` private in the parent, typed as the child) reads as an
+  error type, not the parent's declared type. The fallback is removed, as in 1.57.0. Methods and static members
+  keep `private_member_scope()`.
