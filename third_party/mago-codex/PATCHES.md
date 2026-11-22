@@ -34,6 +34,10 @@ These merge changes keep Pun's patches consistent with upstream 1.61.0 code with
   `NullCoalesce` arm (which removes explicit null members and joins with `initializer::union()`) and `Conditional`
   arm (InitializerExprTypeResolver, with no branch selection from the condition) already match every such
   expression, so upstream's arms were unreachable.
+- `populator/docblock.rs`: `collect_inheritance_work()` walks `direct_parent_class` to collect every ancestor that
+  declares an overridden method (1.57.0 stopped at the first one). On a cyclic hierarchy (`A extends B`,
+  `B extends A`) that walk never ended and grew `candidates` until memory ran out; it now stops at the first
+  repeated ancestor. `tests/coverage.rs` `circular_hierarchy_ends` covers it.
 
 ## PHPStan error-valued mixed
 

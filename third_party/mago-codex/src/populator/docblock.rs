@@ -402,8 +402,12 @@ fn collect_inheritance_work(
 
         let mut candidates: Vec<Word> = Vec::new();
 
+        // Pun: a cyclic hierarchy (`A extends B`, `B extends A`) ends the walk at the first repeated ancestor.
+        let mut visited = WordSet::default();
         let mut current_class = class_metadata.direct_parent_class;
-        while let Some(parent_name) = current_class {
+        while let Some(parent_name) = current_class
+            && visited.insert(parent_name)
+        {
             if method_ids.contains_key(&parent_name) {
                 candidates.push(parent_name);
             }
