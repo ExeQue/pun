@@ -67,7 +67,6 @@ const EXTRA: &[(&str, &str, i64, &str)] = &[
     ),
     ("max", "template-self-reference.php", 32, "return.type"),
     ("unused-variable", "phpstan.neon", 10, "ignore.unmatched"),
-    ("unused-variable", "phpstan.neon", 20, "ignore.unmatched"),
 ];
 
 fn check(dir: &Path, neon: &str) -> Result<(), String> {

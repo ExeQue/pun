@@ -118,7 +118,10 @@ fn bounds_spl_and_weakmap_without_defaults() {
                 15,
                 "GenericDefaultsControls\\EmptyWithoutDefault<_>".to_string()
             ),
-            (16, "SplObjectStorage<never, never>".to_string()),
+            // Mago 1.61.0 dropped instantiation's `SplObjectStorage` `never` special case, so it fills
+            // placeholders like `WeakMap`: visible as `SplObjectStorage<mixed, mixed>`, nearer PHPStan's
+            // `SplObjectStorage<object, mixed>` than 1.57.0's `<*NEVER*, *NEVER*>`.
+            (16, "SplObjectStorage<_, _>".to_string()),
             (17, "WeakMap<_, _>".to_string()),
         ]
     );
