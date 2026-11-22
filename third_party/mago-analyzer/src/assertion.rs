@@ -234,6 +234,9 @@ where
                             .as_ref()
                             .iter()
                             .all(|atomic| matches!(atomic, TAtomic::Scalar(TScalar::String(_) | TScalar::Integer(_))))
+                        // Pun: a literal key is already as narrow as the keys can make it. Its `InArray` clause only
+                        // turns the negation into a disjunction, so `!isset($a[$key])` would no longer narrow `$a`.
+                        && input_key_type.get_single_array_key().is_none()
                         && let Some(key_type) =
                             get_possible_array_key_argument_type(array_type, input_key_type, assertion_context.codebase)
                     {

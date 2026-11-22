@@ -4196,3 +4196,11 @@ keeps the pre-merge behaviour.
   `non-empty-array<mixed>&hasOffsetValue('x', 1)`. PHPStan's `ConstantArrayTypeBuilder` degrades to
   `non-empty-array<mixed>`. The degrade now depends only on `has_general_unpack`. `tests/inference_parity.rs`
   (`bleeding_edge_inference`) checks this.
+- `assertion.rs` (`Construct::Isset`): upstream 1.61 adds `$key: InArray(<possible keys>)` to `isset($a[$key])`, in the
+  same clause as the offset's `IsIsset`. PHPStan narrows the key only in the true branch, and its false branch never
+  narrows the key. The negation of the two assertions is a disjunction, so `$key = 'first'; if (!isset($a[$key]))` no
+  longer removed `'first'` from `$a` (PHPStan: `array{second: int}` for `array{first?: int, second: int}`, and `first`
+  is `null` for `array{first: int|null, ...}`). Pun leaves out the `InArray` assertion when the key is a single
+  literal. It narrows nothing there, and `$a[$key]`'s own isset assertion then negates cleanly. A union or general key
+  keeps upstream's assertion. `tests/coalesce_scope.rs` (`false_isset_offset_probes_do_not_invent_nullable_entries`)
+  and `tests/constant_foreach.rs` (`literal_selector_scope_refines_only_the_selected_offset`) check this.
