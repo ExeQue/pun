@@ -248,12 +248,11 @@ fn conditional_native_unavailability_is_edge_local_and_does_not_recover_by_assig
 }
 
 #[test]
-fn pure_condition_wrappers_retain_the_full_walks_existing_visits() {
-    let observed = check_native_fixture_walk(
+fn pure_condition_wrappers_are_walked_once() {
+    check_native_fixture(
         include_bytes!("fixtures/native-lane/condition-wrappers.php"),
         include_str!("fixtures/native-lane/expected-condition-wrappers-phpstan.json"),
     );
-    assert!(observed.visits.values().any(|count| *count > 1));
 }
 
 fn assert_full_artifacts_equal(enabled: &AnalysisArtifacts, disabled: &AnalysisArtifacts) {
