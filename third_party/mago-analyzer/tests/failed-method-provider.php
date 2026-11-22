@@ -24,7 +24,7 @@ while (true) {
         $body .= pack('NN', 0, 0); // aliases and function providers
         $body .= pack('NnCN', 1, 0, 1, 2); // one callable-signature method provider, two targets
         $body .= bytes('*').bytes('provided').bytes('ProviderTarget').bytes('magic');
-        $body .= str_repeat(pack('N', 0), 12); // remaining provider and hook lists
+        $body .= str_repeat(pack('N', 0), 15); // throw-type, remaining provider and hook lists
         $response = message(0x8001, $body);
     } elseif ($kind === 12) {
         $response = message(0x800C, "\1\0\1".pack('N', 0)); // handled, unnamed, named args, no parameters
