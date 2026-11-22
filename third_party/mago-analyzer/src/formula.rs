@@ -420,17 +420,8 @@ where
             return negate_formula(&clauses, algebra_thresholds);
         }
 
-        if binary.operator.is_null_coalesce() && is_always_falsy_expression(binary.rhs, artifacts) {
-            return get_base_formula(
-                binary.lhs.span(),
-                binary.lhs.span(),
-                binary.lhs,
-                assertion_context,
-                artifacts,
-                algebra_thresholds,
-                formula_size_threshold,
-            );
-        }
+        // Pun: no `$lhs ?? false` shortcut to the formula of `$lhs`. PHPStan's coalesce narrows only the truthy
+        // branch, and only to isset (`hasOffsetValue('k', bool)`); the falsy branch keeps the type, the key included.
 
         if matches!(binary.operator, BinaryOperator::And(_) | BinaryOperator::LowAnd(_)) {
             return handle_binary_and_operation(

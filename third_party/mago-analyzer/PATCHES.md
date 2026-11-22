@@ -4255,3 +4255,8 @@ keeps the pre-merge behaviour.
   `Child` then kept `Child`, because the first containment check finds `Child` inside `$this(Child)`. PHPStan keeps
   `$this(Child)` (and `static(Child)`), so a later `$this instanceof static` is still `instanceof.alwaysTrue`. A
   `$this`/`static` object contained by a plain class now takes the second check's direction first.
+- `formula.rs` `get_base_formula()`: upstream 1.61 reads `$lhs ?? false` (any always-falsy right side) as the
+  formula of `$lhs`, narrowing the falsy branch too and giving `isset()` a definite offset. PHPStan narrows only the
+  truthy branch, to `hasOffsetValue('k', <declared>)`: after `if ($a['k']['u'] ?? false) {}`, `$a` is the declared
+  `array<string, array{u: bool}>` again. The shortcut is removed (`Variables/IssetRuleTest::testBug7318` and its
+  Empty and NullCoalesce copies).
