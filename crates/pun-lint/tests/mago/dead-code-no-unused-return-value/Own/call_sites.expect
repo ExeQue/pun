@@ -1,0 +1,7 @@
+796 799 The return value of `anyReceiver()` is never used.
+846 849 The return value of `advance()` is never used.
+905 909 The return value of `nested()` is never used.
+1061 1067 The return value of `done()` is never used.
+1275 1285 The return value of `inClosure()` is never used.
+1387 1392 The return value of `fromParent()` is never used.
+1449 1453 The return value of `fromStatic()` is never used.

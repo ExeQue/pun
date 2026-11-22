@@ -1,0 +1,2 @@
+296 299 The return value of `advance()` is never used.
+381 385 The return value of `reset()` is never used.

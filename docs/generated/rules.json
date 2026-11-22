@@ -5969,6 +5969,24 @@
       "ported": true
     },
     {
+      "id": "lint/dead-code/no-unused-return-value",
+      "command": "lint",
+      "group": "dead-code",
+      "summary": "Detects private methods whose return value is thrown away at every call site.",
+      "enabled": [
+        "dead-code"
+      ],
+      "fix": "none",
+      "ecosystem": "core",
+      "tools": [
+        "mago"
+      ],
+      "upstream": [
+        "no-unused-return-value"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/dead-code/no-unused-static",
       "command": "lint",
       "group": "dead-code",

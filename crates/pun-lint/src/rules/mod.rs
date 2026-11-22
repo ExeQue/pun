@@ -324,5 +324,6 @@ rules! {
         complexity::no_redundant_nullable_check => NoRedundantNullableCheck::default(),
         dead_code::no_unused_assignment => NoUnusedAssignment::default(),
         operators::prefer_coalesce_assign_over_fallback => PreferCoalesceAssignOverFallback,
+        dead_code::no_unused_return_value => NoUnusedReturnValue,
     }
 }

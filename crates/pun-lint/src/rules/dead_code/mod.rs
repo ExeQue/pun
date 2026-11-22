@@ -47,6 +47,7 @@ pub(super) mod no_unused_private_property;
 pub(super) mod no_unused_promoted_property;
 pub(super) mod no_unused_public_method_param;
 pub(super) mod no_unused_return_type;
+pub(super) mod no_unused_return_value;
 pub(super) mod no_unused_static;
 pub(super) mod no_unused_test_method_param;
 pub(super) mod no_useless_cast;

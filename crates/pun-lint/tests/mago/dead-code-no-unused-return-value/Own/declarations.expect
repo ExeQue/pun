@@ -1,0 +1,3 @@
+507 510 The return value of `_single()` is never used.
+716 720 The return value of `nullable()` is never used.
+905 908 The return value of `compute()` is never used.

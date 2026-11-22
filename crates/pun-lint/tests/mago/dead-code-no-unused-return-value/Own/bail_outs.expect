@@ -1,0 +1,5 @@
+234 237 The return value of `advance()` is never used.
+1045 1048 The return value of `advance()` is never used.
+1519 1522 The return value of `advance()` is never used.
+1963 1969 The return value of `advance()` is never used.
+2035 2038 The return value of `advance()` is never used.

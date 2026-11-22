@@ -1,0 +1,4 @@
+392 395 The return value of `fromHook()` is never used.
+712 716 The return value of `fromEnum()` is never used.
+782 787 The return value of `fromSelf()` is never used.
+1014 1017 The return value of `advance()` is never used.

@@ -27365,6 +27365,16 @@
         "unsupported": false
       },
       {
+        "name": "no-unused-return-value",
+        "tool": "mago-linter",
+        "url": "https://mago.carthage.software/1.61.0/en/tools/linter/rules/#no-unused-return-value",
+        "rules": [
+          "lint/dead-code/no-unused-return-value"
+        ],
+        "note": "Same. Options: same.",
+        "unsupported": false
+      },
+      {
         "name": "no-unused-static",
         "tool": "mago-linter",
         "url": "https://mago.carthage.software/1.61.0/en/tools/linter/rules/#no-unused-static",
@@ -27543,7 +27553,7 @@
       {
         "name": "prefer-null-coalescing-assignment",
         "tool": "mago-linter",
-        "url": "https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-null-coalescing-assignment",
+        "url": "https://mago.carthage.software/1.61.0/en/tools/linter/rules/#prefer-null-coalescing-assignment",
         "rules": [
           "lint/operators/prefer-coalesce-assign-over-fallback"
         ],

@@ -1,0 +1,2 @@
+136 142 The return value of `log()` is never used.
+309 314 The return value of `prepare()` is never used.

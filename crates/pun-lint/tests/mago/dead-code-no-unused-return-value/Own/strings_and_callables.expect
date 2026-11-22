@@ -1,0 +1,3 @@
+672 675 The return value of `named()` is never used.
+834 837 The return value of `interpolated()` is never used.
+884 887 The return value of `heredoc()` is never used.

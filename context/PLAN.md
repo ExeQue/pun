@@ -9,7 +9,7 @@ DECISIONS.md, TASKS.md and REQUESTS.md (their history is in git). Finished work 
 One lead agent works on `main` and spawns subagents for independent slices in worktrees (AGENTS.md "How work runs").
 v0.1.0, the first stable release, is out (2026-11-14). CI runs on GitHub again and is green on main.
 
-- **Counts** (mapping.toml `ported = true`): format 168 of 168, lint 702 of 719, analyse 362 of 369. Pending: lint 17
+- **Counts** (mapping.toml `ported = true`): format 168 of 168, lint 704 of 721, analyse 362 of 369. Pending: lint 17
   (the rules Rector 2.8.4 and rector-laravel 2.7.3 added, §3), analyse 7. Ported rules keep their explicit parity
   gaps in the test gap lists (`crates/pun-analyse/tests/fixtures/**/gaps*.txt`, `GAPS` constants in the tests).
 - **Analyse keeps only what lint and format cannot fix** (Pushpak, 2026-11-02): rules.md §2 O5. Since 2026-11-18 analyse
@@ -73,7 +73,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Positioning:** Pun is to PHP what Bun is to JavaScript. Laravel first, PHP 8.4+ projects only.
 - **1.0 ships everything at once.** Apart from the 0.1.0 betas and v0.1.0 (§0), nothing is published or tagged until `pun format`, `pun analyse`, `pun lint` and
   `pun migrate` all exist and meet the 1.0 bar below. The site presents that release as 1.0. Publishing needs Pushpak's go.
-- **The 1.0 bar:** every lint rule (all 719) native; every PHPStan core rule (327 Rule classes) native; Larastan built in with seven
+- **The 1.0 bar:** every lint rule (all 721) native; every PHPStan core rule (327 Rule classes) native; Larastan built in with seven
   improvements (typed config, routes, views, translations, env keys, Inertia pages, fresh model data); deprecation-rules and strict-rules as plain rules. Speed and memory
   come first in every command.
 - **Brand:** "Sticker Pop", the sprinting elephant in sneakers; Fredoka for text, Martian Mono for code (docs/design/).
@@ -157,7 +157,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   are left out for now.
 - **All lint rules are 1.0** (2026-10-26, replaces the 2026-10-18 split): the PHPUnit and Pest lint rules
   (rector-phpunit, Pest's Rector plugin and the `phpunit`/`pest` groups) and the lint rules in no set are part of the
-  1.0 bar. mapping.toml no longer has a `later` flag; all 719 lint rules are the 1.0 bar.
+  1.0 bar. mapping.toml no longer has a `later` flag; all 721 lint rules are the 1.0 bar.
 - **Analyse without Pest or PHPUnit support for 1.0** (2026-10-18): test files are analysed like any other PHP code,
   with no Pest plugin or PHPUnit typing (analyse 7 moves after 1.0). A project that doesn't want them analysed
   excludes them by glob: `[analyse] exclude = ["tests/**"]` removes matching files from both the analysis and the

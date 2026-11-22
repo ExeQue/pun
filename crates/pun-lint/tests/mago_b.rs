@@ -139,6 +139,7 @@ mago! {
     prefer_test_attribute "phpunit" "prefer-test-attribute";
     // Expectations from Mago 1.61.0 (.oracle/mago/mago-1.61.0-x86_64-unknown-linux-gnu/mago).
     prefer_coalesce_assign_over_fallback "operators" "prefer-coalesce-assign-over-fallback";
+    no_unused_return_value "dead-code" "no-unused-return-value";
 }
 
 /// The fix safety Mago 1.61.0 gives each report, in order (`edits[].safety` of `--reporting-format json`): safe for a
