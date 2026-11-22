@@ -1292,3 +1292,7 @@ Nonliteral strings still go through `retain()`.
   `ModelCollection::make($collection)` with `Collection<int, User<int>>` is `ModelCollection<int, User<int>>`, and
   `TransactionCollection::wrap([...])` keeps `<(int|string), Transaction>` (Larastan's bug-2073.php and
   collection-generic-static-methods.php).
+- `ttype/builder.rs` `intersect_unions()`: upstream 1.61 distributes `(int|string)&T` into `(T&int)|(T&string)`.
+  PHPStan's `TypeCombinator::intersect()` narrows the template's bound instead, so a lone template intersected
+  with a union of non-templates is one `T of int|string` (`Methods/ReturnTypeRuleTest::testBug11776`'s
+  `class-string<EnumAsFilterInterface<(int|string)&TOperation>>`).

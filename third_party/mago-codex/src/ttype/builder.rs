@@ -764,6 +764,21 @@ fn collect_intersection_members<'arena>(ttype: &'arena Type<'arena>, members: &m
 }
 
 fn intersect_unions(left: TUnion, right: TUnion, ttype: &Type<'_>) -> Result<TUnion, TypeError> {
+    // Pun: PHPStan's `TypeCombinator::intersect()` distributes a template first, so `(int|string)&T` is one
+    // `T of int|string`, not upstream's `(T&int)|(T&string)`.
+    let lone_template = |union: &TUnion| match union.types.as_ref() {
+        [TAtomic::GenericParameter(parameter)] if parameter.intersection_types.is_none() => Some(parameter.clone()),
+        _ => None,
+    };
+    let plain_union =
+        |union: &TUnion| union.types.len() > 1 && !union.types.iter().any(|atomic| atomic.is_generic_parameter());
+    if let Some(parameter) = lone_template(&left).filter(|_| plain_union(&right)) {
+        return Ok(TUnion::from_atomic(TAtomic::GenericParameter(parameter.with_constraint(right))));
+    }
+    if let Some(parameter) = lone_template(&right).filter(|_| plain_union(&left)) {
+        return Ok(TUnion::from_atomic(TAtomic::GenericParameter(parameter.with_constraint(left))));
+    }
+
     let left_str = left.get_id();
     let left_types = left.types.into_owned();
     let right_types = right.types.into_owned();
