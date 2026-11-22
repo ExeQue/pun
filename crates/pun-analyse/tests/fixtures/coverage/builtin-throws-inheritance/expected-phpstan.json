@@ -1,0 +1,12 @@
+{
+ "general": [],
+ "errors": [
+  {
+   "file": "redis.php",
+   "line": 16,
+   "identifier": "throws.notCovariant",
+   "message": "PHPDoc tag @throws type LogicException of method BuiltinThrowsInheritance\\WidensThrows::pconnect() should be covariant with PHPDoc @throws type RedisException of method Redis::pconnect().",
+   "tip": null
+  }
+ ]
+}

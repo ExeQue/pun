@@ -777,7 +777,7 @@ fn method_doc(
         .codebase
         .get_declaring_method(class.name.as_bytes(), name)?;
     if class.flags.contains(MetadataFlags::BUILTIN) {
-        return builtin_method_doc(class, m, name);
+        return builtin_method_doc(c, class, m, name);
     }
     let storage = c
         .codebase
@@ -872,19 +872,31 @@ fn ancestor_stub_doc(
     })
 }
 
+/// A built-in method's PHPDoc as PHPStan reflects it, including its throw type, which an overriding method without
+/// a PHPDoc inherits.
 fn builtin_method_doc(
+    c: &Checker,
     class: &ClassLikeMetadata,
     m: &FunctionLikeMetadata,
     name: &[u8],
 ) -> Option<Resolved> {
-    let k = symbols::class(&text(class.name.as_bytes()))?;
-    let doc = k
-        .methods
-        .get(&text(name).to_ascii_lowercase())?
-        .doc
-        .as_ref()?;
+    let lower = text(name).to_ascii_lowercase();
+    let throws = super::types::throw_points::builtin_method_throws(
+        c,
+        &text(class.name.as_bytes()).to_ascii_lowercase(),
+        &lower,
+    );
+    let Some((k, doc)) = symbols::class(&text(class.name.as_bytes()))
+        .and_then(|k| Some((k, k.methods.get(&lower)?.doc.as_ref()?)))
+    else {
+        return throws.map(|throws| Resolved {
+            throws: Some(throws),
+            ..Resolved::default()
+        });
+    };
     let resolve = |s: &str| pun_phpstan::resolve::resolve_str(s, Some(&k.name));
     Some(Resolved {
+        throws,
         params: doc
             .params
             .iter()
