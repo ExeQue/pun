@@ -39,7 +39,7 @@ use mago_codex::ttype::union::{NeverKind, TUnion};
 use mago_codex::ttype::{
     add_union_type, combine_owned_union_types_rc, combine_union_types,
     combine_union_types_preserving_array_shapes, combine_union_types_rc, get_explicit_never,
-    get_int, get_literal_string, get_mixed, get_never, get_non_accepting_never,
+    get_int, get_literal_int, get_literal_string, get_mixed, get_never, get_non_accepting_never,
     intersect_union_types,
 };
 use mago_database::file::{File, FileType};
@@ -263,9 +263,10 @@ fn conditional_expansion_unions_bottom_identities_without_marking_ordinary_resul
     let codebase = CodebaseMetadata::new();
     for (name, yes) in types() {
         for (other_name, no) in types() {
+            // `int is 1` is undecided, so ConditionalType::getResult() unions both arms.
             let mut conditional = TUnion::from_atomic(TAtomic::Conditional(TConditional::new(
                 Arc::new(get_int()),
-                Arc::new(get_int()),
+                Arc::new(get_literal_int(1)),
                 Arc::new(yes.clone()),
                 Arc::new(no),
                 false,
