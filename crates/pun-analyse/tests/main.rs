@@ -180,5 +180,6 @@ mod unpacked_overloads;
 mod unsealed_shape_parameters;
 mod unset;
 mod unset_global_scope;
+mod var_tag_missing_types;
 mod variable_names;
 mod variables;

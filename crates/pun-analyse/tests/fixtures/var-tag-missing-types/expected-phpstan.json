@@ -1,0 +1,25 @@
+{
+  "level": 6,
+  "errors": [
+    {
+      "line": 16,
+      "identifier": "missingType.generics",
+      "message": "PHPDoc tag @var for variable $a contains generic class App\\Bag but does not specify its types: T"
+    },
+    {
+      "line": 16,
+      "identifier": "missingType.generics",
+      "message": "PHPDoc tag @var for variable $a contains generic class App\\Box but does not specify its types: T"
+    },
+    {
+      "line": 19,
+      "identifier": "missingType.iterableValue",
+      "message": "PHPDoc tag @var for variable $b has no value type specified in iterable type array."
+    },
+    {
+      "line": 26,
+      "identifier": "missingType.iterableValue",
+      "message": "PHPDoc tag @var for variable $d has no value type specified in iterable type iterable."
+    }
+  ]
+}

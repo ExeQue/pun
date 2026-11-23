@@ -77,6 +77,9 @@ pub(super) fn check(c: &mut Checker, at: Span, names: Span) {
     };
     let mut errors: Vec<(Span, &'static str, String, Option<&'static str>)> = Vec::new();
     let mut classes = Vec::new();
+    // config.level6.neon's checkMissingVarTagTypehint
+    let missing = c.level >= 6;
+    let iterable_classes = c.on(crate::rules::Switches::GENERIC_ITERABLE_CLASSES);
     declared::with_classes(c, || {
         let scope = scope(c, names);
         for (name, ty) in entry.doc.var_types(&scope) {
@@ -100,6 +103,28 @@ pub(super) fn check(c: &mut Checker, at: Span, names: Span) {
                     None,
                 ));
                 continue;
+            }
+            if missing {
+                for iterable in super::missing_types::iterables_without_value(&ty) {
+                    errors.push((
+                        at,
+                        "missingType.iterableValue",
+                        format!("{what} has no value type specified in {iterable}."),
+                        Some(super::missing_types::TIP),
+                    ));
+                }
+                for (inner, list) in
+                    super::missing_types::generics_without_args(&ty, iterable_classes)
+                {
+                    errors.push((
+                        at,
+                        "missingType.generics",
+                        format!(
+                            "{what} contains generic {inner} but does not specify its types: {list}"
+                        ),
+                        None,
+                    ));
+                }
             }
             let s = generics::escape(&what);
             let messages = generics::GenericMessages::at(&s);
