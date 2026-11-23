@@ -4175,6 +4175,15 @@ iterable's key type is not only integers. Upstream kept the list when the key wa
 `InitializerExprTypeResolver::getArrayType()` keeps the keys when `getIterableKeyType()->isString()` is not `no`
 (`crates/pun-analyse/tests/unpacked_keys.rs`).
 
+## method_exists() in the false context
+
+`reconciler/simple_negated_assertion_reconciler.rs` `reconcile()`: MethodExistsTypeSpecifyingExtension supports only
+the true context, so a false `method_exists($o, 'm')` leaves `$o` as it was. Upstream's `subtract_has_method()`
+removed every class that declares `m`, so `$p` of an abstract class declaring `fold()` became `never` after
+`if (method_exists($p, 'fold')) { return ...; }` (doctrine-orm `SQLResultCasing`), with false
+`instanceof.alwaysTrue` and `deadCode.unreachable` after it. The negated `HasMethod` assertion now keeps the type,
+as the negated `HasProperty` one already did (`crates/pun-analyse/tests/method_exists_false.rs`).
+
 ## Mago 1.61.0 changes rejected for PHPStan parity
 
 - `plugin/libraries/stdlib/closure/`: upstream's `ClosureFromCallableProvider` (1.59.0) is not registered, and its

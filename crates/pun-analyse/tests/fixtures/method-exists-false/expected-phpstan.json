@@ -1,0 +1,25 @@
+{
+  "level": 5,
+  "errors": [
+    {
+      "line": 19,
+      "identifier": "function.alreadyNarrowedType",
+      "message": "Call to function method_exists() with App\\Platform and 'fold' will always evaluate to true."
+    },
+    {
+      "line": 23,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Platform"
+    },
+    {
+      "line": 34,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Platform|App\\Sqlite"
+    },
+    {
+      "line": 39,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Platform"
+    }
+  ]
+}

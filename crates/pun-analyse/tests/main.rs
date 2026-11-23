@@ -105,6 +105,7 @@ mod local_coalesce_declaration_effects;
 mod mago;
 mod method_accessories;
 mod method_callable;
+mod method_exists_false;
 mod method_origins;
 mod method_specification_edges;
 mod mixed_addition;

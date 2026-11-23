@@ -93,18 +93,8 @@ where
                     assertion.has_equality(),
                 ));
             }
-            TAtomic::Object(TObject::HasMethod(has_method)) => {
-                return Some(subtract_has_method(
-                    context,
-                    assertion,
-                    existing_var_type,
-                    key,
-                    has_method.method,
-                    negated,
-                    span,
-                ));
-            }
-            TAtomic::Object(TObject::HasProperty(_)) => {
+            // MethodExistsTypeSpecifyingExtension specifies only the true context: the false one keeps the type.
+            TAtomic::Object(TObject::HasMethod(_) | TObject::HasProperty(_)) => {
                 return Some(existing_var_type.clone());
             }
             TAtomic::Object(TObject::Named(subtracting_named))
@@ -464,62 +454,6 @@ where
         negated,
         true,
         new_var_type,
-    )
-}
-
-fn subtract_has_method<A>(
-    context: &mut Context<'_, '_, A>,
-    assertion: &Assertion,
-    existing_var_type: &TUnion,
-    key: Option<&[u8]>,
-    method_name: Word,
-    negated: bool,
-    span: Option<&Span>,
-) -> TUnion
-where
-    A: Arena,
-{
-    let mut did_remove_type = false;
-    let mut acceptable_types = vec![];
-
-    for atomic in existing_var_type.types.as_ref() {
-        let class_name = match atomic {
-            TAtomic::Object(TObject::Named(named_object)) => named_object.name,
-            TAtomic::Object(TObject::Enum(enum_object)) => enum_object.name,
-            _ => {
-                did_remove_type = true;
-                acceptable_types.push(atomic.clone());
-                continue;
-            }
-        };
-
-        if context
-            .codebase
-            .get_declaring_method(class_name.as_bytes(), method_name.as_bytes())
-            .is_some_and(|method| !method.flags.is_magic_method())
-        {
-            did_remove_type = true;
-            continue;
-        }
-
-        if !context.codebase.get_class_like(class_name.as_bytes()).is_some_and(|m| m.flags.is_final()) {
-            did_remove_type = true;
-        }
-
-        acceptable_types.push(atomic.clone());
-    }
-
-    get_acceptable_type(
-        context,
-        acceptable_types,
-        did_remove_type,
-        key,
-        span,
-        existing_var_type,
-        assertion,
-        negated,
-        true,
-        existing_var_type.clone(),
     )
 }
 
