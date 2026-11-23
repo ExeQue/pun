@@ -11,7 +11,7 @@ use pun_packages::verify::missing_requirements;
 use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(clap::Args, Clone, Default)]
 #[expect(
@@ -69,11 +69,14 @@ pub(crate) struct Project {
     pub(crate) here: PathBuf,
     /// The command's events, with the plugin host they start; made at the first event.
     events: std::cell::RefCell<Option<Dispatcher>>,
+    /// The time spent in the events: Composer's plugins and the scripts, which run on PHP.
+    composer: std::cell::Cell<Duration>,
 }
 
 impl Project {
     /// Dispatches `event` to the plugins and the scripts, as `a` allows them.
     pub(crate) fn dispatch(&self, a: &InstallArgs, event: &str) -> pun_packages::error::Result<()> {
+        let started = Instant::now();
         let mut events = self.events.borrow_mut();
         let events = events.get_or_insert_with(|| {
             Dispatcher::new(
@@ -86,7 +89,9 @@ impl Project {
                 &|k| std::env::var(k).ok(),
             )
         });
-        events.dispatch(event)
+        let result = events.dispatch(event);
+        self.composer.set(self.composer.get() + started.elapsed());
+        result
     }
 }
 
@@ -143,6 +148,7 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
         workspace,
         here,
         events: std::cell::RefCell::new(None),
+        composer: std::cell::Cell::default(),
     })
 }
 
@@ -306,10 +312,47 @@ pub(crate) fn install_locked(
     for w in &report.warnings {
         eprintln!(" {warn} {w}");
     }
-    let secs = started.elapsed().as_secs_f64();
     eprintln!(
         "{}",
-        look.paint(Role::Summary, &format!("Installed in {secs:.1}s"))
+        look.paint(
+            Role::Summary,
+            &format!(
+                "Installed in {}",
+                took(started.elapsed(), project.composer.get())
+            )
+        )
     );
     Ok(Exit::Success)
+}
+
+/// The time a command took: the total, and when Composer's plugins and scripts ran, how it splits between Pun and
+/// them, such as `3.2s (Pun 0.4s, Composer scripts and plugins 2.8s)`. Under 0.05s of Composer time shows the total
+/// alone, as it rounds to nothing.
+fn took(total: Duration, composer: Duration) -> String {
+    let secs = total.as_secs_f64();
+    let composer = composer.as_secs_f64();
+    if composer < 0.05 {
+        return format!("{secs:.1}s");
+    }
+    format!(
+        "{secs:.1}s (Pun {:.1}s, Composer scripts and plugins {composer:.1}s)",
+        (secs - composer).max(0.0)
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::took;
+    use std::time::Duration;
+
+    #[test]
+    fn took_splits_the_total_between_pun_and_composer() {
+        let ms = Duration::from_millis;
+        assert_eq!(took(ms(3240), ms(0)), "3.2s");
+        assert_eq!(took(ms(3240), ms(40)), "3.2s");
+        assert_eq!(
+            took(ms(3240), ms(2810)),
+            "3.2s (Pun 0.4s, Composer scripts and plugins 2.8s)"
+        );
+    }
 }
