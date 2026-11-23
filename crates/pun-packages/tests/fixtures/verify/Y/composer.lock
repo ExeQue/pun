@@ -1,0 +1,53 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "fe37abdc34ac64539bd1d0fbe018b4b2",
+    "packages": [
+        {
+            "name": "a/one",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "c/leaf": "^1.0"
+            }
+        },
+        {
+            "name": "b/two",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "c/leaf": "^1.0"
+            }
+        },
+        {
+            "name": "c/leaf",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "ext-missing": "*"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

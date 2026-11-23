@@ -45,9 +45,14 @@ fn reports_what_composer_reports() {
     // J: the root provides a platform package. K: an alias of a package the lock doesn't have. L: an upper bound
     // that is infinite. M: a platform requirement only the lock has. N: two packages that conflict both ways (one
     // problem, the target named by its version). O: a `false` override of php-64bit, which Composer ignores. P: a
-    // php-* package this PHP doesn't have. Q: an alias that needs its missing requirement too.
+    // php-* package this PHP doesn't have. Q: an alias that needs its missing requirement too. W to AC: after the
+    // assertions' problems, the solver reports only the first conflict propagation finds: W and X, a locked package
+    // whose requirement only a failed package meets (its requirement before and after the other's); Y, the later of
+    // two such packages; Z, that one before a conflict; AA, one of two conflicts; AB, one of two failed requirements;
+    // AC, one level of a chain.
     let cases = [
-        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "W", "X", "Y",
+        "Z", "AA", "AB", "AC",
     ];
     for case in cases {
         assert_eq!(

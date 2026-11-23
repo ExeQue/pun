@@ -1,0 +1,41 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "5c6ae245a9c4ec63095d22b2a0f27b18",
+    "packages": [
+        {
+            "name": "a/driver",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "b/search": "^1.0"
+            }
+        },
+        {
+            "name": "b/search",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "ext-missing": "*"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

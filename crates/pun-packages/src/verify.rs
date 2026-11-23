@@ -63,7 +63,7 @@ pub fn verify(
     };
     let mut problems = check.root_problems(manifest, lock, dev_mode, ignore)?;
     let failed = check.requirement_problems(&locked, ignore, &mut problems);
-    check.conflict_problems(&failed, ignore, &mut problems);
+    check.propagated_problem(&failed, ignore, &mut problems);
     Ok((!problems.is_empty()).then(|| report(&problems, &ini_files(probe))))
 }
 
@@ -305,18 +305,17 @@ impl Check<'_> {
         Ok(problems)
     }
 
-    /// The first unmet requirement of each locked package; the packages that have one.
+    /// The first unmet requirement of each locked package; the packages that have one, each with the index of its
+    /// problem.
     fn requirement_problems(
         &self,
         locked: &[usize],
         ignore: &IgnorePlatform,
         problems: &mut Vec<Problem>,
-    ) -> Vec<usize> {
+    ) -> Vec<(usize, usize)> {
         let check = self;
         // The solver decides a locked package false at its first requirement nothing fixed provides, so each package
         // gets one problem, and its conflicts no longer count.
-        let mut failed = vec![];
-        // Each failed package with the index of its problem.
         let mut problem_of: Vec<(usize, usize)> = vec![];
         for &p in locked {
             let package = &check.arena[p];
@@ -343,7 +342,7 @@ impl Check<'_> {
                         required,
                         by_lock,
                     });
-                    failed.push(p);
+                    problem_of.push((p, problems.len() - 1));
                 }
                 continue;
             }
@@ -372,58 +371,175 @@ impl Check<'_> {
                                         .matches(&Constraint::exact(&check.arena[l].version))
                             }),
                     });
-                    failed.push(p);
                     problem_of.push((p, problems.len() - 1));
                     break;
                 }
             }
         }
-        failed
+        problem_of
     }
 
-    /// The conflicts between fixed packages, except those of a package that already failed a requirement.
-    fn conflict_problems(
+    /// `Solver::runSat` stops at the first conflict that propagation finds at level 1, so after the problems of the
+    /// assertions Composer reports at most one more: a locked package with a requirement that only failed packages
+    /// meet, or two fixed packages that conflict. The first one is found by propagating the decisions in the order
+    /// `makeAssertionRuleDecisions` makes them (the rules' order: `RuleSetGenerator` adds each fixed package's
+    /// rules, breadth first, then its fixed rule, and the conflict rules after all of them), and each decision visits
+    /// the rules that watch the literal it falsifies, newest first. A rule watches its two lowest literals. An alias's
+    /// problem is one of these too, so none follows it.
+    fn propagated_problem(
         &self,
-        failed: &[usize],
+        failed: &[(usize, usize)],
         ignore: &IgnorePlatform,
         problems: &mut Vec<Problem>,
     ) {
         let check = self;
-        let mut pairs = vec![];
-        for &p in &check.fixed {
+        if (failed.iter()).any(|&(p, _)| check.arena[p].alias_of.is_some()) {
+            return;
+        }
+        let failed_at = |p: usize| failed.iter().find(|f| f.0 == p).map(|f| f.1);
+        let mut added = vec![];
+        let mut queue = vec![];
+        // Each locked package's requirements with their providers, in the order their rules are added.
+        let mut requires: Vec<(usize, &Link, Vec<usize>)> = vec![];
+        for &f in &check.fixed {
+            let mut work = std::collections::VecDeque::from([f]);
+            while let Some(p) = work.pop_front() {
+                if added.contains(&p) {
+                    continue;
+                }
+                added.push(p);
+                if let Some(of) = check.arena[p].alias_of {
+                    work.push_back(of);
+                    continue;
+                }
+                for link in &check.arena[p].requires {
+                    let Some(c) = filtered(ignore, &link.target, &link.constraint) else {
+                        continue;
+                    };
+                    let providers = check.providers(&link.target, &c);
+                    if providers.is_empty() && failed_at(p).is_some() && !queue.contains(&p) {
+                        queue.push(p);
+                    }
+                    work.extend(&providers);
+                    requires.push((p, link, providers));
+                }
+            }
+            if failed_at(f).is_none() {
+                queue.push(f);
+            }
+        }
+        let mut conflicts: Vec<(usize, usize, &Link)> = vec![];
+        for &p in &added {
             for link in &check.arena[p].conflicts {
                 // `RuleSetGenerator::addConflictRules`: only a name some package has or replaces conflicts.
-                let named = (check.fixed.iter())
+                let named = (added.iter())
                     .any(|&f| check.arena[f].names(false).contains(&link.target.as_str()));
                 if !named || (is_platform(&link.target) && ignore.ignores(&link.target)) {
                     continue;
                 }
                 for q in check.providers(&link.target, &link.constraint) {
                     let other = &check.arena[q];
-                    let pair = (p.min(q), p.max(q));
-                    if q == p
-                        || !(other.alias_of.is_none() || other.name == link.target)
-                        || failed.contains(&p)
-                        || failed.contains(&q)
-                        || pairs.contains(&pair)
+                    if q != p
+                        && (other.alias_of.is_none() || other.name == link.target)
+                        && !(conflicts.iter()).any(|c| (c.0, c.1) == (p, q) || (c.0, c.1) == (q, p))
                     {
-                        continue;
+                        conflicts.push((p, q, link));
                     }
-                    pairs.push(pair);
-                    let mut fixed = [p, q];
-                    fixed.sort_by_key(|&i| {
-                        format!("{}-{}", check.arena[i].name, check.arena[i].version)
-                    });
-                    let mut lines: Vec<String> =
-                        fixed.iter().map(|&i| check.fixed_line(i)).collect();
-                    lines.push(check.conflict_line(p, q, link));
-                    problems.push(Problem {
-                        lines,
-                        required: vec![],
-                        by_lock: false,
-                    });
                 }
             }
+        }
+        let unmet = |source: usize, providers: &[usize]| {
+            failed_at(source).is_none()
+                && !providers.is_empty()
+                && providers.iter().all(|&q| failed_at(q).is_some())
+        };
+        for &decided in &queue {
+            let first = if failed_at(decided).is_some() {
+                (requires.iter().rev())
+                    .find(|r| r.2.iter().min() == Some(&decided) && unmet(r.0, &r.2))
+                    .map(|r| check.unmet_problem(r.0, r.1, &r.2, failed, problems))
+            } else {
+                let conflict = (conflicts.iter().rev())
+                    .find(|c| {
+                        (c.0 == decided || c.1 == decided)
+                            && failed_at(c.0).is_none()
+                            && failed_at(c.1).is_none()
+                    })
+                    .map(|&(p, q, link)| check.conflict_problem(p, q, link));
+                conflict.or_else(|| {
+                    (requires.iter().rev())
+                        .find(|r| r.0 == decided && unmet(r.0, &r.2))
+                        .map(|r| check.unmet_problem(r.0, r.1, &r.2, failed, problems))
+                })
+            };
+            if let Some(problem) = first {
+                problems.push(problem);
+                return;
+            }
+        }
+    }
+
+    /// The problem of `source`'s requirement `link`, which only the failed `providers` meet: its fixed rule, then
+    /// the requirement rules sorted as `Problem::getSortableString` sorts them.
+    fn unmet_problem(
+        &self,
+        source: usize,
+        link: &Link,
+        providers: &[usize],
+        failed: &[(usize, usize)],
+        problems: &[Problem],
+    ) -> Problem {
+        let key = |p: usize, line: &str| format!("{}-{}//{line}", self.arena[p].name, self.arena[p].version);
+        let mut names: Vec<(&str, Vec<&str>)> = vec![];
+        for &q in providers {
+            let q = &self.arena[q];
+            match names.iter_mut().find(|n| n.0 == q.pretty_name) {
+                Some(n) => n.1.push(&q.pretty_version),
+                None => names.push((&q.pretty_name, vec![&q.pretty_version])),
+            }
+        }
+        let list: Vec<String> = (names.iter())
+            .map(|(name, versions)| format!("{name}[{}]", versions.join(", ")))
+            .collect();
+        let own = format!(
+            "{} requires {} {} -> satisfiable by {}.",
+            at(&self.arena[source]),
+            link.target,
+            link.pretty,
+            list.join(", ")
+        );
+        let mut rules = vec![(key(source, &own), own)];
+        let (mut required, mut by_lock) = (vec![], false);
+        for &q in providers {
+            let Some(&(_, i)) = failed.iter().find(|f| f.0 == q) else {
+                continue;
+            };
+            let line = problems[i].lines[1].clone();
+            rules.push((key(q, &line), line));
+            required.extend(problems[i].required.iter().cloned());
+            by_lock |= problems[i].by_lock;
+        }
+        rules.sort();
+        rules.dedup();
+        let mut lines = vec![self.fixed_line(source)];
+        lines.extend(rules.into_iter().map(|r| r.1));
+        Problem {
+            lines,
+            required,
+            by_lock,
+        }
+    }
+
+    /// The problem of two fixed packages that conflict: both fixed rules, then the conflict.
+    fn conflict_problem(&self, p: usize, q: usize, link: &Link) -> Problem {
+        let mut fixed = [p, q];
+        fixed.sort_by_key(|&i| format!("{}-{}", self.arena[i].name, self.arena[i].version));
+        let mut lines: Vec<String> = fixed.iter().map(|&i| self.fixed_line(i)).collect();
+        lines.push(self.conflict_line(p, q, link));
+        Problem {
+            lines,
+            required: vec![],
+            by_lock: false,
         }
     }
 

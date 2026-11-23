@@ -1,0 +1,54 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "01c3f28de108f5c7f0a7ea67c0c618b4",
+    "packages": [
+        {
+            "name": "a/one",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "b/two": "^1.0",
+                "c/three": "^1.0"
+            }
+        },
+        {
+            "name": "b/two",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "ext-missing": "*"
+            }
+        },
+        {
+            "name": "c/three",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "require": {
+                "ext-gone": "*"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}
