@@ -51,7 +51,8 @@
 //! type does not depend on the narrowing.
 //!
 //! AddInstanceofAssertForNullableInstanceRector/Pun/expect_instanceof: `expect($x)->toBeInstanceOf(...)`, which
-//! `lint/pest/prefer-expect` makes of the `assertInstanceOf()` this rule inserts, counts as that assert. Rector runs each
+//! `lint/pest/prefer-expect` makes of the `assertInstanceOf()` this rule inserts, counts as that assert, also when
+//! `lint/pest/prefer-chained-expect` has chained it into the next expectation. Rector runs each
 //! rule once and would insert another; Pun fixes until nothing changes, and the two rules would never settle.
 //!
 //! Pun/missing11 (`NamedArgumentForDataProviderRector`): a data provider whose arrays have empty items, which

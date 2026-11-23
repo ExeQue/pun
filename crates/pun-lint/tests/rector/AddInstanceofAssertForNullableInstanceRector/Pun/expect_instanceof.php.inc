@@ -18,6 +18,16 @@ final class ExpectInstanceof extends TestCase
         $this->assertSame(123, $value);
     }
 
+    public function testChained(): void
+    {
+        $someObject = $this->getSomeObject();
+        expect($someObject)->toBeInstanceOf(SomeClassUsedInTests::class)
+            ->and($someObject->getSomeMethod())->toBe(123);
+        $value = $someObject->getSomeMethod();
+
+        $this->assertSame(123, $value);
+    }
+
     private function getSomeObject(): ?SomeClassUsedInTests
     {
         if (mt_rand(0, 1)) {

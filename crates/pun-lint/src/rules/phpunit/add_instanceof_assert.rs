@@ -153,6 +153,25 @@ fn asserted_variable<'a>(statement: &'a Statement<'a>, static_calls: bool) -> Op
     let Statement::Expression(e) = statement else {
         return None;
     };
+    // `expect($x)->toBeInstanceOf(...)` is what `lint/pest/prefer-expect` (Pest's ConvertAssertToExpectRector) makes of
+    // the assert this rule inserts, and `lint/pest/prefer-chained-expect` may chain it into the next expectation
+    // (`...->and($x->name())->toBe(...)`). Rector runs each rule once; Pun fixes until nothing changes, and without this
+    // the rules would add and convert the assert forever ("fixes did not settle", laravel-framework's tests/Routing).
+    let mut link = e.expression;
+    while let Expression::Call(Call::Method(call)) = link {
+        if let ClassLikeMemberSelector::Identifier(name) = &call.method
+            && name.value.eq_ignore_ascii_case(b"toBeInstanceOf")
+            && let Expression::Call(Call::Function(expect)) = unparenthesize(call.object)
+            && crate::rules::support::expressions::named(expect, "expect")
+            && let Some(Expression::Variable(Variable::Direct(v))) =
+                (expect.argument_list.arguments)
+                    .first()
+                    .map(mago_syntax::cst::Argument::value)
+        {
+            return Some(&v.name[1..]);
+        }
+        link = unparenthesize(call.object);
+    }
     let (method, arguments) = match e.expression {
         Expression::Call(Call::Method(call)) => (&call.method, &call.argument_list),
         Expression::Call(Call::StaticMethod(call)) if static_calls => {
@@ -163,19 +182,6 @@ fn asserted_variable<'a>(statement: &'a Statement<'a>, static_calls: bool) -> Op
     let ClassLikeMemberSelector::Identifier(name) = method else {
         return None;
     };
-    // `expect($x)->toBeInstanceOf(...)` is what `lint/pest/prefer-expect` (Pest's ConvertAssertToExpectRector) makes of
-    // the assert this rule inserts. Rector runs each rule once; Pun fixes until nothing changes, and without this the
-    // two rules would add and convert the assert forever ("fixes did not settle", laravel-framework's tests/Routing).
-    if name.value.eq_ignore_ascii_case(b"toBeInstanceOf")
-        && let Expression::Call(Call::Method(call)) = e.expression
-        && let Expression::Call(Call::Function(expect)) = unparenthesize(call.object)
-        && crate::rules::support::expressions::named(expect, "expect")
-        && let Some(Expression::Variable(Variable::Direct(v))) = (expect.argument_list.arguments)
-            .first()
-            .map(mago_syntax::cst::Argument::value)
-    {
-        return Some(&v.name[1..]);
-    }
     if !name.value.eq_ignore_ascii_case(b"assertInstanceOf") {
         return None;
     }
