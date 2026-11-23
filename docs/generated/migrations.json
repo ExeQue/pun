@@ -399,7 +399,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_array_assignment.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -407,7 +407,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_braces.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -415,7 +415,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_indentation.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -423,7 +423,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_spaces.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -3385,7 +3385,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_array_assignment.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -3393,7 +3393,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_braces.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -3401,7 +3401,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_indentation.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -3409,7 +3409,7 @@
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_spaces.html",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -6795,7 +6795,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/child-doctrine-repository-class-type-rector",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -8181,7 +8181,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/object-typed-property-from-j-m-s-serializer-attribute-type-rector",
         "rules": [],
-        "note": "JMS rules: out of scope (Laravel-first); migrate lists them",
+        "note": "JMS rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -9663,7 +9663,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/return-type-from-symfony-serializer-rector",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -9709,7 +9709,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/scalar-typed-property-from-j-m-s-serializer-attribute-type-rector",
         "rules": [],
-        "note": "JMS rules: out of scope (Laravel-first); migrate lists them",
+        "note": "JMS rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -10497,7 +10497,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/typed-static-property-in-behat-context-rector",
         "rules": [],
-        "note": "Behat rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Behat rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13715,7 +13715,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13723,7 +13723,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13731,7 +13731,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13739,7 +13739,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13747,7 +13747,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13755,7 +13755,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13763,7 +13763,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13771,7 +13771,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13779,7 +13779,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13787,7 +13787,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13795,7 +13795,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13803,7 +13803,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13811,7 +13811,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13819,7 +13819,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13827,7 +13827,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13835,7 +13835,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13843,7 +13843,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13851,7 +13851,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13859,7 +13859,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13867,7 +13867,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13875,7 +13875,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13883,7 +13883,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13891,7 +13891,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13899,7 +13899,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13907,7 +13907,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13915,7 +13915,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13923,7 +13923,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13931,7 +13931,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13939,7 +13939,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13947,7 +13947,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13955,7 +13955,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13963,7 +13963,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13971,7 +13971,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13979,7 +13979,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13987,7 +13987,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -13995,7 +13995,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14003,7 +14003,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14011,7 +14011,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14019,7 +14019,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14027,7 +14027,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14035,7 +14035,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14043,7 +14043,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14051,7 +14051,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14059,7 +14059,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14067,7 +14067,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14075,7 +14075,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14083,7 +14083,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14091,7 +14091,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14099,7 +14099,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14107,7 +14107,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14115,7 +14115,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14123,7 +14123,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14131,7 +14131,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14139,7 +14139,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14147,7 +14147,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14155,7 +14155,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14163,7 +14163,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14171,7 +14171,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14179,7 +14179,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14187,7 +14187,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14195,7 +14195,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14203,7 +14203,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14211,7 +14211,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14219,7 +14219,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14227,7 +14227,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14235,7 +14235,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14243,7 +14243,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14251,7 +14251,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14259,7 +14259,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14267,7 +14267,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14275,7 +14275,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14283,7 +14283,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14291,7 +14291,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14299,7 +14299,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14307,7 +14307,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14315,7 +14315,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14323,7 +14323,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14331,7 +14331,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14339,7 +14339,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14347,7 +14347,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14355,7 +14355,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14363,7 +14363,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14371,7 +14371,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14379,7 +14379,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14387,7 +14387,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14395,7 +14395,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14403,7 +14403,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14411,7 +14411,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14419,7 +14419,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/rule-detail/response-return-type-controller-action-rector",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14427,7 +14427,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14435,7 +14435,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14443,7 +14443,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14451,7 +14451,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14459,7 +14459,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14467,7 +14467,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14475,7 +14475,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14483,7 +14483,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14491,7 +14491,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14499,7 +14499,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14507,7 +14507,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14515,7 +14515,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14523,7 +14523,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14531,7 +14531,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14539,7 +14539,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14547,7 +14547,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14555,7 +14555,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14563,7 +14563,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14571,7 +14571,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14579,7 +14579,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14587,7 +14587,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14595,7 +14595,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14603,7 +14603,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14611,7 +14611,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14619,7 +14619,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14627,7 +14627,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14635,7 +14635,7 @@
         "tool": "rector-symfony",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Symfony rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14643,7 +14643,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14651,7 +14651,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14659,7 +14659,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14667,7 +14667,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14675,7 +14675,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14683,7 +14683,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14691,7 +14691,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14699,7 +14699,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14707,7 +14707,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14715,7 +14715,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14723,7 +14723,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14731,7 +14731,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14739,7 +14739,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14747,7 +14747,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14755,7 +14755,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14763,7 +14763,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14771,7 +14771,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14779,7 +14779,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14787,7 +14787,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14795,7 +14795,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14803,7 +14803,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14811,7 +14811,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14819,7 +14819,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14827,7 +14827,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14835,7 +14835,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14843,7 +14843,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14851,7 +14851,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14859,7 +14859,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14867,7 +14867,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14875,7 +14875,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14883,7 +14883,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14891,7 +14891,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14899,7 +14899,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14907,7 +14907,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14915,7 +14915,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14923,7 +14923,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14931,7 +14931,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14939,7 +14939,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14947,7 +14947,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14955,7 +14955,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14963,7 +14963,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14971,7 +14971,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14979,7 +14979,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14987,7 +14987,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -14995,7 +14995,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15003,7 +15003,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15011,7 +15011,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15019,7 +15019,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15027,7 +15027,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15035,7 +15035,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15043,7 +15043,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15051,7 +15051,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15059,7 +15059,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15067,7 +15067,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15075,7 +15075,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15083,7 +15083,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15091,7 +15091,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15099,7 +15099,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {
@@ -15107,7 +15107,7 @@
         "tool": "rector-doctrine",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "note": "Doctrine rules: out of scope (Laravel-first)",
         "unsupported": true
       },
       {

@@ -57,8 +57,8 @@ baseline = "pun-baseline.toml"
 "dead-code/if-always-constant" = { treat-php-doc-types-as-certain = false }   # PHPStan's treatPhpDocTypesAsCertain
 ```
 
-- **No levels.** `pun migrate` expands a PHPStan level into the exact rules it ran, each with its options. In
-  interactive mode it offers the closest preset, with a count of the new problems the preset would report.
+- **No levels.** `pun migrate` expands a PHPStan level into the exact rules it ran, each with its options. With
+  `--offer-preset` on a terminal it also offers the closest preset, with a count of the new problems it would report.
 - **Laravel** analysis (Larastan's knowledge and rules) runs when `[extensions] laravel = "on"`. `pun migrate` and
   `pun init` turn it on when composer.lock locks laravel/framework. Larastan's rules stay off for a Laravel version
   Larastan 3 does not support.

@@ -49,8 +49,9 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
   `@phpstan-ignore <identifiers>` becomes `@pun-ignore <rule IDs>`, and `@phpstan-ignore-line` / `-next-line` become
   `@pun-ignore` / `@pun-ignore-next-line` naming the rules analyse reports on that line. A comment Pun can't map is
   left as is and named.
-- **Closest preset:** on a terminal, after writing exact rules, migrate offers the closest preset with a count of the
-  new problems the switch would report ("You're on PHPStan level 8; the closest Pun preset is `strict`. Switch?").
+- **Closest preset:** opt-in. With `--offer-preset` on a terminal, after writing exact rules, migrate offers the closest
+  preset with a count of the problems the switch adds and drops ("You're on PHPStan level 8; the closest Pun preset is
+  `strict`. Switch?"). Without the flag it never asks: the exact rules are what the project ran (Pushpak, 2026-11-23).
 - **No workflow edits.** Migrate doesn't touch composer scripts, CI, hooks or editor settings. Future `pun-init` and
   `pun-migrate` agent skills will do that.
 

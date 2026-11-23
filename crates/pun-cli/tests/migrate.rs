@@ -35,9 +35,9 @@ fn counts(out: &str) -> String {
 const PINT: &str = r#"{"preset":"empty","rules":{"array_syntax":true,"final_class":true}}"#;
 const TOML: &str = "# Written by `pun migrate` from pint.json.\n[format]\npreset = \"empty\"\n\n[format.rules]\n\"arrays/syntax\" = true\n\n[lint.rules]\n\"style/require-final-class\" = \"error\"\n";
 const MOVED: &str = " ok pint.json  -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n";
-const PR: &str = "   Want them? Send a PR to https://github.com/shipfastlabs/pun\n";
+const PR: &str = "   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n";
 const IGNORED: &str = "<?php\n\n// @php-cs-fixer-ignore array_syntax,final_class\n$a = array(1);\n$s = '// @php-cs-fixer-ignore array_syntax';\n";
-const UNKNOWN: &str = " ! app/Unknown.php  `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it); skipped\n";
+const UNKNOWN: &str = "\n ! Not migrated\n   Ignore comments left as is: no Pun rule for it\n     app/Unknown.php  `@php-cs-fixer-ignore Acme/rule`\n";
 const REWRITTEN: &str = "<?php\n\n// @pun-ignore-file format/arrays/syntax,lint/style/require-final-class\n$a = array(1);\n$s = '// @php-cs-fixer-ignore array_syntax';\n";
 
 #[test]
@@ -125,7 +125,7 @@ fn skips_unsupported_rules() {
     assert_eq!(
         (out.as_str(), err.as_str(), code),
         (
-            " ✔ pint.json  → [format] preset empty, 1 rule changed\n ⚠ braces  deprecated upstream; successor: single_space_around_construct, control_structure_braces, control_structure_continuation_position, declare_parentheses, no_multiple_statements_per_line, braces_position, statement_indentation, no_extra_blank_lines; skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ✔ Wrote pun.toml\n",
+            " ✔ pint.json  → [format] preset empty, 1 rule changed\n\n ⚠ Not migrated\n   deprecated upstream; successor: single_space_around_construct, control_structure_braces, control_structure_continuation_position, declare_parentheses, no_multiple_statements_per_line, braces_position, statement_indentation, no_extra_blank_lines\n     braces\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ✔ Wrote pun.toml\n",
             "",
             Some(0)
         )
@@ -226,6 +226,10 @@ const CHECKLIST: &[(&str, &str)] = &[
 ];
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "each --from selection prints its whole report"
+)]
 fn lists_every_detected_config() {
     let files = [
         ("pint.json", PINT),
@@ -243,11 +247,16 @@ fn lists_every_detected_config() {
  - .php-cs-fixer.dist.php  not migrated: pint.json gives [format], as in Pint
  ok phpstan.dist.neon       -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]
  ! rector.php              not read: run `composer install` so Pun can read it with Rector; left untouched
- ! format/casts/short-scalar   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
- ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
- ! format/whitespace/encoding  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
- ! mago.toml                   Mago config: not supported by Pun yet; left untouched
+
+ ! Not migrated
+   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]
+     format/casts/short-scalar
+     format/functions/backtick-to-shell-exec
+     format/whitespace/encoding
+   Mago config: not supported by Pun yet; left untouched
+     mago.toml
    Want them? Send a PR to https://github.com/shipfastlabs/pun
+
  ok Wrote pun.toml
 ",
             "",
@@ -282,9 +291,14 @@ fn lists_every_detected_config() {
  - .php-cs-fixer.dist.php  not selected
  ok phpstan.dist.neon       -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]
  - rector.php              not selected
- ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
- ! mago.toml  Mago config: not supported by Pun yet; left untouched
+
+ ! Not migrated
+   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]
+     format/functions/backtick-to-shell-exec
+   Mago config: not supported by Pun yet; left untouched
+     mago.toml
    Want them? Send a PR to https://github.com/shipfastlabs/pun
+
  ok Wrote pun.toml
 ",
             Some(0)
@@ -302,8 +316,12 @@ fn lists_every_detected_config() {
  - .php-cs-fixer.dist.php  not selected
  - phpstan.dist.neon       not selected
  - rector.php              not selected
- ! mago.toml  Mago config: not supported by Pun yet; left untouched
+
+ ! Not migrated
+   Mago config: not supported by Pun yet; left untouched
+     mago.toml
    Want them? Send a PR to https://github.com/shipfastlabs/pun
+
  - Nothing to migrate; pun.toml not written
 ",
             Some(0)
@@ -412,7 +430,7 @@ fn starter_beside_phpstan() {
     assert_eq!(
         (counts(&out).as_str(), code),
         (
-            " ok phpstan.neon.dist  -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ok Wrote starter pun.toml (preset laravel)\n",
+            " ok phpstan.neon.dist  -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]\n\n ! Not migrated\n   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\n     format/functions/backtick-to-shell-exec\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ok Wrote starter pun.toml (preset laravel)\n",
             Some(0)
         )
     );
@@ -597,7 +615,7 @@ fn rewrites_phpstan_ignores() {
         "{out}"
     );
     assert!(
-        counts(&out).contains(" ok ignore comments  -> @pun-ignore in 1 file\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n ! app/A.php:4  `@phpstan-ignore acme.rule` left as is (`acme.rule` is not a PHPStan identifier Pun knows); skipped\n ! app/A.php:6  `@phpstan-ignore-next-line` left as is (`pun analyse` reports no error on line 7 for it to name); skipped\n"),
+        counts(&out).contains(" ok ignore comments  -> @pun-ignore in 1 file\n\n ! Not migrated\n   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\n     format/functions/backtick-to-shell-exec\n   Ignore comments left as is: `acme.rule` is not a PHPStan identifier Pun knows\n     app/A.php:4  `@phpstan-ignore acme.rule`\n   Ignore comments left as is: `pun analyse` reports no error on line 7 for it to name\n     app/A.php:6  `@phpstan-ignore-next-line`\n"),
         "{out}"
     );
     assert_eq!(read(&d, "app/A.php"), php);
@@ -611,6 +629,10 @@ fn rewrites_phpstan_ignores() {
 /// 23, as `pun analyse` does after the migration. In C.php PHPStan reports `function.notFound` on 7, 9 and 10 with the
 /// parameter, and without it line 8 as unmatched and the error on 9: the tag left on 7 still hides its error.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "the report lists every kind of comment left as is"
+)]
 fn names_what_blanket_phpstan_ignores_hid() {
     const C: &str = "<?php\n\n/**\n * @php-cs-fixer-ignore array_syntax\n * @phpstan-ignore-next-line\n */\nundefined_c();\n/** @phpstan-ignore-line */\nundefined_d();\nundefined_e(); // @phpstan-ignore-line -- generated */\n";
     let php = "<?php\n\nnamespace App;\n\nfunction f(): void\n{\n    // @phpstan-ignore-next-line\n    undefined_one();\n    undefined_two(); // @phpstan-ignore-line\n    /** @phpstan-ignore-next-line */\n    undefined_three();\n    // @phpstan-ignore-next-line\n    $x = 1;\n    /**\n     * @phpstan-ignore-next-line\n     * @var int $y\n     */\n    $y = undefined_four();\n    // @phpstan-ignore-next-line because it is generated\n    undefined_five(\n        undefined_six()\n    );\n    undefined_seven(\n        undefined_eight() // @phpstan-ignore-line\n    );\n    // @phpstan-ignore-next-line\n    (new \\stdClass())->nope(undefined_nine());\n    // @phpstan-ignore-next-line\n    $a = [[] => 1];\n    /* @phpstan-ignore-line */ undefined_ten();\n    /**\n     * @phpstan-ignore-line\n     * @phpstan-ignore-next-line\n     */\n    undefined_eleven();\n}\n";
@@ -681,17 +703,23 @@ fn names_what_blanket_phpstan_ignores_hid() {
         read(&d, "lib/B.php"),
         "<?php\n\nundefined_b(); // @phpstan-ignore-line\n"
     );
-    for line in [
-        " ! app/A.php:12  `@phpstan-ignore-next-line` left as is (`pun analyse` reports no error on line 13 for it to name); skipped\n",
-        " ! app/A.php:15  `@phpstan-ignore-next-line` left as is (it ignores line 16, where a Pun comment here can't point); skipped\n",
-        " ! app/A.php:32  `@phpstan-ignore-line` left as is (a Pun comment holds one ignore); skipped\n",
-        " ! app/A.php:33  `@phpstan-ignore-next-line` left as is (a Pun comment holds one ignore); skipped\n",
-        " ! lib/B.php:3   `@phpstan-ignore-line` left as is (`pun analyse` doesn't check this file); skipped\n",
-        " ! app/C.php:5   `@phpstan-ignore-next-line` left as is (the comment has a `@pun-ignore` already, and a Pun comment holds one ignore); skipped\n",
-        " ! app/C.php:8   `@phpstan-ignore-line` left as is (it ignores line 8, where a Pun comment here can't point); skipped\n",
-    ] {
-        assert!(out.contains(line), "{line}{out}");
-    }
+    // Each comment left as is is listed under its reason, the reasons in the order the files were read.
+    let left = "   Ignore comments left as is: `pun analyse` reports no error on line 13 for it to name
+     app/A.php:12  `@phpstan-ignore-next-line`
+   Ignore comments left as is: it ignores line 16, where a Pun comment here can't point
+     app/A.php:15  `@phpstan-ignore-next-line`
+   Ignore comments left as is: a Pun comment holds one ignore
+     app/A.php:32  `@phpstan-ignore-line`
+     app/A.php:33  `@phpstan-ignore-next-line`
+   Ignore comments left as is: the comment has a `@pun-ignore` already, and a Pun comment holds one ignore
+     app/C.php:5  `@phpstan-ignore-next-line`
+   Ignore comments left as is: it ignores line 8, where a Pun comment here can't point
+     app/C.php:8  `@phpstan-ignore-line`
+   Ignore comments left as is: `pun analyse` doesn't check this file
+     lib/B.php:3  `@phpstan-ignore-line`
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
+";
+    assert!(out.contains(left), "{out}");
     let (out, _, code) = pun(&d, &["analyse", "--format=raw"]);
     assert_eq!(code, Some(1), "{out}");
     let root = d.canonicalize().unwrap();
@@ -722,7 +750,18 @@ fn offers_the_closest_preset() {
         ("app/A.php", "<?php\n\nundefined_fn();\n"),
     ];
     let d = project("tty-preset", &files);
-    let out = pty(&d, "\\ry");
+    // Without --offer-preset, migrate writes the exact rules and doesn't ask.
+    let out = pty(&d, "\\r");
+    assert!(!out.contains("closest Pun preset"), "{out}");
+    assert!(read(&d, "pun.toml").contains(" = \"off\"\n"));
+    std::fs::remove_file(d.join("pun.toml")).unwrap();
+    let offer = |keys: &str| {
+        let (out, code) =
+            common::pty::pty(&d, "migrate --offer-preset", keys, &[("NO_COLOR", "1")]);
+        assert_eq!(code, Some(0), "{out}");
+        common::strip_ansi(&out)
+    };
+    let out = offer("\\ry");
     assert!(
         out.contains("You're on PHPStan level 5; the closest Pun preset is `recommended`. Switch to it? (0 new problems, 0 fewer)"),
         "{out}"
@@ -734,7 +773,7 @@ fn offers_the_closest_preset() {
         "{toml}"
     );
     std::fs::remove_file(d.join("pun.toml")).unwrap();
-    let out = pty(&d, "\\rn");
+    let out = offer("\\rn");
     assert!(!out.contains("switched to the preset"), "{out}");
     assert!(read(&d, "pun.toml").contains(" = \"off\"\n"));
 }
@@ -779,7 +818,7 @@ fn phpstan_baseline_extensions_options_and_ignores() {
         "{out}"
     );
     assert!(
-        out.contains(" ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n"),
+        out.contains("\n ! Not migrated\n   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\n     format/functions/backtick-to-shell-exec\n"),
         "{out}"
     );
     assert!(
@@ -825,16 +864,13 @@ fn rector_paths_skips_and_unsupported_rules() {
     assert_eq!(code, Some(0), "{out}{err}");
     let out = counts(&out);
     assert!(
-        out.starts_with(" ok rector.php  -> [lint] sets dead-code, modernize; N on, N off"),
+        out.starts_with(" ok rector.php  -> [lint] N on, N off, 3 paths excluded, 1 per-path skip\n                   sets dead-code, modernize\n"),
         "{out}"
     );
     assert!(
-        out.contains(", 3 paths excluded, 1 per-path skip\n"),
-        "{out}"
-    );
-    assert!(
-        out.lines().any(|l| l.starts_with(" ! 97 Rector rules ")
-            && l.ends_with("  only in php52..php81 upgrade sets (below php82); skipped")),
+        out.contains(
+            "\n   only in php52..php81 upgrade sets (below php82)\n     97 Rector rules\n"
+        ),
         "{out}"
     );
     assert!(out.contains(PR), "{out}");
@@ -860,7 +896,7 @@ fn rector_paths_skips_and_unsupported_rules() {
     let (out, _, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(0), "{out}");
     assert!(
-        counts(&out).starts_with(" ok rector.php  -> [lint] no sets; N on, N off"),
+        counts(&out).starts_with(" ok rector.php  -> [lint] N on, N off"),
         "{out}"
     );
     assert!(!out.contains("excluded"), "{out}");
@@ -909,7 +945,7 @@ fn phpstan_ignore_of_a_format_check_is_left() {
     let (out, _, code) = pun(&d, &["migrate", "--dry-run", "--yes"]);
     assert_eq!(code, Some(0), "{out}");
     assert!(
-        out.contains(" ! app/A.php:3  `@phpstan-ignore whitespace.fileEnd` left as is (`whitespace.fileEnd` is the format rule `format/tags/no-closing`, ignored per file); skipped\n"),
+        out.contains("   Ignore comments left as is: `whitespace.fileEnd` is the format rule `format/tags/no-closing`, ignored per file\n     app/A.php:3  `@phpstan-ignore whitespace.fileEnd`\n"),
         "{out}"
     );
 }
@@ -984,7 +1020,7 @@ fn rector_warnings_on_stdout() {
     let (out, err, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!((err.as_str(), code), ("", Some(0)), "{out}");
     assert!(
-        counts(&out).starts_with(" ok rector.php  -> [lint] no sets; N on, N off"),
+        counts(&out).starts_with(" ok rector.php  -> [lint] N on, N off"),
         "{out}"
     );
     assert!(read(&d, "pun.toml").contains("\n[lint.rules]\n"));
@@ -1004,12 +1040,12 @@ fn rector_php82_set_turns_on_the_php_8_2_rules() {
         (
             "rector-php82-set-list",
             "use Rector\\Set\\ValueObject\\SetList;\n\nreturn RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withSets([SetList::PHP_82]);\n",
-            " ok rector.php  -> [lint] no sets; N on, N off",
+            " ok rector.php  -> [lint] N on, N off",
         ),
         (
             "rector-php82-php-sets",
             "return RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withPhpSets(php82: true);\n",
-            " ok rector.php  -> [lint] sets modernize; N on, N off",
+            " ok rector.php  -> [lint] N on, N off, 1 path excluded\n                   sets modernize",
         ),
     ] {
         let d = project(
@@ -1067,9 +1103,14 @@ fn phpstan_alone_beside_a_format_config() {
             format!(
                 " - pint.json     not selected
  ok phpstan.neon  -> [analyse] preset basic (level 0), N on, N off, 1 rule -> [lint], phpVersion -> [php] version 8.4
- ! {rule}  a custom PHPStan rule; Pun runs no PHP rules; skipped
- ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
+
+ ! Not migrated
+   a custom PHPStan rule; Pun runs no PHP rules
+     {rule}
+   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]
+     format/functions/backtick-to-shell-exec
    Want them? Send a PR to https://github.com/shipfastlabs/pun
+
  ok Wrote pun.toml
 "
             )

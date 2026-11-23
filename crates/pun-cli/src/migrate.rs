@@ -25,6 +25,10 @@ pub(crate) struct MigrateArgs {
     /// Don't ask: migrate everything detected.
     #[arg(long, short)]
     yes: bool,
+    /// On a terminal, offer to replace the analyse rules migrated from phpstan.neon with the closest Pun preset,
+    /// showing how many problems that adds and removes.
+    #[arg(long)]
+    offer_preset: bool,
 }
 
 /// `FixerAnnotationAnalyzer`'s pattern, applied inside comment tokens only. Exactly one space after the name: it
@@ -219,15 +223,7 @@ pub(crate) fn run(a: &MigrateArgs) -> Result<Exit> {
     }
     let from = sources.format.as_ref().map(|s| rel(&root, &s.1));
     let arrow = report.look.glyph("→", "->");
-    let body = body(
-        &root,
-        a,
-        pint,
-        &sources,
-        no_format,
-        interactive,
-        &mut report,
-    )?;
+    let body = body(&root, a, pint, &sources, no_format, &mut report)?;
     let header = match &from {
         Some(f) => format!(" from {f}."),
         None if no_format => format!(" without [format]: {} not selected.", formats.join(", ")),
@@ -361,7 +357,11 @@ impl Body {
         }
         [
             moved,
-            format!("{arrow} {}", self.lint),
+            // rector.php's sets line starts under `[lint]`.
+            format!(
+                "{arrow} {}",
+                (self.lint).replace('\n', &format!("\n{:w$}", "", w = arrow.chars().count() + 1))
+            ),
             format!("{arrow} {}", self.analyse),
         ]
     }
@@ -375,7 +375,6 @@ fn body(
     pint: &Path,
     sources: &Sources,
     no_format: bool,
-    interactive: bool,
     report: &mut Report,
 ) -> Result<Body> {
     let mut m = if no_format {
@@ -401,7 +400,12 @@ fn body(
     if let Some(p) = &sources.phpstan {
         let level;
         (analyse, level) = phpstan_analyse(root, p, &mut m.parts, report)?;
-        if interactive && let Some(plain) = closest_preset(root, &m.parts, level)? {
+        let terminal = std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
+        if a.offer_preset
+            && terminal
+            && !agent::enabled()
+            && let Some(plain) = closest_preset(root, &m.parts, level)?
+        {
             m.parts = plain;
             analyse.push_str(", switched to the preset");
         }
@@ -532,7 +536,11 @@ fn ignore_rewrites(
         }
     }
     for (path, note) in &unknown {
-        report.unsupported(path, note, format!("{path} ignore-not-migrated {note}"));
+        // "`@tag ids` left as is (why)": the comments that share a reason are listed under it.
+        let (tag, why) = note.split_once(" left as is (").expect("an ignore note");
+        let why = format!("Ignore comments left as is: {}", &why[..why.len() - 1]);
+        let finding = format!("{path} ignore-not-migrated {note}");
+        report.unsupported(&format!("{path}  {tag}"), &why, finding);
     }
     edits
 }
@@ -572,12 +580,7 @@ fn rector_lint(
             }
         }
     }
-    let sets = if r.sets.is_empty() {
-        "no sets".to_string()
-    } else {
-        format!("sets {}", r.sets.join(", "))
-    };
-    let mut text = format!("[lint] {sets}; {} on, {} off", done.on, done.off);
+    let mut text = format!("[lint] {} on, {} off", done.on, done.off);
     if !r.exclude.is_empty() {
         let _ = write!(text, ", {} excluded", agent::count(r.exclude.len(), "path"));
     }
@@ -587,6 +590,9 @@ fn rector_lint(
             ", {}",
             agent::count(r.overrides.len(), "per-path skip")
         );
+    }
+    if !r.sets.is_empty() {
+        let _ = write!(text, "\nsets {}", r.sets.join(", "));
     }
     Ok(text)
 }
@@ -830,7 +836,7 @@ impl Report {
 
     /// Something migrate names and skips.
     fn unsupported(&mut self, name: &str, why: &str, finding: String) {
-        self.items.push((name.into(), format!("{why}; skipped")));
+        self.items.push((name.into(), why.into()));
         self.findings.1.push(finding);
     }
 
@@ -905,16 +911,29 @@ impl Report {
         }
         let mut out = std::mem::take(&mut self.diffs);
         out += &self.block(&self.configs);
-        let items: Vec<_> = (self.items.iter())
-            .map(|(n, t)| (Mark::Warn, n.clone(), t.clone()))
-            .collect();
-        out += &self.block(&items);
-        if !items.is_empty() {
+        let warn = self.look.paint(Role::Warning, self.look.glyph("⚠", "!"));
+        if !self.items.is_empty() {
+            let _ = writeln!(out, "\n {warn} Not migrated");
+            // One heading per reason, in the order they came, with what it applies to under it.
+            let mut reasons: Vec<&str> = vec![];
+            for (_, why) in &self.items {
+                if !reasons.contains(&why.as_str()) {
+                    reasons.push(why);
+                }
+            }
+            for why in reasons {
+                let _ = writeln!(out, "   {why}");
+                for (name, _) in self.items.iter().filter(|i| i.1 == why) {
+                    let _ = writeln!(out, "     {}", self.look.paint(Role::Dim, name));
+                }
+            }
             let _ = writeln!(out, "   Want them? Send a PR to {PR}");
         }
         for (name, text) in &self.notes {
-            let glyph = self.look.paint(Role::Warning, self.look.glyph("⚠", "!"));
-            writeln!(out, " {glyph} {name} {text}").unwrap();
+            writeln!(out, " {warn} {name} {text}").unwrap();
+        }
+        if !self.items.is_empty() || !self.notes.is_empty() {
+            out.push('\n');
         }
         out += &self.block(&[(mark, last, String::new())]);
         print!("{out}");
@@ -935,11 +954,14 @@ impl Report {
                 Mark::Warn => (self.look.glyph("⚠", "!"), Role::Warning),
                 Mark::Skip => (self.look.glyph("·", "-"), Role::Dim),
             };
-            let glyph = self.look.paint(role, glyph);
+            // A text's later lines start under its first.
             let pad = width.saturating_sub(name.chars().count());
+            let indent = " ".repeat(glyph.chars().count() + name.chars().count() + pad + 4);
+            let glyph = self.look.paint(role, glyph);
+            let text = text.replace('\n', &format!("\n{indent}"));
             let text = match mark {
-                Mark::Skip => self.look.paint(Role::Dim, text),
-                _ => text.clone(),
+                Mark::Skip => self.look.paint(Role::Dim, &text),
+                _ => text,
             };
             let line = format!(" {glyph} {name}{:pad$}  {text}", "");
             writeln!(out, "{}", line.trim_end()).unwrap();

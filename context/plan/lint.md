@@ -129,8 +129,8 @@ Steps 1, 2, 4, 5, 6 and 9 are done, and `pun check --fix` equals Pint. Left: ste
 Laravel, Pest and PHPUnit are not questions. `pun init` reads composer.lock and writes `[extensions]` for them, which
 turns their rules on, including the rules for the locked versions.
 
-**A project coming from Pint, Rector or PHPStan:** `pun migrate` writes the exact rules the old config runs. In
-interactive mode it then offers the closest preset, with a count of the new problems the preset would report.
+**A project coming from Pint, Rector or PHPStan:** `pun migrate` writes the exact rules the old config runs. With
+`--offer-preset` on a terminal it then offers the closest preset, with a count of the new problems it would report.
 
 ### Lint presets are sets you tick, not a ladder (decided)
 

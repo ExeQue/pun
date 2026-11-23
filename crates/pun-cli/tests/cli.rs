@@ -798,7 +798,7 @@ fn migrates_php_cs_fixer_config() {
         )
     );
     reset(&dir, &tree);
-    let skipped = " ! Acme/upper_todo  not a PHP-CS-Fixer or Pint rule Pun knows (a custom fixer or rule set); skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ok Wrote pun.toml\n";
+    let skipped = "\n ! Not migrated\n   not a PHP-CS-Fixer or Pint rule Pun knows (a custom fixer or rule set)\n     Acme/upper_todo\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ok Wrote pun.toml\n";
     let (out, err, code) = pun(&dir, &["migrate"]);
     assert_eq!((err.as_str(), code), ("", Some(0)));
     assert!(
@@ -836,7 +836,7 @@ fn migrates_php_cs_fixer_config() {
     assert_eq!(code, Some(0), "{err}");
     assert_eq!(
         out,
-        " ok .php-cs-fixer.php  -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n ! Finder depth()             no pun.toml key for it; skipped\n ! Finder ignoreVCSIgnored()  no pun.toml key for it; skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ok Wrote pun.toml\n"
+        " ok .php-cs-fixer.php  -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n\n ! Not migrated\n   no pun.toml key for it\n     Finder depth()\n     Finder ignoreVCSIgnored()\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ok Wrote pun.toml\n"
     );
     assert_eq!(
         std::fs::read_to_string(dir.join("pun.toml")).unwrap(),
