@@ -205,6 +205,8 @@ fn nullable_object(t: &TUnion) -> Option<String> {
             named.name
         }
         TAtomic::Object(TObject::Enum(e)) => e.name,
+        // Mago types `Closure` as a callable, PHPStan as the object it is: Rector writes `instanceof \Closure`.
+        TAtomic::Callable(c) if c.is_closure() => "Closure".into(),
         _ => return None,
     };
     Some(name.to_string())
