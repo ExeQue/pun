@@ -21,6 +21,7 @@ mod rector_laravel_c;
 mod rector_lint7;
 mod rector_pest;
 mod rector_php74;
+mod rector_php80;
 mod rector_php81;
 mod rector_php82;
 mod rector_php83_calls;

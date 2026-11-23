@@ -659,7 +659,7 @@
         "rules": [
           "lint/style/prefer-class-keyword-on-object"
         ],
-        "note": "Same.",
+        "note": "Merged with ClassOnObject.",
         "unsupported": false
       },
       {
@@ -939,7 +939,7 @@
         "rules": [
           "lint/style/prefer-str-contains"
         ],
-        "note": "Merged with str-contains, str-starts-with. Options: renamed for TOML: [options.\"lint/style/prefer-str-contains\"].",
+        "note": "Merged with StrContains, str-contains, str-starts-with. Options: renamed for TOML: [options.\"lint/style/prefer-str-contains\"].",
         "unsupported": false
       },
       {
@@ -1473,7 +1473,7 @@
         "rules": [
           "lint/style/no-redundant-final"
         ],
-        "note": "Merged with no-redundant-final. Options: renamed for TOML: [options.\"lint/style/no-redundant-final\"].",
+        "note": "Merged with FinalPrivateToPrivateVisibility, no-redundant-final. Options: renamed for TOML: [options.\"lint/style/no-redundant-final\"].",
         "unsupported": false
       },
       {
@@ -2787,7 +2787,7 @@
         "rules": [
           "lint/classes/add-stringable"
         ],
-        "note": "Same.",
+        "note": "Merged with StringableForToString.",
         "unsupported": false
       },
       {
@@ -3645,7 +3645,7 @@
         "rules": [
           "lint/style/prefer-class-keyword-on-object"
         ],
-        "note": "Same.",
+        "note": "Merged with ClassOnObject.",
         "unsupported": false
       },
       {
@@ -3925,7 +3925,7 @@
         "rules": [
           "lint/style/prefer-str-contains"
         ],
-        "note": "Merged with str-contains, str-starts-with. Options: renamed for TOML: [options.\"lint/style/prefer-str-contains\"].",
+        "note": "Merged with StrContains, str-contains, str-starts-with. Options: renamed for TOML: [options.\"lint/style/prefer-str-contains\"].",
         "unsupported": false
       },
       {
@@ -4459,7 +4459,7 @@
         "rules": [
           "lint/style/no-redundant-final"
         ],
-        "note": "Merged with no-redundant-final. Options: renamed for TOML: [options.\"lint/style/no-redundant-final\"].",
+        "note": "Merged with FinalPrivateToPrivateVisibility, no-redundant-final. Options: renamed for TOML: [options.\"lint/style/no-redundant-final\"].",
         "unsupported": false
       },
       {
@@ -5773,7 +5773,7 @@
         "rules": [
           "lint/classes/add-stringable"
         ],
-        "note": "Same.",
+        "note": "Merged with StringableForToString.",
         "unsupported": false
       },
       {
@@ -6830,17 +6830,21 @@
         "name": "ClassOnObject",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/class-on-object-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/prefer-class-keyword-on-object"
+        ],
+        "note": "Merged with get_class_to_class_keyword.",
+        "unsupported": false
       },
       {
         "name": "ClassOnThisVariableObject",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/class-on-this-variable-object-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/prefer-static-class"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ClassPropertyAssignToConstructorPromotion",
@@ -7364,9 +7368,11 @@
         "name": "FinalPrivateToPrivateVisibility",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/final-private-to-private-visibility-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/no-redundant-final"
+        ],
+        "note": "Merged with no_unneeded_final_method, no-redundant-final.",
+        "unsupported": false
       },
       {
         "name": "FinalizeTestCaseClass",
@@ -7570,17 +7576,21 @@
         "name": "GetDebugType",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-debug-type-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/prefer-get-debug-type"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "GetHeadersArgumentFormat",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-headers-argument-format-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/no-int-get-headers-format"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "HebrevcToNl2brHebrev",
@@ -9128,9 +9138,11 @@
         "name": "RemoveUnusedVariableInCatch",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-unused-variable-in-catch-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/no-unused-catch-variable"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveUselessAliasInUseStatement",
@@ -9797,7 +9809,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/set-state-to-static-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not compile on PHP 8.4 (a non-static `__set_state()` method is a fatal error)",
         "unsupported": true
       },
       {
@@ -10176,9 +10188,11 @@
         "name": "StrContains",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/str-contains-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/prefer-str-contains"
+        ],
+        "note": "Merged with modernize_strpos, str-contains, str-starts-with.",
+        "unsupported": false
       },
       {
         "name": "StrEndsWith",
@@ -10276,9 +10290,11 @@
         "name": "StringableForToString",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/stringable-for-to-string-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/classes/add-stringable"
+        ],
+        "note": "Merged with stringable_for_to_string.",
+        "unsupported": false
       },
       {
         "name": "StringifyDefine",
@@ -10656,9 +10672,11 @@
         "name": "VersionCompareFuncCallArgument",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/version-compare-func-call-argument-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/no-version-compare-operator-alias"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "VersionCompareFuncCallToConstant",
@@ -27089,7 +27107,7 @@
         "rules": [
           "lint/style/no-redundant-final"
         ],
-        "note": "Merged with no_unneeded_final_method. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
+        "note": "Merged with no_unneeded_final_method, FinalPrivateToPrivateVisibility. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
         "unsupported": false
       },
       {
@@ -27819,7 +27837,7 @@
         "rules": [
           "lint/style/prefer-str-contains"
         ],
-        "note": "Merged with modernize_strpos, str-starts-with. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
+        "note": "Merged with modernize_strpos, StrContains, str-starts-with. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
         "unsupported": false
       },
       {
@@ -27829,7 +27847,7 @@
         "rules": [
           "lint/style/prefer-str-contains"
         ],
-        "note": "Merged with modernize_strpos, str-contains. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
+        "note": "Merged with modernize_strpos, StrContains, str-contains. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
         "unsupported": false
       },
       {

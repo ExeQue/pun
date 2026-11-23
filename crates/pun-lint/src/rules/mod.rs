@@ -20,6 +20,7 @@ mod laravel;
 mod operators;
 mod pest;
 mod php_7_4;
+mod php_8_0;
 mod php_8_1;
 mod php_8_2;
 mod php_8_3;
@@ -161,6 +162,11 @@ rules! {
         php_7_4::no_mb_strrpos_encoding_offset => NoMbStrrposEncodingOffset,
         php_7_4::no_restore_include_path => NoRestoreIncludePath,
         php_7_4::prefer_arrow_function => PreferArrowFunction,
+        php_8_0::no_int_get_headers_format => NoIntGetHeadersFormat,
+        php_8_0::no_unused_catch_variable => NoUnusedCatchVariable,
+        php_8_0::no_version_compare_operator_alias => NoVersionCompareOperatorAlias,
+        php_8_0::prefer_get_debug_type => PreferGetDebugType,
+        php_8_0::prefer_static_class => PreferStaticClass,
         php_8_1::no_closure_from_callable => NoClosureFromCallable,
         php_8_1::no_null_preg_split_limit => NoNullPregSplitLimit,
         php_8_1::no_reflection_set_accessible => NoReflectionSetAccessible,

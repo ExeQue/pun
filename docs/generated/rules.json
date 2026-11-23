@@ -3273,9 +3273,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\Php80\\Rector\\Class_\\StringableForToStringRector",
+        "StringableForToString",
+        "StringableForToStringRector",
         "stringable_for_to_string"
       ],
       "ported": true
@@ -10017,6 +10021,106 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.0/no-int-get-headers-format",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Change the integer associative argument of the get_headers() function to a boolean",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "GetHeadersArgumentFormat",
+        "GetHeadersArgumentFormatRector",
+        "Rector\\Php80\\Rector\\FuncCall\\GetHeadersArgumentFormatRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.0/no-unused-catch-variable",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Remove unused variable in catch()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php80\\Rector\\Catch_\\RemoveUnusedVariableInCatchRector",
+        "RemoveUnusedVariableInCatch",
+        "RemoveUnusedVariableInCatchRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.0/no-version-compare-operator-alias",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Streamline the operator argument of the version_compare() function",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php80\\Rector\\FuncCall\\VersionCompareFuncCallArgumentRector",
+        "VersionCompareFuncCallArgument",
+        "VersionCompareFuncCallArgumentRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.0/prefer-get-debug-type",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Change ternary type resolve to get_debug_type()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "GetDebugType",
+        "GetDebugTypeRector",
+        "Rector\\Php80\\Rector\\Ternary\\GetDebugTypeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.0/prefer-static-class",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Change $this::class to static::class or self::class depends on class modifier",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ClassOnThisVariableObject",
+        "ClassOnThisVariableObjectRector",
+        "Rector\\Php80\\Rector\\ClassConstFetch\\ClassOnThisVariableObjectRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.1/no-closure-from-callable",
       "command": "lint",
       "group": "php-8.1",
@@ -14371,9 +14475,13 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "FinalPrivateToPrivateVisibility",
+        "FinalPrivateToPrivateVisibilityRector",
+        "Rector\\Php80\\Rector\\ClassMethod\\FinalPrivateToPrivateVisibilityRector",
         "no-redundant-final",
         "no_unneeded_final_method"
       ],
@@ -14702,9 +14810,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "ClassOnObject",
+        "ClassOnObjectRector",
+        "Rector\\Php80\\Rector\\FuncCall\\ClassOnObjectRector",
         "get_class_to_class_keyword"
       ],
       "ported": true
@@ -15141,9 +15253,13 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\Php80\\Rector\\NotIdentical\\StrContainsRector",
+        "StrContains",
+        "StrContainsRector",
         "modernize_strpos",
         "str-contains",
         "str-starts-with"
