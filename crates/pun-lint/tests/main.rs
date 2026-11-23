@@ -17,6 +17,7 @@ mod rector_inject;
 mod rector_laravel;
 mod rector_laravel_attributes;
 mod rector_laravel_b;
+mod rector_laravel_c;
 mod rector_lint7;
 mod rector_pest;
 mod rector_php82;

@@ -39,24 +39,59 @@ const RELATION_METHODS: &[&str] = &[
 
 const INTERMEDIATE_METHODS: &[&str] = &["hasManyThrough", "hasOneThrough"];
 
-pub struct AddRelationGenerics;
+const CHILD_METHODS: &[&str] = &["belongsTo", "morphTo"];
 
-impl Rule for AddRelationGenerics {
-    fn id(&self) -> &'static str {
-        "lint/laravel/add-relation-generics"
-    }
+/// The generics format of the installed Laravel version.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Format {
+    /// Before 11.15: the child model class as the second generic of `belongsTo` and `morphTo`.
+    Legacy,
+    /// 11.15 to 12.3: `$this` as the child generic.
+    New,
+    /// 12.3 and later: `$this`, and the `Pivot` generic of `BelongsToMany`.
+    Pivot,
+}
 
-    fn targets(&self) -> Option<&'static [NodeKind]> {
-        Some(&[NodeKind::Method])
-    }
+macro_rules! relation_generics_rules {
+    ($($name:ident = $id:literal, $format:expr;)*) => {$(
+        pub struct $name;
 
-    fn visit<'ast, 'arena>(
-        &self,
-        node: Node<'ast, 'arena>,
-        ancestors: &[Node<'ast, 'arena>],
-        ctx: &Context<'_>,
-        out: &mut Vec<Report>,
-    ) {
+        impl Rule for $name {
+            fn id(&self) -> &'static str {
+                $id
+            }
+
+            fn targets(&self) -> Option<&'static [NodeKind]> {
+                Some(&[NodeKind::Method])
+            }
+
+            fn visit<'ast, 'arena>(
+                &self,
+                node: Node<'ast, 'arena>,
+                ancestors: &[Node<'ast, 'arena>],
+                ctx: &Context<'_>,
+                out: &mut Vec<Report>,
+            ) {
+                refactor($format, node, ancestors, ctx, out);
+            }
+        }
+    )*};
+}
+
+relation_generics_rules! {
+    AddRelationGenerics = "lint/laravel/add-relation-generics", Format::Pivot;
+    AddLegacyRelationGenerics = "lint/laravel/add-legacy-relation-generics", Format::Legacy;
+    AddNewRelationGenerics = "lint/laravel/add-new-relation-generics", Format::New;
+}
+
+fn refactor(
+    format: Format,
+    node: Node<'_, '_>,
+    ancestors: &[Node<'_, '_>],
+    ctx: &Context<'_>,
+    out: &mut Vec<Report>,
+) {
+    {
         let Node::Method(method) = node else { return };
         let MethodBody::Concrete(body) = &method.body else {
             return;
@@ -131,10 +166,12 @@ impl Rule for AddRelationGenerics {
         let Some(related) = class_of(args[0]) else {
             return;
         };
-        let intermediate = INTERMEDIATE_METHODS
-            .contains(&&*method_name)
-            .then(|| args.get(1).and_then(|a| class_of(a)))
-            .flatten();
+        let intermediate = (format != Format::Legacy
+            && INTERMEDIATE_METHODS.contains(&&*method_name))
+        .then(|| args.get(1).and_then(|a| class_of(a)))
+        .flatten();
+        let child = (format == Format::Legacy && CHILD_METHODS.contains(&&*method_name))
+            .then(|| own.clone());
         if let Some(types) = tag.as_ref().and_then(|t| t.args.as_ref()) {
             let pivots = is_a(ctx, &native, &[BELONGS_TO_MANY, MORPH_TO_MANY]);
             let mut types: Vec<DocType> = types.iter().map(|t| doc_type(t, true)).collect();
@@ -153,6 +190,12 @@ impl Rule for AddRelationGenerics {
                 && !pivots
             {
                 true
+            } else if format == Format::Legacy {
+                let has_child = types.len() == 2;
+                match &child {
+                    None => !has_child,
+                    Some(child) => has_child && equal(&types[1], child),
+                }
             } else {
                 match &intermediate {
                     None if pivots => {
@@ -169,76 +212,72 @@ impl Rule for AddRelationGenerics {
                 return;
             }
         }
-        let pivot = is_a(ctx, &native, &[BELONGS_TO_MANY]);
-        self.report(
+        let mut generics = vec![format!("\\{related}")];
+        if format == Format::Legacy {
+            generics.extend(child.map(|c| format!("\\{c}")));
+        } else {
+            generics.extend(intermediate.map(|i| format!("\\{i}")));
+            generics.push("$this".to_string());
+            if format == Format::Pivot && is_a(ctx, &native, &[BELONGS_TO_MANY]) {
+                generics.push(format!("\\{PIVOT}"));
+            }
+        }
+        report(
             ctx,
             method,
             &annotated,
             tag.as_ref(),
             &native,
-            &related,
-            intermediate,
-            pivot,
+            &generics,
             out,
         );
     }
 }
 
-impl AddRelationGenerics {
-    fn report(
-        &self,
-        ctx: &Context<'_>,
-        method: &mago_syntax::cst::Method<'_>,
-        annotated: &Annotated<'_>,
-        tag: Option<&ReturnTag<'_>>,
-        native: &str,
-        related: &str,
-        intermediate: Option<String>,
-        pivot: bool,
-        out: &mut Vec<Report>,
-    ) {
-        let mut generics = vec![format!("\\{related}")];
-        generics.extend(intermediate.map(|i| format!("\\{i}")));
-        generics.push("$this".to_string());
-        if pivot {
-            generics.push(format!("\\{PIVOT}"));
+fn report(
+    ctx: &Context<'_>,
+    method: &mago_syntax::cst::Method<'_>,
+    annotated: &Annotated<'_>,
+    tag: Option<&ReturnTag<'_>>,
+    native: &str,
+    generics: &[String],
+    out: &mut Vec<Report>,
+) {
+    let ty = format!("\\{native}<{}>", generics.join(", "));
+    let new_doc = match (annotated.doc.as_ref(), tag) {
+        (Some(doc), Some(tag)) => {
+            let text = doc.text_all();
+            let child = doc.text(tag.index).trim_end();
+            let from = child.as_ptr() as usize - text.as_ptr() as usize;
+            let value = format!("{ty} {}", tag.description);
+            format!(
+                "{}@return {}{}",
+                &text[..from],
+                value.trim(),
+                &text[from + child.len()..]
+            )
         }
-        let ty = format!("\\{native}<{}>", generics.join(", "));
-        let new_doc = match (annotated.doc.as_ref(), tag) {
-            (Some(doc), Some(tag)) => {
-                let text = doc.text_all();
-                let child = doc.text(tag.index).trim_end();
-                let from = child.as_ptr() as usize - text.as_ptr() as usize;
-                let value = format!("{ty} {}", tag.description);
-                format!(
-                    "{}@return {}{}",
-                    &text[..from],
-                    value.trim(),
-                    &text[from + child.len()..]
-                )
-            }
-            (Some(doc), None) => {
-                doc.print_appending(&vec![false; doc.len()], &[&format!("@return {ty}")])
-            }
-            (None, _) => format!("/**\n * @return {ty}\n */"),
-        };
-        if annotated
-            .doc
-            .as_ref()
-            .is_some_and(|d| d.text_all() == new_doc)
-        {
-            return;
+        (Some(doc), None) => {
+            doc.print_appending(&vec![false; doc.len()], &[&format!("@return {ty}")])
         }
-        let Some(edits) = annotated.edits(ctx.source, Some(&new_doc), &[]) else {
-            return;
-        };
-        out.push(Report::fixed(
-            node_span(&method.name),
-            "Add the relation's generics to its `@return` type.",
-            Safety::Unsafe,
-            edits,
-        ));
+        (None, _) => format!("/**\n * @return {ty}\n */"),
+    };
+    if annotated
+        .doc
+        .as_ref()
+        .is_some_and(|d| d.text_all() == new_doc)
+    {
+        return;
     }
+    let Some(edits) = annotated.edits(ctx.source, Some(&new_doc), &[]) else {
+        return;
+    };
+    out.push(Report::fixed(
+        node_span(&method.name),
+        "Add the relation's generics to its `@return` type.",
+        Safety::Unsafe,
+        edits,
+    ));
 }
 
 fn default_type(

@@ -6584,7 +6584,7 @@
         "AddLegacyGenericReturnTypeToRelationsRector",
         "RectorLaravel\\Rector\\ClassMethod\\AddLegacyGenericReturnTypeToRelationsRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/add-new-relation-generics",
@@ -6605,7 +6605,7 @@
         "AddNewGenericReturnTypeToRelationsRector",
         "RectorLaravel\\Rector\\ClassMethod\\AddNewGenericReturnTypeToRelationsRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/add-query-closure-type",
@@ -6689,7 +6689,7 @@
         "AddGenericBuilderToScopesRector",
         "RectorLaravel\\Rector\\ClassMethod\\AddGenericBuilderToScopesRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/add-tap-closure-type",
@@ -6789,7 +6789,7 @@
         "RemoveDefaultAuthorizeTrueFromFormRequest",
         "RemoveDefaultAuthorizeTrueFromFormRequestRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/no-implicit-model-query",
@@ -7226,7 +7226,7 @@
         "CollectionCountComparisonToIsEmptyRector",
         "RectorLaravel\\Rector\\Expr\\CollectionCountComparisonToIsEmptyRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/prefer-collects-attribute",
@@ -7321,7 +7321,7 @@
         "ContainerArrayAccessToMethodCallRector",
         "RectorLaravel\\Rector\\ArrayDimFetch\\ContainerArrayAccessToMethodCallRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/prefer-date-facade",
@@ -7665,7 +7665,7 @@
         "UnlinkFuncCallToFileFacadeDelete",
         "UnlinkFuncCallToFileFacadeDeleteRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/prefer-fillable-attribute",
@@ -7944,7 +7944,7 @@
         "RepositoryArrayAccessToMethodCall",
         "RepositoryArrayAccessToMethodCallRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/prefer-request-facade",
@@ -8045,7 +8045,7 @@
         "RouteKeyMethodToRouteKeyAttribute",
         "RouteKeyMethodToRouteKeyAttributeRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/prefer-session-facade",
@@ -8344,7 +8344,7 @@
         "EmptyGuardedPropertyToUnguardedAttributeRector",
         "RectorLaravel\\Rector\\Class_\\EmptyGuardedPropertyToUnguardedAttributeRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/laravel/prefer-unique-for-attribute",

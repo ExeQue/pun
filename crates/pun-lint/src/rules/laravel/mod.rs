@@ -3,7 +3,10 @@ mod add_has_factory_trait;
 mod add_query_closure_type;
 mod add_relation_generics;
 mod add_relation_query_closure_type;
+mod add_scope_builder_generics;
 mod add_tap_closure_type;
+mod array_access_calls;
+mod class_member_rules;
 mod conditional_helpers;
 mod document_string;
 mod names;
@@ -26,6 +29,7 @@ mod prefer_class_container_key;
 mod prefer_closure_only_bind;
 mod prefer_collected_by_attribute;
 mod prefer_collection_all;
+mod prefer_collection_is_empty;
 mod prefer_constructor_injection;
 mod prefer_date_facade;
 mod prefer_default_argument;
@@ -35,6 +39,7 @@ mod prefer_environment_check;
 mod prefer_exception_class_string;
 mod prefer_explicit_json_call;
 mod prefer_facade_over_app;
+mod prefer_file_facade_delete;
 mod prefer_latest_oldest;
 mod prefer_nullsafe;
 mod prefer_protected_model_methods;
@@ -152,9 +157,19 @@ rules! {
         prefer_class_container_key => PreferClassContainerKey::default(),
         add_factory_extends_phpdoc => AddFactoryExtendsPhpdoc,
         add_relation_generics => AddRelationGenerics,
+        add_relation_generics => AddLegacyRelationGenerics,
+        add_relation_generics => AddNewRelationGenerics,
         add_tap_closure_type => AddTapClosureType,
         no_app_array_access => NoAppArrayAccess,
         prefer_constructor_injection => PreferConstructorInjection::default(),
+        prefer_file_facade_delete => PreferFileFacadeDelete,
+        prefer_collection_is_empty => PreferCollectionIsEmpty,
+        array_access_calls => PreferContainerMethodCall,
+        array_access_calls => PreferRepositoryMethodCall,
+        class_member_rules => PreferUnguardedAttribute,
+        class_member_rules => PreferRouteKeyAttribute,
+        class_member_rules => NoDefaultAuthorize,
+        add_scope_builder_generics => AddScopeBuilderGenerics,
     }
 }
 

@@ -8,8 +8,8 @@ open questions. Finished work is not listed; `git log` has it.
 One lead agent works on `main` and spawns subagents for independent slices in worktrees (AGENTS.md "How work runs").
 The latest release is v0.3.1.
 
-- **Counts** (mapping.toml `ported = true`): format 164 of 164, lint 669 of 680, analyse 364 of 370. Pending: lint 11
-  (the rules rector-laravel 2.7.3 added, §3 Foundations), analyse 6 (`classes/invalid-new`,
+- **Counts** (mapping.toml `ported = true`): format 164 of 164, lint 679 of 680, analyse 364 of 370. Pending: lint 1
+  (`laravel/prefer-pivot-class`, §3 Foundations), analyse 6 (`classes/invalid-new`,
   `debug/dump-native-type`, `debug/dump-scope`, `types/return-by-ref-finally`, `undefined/compact-variable`,
   `undefined/variable`). Ported rules keep their parity gaps in the test gap lists
   (`crates/pun-analyse/tests/fixtures/**/gaps*.txt`, `GAPS` constants in the tests).
@@ -462,7 +462,7 @@ Left for 1.0: the rule docs content (below), name checks, signing and publishing
 | oracle 2.3.1 follow-up: 2.3's template-type descriptions (CallMethodsRuleTest::testArrayShapeTemplateKey, testGenericsEmptyArray, OverridingMethodRuleTest::testBug9615) | todo |
 | oracle 2.3.1 follow-up: pun-phpstan's 2.3 type gaps (tests/types.rs SIGNATURE_GAPS, PROBE_GAPS, SUPER_GAPS) and corpus/larastan's config (registers a service class the oracle's Larastan v3.10.0 lacks, skipped in tests/config.rs) | todo |
 | oracle 2.3.1 follow-up: 2.3.1's dynamic throw types for built-in functions (get_class, printf, array_chunk, min/max, round, str_split, trigger_error, unserialize, the filter functions) as explicit throw points in dead_code/noop.rs; 2.3.1's new regression tests for the typed receiver, argument, property, offset and impossible-check rules; var_names' `while (true)` loop scope (levels/gaps.txt last three blocks, tests/coverage.rs GAPS) | todo |
-| oracle rector 2.8.4 follow-up: port the 11 lint rules the bump added that are still `ported = false` in mapping.toml: laravel/{add-legacy-relation-generics, add-new-relation-generics, add-scope-builder-generics, no-default-authorize, prefer-collection-is-empty, prefer-container-method-call, prefer-file-facade-delete, prefer-pivot-class, prefer-repository-method-call, prefer-route-key-attribute, prefer-unguarded-attribute} | doing |
+| oracle rector 2.8.4 follow-up: port `laravel/prefer-pivot-class` (rector-laravel's RelationTableStringToPivotClassRector). It resolves a model's table and joining table by running Laravel (`Model::getTable()`, `joiningTable()`, `Str::plural`/`singular` through doctrine/inflector), and `.oracle/rector-ecosystem` lacks `illuminate/support`, so the oracle cannot run it; needs the inflector ported and the oracle to install illuminate/support | todo |
 | oracle 2.3.5 follow-up: Larastan 3.14's new rules are unported and missing from rules/upstream/phpstan-extensions.json and mapping.toml (two always on, the rest gated by their parameters); regenerate the PHPStan/Larastan inventories and decide each | todo |
 | oracle 2.3.5 follow-up: Larastan 3.14's changes to ported rules (tests/fixtures/larastan/gaps.txt, larastan-types/gaps.txt, tests/laravel.rs GAPS): relation-existence paths, `analyse/laravel/octane-compatibility`'s arrow-function bindings and forbidden services, the console kernel's registered and loaded commands, write types for custom casts, the schema aggregation rewrite (literal SQL statements, name resolution, arrow-function blueprints) | todo |
 | oracle 2.3.5 follow-up: `scripts/gen-phpstan-parameters.py` on 2.3.5 changes mapping.toml's `[phpstan-parameters]` (checkMaybeUndefinedVariables becomes `level = true`, phpVersion and the `fixer.*` parameters appear as rule options, more `exceptions.*` and `reportMaybes*` rows): decide which rows Pun takes before regenerating | needs Pushpak |

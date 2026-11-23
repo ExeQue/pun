@@ -10,8 +10,8 @@ use crate::rules::types::{class_scope, has_parent_class_method};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-const SCOPE: &str = "Illuminate\\Database\\Eloquent\\Attributes\\Scope";
-const ELOQUENT_BUILDER: &str = "Illuminate\\Database\\Eloquent\\Builder";
+pub(super) const SCOPE: &str = "Illuminate\\Database\\Eloquent\\Attributes\\Scope";
+pub(super) const ELOQUENT_BUILDER: &str = "Illuminate\\Database\\Eloquent\\Builder";
 
 pub struct PreferScopeAttribute;
 
@@ -78,7 +78,11 @@ impl Rule for PreferScopeAttribute {
     }
 }
 
-fn is_named_scope(ctx: &Context<'_>, scope: &[Node<'_, '_>], method: &Method<'_>) -> bool {
+pub(super) fn is_named_scope(
+    ctx: &Context<'_>,
+    scope: &[Node<'_, '_>],
+    method: &Method<'_>,
+) -> bool {
     let name = method.name.value;
     if !(name.len() > 6 && name.starts_with(b"scope") && name[5].is_ascii_uppercase()) {
         return false;

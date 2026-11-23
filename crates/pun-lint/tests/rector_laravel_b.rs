@@ -13,12 +13,13 @@ use std::path::Path;
 use crate::common::{run_class_paths, run_dirs};
 use pun_lint::Rule;
 use pun_lint::rules::{
-    AddFactoryExtendsPhpdoc, AddHasFactoryTrait, AddQueryClosureType, AddRelationGenerics,
-    AddRelationQueryClosureType, AddTapClosureType, ContainerService, NoAppArrayAccess,
-    NoCollectionAliases, NoNegatedContains, NoNegatedFilter, NoNegatedWhen, NoUselessValueCall,
-    NoUselessWithCall, PreferClassContainerKey, PreferClosureOnlyBind, PreferCollectionAll,
-    PreferDispatchHelper, PreferEnvironmentCheck, PreferLatestOldest, PreferProtectedModelMethods,
-    PreferRequestValidate, PreferTypedAssertClosure,
+    AddFactoryExtendsPhpdoc, AddHasFactoryTrait, AddLegacyRelationGenerics, AddNewRelationGenerics,
+    AddQueryClosureType, AddRelationGenerics, AddRelationQueryClosureType, AddTapClosureType,
+    ContainerService, NoAppArrayAccess, NoCollectionAliases, NoNegatedContains, NoNegatedFilter,
+    NoNegatedWhen, NoUselessValueCall, NoUselessWithCall, PreferClassContainerKey,
+    PreferClosureOnlyBind, PreferCollectionAll, PreferDispatchHelper, PreferEnvironmentCheck,
+    PreferLatestOldest, PreferProtectedModelMethods, PreferRequestValidate,
+    PreferTypedAssertClosure,
 };
 
 fn check(rule: impl Rule + 'static, class: &str) {
@@ -325,6 +326,30 @@ fn add_generic_return_type_to_relations() {
             "Oracle/Laravel12",
             "Pun/Laravel12",
         ],
+        80400,
+        &[stubs.as_path()],
+    );
+}
+
+#[test]
+fn add_legacy_generic_return_type_to_relations() {
+    let stubs = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector-laravel-stubs");
+    run_dirs(
+        vec![Box::new(AddLegacyRelationGenerics)],
+        "AddGenericReturnTypeToRelationsRector",
+        &["Fixture/OldGenerics", "Oracle/OldGenerics"],
+        80400,
+        &[stubs.as_path()],
+    );
+}
+
+#[test]
+fn add_new_generic_return_type_to_relations() {
+    let stubs = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector-laravel-stubs");
+    run_dirs(
+        vec![Box::new(AddNewRelationGenerics)],
+        "AddGenericReturnTypeToRelationsRector",
+        &["Fixture/NewGenericsNoPivot", "Oracle/NewGenericsNoPivot"],
         80400,
         &[stubs.as_path()],
     );

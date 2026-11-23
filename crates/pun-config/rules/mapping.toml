@@ -414,17 +414,17 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "laravel-12/prefer-scope-attribute" = { fix = "unsafe", gated_by = "laravel-version", ported = true, status = "decided", summary = "Changes model scope methods to use the scope attribute" }
 "laravel/add-factory-extends-phpdoc" = { fix = "unsafe", gated_by = "laravel-version", ported = true, status = "decided", summary = "Adds the @extends annotation to Factories." }
 "laravel/add-has-factory-trait" = { fix = "unsafe", ported = true, status = "decided", summary = "Adds the HasFactory trait to Models." }
-"laravel/add-legacy-relation-generics" = { fix = "unsafe", sets = ["types"], ported = false, status = "decided", summary = "Add generic return type to relations in child of Illuminate\\Database\\Eloquent\\Model" }
-"laravel/add-new-relation-generics" = { fix = "unsafe", sets = ["types"], ported = false, status = "decided", summary = "Add generic return type to relations in child of Illuminate\\Database\\Eloquent\\Model" }
+"laravel/add-legacy-relation-generics" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Add generic return type to relations in child of Illuminate\\Database\\Eloquent\\Model" }
+"laravel/add-new-relation-generics" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Add generic return type to relations in child of Illuminate\\Database\\Eloquent\\Model" }
 "laravel/add-query-closure-type" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Type-hint the closure parameter of Eloquent where()/whereHas() and similar query methods." }
 "laravel/add-relation-generics" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Add generic return type to relations in child of Illuminate\\Database\\Eloquent\\Model" }
 "laravel/add-relation-query-closure-type" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Add type hinting to where relation has methods e.g. `whereHas`, `orWhereHas`, `whereDoesntHave`, `orWhereDoesntHave`, `whereHasMorph`, `orWhereHasMorph`, `whereDoesntHaveMorph`, `orWhereDoesntHaveMorph`" }
-"laravel/add-scope-builder-generics" = { fix = "unsafe", sets = ["types"], ported = false, status = "decided", summary = "Add generic Builder return type to scopes in child of Illuminate\\Database\\Eloquent\\Model" }
+"laravel/add-scope-builder-generics" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Add generic Builder return type to scopes in child of Illuminate\\Database\\Eloquent\\Model" }
 "laravel/add-tap-closure-type" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Automatically type hints your tappable closures" }
 "laravel/no-app-array-access" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Replace magical call on $this->app[\"something\"] to standalone type assign variable" }
 "laravel/no-collection-aliases" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Use the base collection methods instead of their aliases." }
 "laravel/no-controller-middleware" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "This rule warns against applying middlewares in controllers." }
-"laravel/no-default-authorize" = { fix = "safe", sets = ["code-quality"], ported = false, status = "decided", summary = "Remove the authorize() method from FormRequest classes when it only returns true, as passesAuthorization() defaults to true when the method does not exist" }
+"laravel/no-default-authorize" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Remove the authorize() method from FormRequest classes when it only returns true, as passesAuthorization() defaults to true when the method does not exist" }
 "laravel/no-implicit-model-query" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", replaces = ["lint/laravel/prefer-query-builder-call"], summary = "Start Eloquent queries with Model::query() instead of static magic calls." }
 "laravel/no-negated-blank-filled" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Swap the use of NotBooleans used with filled() and blank() to the correct helper." }
 "laravel/no-negated-contains" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Convert negated calls to `contains` to `doesntContain`, or vice versa." }
@@ -445,12 +445,12 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "laravel/prefer-closure-only-bind" = { fix = "safe", ported = true, status = "decided", summary = "Drop the specified abstract class from the bind method and replace it with a closure that returns the abstract class." }
 "laravel/prefer-collected-by-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model newCollection method to use the CollectedBy attribute" }
 "laravel/prefer-collection-all" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Convert `toArray()` to `all()` when the collection does not contain any Arrayable objects." }
-"laravel/prefer-collection-is-empty" = { fix = "unsafe", sets = ["code-quality"], ported = false, status = "decided", summary = "Convert collection `count()` comparisons against 0 or 1 to `isEmpty()` or `isNotEmpty()`" }
+"laravel/prefer-collection-is-empty" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Convert collection `count()` comparisons against 0 or 1 to `isEmpty()` or `isNotEmpty()`" }
 "laravel/prefer-collects-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the collects property to use the Collects attribute" }
 "laravel/prefer-command-hidden-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the hidden property to use the Hidden attribute on console commands" }
 "laravel/prefer-connection-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model connection property to use the Connection attribute" }
 "laravel/prefer-constructor-injection" = { fix = "unsafe", ported = true, status = "decided", summary = "Move help facade-like function calls to constructor injection" }
-"laravel/prefer-container-method-call" = { fix = "unsafe", ported = false, status = "decided", summary = "Change array access on the container to the matching method call, as the contract does not extend ArrayAccess" }
+"laravel/prefer-container-method-call" = { fix = "unsafe", ported = true, status = "decided", summary = "Change array access on the container to the matching method call, as the contract does not extend ArrayAccess" }
 "laravel/prefer-date-facade" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Refactor Carbon static method calls to use the Date facade instead." }
 "laravel/prefer-date-format-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model dateFormat property to use the DateFormat attribute" }
 "laravel/prefer-dedicated-status-assertion" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", replaces = ["lint/laravel/prefer-status-assertion-method"], summary = "Use assertOk(), assertNotFound() and similar instead of assertStatus(200)." }
@@ -467,7 +467,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "laravel/prefer-facade-over-app" = { fix = "unsafe", ported = true, status = "decided", summary = "Change app() func calls to facade calls" }
 "laravel/prefer-fail-on-timeout-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the failOnTimeout property to use the FailOnTimeout attribute" }
 "laravel/prefer-fake-helper" = { fix = "unsafe", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Use the fake() helper instead of $this->faker." }
-"laravel/prefer-file-facade-delete" = { fix = "unsafe", sets = ["code-quality"], ported = false, status = "decided", summary = "Use the File facade instead of the unlink() function." }
+"laravel/prefer-file-facade-delete" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Use the File facade instead of the unlink() function." }
 "laravel/prefer-fillable-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model fillable property to use the fillable attribute" }
 "laravel/prefer-guarded-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model guarded property to use the guarded attribute" }
 "laravel/prefer-help-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the help property to use the Help attribute" }
@@ -481,12 +481,12 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "laravel/prefer-protected-model-methods" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Makes Model attributes and scopes protected" }
 "laravel/prefer-queue-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the queue property to use the Queue attribute" }
 "laravel/prefer-report-if" = { fix = "unsafe", ported = true, status = "decided", summary = "Change if report to report_if" }
-"laravel/prefer-repository-method-call" = { fix = "unsafe", ported = false, status = "decided", summary = "Change array access on a config or cache repository to the matching method call, as the contracts do not extend ArrayAccess" }
+"laravel/prefer-repository-method-call" = { fix = "unsafe", ported = true, status = "decided", summary = "Change array access on a config or cache repository to the matching method call, as the contracts do not extend ArrayAccess" }
 "laravel/prefer-request-facade" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Use the Request facade instead of $_GET, $_POST and $_SERVER." }
 "laravel/prefer-request-server" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Change server variable to Request facade's server method" }
 "laravel/prefer-request-validate" = { fix = "unsafe", ported = true, status = "decided", summary = "Change `Request::validate()` and `request()` to an injected `$request`. Adds a `Request $request` parameter to the method, so update its callers." }
 "laravel/prefer-resolve-helper" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Convert app() to resolve() where applicable." }
-"laravel/prefer-route-key-attribute" = { fix = "unsafe", ported = false, status = "decided", summary = "Changes model getRouteKeyName() method to use the RouteKey attribute" }
+"laravel/prefer-route-key-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model getRouteKeyName() method to use the RouteKey attribute" }
 "laravel/prefer-session-facade" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Change PHP session usage to Session Facade methods" }
 "laravel/prefer-signature-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the signature property to use the Signature attribute" }
 "laravel/prefer-sleep-facade" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Use Sleep::sleep() and Sleep::usleep() instead of the sleep() and usleep() function." }
@@ -501,7 +501,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "laravel/prefer-travel-to" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Use the `$this->travelTo()` method in Laravel's `TestCase` class instead of the `Carbon::setTestNow()` method." }
 "laravel/prefer-tries-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the tries property to use the Tries attribute" }
 "laravel/prefer-typed-assert-closure" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Changes assert calls to use a type hinted closure." }
-"laravel/prefer-unguarded-attribute" = { fix = "unsafe", ported = false, status = "decided", summary = "Changes model empty guarded property to use the Unguarded attribute" }
+"laravel/prefer-unguarded-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model empty guarded property to use the Unguarded attribute" }
 "laravel/prefer-unique-for-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the uniqueFor property to use the UniqueFor attribute" }
 "laravel/prefer-view-array" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "Prefer passing data to views using the array parameter in the `view()` function," }
 "laravel/prefer-visible-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model visible property to use the Visible attribute" }

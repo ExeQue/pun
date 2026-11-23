@@ -10733,7 +10733,7 @@
         "rules": [
           "lint/laravel/add-scope-builder-generics"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -10771,7 +10771,7 @@
         "rules": [
           "lint/laravel/add-legacy-relation-generics"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -10789,7 +10789,7 @@
         "rules": [
           "lint/laravel/add-new-relation-generics"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -11007,7 +11007,7 @@
         "rules": [
           "lint/laravel/prefer-collection-is-empty"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -11063,7 +11063,7 @@
         "rules": [
           "lint/laravel/prefer-container-method-call"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -11215,7 +11215,7 @@
         "rules": [
           "lint/laravel/prefer-unguarded-attribute"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -11565,7 +11565,7 @@
         "rules": [
           "lint/laravel/no-default-authorize"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -11695,7 +11695,7 @@
         "rules": [
           "lint/laravel/prefer-repository-method-call"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -11751,7 +11751,7 @@
         "rules": [
           "lint/laravel/prefer-route-key-attribute"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -11939,7 +11939,7 @@
         "rules": [
           "lint/laravel/prefer-file-facade-delete"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {

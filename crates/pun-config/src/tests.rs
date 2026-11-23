@@ -351,16 +351,17 @@ fn lint_sets() {
     // A locked laravel/framework alone turns nothing on: only pun.toml does.
     let l = lint(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!((l.rules.len(), l.ecosystems.len()), (71, 0));
-    // On, the extension brings its rules from every set (4 types, 36 code-quality, 1 coding-style), not only `types`;
+    // On, the extension brings its rules from every set (7 types, 39 code-quality, 1 coding-style), not only `types`;
     // its rules in no set, such as no-controller-middleware, stay opt-in.
     let laravel = format!("[extensions]\nlaravel = \"on\"\n{types}");
     let l = lint(&[("pun.toml", &laravel), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!(
         (l.rules.len(), l.ecosystems),
-        (71 + 41, vec![&crate::extensions::LARAVEL])
+        (71 + 47, vec![&crate::extensions::LARAVEL])
     );
     assert!(ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
     assert!(ids(&l.rules).contains(&"lint/laravel/no-app-array-access"));
+    assert!(!ids(&l.rules).contains(&"lint/laravel/prefer-pivot-class"));
     assert!(!ids(&l.rules).contains(&"lint/laravel/no-controller-middleware"));
     let off = format!("{laravel}[lint.groups]\nlaravel = \"off\"\n");
     let l = lint(&[("pun.toml", &off), ("composer.lock", LARAVEL_LOCK)]);
@@ -641,7 +642,7 @@ fn extensions() {
     let c = load_(&[("pun.toml", &with("on"))]).unwrap();
     assert_eq!(
         (c.lint.rules.len(), &c.extensions),
-        (71 + 41, &vec![&crate::extensions::LARAVEL])
+        (71 + 47, &vec![&crate::extensions::LARAVEL])
     );
     assert!(c.analyse.larastan && c.analyse.ecosystems == [&crate::extensions::LARAVEL]);
     let shown = c.show();
