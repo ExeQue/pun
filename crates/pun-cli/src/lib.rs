@@ -84,15 +84,16 @@ const GROUPS: [(&str, &[&str]); 3] = [
 /// `cmd` and its subcommands with "Show help" and "Show version" for clap's "Print help" and "Print version", and a
 /// shorter summary for the `help` subcommand.
 fn plain_flags(mut cmd: clap::Command) -> clap::Command {
-    if cmd.get_arguments().any(|a| a.get_id() == "help") {
-        cmd = cmd.mut_arg("help", |a| {
-            a.help("Show help")
-                .long_help("Show help (see a summary with '-h')")
-        });
-    }
-    if cmd.get_arguments().any(|a| a.get_id() == "version") {
-        cmd = cmd.mut_arg("version", |a| a.help("Show version"));
-    }
+    // `mut_args` keeps each argument in place: `mut_arg` moves it last, which breaks a built command's lookup of
+    // its positionals (`pun self-update 1.x` gave `1.x` to `--check`). The action, not the id, names clap's own
+    // flags: `self-update`'s `[VERSION]` has the id `version` too.
+    cmd = cmd.mut_args(|a| match a.get_action() {
+        clap::ArgAction::Help => a
+            .help("Show help")
+            .long_help("Show help (see a summary with '-h')"),
+        clap::ArgAction::Version => a.help("Show version"),
+        _ => a,
+    });
     let names: Vec<String> = cmd
         .get_subcommands()
         .map(|c| c.get_name().to_owned())
