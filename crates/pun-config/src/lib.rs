@@ -89,7 +89,7 @@ pub struct Config {
     pub analyse: Analyse,
     /// The extensions that are on, in `extensions::ALL`'s order.
     pub extensions: Vec<&'static extensions::ExtensionMeta>,
-    /// `[extensions]` as written; an extension it leaves out is `auto`.
+    /// `[extensions]` as written; an extension it leaves out is off.
     pub extension_switches: std::collections::BTreeMap<&'static str, extensions::Switch>,
     pub sources: Vec<PathBuf>,
 }

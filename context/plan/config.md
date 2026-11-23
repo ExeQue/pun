@@ -12,8 +12,9 @@ a new project (plan/init.md). `pun config` prints the fully resolved config, eve
 
 ## 2. Today
 
-- `pun_config::load` (crates/pun-config/src/schema.rs) reads the §3 schema into `Config.files`, `.lint` and
-  `.analyse`, with the errors in Decisions pinned in crates/pun-config/src/tests.rs.
+- `pun_config::load` (crates/pun-config/src/lib.rs, with the sections in schema.rs) reads the §3 schema into
+  `Config.files`, `.lint`, `.analyse` and `.extensions`, with the errors in Decisions pinned in
+  crates/pun-config/src/tests.rs.
 - Every rule in mapping.toml has one `<command>/<group>/<name>` ID, a group from the fixed list, and its lint `sets`
   or analyse `preset` tags. `scripts/check-rule-mapping.py` rejects unknown groups and duplicate names.
 - pun-cli's finder applies `[files]` and each command's `exclude`; `pun list-files`, `pun config` and
@@ -24,11 +25,14 @@ a new project (plan/init.md). `pun config` prints the fully resolved config, eve
 
 ```toml
 [php]
-version = "8.4"                       # override only; the default comes from [require] php (composer.json's before migrate)
+version = "8.4"                       # override only; the default comes from composer.json's require.php
 
 [files]                               # shared by every command, like Mago's [source]
 paths = ["app", "tests"]              # what to check when no paths are given
 exclude = ["build", "storage/**"]
+
+[extensions]                          # laravel | pest | phpunit; each is on only when listed "on" (extensions.md)
+laravel = "on"
 
 [format]
 preset = "laravel"                    # laravel | psr12 | empty
@@ -89,8 +93,9 @@ format, lint and analyse can see different file sets. `vendor/` is never checked
 - **Format presets:** `laravel`, `psr12`, `empty`. There is no `per` or `symfony` preset; their rules stay available
   one by one, and migrate expands a pint.json that used them into explicit rules.
 - **Lint sets:** `dead-code`, `modernize`, `code-quality`, `types`, `early-return`, `privatization`, `naming`,
-  `coding-style`. Sets are tags on rules, and a rule can be in several. The Laravel, Pest and PHPUnit part of each set
-  turns on by itself from composer.lock. Rules in no set are opt-in by name or group.
+  `coding-style`. Sets are tags on rules, and a rule can be in several. An extension that is on in `[extensions]`
+  brings every rule of its groups that sits in some set, whatever `[lint] sets` lists (extensions.md). Rules in no set
+  are opt-in by name or group.
 - **Lint levels, as oxlint:** `"off"`, `"warn"`, `"error"` per rule or group. A rule enabled by a set is `error` unless
   set to `warn`. Only `error` fails. `--deny-warnings` makes warnings fail, `--max-warnings <n>` fails above n.
   `-A` / `-W` / `-D <rule or group>` set a level for one run. `[[lint.overrides]]` changes levels per path.
@@ -98,8 +103,9 @@ format, lint and analyse can see different file sets. `vendor/` is never checked
 - **Analyse presets** by PHPStan level band, each including the one below: `basic` (0-1), `essential` (2-3),
   `recommended` (4-5, default), `strict` (6-8), `max` (9-10). The four type switches (`union-types`, `nullables`,
   `explicit-mixed`, `implicit-mixed`) come with the presets. Analyse rules are on or off; there is no `warn`.
-- **Ecosystems:** Laravel, Pest and PHPUnit turn on from composer.lock, with their versions gating version rules. A
-  project switches one off with its group (`[lint.groups] laravel = "off"`, `[analyse.rules]` the same way).
+- **Ecosystems:** Laravel, Pest and PHPUnit turn on only through `[extensions]`; their versions in composer.lock gate
+  the version groups. A project switches one's rules off with its group (`[lint.groups] laravel = "off"`,
+  `[analyse.rules]` the same way).
 
 ## 6. Build
 
@@ -138,9 +144,9 @@ pun list-files [--command format|lint|analyse] [-0] [paths...]
 
 Pushpak (../PLAN.md §2): pun.toml only, and stop without it; `group/name` with no aliases; three format presets;
 lint sets; oxlint levels; `--fix` applies all, `fix = "off"`; five analyse presets with `max` on top; analyse on or
-off; ecosystems from composer.lock; PHP version from composer.json; no PHP fallback; `pun list-files`; the shared
-problem type. The `[files]` section with per-command `exclude` and the `[analyse] preset` key (instead of a top-level
-`preset`) are the assistant's defaults.
+off; ecosystems on only through `[extensions]`; PHP version from composer.json; no PHP fallback; `pun list-files`;
+the shared problem type. The `[files]` section with per-command `exclude` and the `[analyse] preset` key (instead of
+a top-level `preset`) are the assistant's defaults.
 
 The assistant's calls where the plan is silent:
 
@@ -153,12 +159,12 @@ The assistant's calls where the plan is silent:
   option names, `null` spellings, the one-option shorthand and their errors are in format.md Decisions ("Option
   names"). Lint rules that are fixers keep PHP-CS-Fixer's option names, kebab-cased, until lint's own option pass.
 - Set (at `error`) < group < the rule's own line.
-- Only what a set or preset turns on is gated. An ecosystem group's rules need the ecosystem on (locked and not
-  switched off). A `php-X.Y` rule needs `[php] version` >= X.Y. A `laravel-N` rule needs Laravel on and a locked
-  version >= N; a locked branch has no version, so it passes no gate. A group's level or a rule's own line turns rules
-  on whatever the gates. `doctrine` is never detected.
-- `[php] version` must be `major.minor`. Without it, Pun takes the lowest version `require.php` admits (pun.toml's, or
-  composer.json's before migrate), else 8.4. The lock is read on every load.
+- Only what a set or preset turns on is gated. An ecosystem group's rules need the ecosystem on (`"on"` in
+  `[extensions]` and its group not switched off). A `php-X.Y` rule needs `[php] version` >= X.Y. A `laravel-N` rule
+  needs Laravel on and a locked version >= N; a locked branch has no version, so it passes no gate. A group's level or
+  a rule's own line turns rules on whatever the gates. `doctrine` is never detected.
+- `[php] version` must be `major.minor`. Without it, Pun takes the lowest version composer.json's `require.php`
+  admits, else 8.4. The lock is read on every load.
 
 **Errors** (Build 3, 6). Config errors exit 2 (output.md).
 - Removed keys are errors that name the replacement: the top-level `preset`, `[format] preset = "per" | "symfony"`,
@@ -175,8 +181,8 @@ The assistant's calls where the plan is silent:
   constraint with its lowest admitted version (`php_version()` gives `major.minor`), and the locked Laravel
   (`laravel/framework`), Pest (`pestphp/pest`) and PHPUnit (`phpunit/phpunit`) versions, each marked `dev` when it
   comes from `packages-dev`.
-- Only the lock turns an ecosystem on; there is no fallback to `require`. `laravel/laravel` and `illuminate/*` are
-  not the framework.
+- Only the lock shows that a project uses an ecosystem (what `pun migrate`, `pun init` and `pun extension list` read);
+  there is no fallback to `require`. `laravel/laravel` and `illuminate/*` are not the framework.
 - A locked branch (`dev-main`, `3.x-dev`) keeps its raw version with no numbers. A pre-release (`5.0.0-RC1`) counts
   as its release. A constraint that admits nothing (`>=8.4 <8.3`) gives no PHP version. `>8.4` gives 8.4.1.
 
@@ -210,9 +216,9 @@ The assistant's calls where the plan is silent:
   for analyse.
 
 **`pun config`** (Build 8).
-- It prints pun.toml's own sections and keys: `[php] version`, `[files]`, `[format]` (preset, exclude, not-name,
-  not-path, rules), `[lint]` (sets, exclude, rules, `[[lint.overrides]]`) and `[analyse]` (preset, paths, exclude,
-  baseline, rules).
+- It prints pun.toml's own sections and keys: `[php] version`, `[files]`, `[extensions]` (every built-in extension,
+  `"on"` or `"off"`), `[format]` (preset, exclude, not-name, not-path, rules), `[lint]` (sets, exclude, rules,
+  `[[lint.overrides]]`) and `[analyse]` (preset, paths, exclude, baseline, rules).
 - Rules are keyed `<group>/<name>` under their command's table, as `pun migrate` writes them; a rule with no Pun ID
   keeps its upstream name. Groups and sets are expanded into the rules they turn on, so `[lint.groups]` is not printed.
   Each command's `exclude` is the full list it applies.

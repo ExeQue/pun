@@ -28,22 +28,27 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
    Want them? Send a PR to https://github.com/shipfastlabs/pun
  ⚠ phpstan-baseline.neon was not copied. Run `pun analyse --generate-baseline` for a Pun baseline.
 ```
-- **pint.json and .php-cs-fixer.php:** the preset, then a delta of rules with TOML option names. `per` and `symfony`
-  expand into explicit rules. Risky and code-deleting rules go to `[lint.rules]` at `error`. Custom fixer classes are
-  named as unsupported. The Finder (paths, exclude, notName, notPath) moves to `[format]`.
+- **pint.json and .php-cs-fixer.php:** the preset, then a delta of rules with TOML option names. `per` expands into
+  explicit rules; a `symfony` preset stops migrate with an error. Risky and code-deleting rules go to `[lint.rules]`
+  at `error`. Custom fixer classes are named as unsupported. The Finder (paths, exclude, notName, notPath) moves to
+  `[format]`.
 - **rector.php:** paths and skip, prepared sets to `[lint] sets` one to one, single rules to `[lint.rules]`, PHP and
   Laravel level sets to the upgrade groups, all at `error`. Symfony, Doctrine and downgrade sets are named as
   unsupported.
 - **phpstan.neon:** the level expands into the exact rules it ran, parameters into rule options, `ignoreErrors` into
-  Pun ignores, and every extension that isn't built in is named. Larastan, Pest's plugin, phpstan-phpunit,
-  strict-rules and deprecation-rules need no config, because they are built in. `stubFiles` carry over.
+  `[[analyse.ignore]]` entries (`reportUnmatched: false` and `reportUnmatchedIgnoredErrors: false` become
+  `report-unmatched = false` on each entry), and every extension that isn't built in is named. Larastan, Pest's
+  plugin, phpstan-phpunit, strict-rules and deprecation-rules are built in. `stubFiles` carry over.
+- **Extensions:** migrate writes `[extensions]` for the Laravel, Pest and PHPUnit packages composer.lock locks.
 - **Merged rules:** upstream names that do the same thing (Pint's `array_push` and Rector's
   `ChangeArrayPushToArrayAssignRector`) map to one Pun rule, written once even when both tools enabled it. An old Pun
   ID in a pun.toml stops with an error naming the new rule. docs/content/docs/migrate/merged-rules.mdx lists every
   merge.
 - **Baselines are never copied.** Migrate tells the user to run `pun analyse --generate-baseline`.
-- **Ignore comments:** `@php-cs-fixer-ignore` and `@phpstan-ignore*` are rewritten to Pun's ignore comments with Pun
-  IDs.
+- **Ignore comments:** `@php-cs-fixer-ignore` becomes `@pun-ignore-file` with Pun IDs. When phpstan.neon is migrated,
+  `@phpstan-ignore <identifiers>` becomes `@pun-ignore <rule IDs>`, and `@phpstan-ignore-line` / `-next-line` become
+  `@pun-ignore` / `@pun-ignore-next-line` naming the rules analyse reports on that line. A comment Pun can't map is
+  left as is and named.
 - **Closest preset:** on a terminal, after writing exact rules, migrate offers the closest preset with a count of the
   new problems the switch would report ("You're on PHPStan level 8; the closest Pun preset is `strict`. Switch?").
 - **No workflow edits.** Migrate doesn't touch composer scripts, CI, hooks or editor settings. Future `pun-init` and
@@ -51,7 +56,7 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
 
 ## 4. Build
 
-1. Done. *Done when* `pun migrate` + `pun check --fix` equals Pint on all 7 corpus projects.
+1. Done. *Done when* `pun migrate` + `pun check --fix` equals Pint on all 8 corpus projects.
 2. Done.
 3. Done.
 4. Done. *Done when* migrated Pinkary gives the same `pun lint --fix` result as `rector process`, after format.
@@ -65,8 +70,8 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
   is offered interactively. No workflow wiring.
 - **Open:** `--remove-tools` (../PLAN.md §4).
 - **Rule sets expand from the pinned PHP-CS-Fixer's own set definitions.** crates/pun-config/presets/sets.json holds
-  every set (exported by scripts/export-rule-sets.php), so `per`, `symfony` and any set in a pint.json expand into
-  explicit rules. The `@auto` sets read the project's composer.json, so they stay unexpanded and are named.
+  every set (exported by scripts/export-rule-sets.php), so `per` and any set in a pint.json expand into explicit
+  rules. The `@auto` sets read the project's composer.json, so they stay unexpanded and are named.
   `pun format --preset per` without a pun.toml names per's unported rules under their Pun IDs.
 - **"Can run" means a native fixer** (`pun_fixers::all`), the same test that config.md Build 6 applies at run
   time. A rule without one (no Pun ID, deprecated, not ported, or an option TOML can't hold) is named and left out. A

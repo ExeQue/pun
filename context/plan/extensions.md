@@ -7,33 +7,38 @@ trait with a hook per command, the same API any other extension would use (Rust 
 
 ### The Extension trait
 
-`crates/pun-extension` defines the trait, and `pun-cli` lists the built-in extensions:
+`crates/pun-extension` defines the trait, and `pun-cli` lists the built-in extensions
+(`crates/pun-cli/src/extensions.rs`):
 
 ```rust
 pub trait Extension: Send + Sync {
     fn meta(&self) -> &'static ExtensionMeta;
-    fn format(&self, _: &mut pun_format::FixerRegistry) {}
-    fn lint(&self, _: &mut pun_lint::RuleRegistry) {}
-    fn analyse(&self, _: &mut pun_analyse::ExtensionRegistry) {}
-    fn packages(&self, _: &mut pun_packages::PluginRegistry) {}
+    fn format(&self, _: &mut FixerRegistry) {}
+    fn lint(&self, _: &mut RuleRegistry) {}
 }
 
-pub static ALL: &[&dyn Extension] = &[&Laravel, &Pest, &Phpunit];
+pub(crate) static ALL: [&dyn Extension; 3] = [&Laravel, &Pest, &Phpunit];
 ```
 
-`ExtensionMeta` lives in `pun-config` and holds only data:
+Not built: an `analyse` hook (Larastan is wired through `pun_analyse::AnalyseExtension` directly, step 5) and a
+`packages` hook for Composer plugin ports (today the `NATIVE` list in `crates/pun-packages/src/plugins.rs`).
 
-- `id`, `name`, `description` and `aliases`.
-- `groups`: the rule groups the extension owns, such as `laravel` and `laravel-*`.
-- `packages`: the locked packages that turn it on, such as `laravel/framework`.
-- `rules`: its mapping.toml fragment, in mapping.toml's schema.
+`ExtensionMeta` lives in `pun-config` (`crates/pun-config/src/extensions.rs`) and holds only data:
+
+- `id`, `name` and `description`.
+- `groups`: the rule groups the extension owns, such as `laravel`; each also owns its version groups (`laravel-12`).
+- `packages`: the locked packages that show a project uses it, such as `laravel/framework`; the first one gates the
+  version groups.
+
+Not built: `aliases`, and `rules` (its mapping.toml fragment, step 6).
 
 ### Registration per command
 
 - **Format.** `FixerRegistry::add`. Fixers are sorted by priority, then by name, so registration order changes no
   output.
-- **Lint.** `RuleRegistry::add` takes a native rule, and `add_fixer` a token fixer that backs a lint rule. The registry
-  keeps insertion order, because the order of fix rounds changes the bytes.
+- **Lint.** `RuleRegistry::add` takes native lint rules. The registry keeps insertion order, because the order of fix
+  rounds changes the bytes. The token fixers that back lint rules (the `Pun/*` ports included) stay in pun-fixers'
+  core list; the Laravel extension's `format` hook adds only the Blade fixer.
 - **Analyse.** Two layers:
   - Mago's `PluginRegistry`, passed through, for providers and expression hooks.
   - `pun_analyse::AnalyseExtension`, shaped like PHPStan's extension points, because Larastan plugs into PHPStan and
@@ -42,12 +47,14 @@ pub static ALL: &[&dyn Extension] = &[&Laravel, &Pest, &Phpunit];
     `from_parameters` (activation), the rule callbacks `visit_*`, `enter_function` and `leave_function`, `finish`
     (collects) and `identifiers`.
   - A crate-private `ClassReflectionExtension` (`rules/class_reflection.rs`) answers method and property lookups:
-    `method` (returns `MethodAnswer::{Forward(Type), Exists}`), `has_property`, `calls_inaccessible_method` (a model's
-    `increment`/`decrement`) and `static_forward` (a static call on a model to a builder method). It takes the
-    crate-private `Checker`, so it stays crate-private until step 7 gives it a public reflection facade.
+    `method` (returns `MethodAnswer::{Forward(Type, Reflected), Exists(Option<String>)}`), `has_property`,
+    `calls_inaccessible_method` (a model's `increment`/`decrement`) and `static_forward` (a static call on a model to
+    a builder method). It takes the crate-private `Checker`, so it stays crate-private until step 7 gives it a public
+    reflection facade.
 
   The checker will hold `&[&dyn AnalyseExtension]` in place of `Option<&Larastan>`.
-- **Packages.** Composer plugin ports, such as `pestphp/pest-plugin`, keyed by the plugin's package name.
+- **Packages.** Composer plugin ports, such as `pestphp/pest-plugin`, keyed by the plugin's package name. Not built
+  as a hook (see above).
 
 ### pun.toml
 
@@ -70,9 +77,10 @@ pest = "on"
 
 ### Rule IDs
 
-Rule IDs stay `<command>/<group>/<name>`, and each extension owns its groups, so every existing ID survives.
-Registration fails when two extensions own the same group, an extension claims a core group, or a rule uses a group
-its extension does not own.
+Rule IDs stay `<command>/<group>/<name>`, and each extension owns its groups, so every existing ID survives. Tests in
+`crates/pun-cli/src/extensions.rs` fail when a core rule sits in an extension's group, or an extension's lint rule or
+fixer sits in a group it does not own. Nothing checks this at run time, and nothing checks that two extensions own
+different groups.
 
 ### Distribution
 
@@ -120,7 +128,7 @@ No step changes output. Every step keeps these green: the parity tests, `pun-har
 
 ## Risks
 
-- Lint registration order changes fixed bytes. Diff the old `all()` ID list against the registry's once, before
-  deleting `all()`.
-- Larastan branches still sit inside core rules (`calls.rs`, `types/receivers.rs`, `types/convert.rs` and
-  `driver.rs`).
+- Lint registration order changes fixed bytes. A test in `crates/pun-cli/src/extensions.rs` compares the registry's
+  ID list with `pun_lint::rules::all()`; deleting `all()` loses that check.
+- Larastan branches still sit inside core rules (`calls.rs`, `declared.rs`, `property_access.rs`, `types/access.rs`,
+  `types/convert.rs` and `driver.rs`).

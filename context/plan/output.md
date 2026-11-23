@@ -179,7 +179,7 @@ The assistant's calls where the plan is silent:
   dropped before the report prints.
 
 **Flags** (Build 3).
-- `--color` is on `pun format`, `pun lint` and `pun check`. `--ansi` / `--no-ansi` are hidden aliases of
+- `--color` is on `pun format`, `pun lint`, `pun analyse` and `pun check`. `--ansi` / `--no-ansi` are hidden aliases of
   `--color=always|never` (`--ansi` wins when both are given), and they still decorate the machine reports as in Pint.
 - `-q` keeps Pint's stderr lines for `pun format` and `pun check` outside agent mode and without `--format`, as Pint
   does. `pun lint` and `pun analyse` print nothing under `-q` (as PHP-CS-Fixer and PHPStan), in agent mode too.

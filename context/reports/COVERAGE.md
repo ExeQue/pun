@@ -300,7 +300,6 @@ Uncovered lines:
 - `crates/pun-lint/src/rules/dead_code/no_unused_private_method_param.rs:45` non-target node guard: only Class and AnonymousClass.
 - `crates/pun-lint/src/rules/dead_code/no_unused_private_property.rs:57` non-target node guard: only Class and AnonymousClass.
 - `crates/pun-lint/src/rules/dead_code/no_useless_ternary.rs:42` non-target node guard: only Conditional.
-- `crates/pun-lint/src/rules/strings/prefer_empty_string_identical.rs:35` non-target node guard: only Binary.
 - `crates/pun-lint/src/rules/complexity/prefer_min_max.rs:33` non-target node guard: only Conditional.
 - `crates/pun-lint/src/rules/complexity/prefer_property_default.rs:40` non-target node guard: only Class and AnonymousClass.
 - `crates/pun-lint/src/rules/style/require_assign_set_padding.rs:45` non-target node guard: only Function, Method and Closure.
@@ -325,8 +324,6 @@ Uncovered lines:
 - `crates/pun-lint/src/rules/support/names.rs:404` a scope without a Program ancestor: lookups start inside the file's walk.
 - `crates/pun-lint/src/rules/support/syntax_types.rs:113` `parameter()`'s `unreachable!()` arm: `rposition` selects only the four function-like kinds the match handles.
 - `crates/pun-lint/src/rules/types/names.rs:20` a scope without a Program ancestor.
-- `crates/pun-lint/src/rules/operators/prefer_boolean_and_or.rs:97` the end of the walk up: it stops at the first ancestor that is not a `&&`/`||` operand, before the Program.
-- `crates/pun-lint/src/rules/operators/prefer_boolean_and_or.rs:164` `instanceof` as an operator text: it binds tighter than every operator the rule rewrites, so it is never re-joined infix.
 - `crates/pun-lint/src/rules/dead_code/no_unused_private_property.rs:383` an ExpressionStatement whose parent is not a Statement: the parser always wraps it in one.
 - `crates/pun-lint/src/rules/complexity/prefer_property_default.rs:143` overlapping edits: the removed constructor assignment and the added property default are never in the same place.
 - `crates/pun-lint/src/rules/types/add_return_type_from_ternary.rs:67` a ternary whose native type has `mixed`: no input found; Mago types no `mixed` branch here.

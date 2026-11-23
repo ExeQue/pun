@@ -13,12 +13,12 @@ Method names follow PHP-CS-Fixer's token API, snake_cased, so a fixer reads like
 - **Token.** `Token { id: Option<Kind>, content: Content }`, `Token::new(kind, content)`, `Token::char("(")`.
   Queries: `equals(proto, case_sensitive)`, `equals_any(&[..], cs)`, `equals_token(&Token, cs)`, `is_kind`,
   `is_given_kind`, `is_array`, `is_comment`, `is_whitespace(Option<&[u8]>)`, `is_cast`, `is_classy`,
-  `is_object_operator`, `is_keyword`, `is_magic_constant`, `is_native_constant`, `get_id`, `get_content`, `get_name`.
+  `is_object_operator`, `is_keyword`, `is_magic_constant`, `get_id`, `get_content`, `get_name`.
 - **Proto** (token prototype): `"(".into()`, `T_STRING.into()`, `(T_STRING, "foo").into()`.
 - **Tokens: build and print.** `Tokens::from_code(&[u8])`, `from_array(Vec<Token>)`, `set_code`,
   `generate_code() -> Vec<u8>`, `generate_partial_code(start, end)`.
 - **Tokens: edit.** `tokens[i]` reads; `tokens.set(i, token)` writes and keeps the found-kinds and block caches
-  current. `len`/`count`, `iter`, `offset_exists`, `is_empty_at`, `clear_at`, `clear_range`,
+  current. `len`/`count`, `iter`, `is_empty_at`, `clear_at`, `clear_range`,
   `override_range(start, end, Vec<Token>)`, `insert_at(i, Vec<Token>)`, `insert_slices(BTreeMap<usize, Vec<Token>>)`,
   `clear_empty_tokens`, `clear_token_and_merge_surrounding_whitespace`, `ensure_whitespace_at_index(i, offset, ws) ->
   bool`, `remove_leading_whitespace(i, ws)`, `remove_trailing_whitespace(i, ws)`.
@@ -39,11 +39,17 @@ Method names follow PHP-CS-Fixer's token API, snake_cased, so a fixer reads like
   `get_method_attributes`, `is_anonymous_class`, `is_lambda`, `get_last_token_index_of_arrow_function`,
   `is_unary_successor_operator`, `is_unary_predecessor_operator`, `is_binary_operator`, `is_while_part_of_do_while`,
   `is_enum_case`, `is_super_global`.
+- **NamespacesAnalyzer.** `get_declarations`, `get_namespace_at`, `is_global_namespace`. The other token analyzers
+  (arguments, attributes, functions, imports, constant invocation) are in `pun-fixers/src/analyzers/`.
 - **Transformers.** `transformers::tokenize_name` splits a name into its tokens.
-- **php_compat.** `strlen`, `strtolower`, `strtoupper`, `strcmp`, `strcasecmp`, `strnatcmp`, `strnatcasecmp`, `trim`,
-  `rtrim`, `rtrim_chars`, `ltrim_chars`: PHP's string functions, byte-oriented, with ASCII-only case mapping.
+- **php_compat.** PHP's string functions, byte-oriented, with ASCII-only case mapping: `strlen`, `strtolower`,
+  `strcasecmp`, `strnatcmp`, `strnatcasecmp`, `strpos`, `substr`, `explode`, `trim`, `rtrim_chars` and the like. Also
+  PHP's regex handling (`preg_parse`, `preg_compile`, `preg_quote`), `fnmatch`, `glob` and value formatting
+  (`var_export_string`, `float_to_string`, `intval`).
 - **Lexer.** `tokenize(&[u8]) -> Vec<RawToken { kind, text, line }>` is `token_get_all`;
-  `apply_parse_mode(&mut [RawToken])` applies its `TOKEN_PARSE` retagging.
+  `apply_parse_mode(&mut [RawToken])` applies its `TOKEN_PARSE` retagging. `ParseLexer` feeds pun-format's PHP
+  grammar `ParseToken`s and stops with PHP's lexer error (`LexError`).
+- **PhpVersion.** A PHP version as `PHP_VERSION_ID` (`80400`), shared by config, phpstan, lint and analyse.
 
 Where upstream throws on code it cannot handle (a null index after a failed lookup, an unbalanced block in a
 transformer), Pun panics at the same point. Callers that want to skip such a file wrap `from_code` in
@@ -77,7 +83,7 @@ Assumptions: `short_open_tag=Off` (the php.ini default) and the PHP 8.5 token se
 ## Parity
 
 `cargo run --release -p punphp-tokens --example parity -- --mode raw|parse|fixer|classy <path>...` runs
-`tools/dump.php` under system PHP 8.5.11 and diffs every `.php` file (`vendor/` and `node_modules/` skipped):
+`tools/dump.php` under system PHP 8.5.12 and diffs every `.php` file (`vendor/` and `node_modules/` skipped):
 
 - `raw`: (kind, text, line) against `token_get_all`;
 - `parse`: against `token_get_all(.., TOKEN_PARSE)`;
@@ -98,7 +104,7 @@ Results (files identical / total; "skipped" means PHP itself rejects the file un
 | larastan | 579 | 232,837 | 579/579 | 579/579 | 579/579 |
 | laravel/pint | 336 | 70,850 | 336/336 | 335/335 (1 skipped) | 335/335 (1 skipped) |
 | laravel/laravel | 27 | 6,176 | 27/27 | 27/27 | 27/27 |
-| tests/fixtures | 23 | | 23/23 | all parseable identical | all parseable identical |
+| tests/fixtures | 43 | | 43/43 | all parseable identical | all parseable identical |
 
 No token mismatches in any mode. `get_classy_elements` matches upstream on every file checked.
 
@@ -108,9 +114,6 @@ tokenizer about 10 s on the same files.
 
 ## Known gaps
 
-- Constant-invocation detection in `TokensAnalyzer` and the other token analyzers (namespaces, imports, functions,
-  arguments, attributes) are not in pun-tokens yet.
 - `short_open_tag=On` is not supported.
-- `strcmp` returns only the sign (PHP returns libc `memcmp`'s raw value); `strcasecmp` returns PHP's exact byte
-  difference.
+- `strcasecmp` returns PHP's exact byte difference, and only the sign when one string is a prefix of the other.
 - Transformer tie order inside Pint's PHAR is assumed equal to the source checkout's.

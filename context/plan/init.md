@@ -37,7 +37,7 @@ $ pun init
 
 1. **Detect** from composer.json and composer.lock: the PHP version, Laravel, Pest, PHPUnit and their versions.
 2. **Ask three questions** with the detected defaults.
-3. **Write pun.toml** with only the three choices.
+3. **Write pun.toml** with the three choices and the `[extensions]` composer.lock turns on.
 4. **Show what the settings find** with one `pun check` run, so the choice isn't blind.
 5. **Offer the next steps**: fix now and baseline the rest (interactive only). Composer scripts, CI and hooks are
    printed as commands, not written.
@@ -60,8 +60,8 @@ From Pushpak:
 
 - **Defaults:** `laravel` style for a Laravel app, else `psr12`; dead-code + modernize; `recommended`.
 - **Old configs present → offer migrate** ("Found phpstan.neon. Migrate it instead? › yes"); yes runs `pun migrate`.
-- **pun.toml holds only the three choices.** Presets carry the rules; `pun config` prints the resolved list. init
-  refuses to overwrite an existing pun.toml.
+- **pun.toml holds only the three choices**, plus `[extensions]` (../PLAN.md §2 "Extensions"). Presets carry the
+  rules; `pun config` prints the resolved list. init refuses to overwrite an existing pun.toml.
 - **No workflow wiring in init** (too much code to maintain for now). init prints the commands. Later, `pun-init` and
   `pun-migrate` agent skills do the composer, CI and hook wiring.
 
@@ -80,5 +80,5 @@ Assistant's calls (change them freely):
 - **Flag errors keep schema.rs's wording** with the flag in place of the pun.toml location: "--lint-sets: `x` is not a
   lint set; the sets are …", "--analyse x: expected `basic`, …". `--lint-sets ""` means no sets.
 - **pun.toml starts with ``# Written by `pun init`.``**, as migrate's does.
-- **Agent mode** prints one `pun init: ok, pun.toml written, style …, lint sets …, analyse …` line, with the next steps
-  as its item.
+- **Agent mode** prints one `pun init: ok, pun.toml written, style …, lint sets …, analyse …, extensions …` line, with
+  the next steps as its item.

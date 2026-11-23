@@ -1,7 +1,8 @@
 # Plan: who does what (format, lint, analyse) and `pun check`
 
-Status: **walked through with Pushpak**; answers in "Decisions". Build 1-2 are done, 3-5 are open (§5). Each command
-does exactly the job its name promises. This file gives the split, how a rule is placed, and how `pun check` runs.
+Status: **walked through with Pushpak**; answers in "Decisions". Build 1, 2 and 4 are done, 3 and 5 are open (§5).
+Each command does exactly the job its name promises. This file gives the split, how a rule is placed, and how
+`pun check` runs.
 
 ## 1. Today
 
@@ -11,8 +12,9 @@ often lives in several tools at once; rules.md §2 has the overlaps, with strict
 Pun keeps one rule per idea, in one command.
 
 `pun check` runs format and lint per file, then analyse as a separate pass over the same paths
-(crates/pun-cli/src/run.rs), and prints the grouped view (output.md Decisions). The one shared parse and the `--fix`
-loop of §3 are not built (§5).
+(crates/pun-cli/src/run.rs), and prints the grouped view (output.md Decisions). With `--fix`, each file gets lint
+fixes until stable, then format, and is written once; analyse then reads every path again. The one shared parse and
+the re-index of only the changed files (§3) are not built (§5).
 
 ## 2. Pun's split: three questions
 
@@ -91,8 +93,8 @@ Anything else is lint with a safe fix:
 - changing a declaration or the order of class members;
 - adding test metadata.
 
-**Result:** 40 of the 208 format rules moved to lint (11 of them in the laravel preset, 2 in psr12). Format keeps 168
-rules: laravel 115, psr12 50. Their lint names are in rules.md Decisions.
+**Result:** 40 format rules moved to lint (11 of them in the laravel preset, 2 in psr12). Format has 164 rules:
+laravel 115, psr12 50. Their lint names are in rules.md Decisions.
 
 What this means for users:
 - `pun format` and format-on-save never delete or restructure code.
@@ -109,8 +111,9 @@ Each step keeps `pun check --fix` equal to Pint on pint.json projects.
 1. **The 40 rules move** (config.md Build 2). Done.
 2. **Grouped output** (output.md Build 5). Done.
 3. **One parse per file:** Mago's tree shared by lint and analyse, tokens for format, an index pass before checking.
-4. **Analyse joins** when `pun analyse` exists (analyse.md Build 1): report-only after lint fixes and format.
-5. **`--fix` loop:** lint fixes until stable, format, write each file once, re-index changed files, analyse.
+4. **Analyse joins** (analyse.md Build 1): report-only after lint fixes and format. Done.
+5. **`--fix` loop:** lint fixes until stable, format, write each file once, re-index changed files, analyse. Left:
+   re-indexing only the changed files (needs step 3's index), and the corpus check below.
    *Done when* `pun check --fix` equals running `pun lint --fix`, `pun format` and `pun analyse` in order on every
    corpus project.
 

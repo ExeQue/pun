@@ -31,7 +31,7 @@ Documentation for Pun can be found on the [Pun website](https://pun.laravel.clou
 
 ## Contributing
 
-Thank you for considering contributing to Pun! Read [AGENTS.md](AGENTS.md) for how to build Pun (Rust 1.99 or later), the checks to run, and the upstream tools it is tested against. If Pun is missing a rule you rely on, please open an issue or send a pull request.
+Thank you for considering contributing to Pun! Read [AGENTS.md](AGENTS.md) for how to build Pun (Rust 1.100 or later), the checks to run, and the upstream tools it is tested against. If Pun is missing a rule you rely on, please open an issue or send a pull request.
 
 ## Security Vulnerabilities
 

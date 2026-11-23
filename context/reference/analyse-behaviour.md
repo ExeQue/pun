@@ -313,7 +313,8 @@ with Larastan. The gaps are listed at the end.
 - Literal `in_array()` constant-condition diagnostics use the constraints every comparison alternative shares, not the
   runtime membership result.
 - `PHPStan\dumpType()` and `PHPStan\dumpPhpDocType()` report one non-ignorable diagnostic per argument on the call's
-  line, in PHPStan's precise notation and as PHPDoc.
+  line, in PHPStan's precise notation and as PHPDoc. `PHPStan\Testing\assertType()`, `assertNativeType()`,
+  `assertSuperType()` and `assertVariableCertainty()` report each call that does not hold (`analyse/debug/assert-type`).
 
 ## Purity
 
@@ -358,14 +359,13 @@ with Larastan. The gaps are listed at the end.
   general type-dependent comparisons.
 - Constants: general mixed and spread array ordering, expanded initializer cycles, dynamic initializer selectors,
   local-variable copies and array addition over conditional operands.
-- Attribute rule support.
 - General PHP syntax-error translation.
 - Independent `compact()` rule selection, and whole-rule parity for `isset`.
 - Global PHPDoc-certainty options.
 - Compound argument-type and by-reference checking.
 - General and union array unpacks keep their fallback; general array-union normalization.
 - Whole-shape inference for open lists and optional nonempty prefixes.
-- Native type dumps, scope dumps and the `PHPStan\Testing` assertion functions.
+- Native type dumps and scope dumps (`analyse/debug/dump-native-type`, `analyse/debug/dump-scope`).
 - Purity: dynamic constructor targets, built-in constructor throw extensions, conditional constructor policies,
   offset writes through references and nested or property roots, unknown effect producers, and full pure-function and
   pure-method validation.

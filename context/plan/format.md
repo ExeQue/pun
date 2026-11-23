@@ -20,7 +20,7 @@ Measured on an 8-core orb with the profiling build, `--test`, cold runs without 
 **How parity is checked.** `pun-harness format` compares Pint with `pun migrate` followed by `pun check --fix` on every
 corpus project, with the laravel and psr12 presets. `scripts/cli-parity.sh` compares exit codes, machine formats and
 resulting files byte for byte. `scripts/fuzz-parity.sh` mutates corpus files (CRLF and mixed line endings included)
-and compares the two tools. Today all 7 corpus projects and the fuzzer show 0 differing files
+and compares the two tools. Today all 8 corpus projects and the fuzzer show 0 differing files
 ([scoreboard](../reports/scoreboard.md)).
 
 ## 2. How it works
@@ -73,14 +73,14 @@ moves all 76 to `pun lint` (rules.md §1), so `pun format` is always safe on sav
 
 ## 5. Rules: what exists
 
-There are 164 format rules, all native: PHP-CS-Fixer's safe fixers and Pint's Blade rule. The 40 code-deleting
-fixers are lint rules (commands.md §4). The 4 Doctrine annotation fixers are unsupported (rules.md O9). The laravel
+There are 164 format rules, all native: PHP-CS-Fixer's safe fixers and Pint's Blade rule. The code-deleting fixers
+are lint rules (commands.md §4). The 4 Doctrine annotation fixers are unsupported (rules.md O9). The laravel
 preset turns on 115 of them and psr12 50. `pun migrate` names and skips a pint.json rule with no Pun rule, such as a
 deprecated fixer or a custom fixer class.
 
 ## 6. The CLI
 
-`pun format` takes Pint's flags that change what it does (`--test`, `--bail`, `--repair`, `--dirty`,
+`pun format` takes Pint's flags that change what it does (`--blade`, `--test`, `--bail`, `--repair`, `--dirty`,
 `--diff=<branch>`, `--config`, `--no-config`, `--preset`, `--format`, `--output-to-file`, `--output-format`,
 `--stdin-filename`, `--max-processes`, `--cache-file`, `-v`, `-q`, and `--ansi`/`--no-ansi` as hidden spellings of
 `--color`). It adds `--staged`, `--since=<ref>`, `--watch`, `--stdin`, `--explain`, `--color` and `--no-cache`. Pint's
@@ -92,8 +92,9 @@ agent it prints compact lines (output.md §3).
 
 Speed and memory come first (decided).
 
-1. **Presets cut to three.** Done. `--preset per|symfony` and `[format] preset = "per"|"symfony"` are a config error
-   (exit 2) naming the replacement; `per` and `symfony` stay in `PRESETS` for `pun migrate` only.
+1. **Presets cut to three.** Done. `--preset per` and `[format] preset = "per"` are a config error (exit 2) naming
+   the replacement; `per` stays in `PRESETS` for `pun migrate` only. `symfony` is a config error too, and
+   `pun migrate` stops on a pint.json that uses it.
 2. **The new output.** Done.
 3. **Fewer allocations per token.** Done.
 4. **Memory target** next to the speed one: peak RSS per corpus project in reports/scoreboard.md via
@@ -197,8 +198,9 @@ Answered 2026-10-17 (Pushpak):
 - **Grouped names:** every rule is `group/name`, full ID `format/group/name`, designed for maintenance and growth
   (§8). **No aliases**: breaking renames are fine until the release.
 - **Options are redesigned for TOML**, not copied from PHP-CS-Fixer. `pun migrate` translates upstream options.
-- **Three presets only: `laravel`, `psr12`, `empty`.** `per` and `symfony` are not presets; their rules stay
-  available one by one, and migrate expands a pint.json that uses them.
+- **Three presets only: `laravel`, `psr12`, `empty`.** `per` is not a preset; its rules stay available one by one,
+  and migrate expands a pint.json that uses it. Pun has no `symfony` preset, and migrate stops on a pint.json that
+  uses it.
 - **No pun.toml: stop**, with "Run `pun migrate`, or `pun init` for a new project".
 - **Blade stays on Node and Prettier** for now; native Blade after 1.0.
 - **No PHP fallback for unported rules.** Pun never runs PHP-CS-Fixer or Pint. `pun migrate` names each unsupported

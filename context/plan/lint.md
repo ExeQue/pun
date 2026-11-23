@@ -48,25 +48,26 @@ file with the overrides and `-A`/`-W`/`-D` (lint_plan.rs).
 ## 4. Rules: what exists
 
 All lint rules in crates/pun-config/rules/mapping.toml are for 1.0. Each has its group, fix safety, sets and upstream
-source: exactly one in-scope upstream rule (Rector, a risky or moved PHP-CS-Fixer fixer, or a strict-rules rule), or
-Mago (`origin = "mago"`). rules.md §7 has the reasons for what is in and out.
+source: one in-scope upstream rule (Rector, a risky or moved PHP-CS-Fixer fixer, or a PHPStan rule class), several
+listed in `merged`, or Mago (`origin = "mago"`). rules.md §7 has the reasons for what is in and out.
 
-At 719 rules (PLAN.md §0 has the current total):
+The 680 lint rules (`python3 -I scripts/check-rule-mapping.py`; a merged rule counts once per source):
 
 | | Count |
 | --- | ---: |
-| Upstream source: Rector core / rector-laravel / rector-phpunit / pest-plugin-rector | 264 / 94 / 81 / 59 |
-| Upstream source: PHP-CS-Fixer fixer (76 risky, 39 moved from format) / Pint / strict-rules | 115 / 1 / 17 |
-| Mago only / Pun only | 87 / 1 |
-| Also carrying a Mago mapping | 43 |
-| Fix safety: safe / unsafe / mixed / report only | 308 / 324 / 7 / 80 |
-| Sets: dead-code / modernize / code-quality / types / early-return / privatization / naming / coding-style / none | 78 / 37 / 246 / 91 / 5 / 5 / 0 / 112 / 148 |
-| Ecosystem groups: laravel (+ laravel-12) / phpunit / pest | 100 (+1) / 113 / 62 |
+| Upstream source: Rector core / rector-laravel / rector-phpunit / pest-plugin-rector | 269 / 94 / 81 / 59 |
+| Upstream source: PHP-CS-Fixer fixer (76 risky, 39 moved from format) / Pint / PHPStan rule classes | 115 / 1 / 31 |
+| Mago only / Pun only | 81 / 1 |
+| Also carrying a Mago mapping | 56 |
+| Fix safety: safe / unsafe / mixed / report only | 284 / 308 / 8 / 80 |
+| Sets: dead-code / modernize / code-quality / types / early-return / privatization / naming / coding-style / none | 72 / 43 / 224 / 86 / 2 / 5 / 0 / 105 / 148 |
+| Ecosystem groups: laravel (+ laravel-12) / phpunit / pest | 97 (+1) / 111 / 58 |
 
 The groups are the topic groups shared with format (format.md §8, config.md Build 1); intent stays as data.
 
-Unsupported on purpose: the rector-symfony, rector-doctrine and rector-downgrade-php rules. `pun migrate` names each
-one as unsupported and skips it (migrate.md §3).
+Unsupported on purpose: the rector-symfony, rector-doctrine and rector-downgrade-php rules, and the Doctrine, Symfony,
+Behat and JMS rules of Rector core (rules.md O9). `pun migrate` names each one as unsupported and skips it
+(migrate.md §3).
 
 ## 5. Rector's CLI, flag for flag
 
@@ -125,8 +126,8 @@ Steps 1, 2, 4, 5, 6 and 9 are done, and `pun check --fix` equals Pint. Left: ste
    (analyse.md decisions).
 3. **Lint sets:** below.
 
-Laravel, Pest and PHPUnit are not questions. Pun reads composer.lock and turns their rules on by itself, including the
-rules for the locked versions.
+Laravel, Pest and PHPUnit are not questions. `pun init` reads composer.lock and writes `[extensions]` for them, which
+turns their rules on, including the rules for the locked versions.
 
 **A project coming from Pint, Rector or PHPStan:** `pun migrate` writes the exact rules the old config runs. In
 interactive mode it then offers the closest preset, with a count of the new problems the preset would report.
@@ -156,8 +157,9 @@ sets = ["dead-code", "modernize", "code-quality"]
 ```
 
 - **Sets are tags on rules**, separate from the topic group in the name. A rule can be in several sets.
-- **The Laravel, Pest and PHPUnit parts of each set turn on by themselves** when composer.lock has the package. For
-  example, `code-quality` in a Laravel app includes rector-laravel's code-quality rules.
+- **The Laravel, Pest and PHPUnit parts of each set turn on with their `[extensions]` entry**, which `pun init` and
+  `pun migrate` write when composer.lock has the package. For example, `code-quality` in a Laravel app includes
+  rector-laravel's code-quality rules.
 - **Migrate maps 1:1:** `withPreparedSets(deadCode: true, codeQuality: true)` becomes
   `sets = ["dead-code", "code-quality"]`, `withPhpSets()` is `modernize`, version sets are the upgrade groups
   (`lint/laravel-13/...`), and single rules become `[lint.rules]`.
@@ -178,8 +180,9 @@ Pushpak's answers:
 - **Sets for new projects, explicit rules for migrated ones** (§8), with dead-code and modernize ticked by default in
   `pun init`.
 - **`pun init` asks three things:** the format preset, the lint sets and the analyse preset.
-- **Laravel, Pest and PHPUnit turn on automatically** from composer.lock, version rules included; their group can be
-  switched off in pun.toml. Nothing to install.
+- **Laravel, Pest and PHPUnit rules come from `[extensions]`** (../PLAN.md §2 "Extensions"), which `pun init` and
+  `pun migrate` fill from composer.lock, version rules included; their group can be switched off in pun.toml. Nothing
+  to install.
 - **`--fix` applies every fix of every enabled rule**, as Rector does. There is no `--unsafe` flag. Safe/unsafe is a
   label in the output (`[fix:unsafe]`) so reviewers know which changes to read closely. A rule that should only
   report takes `fix = "off"`.
@@ -223,7 +226,7 @@ Assistant's calls where the plan was silent:
   Rector does. In a colon body (`if ($a): ... endif;`) Pun keeps the colon syntax where Rector reprints with braces;
   the laravel preset's format makes both the same. A statement ending in `?>` is left alone.
 - **Shared code** lives in `crates/pun-lint/src/rules/support/` (statement lists as php-parser sees them, statement
-  removal and replacement, variable usage, list-item removal) and `rules/class_method.rs`; rules call it instead of
+  removal and replacement, variable usage, list-item removal, class members); rules call it instead of
   copying it. `rules/support/statement_edits.rs` still copies token helpers of `support/statements.rs` (PLAN.md row).
 - **Syntax stands in for types until Build 8.** Rules decide that a value is a `bool`, `int`, `array` or `string` from
   the syntax (`syntax_types`: literals, typed parameters never written, locals every write of which has the type,
@@ -258,4 +261,3 @@ Known differences from Rector, left for later (PLAN.md §3 Track B has the rows)
 - `no-useless-override` and `no-useless-constructor` treat union types in another order as different and compare
   intersections in declared order; they and `no-redundant-default-argument` do not read a non-empty array or class
   constant default, and keep the code. A parent's `@method` tag is not read.
-- JMS-typed properties: a `Type` argument that is a constant expression other than a string or `X::class` is not read.
