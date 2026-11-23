@@ -407,10 +407,10 @@ Layout-only Rector rules map to format rules. The migration reports any that `[f
 | phpstan.neon | pun.toml |
 | --- | --- |
 | `level: 5` | `[analyse] preset = \"recommended\"`, plus explicit on/off lines for exactly level 5 |
-| `level: 0..10` | The analyse preset that contains the level, with on/off differences |
+| `level: 0..10` | The analyse preset that contains the level, with on/off differences. A type switch of a higher level in the preset is turned off, such as `nullables = false` for level 7 |
 | `paths`, `excludePaths`, `stubFiles` | `[analyse] paths`, `exclude`, `stubs` |
 | `ignoreErrors` identifiers, patterns, paths, count, `reportUnmatched` | `[[analyse.ignore]]` with Pun `rule`, original `identifier`, `message`, `paths`, `count`, `report-unmatched` |
-| `reportUnmatchedIgnoredErrors: false` | `report-unmatched = false` on each entry that doesn't set `reportUnmatched` |
+| `reportUnmatchedIgnoredErrors: false` | `[analyse] report-unmatched = false`, and `report-unmatched = false` on each entry that doesn't set `reportUnmatched` |
 | Changed rule parameters | Kebab-case options on each running rule that reads the parameter |
 | strict-rules or deprecation-rules includes | The matching Pun checks, when their parameter enables them |
 | A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere. `pun analyse` also reports the check's errors under the lint rule's ID, because the lint rule sees no types and can miss some |
