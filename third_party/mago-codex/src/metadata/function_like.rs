@@ -487,12 +487,10 @@ impl FunctionLikeMetadata {
         }
     }
 
-    /// Refines the return type (declaration and docblock) when the patch specifies it.
+    /// Refines the return type when the patch's docblock specifies it. A stub's native type is not read: PHPStan
+    /// takes only the PHPDoc from a stub and the native signature from the original.
     fn patch_return_type(&mut self, patch: &FunctionLikeMetadata) {
-        if let Some(decl) = &patch.return_type_declaration_metadata {
-            self.return_type_declaration_metadata = Some(decl.clone());
-        }
-        if let Some(ty) = &patch.return_type_metadata {
+        if let Some(ty) = patch.return_type_metadata.as_ref().filter(|t| t.from_docblock) {
             self.return_type_metadata = Some(ty.clone());
         }
     }
@@ -501,10 +499,7 @@ impl FunctionLikeMetadata {
     /// specifies it, so a sparsely-typed patch does not erase richer existing information.
     fn patch_parameters(&mut self, patch: &FunctionLikeMetadata) {
         for (slot, replacement) in self.parameters.iter_mut().zip(patch.parameters.iter()) {
-            if let Some(decl) = &replacement.type_declaration_metadata {
-                slot.type_declaration_metadata = Some(decl.clone());
-            }
-            if let Some(ty) = &replacement.type_metadata {
+            if let Some(ty) = replacement.type_metadata.as_ref().filter(|t| t.from_docblock) {
                 slot.type_metadata = Some(ty.clone());
             }
             if let Some(out) = &replacement.out_type {

@@ -1,0 +1,14 @@
+<?php
+
+namespace Lib;
+
+class Factory
+{
+    /**
+     * @param  iterable<callable|array<string, mixed>>  $records
+     * @return list<string>
+     */
+    public function createMany(iterable $records);
+
+    public function name(): string;
+}

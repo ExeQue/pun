@@ -166,6 +166,7 @@ mod strict_mixed;
 mod string_casing;
 mod string_guarantees;
 mod strlen;
+mod stub_native_types;
 mod terminated_statement_scopes;
 mod trait_constant_initializers;
 mod try_certainty;

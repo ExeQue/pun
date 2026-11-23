@@ -931,6 +931,15 @@ The analyzer uses that distinction for PHPStan's receiver-local side-effect deci
 The public `receiver_invalidation` target checks both purity override directions against
 fresh PHPStan 2.3.1 output for a scanned class and an analyzed caller.
 
+## Stub patches refine PHPDoc types only
+
+`FunctionLikeMetadata::patch_return_type()` and `patch_parameters()` no longer copy a stub's native type
+declarations, and copy a stub's return and parameter types only when they come from its docblock. PHPStan 2.3.5
+reads only the PHPDoc of a stub (`StubPhpDocProvider`); the native signature stays the original's, and
+`TypehintHelper::decideType()` combines the two. Larastan's `Factory::createMany(iterable $records)` stub over
+Laravel's `int|iterable|null $records = null` therefore accepts `createMany(5)`, with the parameter type
+`int|iterable<array<string, mixed>|(callable(): mixed)>|null` (`tests/stub_native_types.rs`).
+
 ## Definite constant-array intersections
 
 `intersect_union_types()` intersects the explicit fields of two constant-array shapes

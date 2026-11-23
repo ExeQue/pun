@@ -1,0 +1,10 @@
+{
+ "level": 5,
+ "errors": [
+  {
+   "line": 11,
+   "identifier": "argument.type",
+   "message": "Parameter #1 $records of method Lib\\Factory::createMany() expects int|iterable<array<string, mixed>|(callable(): mixed)>|null, 'x' given."
+  }
+ ]
+}
