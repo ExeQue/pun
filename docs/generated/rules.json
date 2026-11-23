@@ -8587,9 +8587,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "NullCoalescingOperator",
+        "NullCoalescingOperatorRector",
+        "Rector\\Php74\\Rector\\Assign\\NullCoalescingOperatorRector",
         "assign_null_coalescing_to_coalesce_equal"
       ],
       "ported": true
@@ -9909,6 +9913,106 @@
         "EnsureTypeChecksFirst",
         "EnsureTypeChecksFirstRector",
         "Pest\\Rector\\Rules\\EnsureTypeChecksFirstRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/no-filter-magic-quotes",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change filter_var() with slash escaping to addslashes()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "FilterVarToAddSlashes",
+        "FilterVarToAddSlashesRector",
+        "Rector\\Php74\\Rector\\FuncCall\\FilterVarToAddSlashesRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/no-hebrevc",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change hebrevc($str) to nl2br(hebrev($str))",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "HebrevcToNl2brHebrev",
+        "HebrevcToNl2brHebrevRector",
+        "Rector\\Php74\\Rector\\FuncCall\\HebrevcToNl2brHebrevRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/no-mb-strrpos-encoding-offset",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change mb_strrpos() encoding argument position",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "MbStrrposEncodingArgumentPosition",
+        "MbStrrposEncodingArgumentPositionRector",
+        "Rector\\Php74\\Rector\\FuncCall\\MbStrrposEncodingArgumentPositionRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/no-restore-include-path",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change restore_include_path() to ini_restore(\"include_path\")",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php74\\Rector\\FuncCall\\RestoreIncludePathToIniRestoreRector",
+        "RestoreIncludePathToIniRestore",
+        "RestoreIncludePathToIniRestoreRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/prefer-arrow-function",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change closure to arrow function",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ClosureToArrowFunction",
+        "ClosureToArrowFunctionRector",
+        "Rector\\Php74\\Rector\\Closure\\ClosureToArrowFunctionRector"
       ],
       "ported": true
     },
@@ -15136,9 +15240,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "ConsistentImplode",
+        "ConsistentImplodeRector",
+        "Rector\\CodingStyle\\Rector\\FuncCall\\ConsistentImplodeRector",
         "implode_call"
       ],
       "ported": true

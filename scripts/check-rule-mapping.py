@@ -14,12 +14,13 @@ the lint sets together, or one analyse preset would enable.
 Against the pinned upstream inventories in crates/pun-config/rules/upstream/*.json (context/plan/rules.md §5) it also
 fails on: an in-scope Rector, rector-laravel, rector-phpunit or Pest rule, or an in-scope PHPStan, strict-rules,
 deprecation-rules or Larastan rule class, that has no entry or maps to no Pun rule; an entry that maps a deprecated or
-out-of-scope upstream rule (old PHP or Laravel upgrade set, no set, outside the in-scope sets) to a Pun rule; a lint or
+out-of-scope upstream rule (old Laravel upgrade set, no set, outside the in-scope sets) to a Pun rule (Rector's PHP
+upgrade rules below php82 and its php-polyfills rules may map to one, and need not); a lint or
 analyse rule with no or several primary sources (one Rector rule, CS-Fixer fixer, Pint fixer or PHPStan-family rule
 class) unless it is Mago-derived (`origin = "mago"`, Mago sources only) or `pun_only`; `merged` on a lint or analyse
 rule; a class entry whose identifiers differ from the inventory; an emitted identifier with no entry, or one whose rule
-is not the rule of a class that emits it; and a rule with a Rector source in an upgrade group below the floor (PHP 8.2,
-Laravel 12). Prints rule counts per command, set, preset and source.
+is not the rule of a class that emits it; and a rule with a Rector source in an upgrade group below the floor
+(Laravel 12). Prints rule counts per command, set, preset and source.
 
 Usage: scripts/check-rule-mapping.py [path/to/mapping.toml]
 """
@@ -62,9 +63,11 @@ EXCLUDED_CLASSES = {
     "Rector\\TypeDeclaration\\Rector\\Class_\\TypedStaticPropertyInBehatContextRector",
     "Rector\\TypeDeclaration\\Rector\\ClassMethod\\ReturnTypeFromSymfonySerializerRector",
 }
-# Upgrade groups below the floor (PHP 8.2, Laravel 12): no rule with a Rector source may sit in one. Rector's PHP sets
-# are in scope from php82 up, below Pun's PHP 8.4 floor, because their rules still change 8.4 code (rules.md §7).
-BELOW_FLOOR = re.compile(r"php-([57]\.\d|8\.[01])|laravel-([5-9](\.\d)?|1[01])")
+# Upgrade groups below the floor (Laravel 12): no rule with a Rector source may sit in one. Rector's PHP upgrade rules
+# below php82 and its php-polyfills rules may be ported into the php-5.3 ... php-8.1 groups ("Upgrades below the floor
+# too", PLAN.md §2, 2026-11-23); the inventories still mark them out of scope, so they are allowed, not required.
+BELOW_FLOOR = re.compile(r"laravel-([5-9](\.\d)?|1[01])")
+OLD_PHP = ("only in php52..php81 upgrade sets (below php82)", "only in sets outside the eight prepared sets: php-polyfills")
 
 
 def duplicates(text):
@@ -261,6 +264,10 @@ def in_scope(r):
             and r["fqcn"] not in EXCLUDED_CLASSES)
 
 
+def may_port(r):
+    return in_scope(r) or (not r["deprecated"] and r.get("out_of_scope_reason") in OLD_PHP)
+
+
 def why_out(r):
     if r["deprecated"]:
         return "deprecated upstream"
@@ -283,7 +290,7 @@ def check_upstream(data, inv):
             where = f"upstream.{tool}.{key}"
             if "pun" in u and r is None:
                 err(f"{where}: {cls} is not a rule in the pinned inventory, so it maps to no Pun rule")
-            elif "pun" in u and not in_scope(r):
+            elif "pun" in u and not may_port(r):
                 err(f"{where}: {why_out(r)}, so it maps to no Pun rule")
             elif r is not None and in_scope(r) and "pun" not in u:
                 err(f"{where}: in scope upstream but maps to no Pun rule")
@@ -347,7 +354,7 @@ def check_upstream(data, inv):
                     err(f"{rid}: replaces {old!r}, which is still a rule")
             g = key.split("/")[0]
             if BELOW_FLOOR.fullmatch(g) and any(s.split(":")[0] in RECTOR_TOOLS for s in primary[rid]):
-                err(f"{rid}: group {g} is an upgrade below the floor (PHP 8.2, Laravel 12)")
+                err(f"{rid}: group {g} is an upgrade below the floor (Laravel 12)")
 
     # Every emitted identifier has an entry, and it points at the rule of a class that emits it.
     rule_of = {u.get("class"): u["pun"] for u in classes.values() if "pun" in u}
@@ -551,6 +558,14 @@ def selftest_upstream():
         assert any(expect in e for e in out), (expect, out)
 
     bad(lambda d: d["upstream"]["rector"]["Old"].update(pun="lint/style/no-foo"), "only in php70")
+    rector["R\\Php70Rector"] = rec("R\\Php70Rector", False, False, OLD_PHP[0])
+    old_php = copy.deepcopy(good)
+    old_php["rules"]["lint"]["php-7.0/prefer-bar"] = {}
+    old_php["upstream"]["rector"]["Php70"] = {"class": "R\\Php70Rector", "pun": "lint/php-7.0/prefer-bar"}
+    assert check_upstream(old_php, inv) == [], check_upstream(old_php, inv)
+    old_php["upstream"]["rector"]["Php70"] = {"class": "R\\Php70Rector", "unsupported": "x"}
+    old_php["rules"]["lint"].pop("php-7.0/prefer-bar")
+    assert check_upstream(old_php, inv) == [], check_upstream(old_php, inv)
     bad(lambda d: d["upstream"]["rector"]["Gone"].update(pun="lint/style/no-foo"), "deprecated upstream")
     bad(lambda d: d["upstream"]["rector"]["Foo"].pop("pun"), "in scope upstream but maps to no Pun rule")
     bad(lambda d: d["upstream"]["rector"].pop("Foo"), "has no [upstream.*] entry")
@@ -571,9 +586,9 @@ def selftest_upstream():
     bad(lambda d: d["upstream"]["phpstan"].pop("bar.%s"), "identifier bar.y")
 
     def below_floor(d):
-        d["rules"]["lint"]["php-8.0/no-foo"] = d["rules"]["lint"].pop("style/no-foo")
-        d["upstream"]["rector"]["Foo"]["pun"] = "lint/php-8.0/no-foo"
-        d["upstream"]["mago-linter"]["n"]["pun"] = "lint/php-8.0/no-foo"
+        d["rules"]["lint"]["laravel-11/no-foo"] = d["rules"]["lint"].pop("style/no-foo")
+        d["upstream"]["rector"]["Foo"]["pun"] = "lint/laravel-11/no-foo"
+        d["upstream"]["mago-linter"]["n"]["pun"] = "lint/laravel-11/no-foo"
     bad(below_floor, "below the floor")
 
 

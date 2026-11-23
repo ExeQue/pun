@@ -49,7 +49,7 @@
         "rules": [
           "lint/operators/prefer-coalesce-assign"
         ],
-        "note": "Same.",
+        "note": "Merged with NullCoalescingOperator.",
         "unsupported": false
       },
       {
@@ -729,7 +729,7 @@
         "rules": [
           "lint/style/require-implode-separator"
         ],
-        "note": "Same.",
+        "note": "Merged with ConsistentImplode.",
         "unsupported": false
       },
       {
@@ -3035,7 +3035,7 @@
         "rules": [
           "lint/operators/prefer-coalesce-assign"
         ],
-        "note": "Same.",
+        "note": "Merged with NullCoalescingOperator.",
         "unsupported": false
       },
       {
@@ -3715,7 +3715,7 @@
         "rules": [
           "lint/style/require-implode-separator"
         ],
-        "note": "Same.",
+        "note": "Merged with ConsistentImplode.",
         "unsupported": false
       },
       {
@@ -6908,9 +6908,11 @@
         "name": "ClosureToArrowFunction",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/closure-to-arrow-function-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/prefer-arrow-function"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "CoalesceToTernary",
@@ -7010,9 +7012,11 @@
         "name": "ConsistentImplode",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/consistent-implode-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/require-implode-separator"
+        ],
+        "note": "Merged with implode_call.",
+        "unsupported": false
       },
       {
         "name": "ConstAndTraitDeprecatedAttribute",
@@ -7079,7 +7083,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/curly-to-square-bracket-array-string-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not parse on PHP 8.4 (`$string{0}` offset access was removed in PHP 8.0)",
         "unsupported": true
       },
       {
@@ -7348,9 +7352,11 @@
         "name": "FilterVarToAddSlashes",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/filter-var-to-add-slashes-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/no-filter-magic-quotes"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "FinalPrivateToPrivateVisibility",
@@ -7576,9 +7582,11 @@
         "name": "HebrevcToNl2brHebrev",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/hebrevc-to-nl2br-hebrev-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/no-hebrevc"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "IfIssetToCoalescing",
@@ -7806,9 +7814,11 @@
         "name": "MbStrrposEncodingArgumentPosition",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/mb-strrpos-encoding-argument-position-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/no-mb-strrpos-encoding-offset"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "MergeDateTimePropertyTypeDeclaration",
@@ -8092,9 +8102,11 @@
         "name": "NullCoalescingOperator",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/null-coalescing-operator-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/operators/prefer-coalesce-assign"
+        ],
+        "note": "Merged with assign_null_coalescing_to_coalesce_equal.",
+        "unsupported": false
       },
       {
         "name": "NullDebugInfoReturn",
@@ -8225,7 +8237,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/parenthesize-nested-ternary-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not compile on PHP 8.4 (an unparenthesized nested ternary is a fatal error since PHP 8.0)",
         "unsupported": true
       },
       {
@@ -9478,9 +9490,11 @@
         "name": "RestoreIncludePathToIniRestore",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/restore-include-path-to-ini-restore-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/no-restore-include-path"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReturnBinaryOrToEarlyReturn",
