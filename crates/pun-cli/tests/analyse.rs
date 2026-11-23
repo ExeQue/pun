@@ -991,9 +991,9 @@ fn fixable_ignored_errors_match_phpstan() {
     }
 }
 
-/// Composer's autoloaded classes are symbols (analyse.md §3): the class under the psr-4 directory is found, and
-/// an `[analyse] exclude` elsewhere leaves it alone. PHPStan at level 0, after `composer install`, reports only
-/// `Missing` too.
+/// Composer's autoloaded classes are symbols (analyse.md §3): the classes under the psr-4 directory are found, also
+/// one in an `[analyse] exclude`, as PHPStan's PSR-4 locator ignores `excludePaths`. PHPStan 2.3.5 at level 0 with
+/// `excludePaths: [app/Other.php]`, with or without `composer dump-autoload`, reports only `Missing` too.
 #[test]
 fn composer_autoloaded_classes_are_symbols() {
     let d = project(
@@ -1015,7 +1015,7 @@ fn composer_autoloaded_classes_are_symbols() {
             ),
             (
                 "src/a.php",
-                "<?php\n\nnew \\App\\Kept();\nnew \\App\\Missing();\n",
+                "<?php\n\nnew \\App\\Kept();\nnew \\App\\Other();\nnew \\App\\Missing();\n",
             ),
         ],
     );
@@ -1024,7 +1024,7 @@ fn composer_autoloaded_classes_are_symbols() {
         (out, code),
         (
             format!(
-                "{}:4:Instantiated class App\\Missing not found.\n",
+                "{}:5:Instantiated class App\\Missing not found.\n",
                 d.join("src/a.php").display()
             ),
             Some(1)

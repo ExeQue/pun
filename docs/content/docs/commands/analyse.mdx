@@ -93,7 +93,7 @@ If PHP can't parse a file, the run fails with a `parser-error` problem and repor
 
 Path arguments replace `[analyse] paths`. Without `[analyse] paths`, Pun uses `[files] paths`, then the project root. Analysis skips Blade templates, `vendor/`, `bootstrap/cache`, `build`, `node_modules`, and `storage`. [`pun list-files --command analyse`](/docs/commands/list-files) shows the selection.
 
-`[analyse] exclude` removes files from analysis and from the symbol scan. Pun still reads Composer dependencies for symbols.
+`[analyse] exclude` removes files from analysis and from the symbol scan. Pun still reads Composer dependencies for symbols, and still finds a class in an excluded file through your PSR-4 or PSR-0 autoload, as PHPStan does.
 
 Include checks resolve local files, `file://` URLs, and local `phar://` members of PHAR, ZIP, TAR, and gzip archives. They don't support bzip2, OpenSSL signatures, PHAR aliases and mounts, or runtime-registered wrappers. Pun always reports a `zip://` include as missing.
 

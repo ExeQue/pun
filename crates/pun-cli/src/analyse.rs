@@ -170,8 +170,8 @@ fn run_error(message: String, hint: Option<String>) -> anyhow::Error {
     Abort::plain(message, hint).into()
 }
 
-/// The project pun-analyse works on: the analysed files, Composer's autoloaded files for symbols (minus the
-/// excludes), the target PHP version, and `[analyse]` as PHPStan's parameters (the level, `stubFiles`,
+/// The project pun-analyse works on: the analysed files, Composer's autoloaded files for symbols (classmap
+/// and `files` entries minus the excludes), the target PHP version, and `[analyse]` as PHPStan's parameters (the level, `stubFiles`,
 /// `ignoreErrors`, Larastan, rule options). Only the enabled rules' identifiers are reported.
 fn project(
     cfg: &Config,
@@ -219,10 +219,8 @@ fn project(
         (project.scanned).extend(configured.into_iter().filter(|f| !analysing.contains(f)));
     }
     let excluded = Exclusions::new(cfg, Command::Analyse)?;
+    // PHPStan's PSR-4 and PSR-0 locators ignore excludePaths: an excluded class is still found by its name.
     project.scanned.retain(|p| !excluded.is_excluded(p));
-    project
-        .autoloaded
-        .retain(|a| !excluded.is_excluded(&a.path));
     project.analysed = analysed;
     project.only_files = analysed_paths.iter().all(|p| Path::new(p).is_file());
     project.relative_path = pun_analyse::RelativePath::of(&analysed_paths);
