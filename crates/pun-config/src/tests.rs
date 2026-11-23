@@ -235,7 +235,7 @@ not-path = ["p"]
         json!({"sort_algorithm": "alpha", "imports_order": ["class", "const"]})
     );
     assert!(c.blade);
-    assert_eq!(c.php.to_string(), "8.4");
+    assert_eq!(c.php.to_string(), "8.3");
     assert!(c.lint.rules.is_empty() && c.files == Files::default());
 }
 
@@ -256,7 +256,11 @@ fn php_version() {
         c(&[toml, ("composer.json", r#"{"require":{"php":">=8.4.3"}}"#)]),
         "8.4"
     );
-    assert_eq!(c(&[toml, ("composer.json", "{}")]), "8.4");
+    assert_eq!(c(&[toml, ("composer.json", "{}")]), "8.3");
+    assert_eq!(
+        c(&[toml, ("composer.json", r#"{"require":{"php":"^8.3"}}"#)]),
+        "8.3"
+    );
     assert_eq!(
         c(&[
             ("pun.toml", "[php]\nversion = \"8.6\"\n"),
@@ -264,6 +268,21 @@ fn php_version() {
         ]),
         "8.6"
     );
+}
+
+#[test]
+fn new_expression_parentheses_needs_php_8_4() {
+    let has = |version: &str, options: &str| {
+        let toml = format!(
+            "[php]\nversion = \"{version}\"\n[format]\npreset = \"empty\"\n[format.rules]\n\"operators/new-expression-parentheses\" = {options}\n"
+        );
+        let c = load(&dir(&[("pun.toml", &toml)]), &Options::default()).unwrap();
+        names(&c.rules).contains(&"new_expression_parentheses")
+    };
+    assert!(has("8.4", "true"));
+    assert!(!has("8.3", "true"));
+    assert!(!has("8.3", "{ use-parentheses = false }"));
+    assert!(has("8.3", "{ use-parentheses = true }"));
 }
 
 #[test]
@@ -348,12 +367,23 @@ fn lint_sets() {
     let l = lint(&[("pun.toml", &off), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!((l.rules.len(), l.ecosystems.len()), (68, 0));
     let modernize = "[lint]\nsets = [\"modernize\"]\n";
-    let l = lint(&[("pun.toml", modernize)]);
+    let l = lint(&[(
+        "pun.toml",
+        &format!("[php]\nversion = \"8.4\"\n{modernize}"),
+    )]);
     assert_eq!(l.rules.len(), 35);
     assert!(ids(&l.rules).contains(&"lint/php-8.3/prefer-json-validate"));
     assert!(ids(&l.rules).contains(&"lint/php-8.2/prefer-readonly-class"));
     assert!(ids(&l.rules).contains(&"lint/php-8.4/prefer-array-find"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
+    // PHP 8.3, the default without `require.php`: the 8.3 upgrades run, the 8.4 ones do not.
+    let l = lint(&[("pun.toml", modernize)]);
+    assert!(ids(&l.rules).contains(&"lint/php-8.3/prefer-json-validate"));
+    assert!(
+        !ids(&l.rules)
+            .iter()
+            .any(|id| id.starts_with("lint/php-8.4/"))
+    );
     let l = lint(&[(
         "pun.toml",
         &format!("[php]\nversion = \"8.5\"\n{modernize}"),
@@ -441,7 +471,7 @@ fn upgrade_gates() {
     assert!(check(&l11, "laravel-11") && check(&l11, "laravel-10") && check(&l11, "laravel-5.7"));
     assert!(!check(&l11, "laravel-12"));
     assert!(check(&l11, "laravel") && !check(&l11, "pest"));
-    assert!(check(&l11, "php-8.4") && !check(&l11, "php-8.5") && check(&l11, "style"));
+    assert!(check(&l11, "php-8.3") && !check(&l11, "php-8.4") && check(&l11, "style"));
     let branch = gates(Some(
         r#"{"packages":[{"name":"laravel/framework","version":"dev-main"}]}"#,
     ));
@@ -654,7 +684,9 @@ fn extension_groups() {
 #[test]
 fn composer_gate() {
     let d = dir(&[("composer.json", r#"{"require":{"php":"^8.2"}}"#)]);
-    assert!(err(&d, preset("laravel")).contains("PHP < 8.4"));
+    assert!(err(&d, preset("laravel")).contains("PHP < 8.3"));
+    let d = dir(&[("composer.json", r#"{"require":{"php":"^8.3"}}"#)]);
+    assert!(load(&d, &preset("laravel")).is_ok());
     let ignored = Options {
         ignore_php_constraint: true,
         ..preset("laravel")
@@ -764,7 +796,7 @@ fn show() {
         (&v["files"], &v["php"]),
         (
             &json!({"paths": ["app"], "exclude": ["build"]}),
-            &json!({"version": "8.4"}),
+            &json!({"version": "8.3"}),
         )
     );
     assert_eq!(
@@ -1698,7 +1730,7 @@ fn php_version_id() {
     let c = load(&d, &Options::default()).unwrap();
     assert_eq!(c.php_version().id(), 80500);
     assert_eq!(c.show()["php"]["version"], "8.5");
-    assert_eq!(crate::PhpVersion::FLOOR.id(), 80400);
+    assert_eq!(crate::PhpVersion::FLOOR.id(), 80300);
     assert_eq!(crate::FormatPreset::Psr12.to_string(), "psr12");
 }
 

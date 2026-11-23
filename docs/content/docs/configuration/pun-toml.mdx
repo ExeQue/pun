@@ -56,11 +56,11 @@ exclude = ["tests/**"]
 
 | Key | Meaning |
 | --- | --- |
-| `[php] version` | The target PHP version, as `major.minor`. Default: the lowest version that `require.php` in `composer.json` allows, otherwise 8.4. Without this key, `pun analyse` uses `config.platform.php`, otherwise 8.5 |
+| `[php] version` | The target PHP version, as `major.minor`. Default: the lowest version that `require.php` in `composer.json` allows, otherwise 8.3. Rules for a newer PHP, such as the `php-8.4` lint group, run only when this version allows them. Without this key, `pun analyse` uses `config.platform.php`, otherwise 8.5 |
 | `[files] paths` | The paths to check when the command line gives none. A path outside the project, directly or through a symlink, is a config error |
 | `[files] exclude` | Exclusions for every command, added to each command's own `exclude` |
 
-A `require.php` that allows PHP below 8.4 is a config error. Pun never checks `vendor/` or dot folders such as `.git`.
+A `require.php` that allows PHP below 8.3 is a config error. Pun never checks `vendor/` or dot folders such as `.git`.
 
 An entry with `*`, `?`, `[`, or `{` is a glob from the project root. In these globs, `*` also matches `/`. For example, `storage/**` skips `storage`, not `app/storage`.
 
@@ -239,7 +239,7 @@ To run without a file, pass `--preset <name>` (`laravel`, `psr12`, or `empty`) o
 | `CI` | Makes `pun init` take the defaults without asking |
 | `GITHUB_ACTIONS=true` | Adds GitHub annotations after human output |
 | `PUN_AGENT`, `PAO_FORCE`, `PAO_DISABLE` | Turn [agent output](/docs/guides/coding-agents) on or off |
-| `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.4. Unsupported: results on older syntax are unchecked |
+| `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.3. Unsupported: results on older syntax are unchecked |
 | `PUN_PROFILE` | Prints the time of each stage on stderr |
 | `PUN_NO_CACHE=1` | Turns off the [result cache](/docs/commands/format#cache), like `--no-cache` |
 | `PUN_CACHE_DIR` | Cache for the [result cache](/docs/commands/format#cache), Blade's Prettier workers, [`pun x`](/docs/commands/x#manage-installs) installs, and the [package store](/docs/commands/install#package-store) |

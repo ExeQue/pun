@@ -7,11 +7,15 @@ pagination: false
 
 <RuleId id="format/operators/new-expression-parentheses" />
 
-Not in any preset. Safe fix.
+Not in any preset. Safe fix. Depends on `[php] version`.
 
 ## What it does
 
 All `new` expressions with a further call must (not) be wrapped in parentheses.
+
+### Why
+
+`new Foo()->bar()` without parentheses is PHP 8.4 syntax, so when `[php] version` is below 8.4 the rule runs only with `use-parentheses = true`, which adds them.
 
 ## Configuration
 

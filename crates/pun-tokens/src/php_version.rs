@@ -7,7 +7,7 @@ pub struct PhpVersion(u32);
 
 impl PhpVersion {
     /// The oldest PHP version Pun supports.
-    pub const FLOOR: PhpVersion = PhpVersion::new(8, 4);
+    pub const FLOOR: PhpVersion = PhpVersion::new(8, 3);
     /// The newest PHP version Pun knows.
     pub const NEWEST: PhpVersion = PhpVersion::new(8, 5);
 
