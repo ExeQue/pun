@@ -435,7 +435,7 @@ The rule mapping lists PHPStan identifiers. An exact identifier wins over a patt
 | Rule booleans and changed parameters | Rule on and off settings, and kebab-case options |
 | `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs. `[[analyse.ignore]]` entries keep the original identifier |
 
-Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#configuration).
+Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#what-happens).
 """,
         "mago": """`pun migrate` does not translate `mago.toml` yet. It reports the file as unsupported and leaves it alone. Pick the Pun rules by hand from the table.
 
