@@ -4193,6 +4193,15 @@ name, as `ConstantAccess` reads a global constant. An unknown name, or a name th
 the declared `mixed` (PHPStan gives `*ERROR*` for an unknown literal name). Guzzle's
 `(int) \constant('CURLOPT_SHARE')` is no `cast.int` at level 9 (`crates/pun-analyse/tests/constant_function.rs`).
 
+## (int) on an integer template
+
+`expression/unary.rs` `cast_type_to_int()` keeps a template whose bound is one integer type (`int`, a range or a
+literal), without intersections and not an unresolved template argument. TemplateIntegerType and
+TemplateConstantIntegerType inherit IntegerType::toInteger(), which returns `$this`; upstream made every template
+`int`. A `@template T of int|array<string, int>` method returning `is_array($v) ? $v : (int) $v` for `@return T` no
+longer reports `return.type` (dev-null `FathomAnalyticsProvider::count()`,
+`crates/pun-analyse/tests/int_cast_templates.rs`).
+
 ## Mago 1.61.0 changes rejected for PHPStan parity
 
 - `plugin/libraries/stdlib/closure/`: upstream's `ClosureFromCallableProvider` (1.59.0) is not registered, and its

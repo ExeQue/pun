@@ -92,6 +92,7 @@ mod initializer_holders;
 mod initializer_objects;
 mod instanceof_trait_descriptions;
 mod instantiation;
+mod int_cast_templates;
 mod interface_static;
 mod invalid_throws;
 mod isset_native_certainty;

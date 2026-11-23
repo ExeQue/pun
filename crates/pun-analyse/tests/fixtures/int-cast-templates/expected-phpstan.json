@@ -1,0 +1,45 @@
+{
+  "level": 10,
+  "errors": [
+    {
+      "line": 20,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: T of int (function App\\count(), argument)"
+    },
+    {
+      "line": 33,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: T of int (function App\\same(), argument)"
+    },
+    {
+      "line": 43,
+      "identifier": "generics.notSupportedBound",
+      "message": "PHPDoc tag @template T for function App\\positive() with bound type int<1, max> is not supported."
+    },
+    {
+      "line": 45,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: T of int<1, max> (function App\\positive(), argument)"
+    },
+    {
+      "line": 57,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: T of 5 (function App\\five(), argument)"
+    },
+    {
+      "line": 69,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: int"
+    },
+    {
+      "line": 71,
+      "identifier": "return.type",
+      "message": "Function App\\text() should return T of string but returns string."
+    },
+    {
+      "line": 81,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: int"
+    }
+  ]
+}

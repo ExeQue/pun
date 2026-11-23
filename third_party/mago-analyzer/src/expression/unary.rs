@@ -1853,6 +1853,14 @@ where
                 TAtomic::Scalar(TScalar::literal_int(1))
             }
             TAtomic::Never => return get_never(),
+            // TemplateIntegerType and TemplateConstantIntegerType keep IntegerType::toInteger(), which is $this
+            TAtomic::GenericParameter(parameter)
+                if parameter.intersection_types.is_none()
+                    && crate::template_arguments::as_marker(t).is_none()
+                    && matches!(parameter.constraint.types.as_ref(), [TAtomic::Scalar(TScalar::Integer(_))]) =>
+            {
+                t.clone()
+            }
             TAtomic::Scalar(scalar) => match scalar {
                 TScalar::Numeric | TScalar::ArrayKey => {
                     return get_int();
