@@ -38,7 +38,6 @@
           <button class="cmd-tab zap" type="button" role="tab" id="cmd-tab-format" aria-controls="cmd-format" aria-selected="true">format<i aria-hidden="true"></i></button>
           <button class="cmd-tab gum" type="button" role="tab" id="cmd-tab-lint" aria-controls="cmd-lint" aria-selected="false" tabindex="-1">lint<i aria-hidden="true"></i></button>
           <button class="cmd-tab lilac" type="button" role="tab" id="cmd-tab-analyse" aria-controls="cmd-analyse" aria-selected="false" tabindex="-1">analyse<i aria-hidden="true"></i></button>
-          <button class="cmd-tab mint" type="button" role="tab" id="cmd-tab-migrate" aria-controls="cmd-migrate" aria-selected="false" tabindex="-1">migrate<i aria-hidden="true"></i></button>
           <button class="cmd-tab cream" type="button" role="tab" id="cmd-tab-install" aria-controls="cmd-install" aria-selected="false" tabindex="-1">install<i aria-hidden="true"></i></button>
         </div>
       </div>
@@ -58,12 +57,6 @@
  16│         return $this-&gt;slugify();
    │         <span class="bad">━</span>
    ╰─</span><span class="step total" style="--i:2"><span class="bad">✖</span> 1 error</span></pre>
-<pre class="term-body" role="tabpanel" id="cmd-migrate" aria-labelledby="cmd-tab-migrate" tabindex="0" aria-hidden="true"><span class="cmdline"><span class="prompt">$</span> pun migrate</span><span class="step" style="--i:0"><span class="ok">✔</span> pint.json  → [format] preset laravel, 1 rule changed, 15 rules → [lint]</span><span class="step" style="--i:1"><span class="ok">✔</span> Wrote pun.toml</span><span class="step diff" style="--i:2"><span class="sub">pun.toml</span>
-[format]
-preset = "laravel"
-
-[format.rules]
-"operators/concat-spacing" = "one"</span></pre>
 <pre class="term-body" role="tabpanel" id="cmd-install" aria-labelledby="cmd-tab-install" tabindex="0" aria-hidden="true"><span class="cmdline"><span class="prompt">$</span> pun install</span><span class="step" style="--i:0">No composer.lock yet: resolving the dependencies to their latest versions</span><span class="step" style="--i:1">Lock changes:
  <span class="ok">+</span> brick/math 1.0.0
  <span class="ok">+</span> ramsey/collection 2.1.1
@@ -89,49 +82,6 @@ preset = "laravel"
    Call to an undefined method App\Models\Post::publsh().</span><span class="step total" style="--i:5"><span class="bad">✖</span> 2 errors</span></pre>
     </div>
     <p class="note">Example output from a small Laravel app.</p>
-  </section>
-
-  <!-- TOOLS: format, lint and analyse get the same weight -->
-  <section class="wrap sec">
-    <h2>Everything gets <span class="sticker gum">fast</span>.</h2>
-    <div class="trio four">
-      <a class="job zap" href="/docs/commands/format">
-        <div class="job-head"><h3>Format</h3><span class="tag">behavior-safe</span></div>
-        <p>Layout only. Fast enough to run on every save.</p>
-        <div class="mini"><span class="del">-$a = array( 1 );</span>
-<span class="add">+$a = [1];</span></div>
-        <span class="replaces">Replaces Pint and PHP-CS-Fixer</span>
-        <code>$ pun format</code>
-      </a>
-      <a class="job gum" href="/docs/commands/lint">
-        <div class="job-head"><h3>Lint</h3><span class="tag">you choose the fixes</span></div>
-        <p>Better ways to write the same code, applied only when you say so.</p>
-        <div class="mini"><span class="del">-$response-&gt;assertStatus(404);</span>
-<span class="add">+$response-&gt;assertNotFound();</span></div>
-        <span class="replaces">Replaces Rector, risky fixers and Mago</span>
-        <code>$ pun lint --fix</code>
-      </a>
-      <a class="job lilac" href="/docs/commands/analyse">
-        <div class="job-head"><h3>Analyse</h3><span class="tag">Larastan built in</span></div>
-        <p>Finds the bugs before your users do, with five presets in place of eleven levels.</p>
-        <div class="mini"><span class="dim">Post.php:18</span>
-<span class="hot">Undefined method Post::publsh()</span></div>
-        <span class="replaces">Replaces PHPStan and Larastan</span>
-        <code>$ pun analyse</code>
-      </a>
-      <a class="job mint" href="/docs/commands/install">
-        <div class="job-head"><h3>Install</h3><span class="tag">Composer-compatible</span></div>
-        <p>A package manager for Packagist, built for speed: parallel downloads, a shared cache and an instant no-op install.</p>
-        <div class="mini"><span class="dim">$ pun require laravel/framework</span>
-<span class="add">+ vendor/ installed</span></div>
-        <span class="replaces">Replaces Composer</span>
-        <code>$ pun install</code>
-      </a>
-    </div>
-    <div class="duo">
-      <a class="strip" href="/docs/commands/check"><h3>Check</h3><p>All three in one pass. With --fix it applies lint fixes, formats, then analyses what is left.</p><code>$ pun check --fix</code></a>
-      <a class="strip" href="/docs/commands/migrate"><h3>Migrate</h3><p>pint.json, phpstan.neon and rector.php become one pun.toml, and it names anything it skips.</p><code>$ pun migrate</code></a>
-    </div>
   </section>
 
   <!-- SPEED: copy only, no figures -->
