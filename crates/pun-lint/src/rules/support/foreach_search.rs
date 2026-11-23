@@ -5,6 +5,7 @@ use mago_syntax::cst::{
 
 use crate::Context;
 use crate::rules::support::expressions::{equal, is_constant, operand, text};
+use crate::rules::support::phpdoc_writer::native_expr_type;
 use crate::rules::support::statement_edits::replace_run;
 use crate::rules::support::statement_edits::{List, body_list, expression, holder_list, if_view};
 use crate::rules::support::values::is_native_array;
@@ -79,6 +80,15 @@ fn parts<'a>(ctx: &Context<'_>, foreach: &'a Foreach<'a>) -> Option<Loop<'a>> {
         condition: view.condition,
         body: view.stmts.stmts.clone(),
     })
+}
+
+/// Rector's `getNativeType($foreach->expr)->isArray()->yes()`: an array the code shows (a hint, a literal), or a
+/// native type that is an array, such as `$this->items()` of a method declared `: array`. A variable keeps the first
+/// test only: Pun/any_referenced leaves one with a reference alias alone.
+fn array_subject(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], l: &Loop<'_>, at: usize) -> bool {
+    is_native_array(ancestors, l.subject, at)
+        || (!matches!(l.subject, Expression::Variable(_))
+            && native_expr_type(ctx, l.subject).is_some_and(|t| t.is_array().yes()))
 }
 
 fn is_variable(expr: &Expression<'_>) -> bool {
@@ -201,7 +211,7 @@ fn valid_assignment(
         Kind::Find => equal(ctx, a.rhs, l.value),
         Kind::FindKey => equal(ctx, a.rhs, l.key.unwrap()),
     };
-    found && is_native_array(ancestors, l.subject, node_span(foreach).start)
+    found && array_subject(ctx, ancestors, l, node_span(foreach).start)
 }
 
 fn early_return_pattern(
@@ -233,7 +243,7 @@ fn early_return_pattern(
         };
         if !r.value.is_some_and(|v| is_constant(v, inside))
             || !is_variable(l.value)
-            || !is_native_array(ancestors, l.subject, node_span(foreach).start)
+            || !array_subject(ctx, ancestors, &l, node_span(foreach).start)
         {
             continue;
         }
