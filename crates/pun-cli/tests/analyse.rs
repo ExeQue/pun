@@ -9,16 +9,14 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const FORMATS: [&str; 9] = [
+const FORMATS: [&str; 7] = [
     "raw",
     "json",
-    "prettyJson",
     "checkstyle",
     "junit",
     "gitlab",
     "github",
     "teamcity",
-    "table",
 ];
 
 const ERRORS: &str = "<?php\n\nnamespace App;\n\nfunction f(): void\n{\n    undefined_fn();\n    new Missing();\n}\n\nclass B\n{\n    public function g(): void\n    {\n        $this->nope();\n    }\n}\n";
@@ -218,11 +216,18 @@ fn formats_match_phpstan_dumps() {
     );
 }
 
+/// PHPStan's `table` and `prettyJson` are not Pun formats.
 #[test]
 fn unknown_format_is_a_run_error() {
     let d = sample("unknown", CLEAN);
-    let (out, code) = run(&d, &[PUN, "analyse"], &["--format=nope"]);
-    assert_eq!((out.as_str(), code), ("", Some(2)));
+    for format in [
+        "--format=nope",
+        "--format=table",
+        "--error-format=prettyJson",
+    ] {
+        let (out, code) = run(&d, &[PUN, "analyse"], &[format]);
+        assert_eq!((out.as_str(), code), ("", Some(2)), "{format}");
+    }
 }
 
 #[test]
@@ -688,7 +693,7 @@ fn run_errors_exit_2() {
 }
 
 #[test]
-fn table_and_teamcity_match_phpstan() {
+fn teamcity_matches_phpstan() {
     let Some(phar) = phpstan() else { return };
     let phar = phar.to_str().unwrap();
     let outside = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -756,31 +761,20 @@ fn table_and_teamcity_match_phpstan() {
             format!("[analyse]\npaths = [\"{paths}\"]\n"),
         )
         .unwrap();
-        for f in ["table", "teamcity"] {
-            for columns in ["80", "40"] {
-                let format = format!("--error-format={f}");
-                let with = |program: &[&str]| {
-                    let out = clean_env(&mut Command::new(program[0]), &["PATH", "HOME"])
-                        .current_dir(&d)
-                        .env("COLUMNS", columns)
-                        .env("PUN_AGENT", "0")
-                        .args(&program[1..])
-                        .arg(&format)
-                        .output()
-                        .unwrap();
-                    (String::from_utf8(out.stdout).unwrap(), out.status.code())
-                };
-                let want = with(&[
-                    "php",
-                    phar,
-                    "analyse",
-                    "--no-progress",
-                    "-c",
-                    "phpstan.neon",
-                ]);
-                assert_eq!(with(&[PUN, "analyse"]), want, "{name} {f} {columns}");
-            }
-        }
+        let format = ["--error-format=teamcity"];
+        let want = run(
+            &d,
+            &[
+                "php",
+                phar,
+                "analyse",
+                "--no-progress",
+                "-c",
+                "phpstan.neon",
+            ],
+            &format,
+        );
+        assert_eq!(run(&d, &[PUN, "analyse"], &format), want, "{name}");
     }
 }
 
@@ -943,10 +937,10 @@ fn no_rules_detected() {
 }
 
 /// PHPStan's fixable errors (a named argument to a `@no-named-arguments` function, at level 5 and the
-/// `recommended` preset): the table's 🔧 lines for the reported and the ignored ones, byte for byte with PHPStan on
-/// the same ignoreErrors.
+/// `recommended` preset): json's `"fixable": true` on the reported ones, byte for byte with PHPStan on the same
+/// ignoreErrors.
 #[test]
-fn fixable_ignored_errors_match_phpstan() {
+fn fixable_errors_match_phpstan() {
     let Some(phar) = phpstan() else { return };
     let phar = phar.to_str().unwrap();
     let named = |f: &str, n: &str| {
@@ -981,10 +975,15 @@ fn fixable_ignored_errors_match_phpstan() {
             "-c",
             "phpstan.neon",
         ];
-        let want = run(&d, &phpstan, &["--error-format=table"]);
-        assert!(want.0.contains("--fix-ignored"), "{}", want.0);
+        let want = run(&d, &phpstan, &["--error-format=json"]);
         assert_eq!(
-            run(&d, &[PUN, "analyse"], &["--error-format=table"]),
+            want.0.contains("\"fixable\":true"),
+            name == "both",
+            "{}",
+            want.0
+        );
+        assert_eq!(
+            run(&d, &[PUN, "analyse"], &["--error-format=json"]),
             want,
             "{name}"
         );
@@ -1063,10 +1062,9 @@ fn report_unmatched_false_reports_no_unmatched_ignores() {
 }
 
 /// `-q` prints nothing and keeps the exit code, as PHPStan 2.3.6's `analyse -q` (no output with the table and json
-/// formats, under `CLAUDECODE=1`, and with `--generate-baseline`, which exits 0). `--memory-limit`, which PHPStan
-/// scripts pass, is accepted and changes nothing.
+/// formats, under `CLAUDECODE=1`, and with `--generate-baseline`, which exits 0).
 #[test]
-fn quiet_prints_nothing_and_memory_limit_is_accepted() {
+fn quiet_prints_nothing() {
     let d = sample("quiet", ERRORS);
     let none = (String::new(), String::new());
     let agent: &[(&str, &str)] = &[("PUN_AGENT", "1")];
@@ -1074,8 +1072,6 @@ fn quiet_prints_nothing_and_memory_limit_is_accepted() {
         (&["-q"][..], &[][..]),
         (&["--quiet", "--format=json"], &[]),
         (&["-q"], agent),
-        (&["-q", "--memory-limit=2G"], &[]),
-        (&["-q", "--memory-limit=-1"], &[]),
     ] {
         let (out, err, code) = pun(&d, args, env);
         assert_eq!(((out, err), code), (none.clone(), Some(1)), "{args:?}");
@@ -1083,8 +1079,4 @@ fn quiet_prints_nothing_and_memory_limit_is_accepted() {
     let (out, err, code) = pun(&d, &["-q", "--generate-baseline"], agent);
     assert_eq!(((out, err), code), (none, Some(0)));
     assert!(d.join("pun-baseline.toml").exists());
-    std::fs::remove_file(d.join("pun-baseline.toml")).unwrap();
-    let raw = pun(&d, &["--format=raw"], &[]);
-    assert_eq!(raw.2, Some(1));
-    assert_eq!(pun(&d, &["--format=raw", "--memory-limit", "-1"], &[]), raw);
 }

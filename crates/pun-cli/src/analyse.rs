@@ -22,7 +22,7 @@ pub(crate) struct AnalyseArgs {
     /// The configuration that should be used.
     #[arg(long)]
     config: Option<PathBuf>,
-    /// PHPStan's error formats: table, raw, json, prettyJson, checkstyle, junit, gitlab, github, teamcity.
+    /// PHPStan's error formats: raw, json, checkstyle, junit, gitlab, github, teamcity.
     #[arg(long, alias = "error-format", value_name = "FORMAT")]
     format: Option<String>,
     /// Write every error to the baseline (`[analyse] baseline`, else pun-baseline.toml) and exit 0.
@@ -47,9 +47,6 @@ pub(crate) struct AnalyseArgs {
     /// Color the output: auto, always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
-    /// Accepted and ignored, so `phpstan analyse --memory-limit=2G` scripts run: Pun has no PHP memory limit.
-    #[arg(long, value_name = "LIMIT", allow_hyphen_values = true)]
-    memory_limit: Option<String>,
     /// `GITHUB_ACTIONS=true`: human output gets GitHub annotations after it.
     #[arg(skip)]
     pub(crate) github_actions: bool,
@@ -119,16 +116,12 @@ pub(crate) struct Analysed {
     pub(crate) findings: Vec<Finding>,
     /// PHPStan's not-file-specific errors: `[[analyse.ignore]]` entries without a file path nothing matched.
     pub(crate) general: Vec<String>,
-    /// PHPStan's `getFixableIgnoredErrors()` count.
-    pub(crate) fixable_ignored: usize,
     /// The files analysed.
     pub(crate) files: usize,
     /// Baseline entries (counts) no error matched any more.
     pub(crate) unmatched_baseline: usize,
     /// `@pun-ignore` comments without a rule ID, as problems (`ignore-comment`).
     pub(crate) malformed: Vec<Problem>,
-    /// The analysed paths (absolute): the path arguments, else the configured paths, else the root.
-    pub(crate) paths: Vec<PathBuf>,
 }
 
 /// The syntax errors the engine did not report. It translates few of them into PHPParser's wording, and would
@@ -355,11 +348,9 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
     Ok(Analysed {
         findings,
         general,
-        fixable_ignored: if severe { 0 } else { analysis.fixable_ignored },
         files: count,
         unmatched_baseline,
         malformed,
-        paths,
     })
 }
 
@@ -484,10 +475,7 @@ fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant)
         Some(format) => {
             let cx = analyse_report::Context {
                 verbose: a.verbose > 0 || agent::enabled(),
-                root,
-                paths: &analysed.paths,
                 general: &analysed.general,
-                fixable_ignored: analysed.fixable_ignored,
                 config: cfg.pun_toml().map(|s| relative(root, s)),
             };
             print!(

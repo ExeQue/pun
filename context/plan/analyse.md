@@ -97,8 +97,8 @@ The groups are the topic groups (config.md Build 1), so `undefined/method` and `
 | `-c phpstan.neon` | `--config pun.toml`; phpstan.neon is read only by `pun migrate` |
 | `-l 6` | `[analyse] preset = "strict"` in pun.toml (no levels) |
 | `--generate-baseline` | `pun analyse --generate-baseline` (writes pun-baseline.toml) |
-| `--error-format=json/prettyJson/table/github/gitlab/checkstyle/junit/raw/teamcity` | `--format` (or `--error-format`), the same formats |
-| `--memory-limit` | accepted and ignored |
+| `--error-format=json/github/gitlab/checkstyle/junit/raw/teamcity` | `--format` (or `--error-format`), the same formats; no `table` or `prettyJson` (PLAN.md §2, 2026-11-23) |
+| `--memory-limit` | not needed: Pun has no PHP memory limit (removed 2026-11-23) |
 | `--xdebug`, `--debug` | not needed |
 | `clear-result-cache` | not needed: analyse has no result cache (format and lint have one, PLAN.md §1) |
 | `--pro`, `--watch` | no `--watch` on `pun analyse` yet (`pun format --watch` has one) |

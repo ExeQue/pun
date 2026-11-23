@@ -29,7 +29,6 @@ mod run;
 #[cfg(feature = "pprof")]
 mod sampler;
 mod self_update;
-mod table;
 mod update;
 mod watch;
 mod workspace;

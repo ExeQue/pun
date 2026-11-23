@@ -120,16 +120,15 @@ Non-ignorable errors, such as a duplicate parameter, stay visible even when an i
 | Flag | What it does |
 | --- | --- |
 | `--config <path>` | Read another `pun.toml`. |
-| `--format`, `--error-format` | `table`, `raw`, `json`, `prettyJson`, `checkstyle`, `junit`, `gitlab`, `github`, or `teamcity`. |
+| `--format`, `--error-format` | `raw`, `json`, `checkstyle`, `junit`, `gitlab`, `github`, or `teamcity`. Pun doesn't have PHPStan's `table` and `prettyJson` formats. |
 | `--generate-baseline [<file>]` | Write every error to the baseline and exit 0. |
 | `--concise` | Print one line per finding. |
 | `-v` | Add identifiers to `raw` output. |
 | `-q`, `--quiet` | Print nothing, also with `--format` or under a coding agent. The exit code still reports the result, as in PHPStan. |
 | `--color=auto\|always\|never` | Color mode. |
 | `--max-processes=N` | Cap worker threads. Default: one per core. |
-| `--memory-limit=<limit>` | Accepted and ignored, so scripts that call `phpstan analyse --memory-limit=2G` keep working. Pun has no PHP memory limit. |
 
-`json` and `prettyJson` add `"fixable": true` to errors that PHPStan's `--fix` can fix. `table` marks them with 🔧 and counts them, plus ignored errors that `--fix-ignored` can fix. Pun doesn't fix them.
+`json` adds `"fixable": true` to errors that PHPStan's `--fix` can fix. Pun doesn't fix them.
 
 ## Exit codes
 

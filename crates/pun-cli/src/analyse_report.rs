@@ -5,17 +5,13 @@
 //! a not-file-specific error). PHPStan's warnings have no Pun counterpart.
 
 use crate::analyse::Finding;
-use crate::console;
 use anyhow::{Result, bail};
 use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
-use std::path::{Path, PathBuf};
 
-pub(crate) const FORMATS: [&str; 9] = [
-    "table",
+pub(crate) const FORMATS: [&str; 7] = [
     "raw",
     "json",
-    "prettyJson",
     "checkstyle",
     "junit",
     "gitlab",
@@ -25,10 +21,7 @@ pub(crate) const FORMATS: [&str; 9] = [
 
 pub(crate) struct Context<'a> {
     pub(crate) verbose: bool,
-    pub(crate) root: &'a Path,
-    pub(crate) paths: &'a [PathBuf],
     pub(crate) general: &'a [String],
-    pub(crate) fixable_ignored: usize,
     pub(crate) config: Option<String>,
 }
 
@@ -36,14 +29,12 @@ pub(crate) fn render(format: &str, findings: &[Finding], cx: &Context) -> Result
     let (verbose, general) = (cx.verbose, cx.general);
     Ok(match format {
         "raw" => raw(findings, general, verbose),
-        "json" => json(findings, general, false),
-        "prettyJson" => json(findings, general, true),
+        "json" => json(findings, general),
         "checkstyle" => checkstyle(findings, general),
         "junit" => junit(findings, general),
         "gitlab" => gitlab(findings, general),
         "github" => github(findings, general),
         "teamcity" => teamcity(findings, general, cx.config.as_deref()),
-        "table" => table(findings, cx, console::width()),
         _ => bail!(
             "Error formatter \"{format}\" not found. Available error formatters are: {}",
             FORMATS.join(", ")
@@ -85,7 +76,7 @@ fn encode(value: &serde_json::Value, pretty: bool) -> String {
         .replace('\u{2029}', "\\u2029")
 }
 
-fn json(findings: &[Finding], general: &[String], pretty: bool) -> String {
+fn json(findings: &[Finding], general: &[String]) -> String {
     use serde_json::{Map, Value, json};
     let mut files = Map::new();
     for f in findings {
@@ -114,7 +105,7 @@ fn json(findings: &[Finding], general: &[String], pretty: bool) -> String {
         "files": files,
         "errors": general,
     });
-    encode(&value, pretty)
+    encode(&value, false)
 }
 
 fn xml(text: &str) -> String {
@@ -290,107 +281,4 @@ fn teamcity(findings: &[Finding], general: &[String], config: Option<&str>) -> S
         );
     }
     out
-}
-
-fn table(findings: &[Finding], cx: &Context, width: usize) -> String {
-    let style = crate::table::Style::new(width);
-    let errors = |n: usize| if n == 1 { "error" } else { "errors" };
-    let fixable_ignored = match cx.fixable_ignored {
-        0 => String::new(),
-        n => format!(
-            "🔧 {n} ignored {} can be fixed automatically. Run PHPStan again with --fix-ignored.\n\n",
-            errors(n)
-        ),
-    };
-    if findings.is_empty() && cx.general.is_empty() {
-        return style.block("OK", "No errors", 0) + &fixable_ignored;
-    }
-    let mut out = String::new();
-    let files = by_file(findings, |f| &f.rel);
-    let mut tables = files.len();
-    for (_, list) in files {
-        let rows: Vec<[String; 2]> = list
-            .iter()
-            .map(|f| {
-                let fix = if f.fixable { " 🔧" } else { "" };
-                let mut message = format!("{}{fix}\n🪪  {}", f.message, f.identifier);
-                if !f.ignorable() {
-                    message.push_str(" (non-ignorable)");
-                }
-                if let Some(tip) = &f.tip {
-                    let _ = write!(message, "\n💡  {tip}");
-                }
-                [line(f), message]
-            })
-            .collect();
-        let shown = fuzzy_relative(cx.root, cx.paths, &list[0].file);
-        out.push_str(&style.table(["Line", &shown], &rows));
-    }
-    if !cx.general.is_empty() {
-        let rows: Vec<[String; 2]> = (cx.general.iter())
-            .map(|g| [String::new(), g.clone()])
-            .collect();
-        out.push_str(&style.table(["", "Error"], &rows));
-        tables += 1;
-    }
-    let n = findings.len() + cx.general.len();
-    let found = if n == 1 {
-        "Found 1 error".to_string()
-    } else {
-        format!("Found {n} errors")
-    };
-    out.push_str(&style.block("ERROR", &found, tables));
-    let fixable = findings.iter().filter(|f| f.fixable).count();
-    if fixable > 0 {
-        let _ = writeln!(
-            out,
-            "🔧 {fixable} {} can be fixed automatically. Run PHPStan again with --fix.",
-            errors(fixable)
-        );
-        if cx.fixable_ignored == 0 {
-            out.push('\n');
-        }
-    }
-    out + &fixable_ignored
-}
-
-#[expect(
-    clippy::case_sensitive_file_extension_comparisons,
-    reason = "PHPStan's FuzzyRelativePathHelper compares `.php` byte for byte"
-)]
-fn fuzzy_relative(root: &Path, paths: &[PathBuf], file: &Path) -> String {
-    let parts = |p: &Path| -> Vec<String> {
-        let s = p.to_string_lossy();
-        s.trim_start_matches('/')
-            .split('/')
-            .map(str::to_string)
-            .collect()
-    };
-    let mut trim: Option<Vec<String>> = (root.as_os_str() != "/").then(|| parts(root));
-    for (n, path) in paths.iter().enumerate() {
-        let path_parts = parts(path);
-        let mut temp: Vec<String> = vec![];
-        let size = path_parts.len();
-        for (i, part) in path_parts.iter().enumerate() {
-            if i == size - 1 && part.ends_with(".php") {
-                continue;
-            }
-            match trim.as_ref().and_then(|t| t.get(i)) {
-                None if n != 0 => break,
-                Some(t) if t != part => break,
-                _ => temp.push(part.clone()),
-            }
-        }
-        trim = Some(temp);
-    }
-    let file = file.to_string_lossy();
-    let prefix = trim
-        .filter(|t| !t.is_empty())
-        .map(|t| format!("/{}", t.join("/")));
-    if let Some(rest) = prefix.as_deref().and_then(|p| file.strip_prefix(p)) {
-        return rest.trim_start_matches('/').to_string();
-    }
-    file.strip_prefix(&format!("{}/", root.display()))
-        .unwrap_or(&file)
-        .to_string()
 }
