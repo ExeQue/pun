@@ -85,6 +85,39 @@ fn remove_matches_composer() {
     assert_eq!(code, Some(0), "{err}");
 }
 
+/// Removing a package another one requires: Composer 2.11.2 writes the lock (acme/lib moves to packages-dev, as
+/// acme/tools needs it), keeps the edit of composer.json, and exits 2 because acme/lib is still installed.
+#[test]
+fn removing_a_required_package_fails_as_composer() {
+    let d = fixture("remove-lib");
+    let (out, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    let (out, err, code) = pun(&d, &["remove", "acme/lib"]);
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert!(
+        err.contains("acme/lib is still installed: another package may require it"),
+        "{err}"
+    );
+    assert_eq!(
+        read(&d, "composer.json"),
+        expected("remove-lib.composer.json")
+    );
+    assert_eq!(
+        read(&d, "composer.lock"),
+        expected("remove-lib.composer.lock")
+    );
+    assert!(d.join("vendor/acme/lib").exists());
+    // Again: acme/lib is no longer required, but Composer still updates and fails on it; with --no-update it exits 0.
+    let (out, err, code) = pun(&d, &["remove", "acme/lib"]);
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert_eq!(
+        read(&d, "composer.lock"),
+        expected("remove-lib.composer.lock")
+    );
+    let (out, err, code) = pun(&d, &["remove", "acme/lib", "--no-update"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+}
+
 #[test]
 fn require_edits_composer_json() {
     let d = fixture("require");

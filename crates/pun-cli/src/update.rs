@@ -579,8 +579,13 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<Exit> {
             eprintln!(" ! {pattern} is not required, so there is nothing to remove");
         }
     }
+    // Composer still updates when nothing was required, so a named package another one requires fails the same way.
     if removed.is_empty() {
-        return Ok(Exit::Success);
+        return if a.no_update {
+            Ok(Exit::Success)
+        } else {
+            still_installed(&project, &a.packages)
+        };
     }
     let file = target.file(&project);
     if a.no_update {
@@ -612,5 +617,28 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<Exit> {
         text,
         original: target.original,
     };
-    finish(&mut project, &plan, &a.install, started, lock, Some(edit))
+    let code = finish(&mut project, &plan, &a.install, started, lock, Some(edit))?;
+    if code != Exit::Success {
+        return Ok(code);
+    }
+    still_installed(&project, &a.packages)
+}
+
+/// As `RemoveCommand`: a named package that is still installed, because another package requires it, fails the
+/// command with exit 2, and composer.json keeps the edit.
+fn still_installed(project: &Project, packages: &[String]) -> Result<Exit> {
+    let base = project.root.to_string_lossy();
+    let vendor = pun_packages::install::dirs(&base, &project.manifest).vendor;
+    let installed = pun_packages::installed::read_installed(Path::new(&vendor))?;
+    for name in packages.iter().map(|p| p.to_ascii_lowercase()) {
+        if installed.iter().any(|p| p.name() == name) {
+            let look = Look::stderr(ColorChoice::Auto);
+            let cross = look.paint(Role::Error, look.glyph("✖", "x"));
+            eprintln!(
+                "{cross} {name} is still installed: another package may require it, so it was not removed"
+            );
+            return Ok(Exit::RunError);
+        }
+    }
+    Ok(Exit::Success)
 }

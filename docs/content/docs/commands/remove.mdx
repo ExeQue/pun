@@ -26,4 +26,4 @@ Pun edits `composer.json` only after the requirements resolve. If the install fa
 | Code | When |
 | --- | --- |
 | 0 | Removed and installed |
-| 2 | No `composer.json`, unresolvable requirements, a failed repository, or a failed install |
+| 2 | No `composer.json`, unresolvable requirements, a failed repository, a failed install, or a removed package that is still installed because another package requires it (`composer.json` keeps the edit, as with Composer) |
