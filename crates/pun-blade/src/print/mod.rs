@@ -2,6 +2,8 @@
 
 mod directive;
 mod embed;
+mod oxc;
+mod srcset;
 mod tag;
 mod text;
 pub(crate) mod utils;

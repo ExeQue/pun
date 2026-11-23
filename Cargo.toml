@@ -8,6 +8,8 @@ mago-analyzer = { path = "third_party/mago-analyzer" }
 mago-codex = { path = "third_party/mago-codex" }
 mago-syntax = { path = "third_party/mago-syntax" }
 mago-phpdoc-syntax = { path = "third_party/mago-phpdoc-syntax" }
+# oxc's own crates.io dependencies (its CSS parser) share the allocator from the same oxc checkout, as oxc patches them.
+oxc_allocator = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 
 [workspace.package]
 version = "0.3.0"
@@ -29,6 +31,13 @@ pun-lint = { path = "crates/pun-lint", package = "punphp-lint" }
 pun-packages = { path = "crates/pun-packages", package = "punphp-packages" }
 pun-phpstan = { path = "crates/pun-phpstan", package = "punphp-phpstan" }
 pun-tokens = { path = "crates/pun-tokens", package = "punphp-tokens" }
+
+# pun-blade: the native Blade formatter's embedded JS and CSS (oxfmt's formatters, not on crates.io)
+oxc_allocator = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+oxc_formatter = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+oxc_formatter_core = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+oxc_formatter_css = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+oxc_span = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 
 # Env-only: the default `process-tree` feature (sysinfo) adds ~12 ms per start and finds agents up the process tree.
 agent-detector = { version = "=0.2.1", default-features = false }
