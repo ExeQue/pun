@@ -1,0 +1,40 @@
+{
+  "level": 9,
+  "errors": [
+    {
+      "line": 14,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: 10100"
+    },
+    {
+      "line": 15,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: 4|8"
+    },
+    {
+      "line": 16,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: 'x'"
+    },
+    {
+      "line": 17,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: 3"
+    },
+    {
+      "line": 18,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: 3"
+    },
+    {
+      "line": 19,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: mixed"
+    },
+    {
+      "line": 21,
+      "identifier": "cast.int",
+      "message": "Cannot cast mixed to int."
+    }
+  ]
+}

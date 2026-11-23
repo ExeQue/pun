@@ -62,6 +62,9 @@ pub(super) fn registry(
     registry.register_function_provider(super::array_column::ArrayColumn);
     registry.register_function_provider(ParseUrl);
     registry.register_function_provider(MinMax);
+    registry.register_function_provider(
+        mago_analyzer::plugin::libraries::stdlib::constant::ConstantProvider,
+    );
     let builtins = BuiltinFunctions::default();
     registry.register_function_call_hook(builtins.clone());
     registry.register_function_provider(builtins);

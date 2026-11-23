@@ -2,6 +2,7 @@
 
 pub mod array;
 pub mod closure;
+pub mod constant;
 pub mod cookie;
 pub mod r#enum;
 pub mod exception;

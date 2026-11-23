@@ -42,6 +42,7 @@ mod compound_signature_channels;
 mod conditional_type_correlation;
 mod config_shape_offsets;
 mod constant_foreach;
+mod constant_function;
 mod constant_initializers;
 mod constant_overrides;
 mod conversion_dependencies;

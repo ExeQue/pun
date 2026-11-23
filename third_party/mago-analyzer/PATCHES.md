@@ -4184,6 +4184,15 @@ removed every class that declares `m`, so `$p` of an abstract class declaring `f
 `instanceof.alwaysTrue` and `deadCode.unreachable` after it. The negated `HasMethod` assertion now keeps the type,
 as the negated `HasProperty` one already did (`crates/pun-analyse/tests/method_exists_false.rs`).
 
+## constant()
+
+`plugin/libraries/stdlib/constant.rs`: PHPStan's ConstantFunctionReturnTypeExtension, registered in pun-analyse's
+registry (`rules/return_types.rs`), not in `StdlibPlugin`. `constant('NAME')` and
+`constant('Class::NAME')` with literal names have the union of those constants' types, read by the fully qualified
+name, as `ConstantAccess` reads a global constant. An unknown name, or a name that is not a literal string, keeps
+the declared `mixed` (PHPStan gives `*ERROR*` for an unknown literal name). Guzzle's
+`(int) \constant('CURLOPT_SHARE')` is no `cast.int` at level 9 (`crates/pun-analyse/tests/constant_function.rs`).
+
 ## Mago 1.61.0 changes rejected for PHPStan parity
 
 - `plugin/libraries/stdlib/closure/`: upstream's `ClosureFromCallableProvider` (1.59.0) is not registered, and its
