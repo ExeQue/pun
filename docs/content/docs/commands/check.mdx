@@ -1,33 +1,39 @@
 ---
 title: pun check
-description: Format, lint, and analyse in one run. Apply format and lint fixes with --fix.
+description: Run format, lint and analyse together.
 ---
 
-`pun check` runs format, lint, and analyse in one pass. It reports findings without editing files. `--fix` applies format and lint fixes, except for rules with `fix = "off"`. Analysis never edits files.
+Run format, lint and analyse in one go. Use `--fix` to apply the format and lint fixes.
+
+## Usage
 
 ```bash
-pun check
-pun check --fix
+pun check [paths] [options]
 ```
 
-To apply a migrated Pint config, run `pun check --fix`, not `pun format`. Pint's risky and code-deleting fixers are lint rules.
-
-## Options
-
-`pun check` takes the [format flags](/docs/commands/format#pints-flags) and the [lint level flags](/docs/commands/lint#levels-on-the-command-line). Analysis uses the `[analyse]` settings, ignore comments, and the configured baseline.
-
-Format and lint use the [result cache](/docs/commands/format#cache). Analysis checks every file on every run. `--no-cache` turns the cache off.
-
 ```bash
-pun check --dirty
-pun check --staged
-pun check --deny-warnings
+pun check               # report only
+pun check --fix         # apply format and lint fixes
+pun check --dirty       # only changed files
 pun check --format=github
 ```
 
-## Output
+## Options
 
-```
+| Option | Description |
+| --- | --- |
+| `--fix` | Apply format and lint fixes. Analyse never edits files. |
+| `--concise` | One line per problem. |
+
+Check also takes the options of [`pun format`](/docs/commands/format#options) and [`pun lint`](/docs/commands/lint#options).
+
+## What happens
+
+- Runs format, then lint, then analyse.
+- Prints the results grouped by command, then one summary line.
+- Without `--fix`, changes nothing.
+
+```text
 $ pun check
 ✔  format    All files formatted
 ✖   lint     2 errors in 1 file · 1 fixable
@@ -43,14 +49,10 @@ $ pun check
 ✖ 3 errors · 1 fixable (run pun check --fix)
 ```
 
-`--concise` prints one line per problem. For PHPStan-compatible reports, use [`pun analyse`](/docs/commands/analyse).
-
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
-| 0 | No remaining errors or format changes |
-| 1 | Format changes, lint errors, analysis errors, or a warning limit exceeded |
-| 2 | Pun could not run |
-
-To run `pun check` on every push, see the [CI guide](/docs/guides/ci).
+| 0 | No errors and nothing to format. |
+| 1 | Files to format, lint errors, analyse errors, or too many warnings. |
+| 2 | Pun could not run. |

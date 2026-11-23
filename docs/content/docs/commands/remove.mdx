@@ -1,29 +1,39 @@
 ---
 title: pun remove
-description: Remove packages from composer.json, then update and install.
+description: Remove a package.
 ---
+
+Remove a package from `composer.json`, then update and install. Also runs as `pun rm`.
+
+## Usage
+
+```bash
+pun remove <packages> [options]
+```
 
 ```bash
 pun remove laravel/sanctum
 pun rm 'spatie/*'
 ```
 
-`pun remove` deletes packages from `require` or `require-dev`, then runs [`pun update`](/docs/commands/update). Packages that nothing else needs leave the lock and `vendor/`. `pun rm` is an alias.
-
-Pun edits `composer.json` only after the requirements resolve. If the install fails, Pun restores `composer.json` and `composer.lock`.
-
 ## Options
 
-| Option | Effect |
+| Option | Description |
 | --- | --- |
-| `--no-update` | Edit `composer.json` only, without resolving or installing |
-| `-p`, `--package=MEMBER` | Edit this [workspace](/docs/guides/workspaces) member's `composer.json` |
+| `--no-update` | Only edit `composer.json`. |
+| `-p`, `--package=<member>` | Edit this [workspace](/docs/guides/workspaces) member. |
 
-`pun remove` also takes the [`pun update`](/docs/commands/update#options) options except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option.
+Remove also takes the [`pun update`](/docs/commands/update#options) options (except `--dry-run`) and the [`pun install`](/docs/commands/install#options) options.
+
+## What happens
+
+- Removes the package from `require` or `require-dev`.
+- Runs `pun update`, so unused packages leave the lock and `vendor/`.
+- If the install fails, restores `composer.json` and `composer.lock`.
 
 ## Exit codes
 
-| Code | When |
+| Code | Meaning |
 | --- | --- |
-| 0 | Removed and installed |
-| 2 | No `composer.json`, unresolvable requirements, a failed repository, a failed install, or a removed package that is still installed because another package requires it (`composer.json` keeps the edit, as with Composer) |
+| 0 | Removed and installed. |
+| 2 | No `composer.json`, a failed install, or another package still needs it. |

@@ -1,18 +1,47 @@
 ---
 title: pun lint
-description: Report code issues and apply fixes with --fix.
+description: Find code that could be written better.
 ---
 
-`pun lint` reports the problems that the `[lint]` rules find, without editing files. `--fix` applies the available fixes. Lint doesn't format the result, so run [`pun check --fix`](/docs/commands/check) to do both.
+Find code that could be written better. Use `--fix` to apply the fixes.
+
+## Usage
 
 ```bash
-pun lint
-pun lint --fix
+pun lint [paths] [options]
 ```
 
-## Configure rules
+```bash
+pun lint                         # report problems
+pun lint --fix                   # apply fixes
+pun lint -A lint/style           # turn a group off for this run
+pun lint --max-warnings 10       # fail on more than 10 warnings
+```
 
-A rule takes a level, or a table with a level, a fix setting, and the rule's options:
+## Options
+
+| Option | Description |
+| --- | --- |
+| `--fix` | Apply the fixes. Skips rules with `fix = "off"`. |
+| `-A`, `--allow <rule>` | Turn a rule or group off. |
+| `-W`, `--warn <rule>` | Turn a rule or group on as a warning. |
+| `-D`, `--deny <rule>` | Turn a rule or group on as an error. |
+| `--deny-warnings` | Fail on any warning. |
+| `--max-warnings <n>` | Fail on more than `n` warnings. |
+| `--concise` | One line per problem. |
+| `--format=<fmt>` | Report as `json`, `checkstyle`, `junit`, `gitlab`, `github` or `agent`. |
+| `--no-cache` | Check every file again. |
+| `-q` | Print nothing. The exit code gives the result. |
+
+Lint also takes the file options of [`pun format`](/docs/commands/format#options), such as `--dirty`, `--staged` and `--diff`.
+
+## What happens
+
+- Reads the `[lint]` sets and rules from `pun.toml`.
+- Checks each file and prints the problems.
+- With `--fix`, edits the files. It does not format them, so use `pun check --fix` for both.
+- Only `error` rules fail the run. `warn` rules only report.
+- Skips Blade, `vendor/`, `bootstrap/cache`, `build`, `node_modules` and `storage`.
 
 ```toml pun.toml
 [lint]
@@ -24,65 +53,12 @@ sets = ["dead-code", "modernize"]
 "style/no-short-ternary" = "off"
 ```
 
-| Value | Meaning |
-| --- | --- |
-| `"error"` | Report the problem and fail the run |
-| `"warn"` | Report the problem |
-| `"off"` | Turn the rule off |
-| `{ fix = "off" }` | Report the problem, and never fix it, even with `--fix` |
-
-Only errors fail the run, unless you set a warning limit. Path overrides take levels only. For the full precedence, see [`[lint]`](/docs/configuration/pun-toml#lint). The [lint rule reference](/docs/rules/lint) lists every rule.
-
-## Levels on the command line
-
-```bash
-pun lint -A lint/style
-pun lint -W security/no-global
-pun lint -D lint/security -A security/no-eval
-pun lint --deny-warnings
-pun lint --max-warnings 10
-```
-
-| Flag | What it does |
-| --- | --- |
-| `-A`, `--allow <rule>` | Turn a rule or group off. |
-| `-W`, `--warn <rule>` | Turn a rule or group on as a warning. |
-| `-D`, `--deny <rule>` | Turn a rule or group on as an error. |
-| `--deny-warnings` | Fail on any warning. |
-| `--max-warnings N` | Fail on more than `N` warnings. |
-
-`-A`, `-W`, and `-D` apply after `pun.toml` and path overrides, in command-line order. The last match wins. A group selects only implemented rules. A Planned rule named directly is a configuration error.
-
-Lint also takes [`pun format`'s file-selection and output flags](/docs/commands/format#pints-flags), such as `--dirty`, `--diff`, `--staged`, `--format`, and `--stdin-filename`.
-
-`-q` prints nothing, as PHP-CS-Fixer's `fix -q` does. The exit code reports the result. `pun format -q` and `pun check -q` keep Pint's stderr line for each file.
-
-Lint reuses each unchanged file's result from the last run, through the [result cache](/docs/commands/format#cache). `--no-cache` checks every file.
-
-## Output
-
-`--concise` prints one line per problem. `--format` takes `json`, `checkstyle`, `junit`, `gitlab`, `github`, or `agent`. `--format=json` is PHP-CS-Fixer's JSON report.
-
-## Files
-
-Lint skips Blade templates, `vendor/`, `bootstrap/cache`, `build`, `node_modules`, and `storage`. [`pun list-files --command lint`](/docs/commands/list-files) shows the selected files.
-
-The `types/*` rules find classes in every file that lint selects and in Composer's autoload. An overriding method gets a return type only when both classes are in `vendor/`, or both are outside it.
-
-## Ignore comments
-
-```php
-$x = eval($code); // @pun-ignore lint/security/no-eval -- legacy plugin loader
-```
-
-Lint rules that come from PHP-CS-Fixer accept only `@pun-ignore-file`. Other lint rules also accept line and region ignores. An ignore comment without a rule ID is an error. See [ignore comments](/docs/configuration/ignore-comments).
+To ignore one line, add `// @pun-ignore <rule> -- <reason>`. See [ignore comments](/docs/configuration/ignore-comments).
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
-| 0 | No remaining errors and no warning limit exceeded |
-| 1 | Remaining errors or a warning limit exceeded |
-| 2 | Pun could not run |
-
-To run lint with format and analyse in one pass, use [`pun check`](/docs/commands/check).
+| 0 | No errors. |
+| 1 | Errors, or too many warnings. |
+| 2 | Pun could not run. |

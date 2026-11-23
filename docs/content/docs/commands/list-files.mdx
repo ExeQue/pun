@@ -1,48 +1,43 @@
 ---
 title: pun list-files
-description: List the files a command selects after paths and exclusions.
+description: Show the files Pun will check.
 ---
 
-`pun list-files` prints the files a command would check with the current `pun.toml`. It prints one path per line, sorted and relative to the project root.
+Show the files a command will check with the current `pun.toml`.
+
+## Usage
+
+```bash
+pun list-files [paths] [options]
+```
 
 ```bash
 pun list-files
 pun list-files --command analyse
 pun list-files -0 app | xargs -0 wc -l
-pun list-files --format json
-```
-
-## File selection
-
-| Selection | Paths | Exclusions |
-| --- | --- | --- |
-| Default | `[files] paths`, otherwise the project root | `[files] exclude` |
-| `--command format` | Shared paths | Format exclusions, Pint finder rules, and Blade unless enabled |
-| `--command lint` | Shared paths | Lint exclusions, Blade, and default excluded directories |
-| `--command analyse` | `[analyse] paths`, otherwise shared paths | Analyse exclusions, Blade, and default excluded directories |
-
-Command exclusions include `[files] exclude`. The default excluded directories are `bootstrap/cache`, `build`, `node_modules`, and `storage`.
-
-Path arguments replace the configured paths. In lint and analyse, exclusions still apply to files you name. `vendor/` is never listed, though analysis reads it for symbols.
-
-For example, with this config, the default selection includes `app` and `tests`, and the analyse selection includes only `app`:
-
-```toml pun.toml
-[files]
-paths = ["app", "tests"]
-exclude = ["storage/**"]
-
-[analyse]
-exclude = ["tests/**"]
 ```
 
 ## Options
 
-| Flag | Meaning |
+| Option | Description |
 | --- | --- |
-| `--command format\|lint\|analyse` | Select a command's file set. |
+| `--command <name>` | `format`, `lint` or `analyse`. |
 | `-0`, `--zero-terminate` | End each path with a NUL byte, for `xargs -0`. |
-| `--format json` | Print a JSON array. |
-| `--config <path>` | Read another `pun.toml`. |
+| `--format json` | Print JSON. |
+| `--config <path>` | Use this `pun.toml`. |
 
-Under a coding agent, Pun prints the summary line on stderr, so stdout stays safe to pipe.
+## What happens
+
+- Starts from `[files] paths`, or the project root. Path arguments replace them.
+- For analyse, uses `[analyse] paths` first.
+- Removes `[files] exclude` and the command's own excludes.
+- Lint and analyse also skip Blade, `bootstrap/cache`, `build`, `node_modules` and `storage`.
+- Never lists `vendor/`.
+- Prints one path per line, sorted, relative to the project root.
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Printed. |
+| 2 | The config could not be read. |

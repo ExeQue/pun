@@ -1,72 +1,47 @@
 ---
 title: pun x
-description: Run a command from a Composer package without adding it to the project.
+description: Run a package's command without installing it.
 ---
+
+Run a command from a Composer package without adding it to your project. Also runs as `punx`.
+
+## Usage
+
+```bash
+pun x <package>[:<version>] [command] [args]
+```
 
 ```bash
 punx laravel new example-app
 punx phpstan:^2.1 analyse src
-punx friendsofphp/php-cs-fixer fix --dry-run
-pun x squizlabs/php_codesniffer phpcbf src
+punx squizlabs/php_codesniffer phpcbf src
+punx list                 # show installs
+punx clean phpstan        # remove installs
 ```
 
-`pun x` installs a package into Pun's cache and runs its command in the current directory. Your project's `composer.json`, `composer.lock`, and `vendor/` stay untouched. `punx` is a short name for `pun x`. The [installer](/docs/installation) adds it.
+## Options
 
-The first run installs the newest stable release. Later runs check for a new release once a day. Offline, they use the installed version. The command's output and exit code are its own. Pun prints its progress on stderr.
-
-## Name the package
-
-Write `vendor/name`, or `vendor/name:^1.2` to pin a version. Each constraint gets its own install. These short names also work:
-
-| Name | Package |
+| Command | Description |
 | --- | --- |
-| `laravel` | `laravel/installer` |
-| `pint` | `laravel/pint` |
-| `envoy` | `laravel/envoy` |
-| `phpstan` | `phpstan/phpstan` |
-| `psalm` | `vimeo/psalm` |
-| `rector` | `rector/rector` |
-| `php-cs-fixer` | `friendsofphp/php-cs-fixer` |
-| `phpcs`, `phpcbf` | `squizlabs/php_codesniffer` |
-| `phpunit` | `phpunit/phpunit` |
-| `pest` | `pestphp/pest` |
-| `phpmd` | `phpmd/phpmd` |
+| `list` | Show each install and its version. |
+| `clean [package]` | Remove every install, or one package's. |
 
-## Pick the command
+Everything after the package goes to its command.
 
-Pun picks the first of the package's `bin` files that matches:
+Short names: `laravel`, `pint`, `envoy`, `phpstan`, `psalm`, `rector`, `php-cs-fixer`, `phpcs`, `phpcbf`, `phpunit`, `pest`, `phpmd`.
 
-1. The first argument, as in `pun x squizlabs/php_codesniffer phpcbf`. The rest go to that command.
-2. The short name, such as `phpcbf`.
-3. The package's only command.
-4. The command named after the package, such as `phpstan`.
+## What happens
 
-If none matches, `pun x` lists the commands and exits 2.
-
-## Manage installs
-
-```bash
-punx list
-punx clean phpstan
-punx clean phpstan:^2.1
-punx clean
-```
-
-`punx list` prints each install and its version:
-
-```text
-laravel/installer     v5.24.2
-phpstan/phpstan:^2.1  2.1.40
-```
-
-`punx clean` removes every install, every version of a named package, or one constraint's install.
-
-Installs live in `$PUN_CACHE_DIR/x`. `PUN_CACHE_DIR` defaults to `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS.
+- Installs the package into Pun's cache, not your project.
+- Uses the newest stable release, and checks for a new one once a day.
+- Picks the command: the first argument, the short name, the only command, or the one named after the package.
+- Runs it in the current folder.
+- Your `composer.json`, `composer.lock` and `vendor/` stay untouched.
 
 ## Exit codes
 
-| Code | When |
+| Code | Meaning |
 | --- | --- |
-| The command's | The command ran |
-| 0 | `list` or `clean` finished |
-| 2 | The package didn't resolve or install, or it has no command to run |
+| The command's | The command ran. |
+| 0 | `list` or `clean` finished. |
+| 2 | The package did not install, or has no command. |

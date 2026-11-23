@@ -1,7 +1,15 @@
 ---
 title: pun self-update
-description: Replace pun with the latest release.
+description: Update Pun.
 ---
+
+Update Pun to the latest release, or to the version named.
+
+## Usage
+
+```bash
+pun self-update [version] [options]
+```
 
 ```bash
 pun self-update
@@ -9,30 +17,23 @@ pun self-update --check
 pun self-update v0.2.7
 ```
 
-`pun self-update` replaces the running `pun` with the latest release, or with the version you name. `--check` only reports whether a newer release is out.
+## Options
 
-The download passes the same checks as the [installer](/docs/installation):
+| Option | Description |
+| --- | --- |
+| `--check` | Only say if a newer release is out. |
 
-- It uses HTTPS only.
-- The archive matches the published SHA-256 checksum.
-- The archive holds only regular files and directories under `punphp-<target>/`.
-- The new binary reports the expected version.
+## What happens
 
-With a signed-in GitHub CLI (`gh`), the GitHub build attestation must also verify. To fail when Pun can't check the attestation, set `PUN_REQUIRE_ATTESTATION=1`.
-
-If you installed Pun with Composer, `pun self-update` exits 2. Run `composer update punphp/pun` instead.
-
-## Update from v0.1.1 or older
-
-v0.1.1 and older check the attestation against the old repository name, `punphp/pun`. So `pun self-update` fails when `gh` is signed in. Reinstall once with the installer:
-
-```bash
-curl -fsSL https://pun.laravel.cloud/install | sh
-```
+- Downloads the release over HTTPS.
+- Checks its SHA-256 checksum and the new binary's version.
+- With a signed-in `gh`, also checks the GitHub build attestation. Set `PUN_REQUIRE_ATTESTATION=1` to require it.
+- Replaces the running `pun`.
+- If you installed Pun with Composer, stops. Run `composer update punphp/pun` instead.
 
 ## Exit codes
 
-| Code | When |
+| Code | Meaning |
 | --- | --- |
-| 0 | Updated, or already up to date |
-| 2 | A failed download or check, a Composer install, or another run error |
+| 0 | Updated, or already up to date. |
+| 2 | A failed download or check, or a Composer install. |

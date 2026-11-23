@@ -241,10 +241,10 @@ To run without a file, pass `--preset <name>` (`laravel`, `psr12`, or `empty`) o
 | `PUN_AGENT`, `PAO_FORCE`, `PAO_DISABLE` | Turn [agent output](/docs/guides/coding-agents) on or off |
 | `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.3. Unsupported: results on older syntax are unchecked |
 | `PUN_PROFILE` | Prints the time of each stage on stderr |
-| `PUN_NO_CACHE=1` | Turns off the [result cache](/docs/commands/format#cache), like `--no-cache` |
-| `PUN_CACHE_DIR` | Cache for the [result cache](/docs/commands/format#cache), Blade's Prettier workers, [`pun x`](/docs/commands/x#manage-installs) installs, and the [package store](/docs/commands/install#package-store) |
-| `PUN_LINK_MODE` | How [`pun install`](/docs/commands/install#package-store) links packages from the store: `hardlink` (default), `clone`, or `copy` |
+| `PUN_NO_CACHE=1` | Turns off the [result cache](/docs/commands/format#what-happens), like `--no-cache` |
+| `PUN_CACHE_DIR` | Cache for the [result cache](/docs/commands/format#what-happens), Blade's Prettier workers, [`pun x`](/docs/commands/x#options) installs, and the [package store](/docs/commands/install#what-happens) |
+| `PUN_LINK_MODE` | How [`pun install`](/docs/commands/install#what-happens) links packages from the store: `hardlink` (default), `clone`, or `copy` |
 | `PUN_REQUIRE_ATTESTATION=1` | [`pun self-update`](/docs/commands/self-update) fails when it cannot check the build attestation |
 | `COMPOSER_HOME`, `COMPOSER_CACHE_DIR` | Composer's home and download cache, shared with the [package commands](/docs/commands/install) |
-| `COMPOSER_AUTH`, `COMPOSER_MAX_PARALLEL_HTTP` | Download credentials and parallel download limit for [`pun install`](/docs/commands/install#what-an-install-does) |
+| `COMPOSER_AUTH`, `COMPOSER_MAX_PARALLEL_HTTP` | Download credentials and parallel download limit for [`pun install`](/docs/commands/install#what-happens) |
 | `COMPOSER_ROOT_VERSION` | The root package's version, as in Composer |

@@ -1,14 +1,32 @@
 ---
 title: pun extension
-description: List the built-in extensions and whether each is on for the project.
+description: List built-in extensions.
 ---
 
-An extension adds the rules and analysis for a framework or test tool. `pun extension list` prints each extension's ID, whether it is `on` or `off`, and why.
+List the built-in extensions and whether each is on. An extension adds rules for a framework or test tool.
+
+## Usage
+
+```bash
+pun extension list [options]
+```
 
 ```bash
 pun extension list
 pun extension list --format json
 ```
+
+## Options
+
+| Option | Description |
+| --- | --- |
+| `--format json` | Print JSON. |
+| `--config <path>` | Use this `pun.toml`. |
+
+## What happens
+
+- Prints each extension, `on` or `off`, and why.
+- If a package is in `composer.lock` but its extension is off, shows the line to add.
 
 ```text
 laravel  on   Laravel's rules and Larastan's analysis: on in pun.toml
@@ -18,15 +36,15 @@ phpunit  off  Rules for PHPUnit tests: not in pun.toml
 
 | Extension | Adds |
 | --- | --- |
-| `laravel` | The `laravel` lint and analyse groups and Larastan's analysis. The `laravel-*` upgrade groups and `format/laravel/blade` stay opt-in. |
-| `pest` | The `pest` lint group |
-| `phpunit` | The `phpunit` lint group |
+| `laravel` | Laravel lint and analyse rules, and Larastan's checks. |
+| `pest` | Pest lint rules. |
+| `phpunit` | PHPUnit lint rules. |
 
-An extension is on only when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`. A locked package never turns an extension on by itself. When `pun.toml` leaves out an extension whose package is locked, the list says so and shows the line to add. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) write `"on"` for each extension whose package `composer.lock` locks.
+An extension is on only when [`[extensions]`](/docs/configuration/pun-toml#extensions) says `"on"`. `pun init` and `pun migrate` write that for you.
 
-## Options
+## Exit codes
 
-| Flag | Meaning |
+| Code | Meaning |
 | --- | --- |
-| `--format json` | Print a JSON array of each extension's `id`, `name`, `description`, `on`, `switch` (`on`, `off`, or `null` when pun.toml leaves it out), `packages`, and `groups`. |
-| `--config <path>` | Read another `pun.toml`. Default: `pun.toml`, if it exists. |
+| 0 | Printed. |
+| 2 | The config could not be read. |

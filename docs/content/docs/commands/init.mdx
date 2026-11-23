@@ -1,34 +1,45 @@
 ---
 title: pun init
-description: Create pun.toml for a project without existing tool configs.
+description: Create pun.toml.
 ---
 
-`pun init` writes a new `pun.toml` for a project without tool configs. If the project has a Pint, PHP-CS-Fixer, PHPStan, Rector, or Mago config, use [`pun migrate`](/docs/commands/migrate) instead.
+Create `pun.toml` for a new project. If you already use Pint, PHP-CS-Fixer, Rector or PHPStan, use [`pun migrate`](/docs/commands/migrate) instead.
+
+## Usage
 
 ```bash
-pun init
-pun init --yes
+pun init [options]
+```
+
+```bash
+pun init                 # ask the questions
+pun init --yes           # take the defaults
 pun init --style psr12 --lint-sets dead-code,types --analyse strict
 ```
 
-## Choices and defaults
+## Options
 
-On a terminal, `pun init` asks three questions:
+| Option | Description |
+| --- | --- |
+| `--yes` | Take the defaults, no questions. |
+| `--style <preset>` | Format preset: `laravel` or `psr12`. |
+| `--lint-sets <a,b>` | Lint sets. `""` for none. Default: `dead-code,modernize`. |
+| `--analyse <preset>` | `basic`, `essential`, `recommended`, `strict` or `max`. Default: `recommended`. |
 
-| Setting | Choices | Default | Flag |
-| --- | --- | --- | --- |
-| Format preset | `laravel`, `psr12` | `laravel` when `composer.lock` locks `laravel/framework`, otherwise `psr12` | `--style` |
-| Lint sets | The eight [lint sets](/docs/configuration/presets#lint-sets) | `dead-code`, `modernize` | `--lint-sets a,b` |
-| Analyse preset | `basic`, `essential`, `recommended`, `strict`, `max` | `recommended` | `--analyse` |
+## What happens
 
-`--lint-sets ""` selects no lint sets. Init also turns on each [extension](/docs/configuration/pun-toml#extensions) whose package `composer.lock` locks. For a Laravel app tested with Pest, `pun init --yes` writes this config:
+- Asks for the format preset, lint sets and analyse preset.
+- Picks `laravel` when `composer.lock` has `laravel/framework`, else `psr12`.
+- Turns on each extension whose package is in `composer.lock`.
+- Writes `pun.toml`.
+- Asks no questions with `--yes`, in CI, under a coding agent, or without a terminal.
+- Stops if `pun.toml` exists, or if an old tool config exists (it offers `pun migrate`).
+- Never edits Composer scripts, CI, Git hooks or editor settings.
 
 ```toml pun.toml
-# Written by `pun init`.
 [extensions]
 laravel = "on"
 pest = "on"
-phpunit = "on"
 
 [format]
 preset = "laravel"
@@ -40,22 +51,9 @@ sets = ["dead-code", "modernize"]
 preset = "recommended"
 ```
 
-Init doesn't run checks or edit Composer scripts, CI, Git hooks, or editor settings.
-
-## Without a terminal
-
-These turn off the prompts: `--yes`, agent mode, the `CI` environment variable, or input or output that is not a terminal. Pun then uses the defaults and your flags.
-
-## Existing configs
-
-- If `pun.toml` exists, init leaves it unchanged and exits 2.
-- If an upstream config exists, interactive init offers to migrate it. Without prompts, init writes nothing and exits 2 with a hint to run `pun migrate`.
-
 ## Exit codes
 
-| Code | When |
+| Code | Meaning |
 | --- | --- |
-| 0 | Configuration written or migration succeeded |
-| 2 | An existing config, an invalid flag, or another run error |
-
-Next, run [`pun check`](/docs/commands/check) to see what the new config reports.
+| 0 | `pun.toml` written. |
+| 2 | A config already exists, a bad option, or another error. |

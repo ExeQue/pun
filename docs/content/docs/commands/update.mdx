@@ -1,7 +1,15 @@
 ---
 title: pun update
-description: Resolve the dependencies again, write the lock, and install it.
+description: Update dependencies.
 ---
+
+Update every package, or only the ones named, then install them. The lock matches `composer update`.
+
+## Usage
+
+```bash
+pun update [packages] [options]
+```
 
 ```bash
 pun update
@@ -10,39 +18,31 @@ pun update 'symfony/*' --with-dependencies
 pun update --dry-run
 ```
 
-`pun update` resolves `composer.json` to the newest allowed versions, writes `composer.lock`, and runs [`pun install`](/docs/commands/install). The lock matches the one `composer update` writes.
-
-With package names or `vendor/*` patterns, only those packages can change. Without a `composer.json`, `pun update` exits 2.
-
-## What gets resolved
-
-Pun reads Packagist, and the `repositories` in `composer.json` and in Composer's global `config.json`. It supports `composer`, `package`, and `path` repositories. Any other repository type fails the update.
-
-The platform is the PHP on `PATH` and its extensions. `config.platform` overrides it. Stability settings, aliases, `replace`, `provide`, and `conflict` work as in Composer.
-
-If the requirements clash, Pun lists the conflicts, writes nothing, and exits 2.
-
 ## Options
 
-| Option | Effect |
+| Option | Description |
 | --- | --- |
-| `-w`, `--with-dependencies` | Also update the named packages' dependencies, except the project's own requirements |
-| `-W`, `--with-all-dependencies` | Also update the named packages' dependencies, including the project's own requirements |
-| `-m`, `--minimal-changes` | Keep the locked version of every package not named, where the requirements allow |
-| `--prefer-lowest` | Pick the lowest allowed versions |
-| `--prefer-stable` | Prefer stable versions |
-| `--dry-run` | Print the changes without writing or installing |
-| `--no-install` | Write the lock but leave `vendor/` as it is |
+| `-w`, `--with-dependencies` | Also update their dependencies. |
+| `-W`, `--with-all-dependencies` | Also update their dependencies, including your own requirements. |
+| `-m`, `--minimal-changes` | Keep other packages at their locked version where possible. |
+| `--prefer-lowest` | Pick the lowest allowed versions. |
+| `--prefer-stable` | Prefer stable versions. |
+| `--dry-run` | Show the changes, write nothing. |
+| `--no-install` | Write the lock, leave `vendor/` alone. |
 
-`pun update` also takes every [`pun install`](/docs/commands/install#options) option. `--ignore-platform-req` also applies while resolving.
+Update also takes every [`pun install`](/docs/commands/install#options) option.
 
-Pun runs the `pre-update-cmd` and `post-update-cmd` scripts instead of `pre-install-cmd` and `post-install-cmd`. [Plugins](/docs/commands/install#scripts-and-plugins) get the same events.
+## What happens
+
+- Reads Packagist and the `composer`, `package` and `path` repositories in `composer.json`.
+- Picks the newest versions that fit `composer.json` and this PHP.
+- Writes `composer.lock`, then runs `pun install`.
+- Runs `pre-update-cmd` and `post-update-cmd`.
+- If requirements clash, lists the conflicts and writes nothing.
 
 ## Exit codes
 
-| Code | When |
+| Code | Meaning |
 | --- | --- |
-| 0 | Resolved and installed, or nothing to change |
-| 2 | No `composer.json`, unresolvable requirements, a failed repository, or a failed install |
-
-To add or remove a package, use [`pun require`](/docs/commands/require) or [`pun remove`](/docs/commands/remove).
+| 0 | Updated, or nothing to change. |
+| 2 | No `composer.json`, requirements that clash, or a failed install. |

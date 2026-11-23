@@ -1,7 +1,15 @@
 ---
 title: pun require
-description: Add packages to composer.json, then update and install.
+description: Add a package.
 ---
+
+Add a package to `composer.json`, then install it.
+
+## Usage
+
+```bash
+pun require <packages> [options]
+```
 
 ```bash
 pun require laravel/sanctum
@@ -9,26 +17,28 @@ pun require spatie/laravel-data:^4.0
 pun require --dev pestphp/pest
 ```
 
-`pun require` adds packages to `require`, or to `require-dev` with `--dev`. It creates `composer.json` if the project has none. Then it updates those packages and their dependencies and installs them, as [`pun update`](/docs/commands/update) does.
-
-Write a package as `vendor/name`, `vendor/name:^1.2`, or `vendor/name ^1.2`. Without a version, Pun writes the newest version that resolves, as `^major.minor`. If the package is already in the other section, Pun moves it and prints a warning.
-
-If the requirements don't resolve, nothing changes and `pun require` exits 2. If the install fails, Pun restores `composer.json` and `composer.lock`.
-
 ## Options
 
-| Option | Effect |
+| Option | Description |
 | --- | --- |
-| `--dev` | Add to `require-dev` |
-| `--sort-packages` | Keep the section sorted. Also `config.sort-packages`. |
-| `--no-update` | Edit `composer.json` only, without resolving or installing |
-| `-p`, `--package=MEMBER` | Edit this [workspace](/docs/guides/workspaces) member's `composer.json` |
+| `--dev` | Add to `require-dev`. |
+| `--sort-packages` | Keep the list sorted. |
+| `--no-update` | Only edit `composer.json`. |
+| `-p`, `--package=<member>` | Edit this [workspace](/docs/guides/workspaces) member. |
 
-`pun require` also takes the [`pun update`](/docs/commands/update#options) options except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option.
+Require also takes the [`pun update`](/docs/commands/update#options) options (except `--dry-run`) and the [`pun install`](/docs/commands/install#options) options.
+
+## What happens
+
+- Creates `composer.json` if there is none.
+- Adds the package. Without a version, writes `^major.minor` of the newest one.
+- Moves the package if it is already in the other section.
+- Updates and installs it, like `pun update`.
+- If anything fails, restores `composer.json` and `composer.lock`.
 
 ## Exit codes
 
-| Code | When |
+| Code | Meaning |
 | --- | --- |
-| 0 | Added and installed |
-| 2 | Unresolvable requirements, a failed repository, or a failed install |
+| 0 | Added and installed. |
+| 2 | Requirements that clash, or a failed install. |

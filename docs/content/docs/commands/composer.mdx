@@ -1,39 +1,51 @@
 ---
 title: pun composer
-description: Run Composer commands that have no top-level pun command, such as dump-autoload.
+description: Run other Composer commands.
 ---
+
+Run Composer commands that have no `pun` command of their own. Only `dump-autoload` exists today.
+
+## Usage
+
+```bash
+pun composer <command> [options]
+```
 
 ```bash
 pun composer dump-autoload
 pun composer dump-autoload -o --no-dev
 ```
 
-`pun composer <command>` runs a Composer command in Pun itself. Pun doesn't call the Composer CLI. Only `dump-autoload` exists today. Any other command exits 2 and names the command.
+## Options
 
-## dump-autoload
+For `dump-autoload` (alias `dumpautoload`):
 
-`pun composer dump-autoload` (alias `dumpautoload`) writes the autoloader again for the packages in `vendor/composer/installed.json`. The files in `vendor/composer/` and `vendor/autoload.php` match, byte for byte, the ones that `composer dump-autoload` writes with the same flags. Pun runs the `pre-autoload-dump` and `post-autoload-dump` scripts and the plugins that `config.allow-plugins` allows, as [`pun install`](/docs/commands/install#scripts-and-plugins) does.
-
-Without `--dev` or `--no-dev`, the autoloader follows the last install. If that install used `--no-dev`, the dump uses it too.
-
-| Option | Effect |
+| Option | Description |
 | --- | --- |
-| `-o`, `--optimize` | Add PSR-0 and PSR-4 classes to the class map. Also `config.optimize-autoloader`. |
-| `-a`, `--classmap-authoritative` | Load classes from the class map only. Implies `-o`. |
-| `--apcu` | Cache class lookups in APCu. Also `config.apcu-autoloader`. |
-| `--apcu-prefix=PREFIX` | The APCu prefix (default: random). Implies `--apcu`. |
-| `--dev` | Use the `autoload-dev` rules |
-| `--no-dev` | Leave out the `autoload-dev` rules and the dev packages |
-| `--no-scripts` | Skip the root package's scripts. Plugins still run. |
-| `--no-plugins` | Skip the Composer plugins |
-| `--ignore-platform-req=REQ` | Leave `REQ` out of `platform_check.php`. Repeatable. |
-| `--ignore-platform-reqs` | Write no `platform_check.php` |
-| `-d`, `--working-dir=DIR` | Run in `DIR` |
+| `-o`, `--optimize` | Add PSR-0 and PSR-4 classes to the class map. |
+| `-a`, `--classmap-authoritative` | Load classes from the class map only. |
+| `--apcu` | Cache class lookups in APCu. |
+| `--apcu-prefix=<prefix>` | The APCu prefix. |
+| `--dev` | Include `autoload-dev`. |
+| `--no-dev` | Skip `autoload-dev` and dev packages. |
+| `--no-scripts` | Skip the root package's scripts. |
+| `--no-plugins` | Skip Composer plugins. |
+| `--ignore-platform-req=<req>` | Leave one requirement out of `platform_check.php`. |
+| `--ignore-platform-reqs` | Write no `platform_check.php`. |
+| `-d`, `--working-dir=<dir>` | Run in `<dir>`. |
+
+## What happens
+
+- Writes the autoloader again from `vendor/composer/installed.json`.
+- The files match `composer dump-autoload` byte for byte.
+- Runs the autoload scripts and allowed plugins.
+- Without `--dev` or `--no-dev`, follows the last install.
+- Pun never calls the Composer CLI.
 
 ## Exit codes
 
-| Code | When |
+| Code | Meaning |
 | --- | --- |
-| 0 | Written |
-| 1 | Written, but a package in `installed.json` is missing from `vendor/`, as in Composer |
-| 2 | A command that Pun doesn't have, or another run error |
+| 0 | Written. |
+| 1 | Written, but a package is missing from `vendor/`. |
+| 2 | Unknown command, or another error. |

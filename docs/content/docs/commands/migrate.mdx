@@ -1,114 +1,59 @@
 ---
 title: pun migrate
-description: Convert existing tool configs to pun.toml and report what it skips.
+description: Create pun.toml from Pint, PHP CS Fixer, Rector or PHPStan.
 ---
 
-`pun migrate` writes `pun.toml` from your existing configs and reports what it skips. Exit code 0 doesn't mean that every rule migrated. Review the warnings before you remove your old tools.
+Create `pun.toml` from your old tool configs. Pun lists every rule it can't move.
+
+## Usage
 
 ```bash
-pun migrate
-pun migrate --from pint
-pun migrate --yes
-pun migrate --dry-run
+pun migrate [options]
 ```
 
-Reading `.php-cs-fixer.php` or `rector.php` runs project code, and Pun loads `vendor/autoload.php` first. Run `pun migrate` only on a checkout you trust.
-
-If Pun can't read a config, the error names the file and the tool that read it, for example `can't read rector.php with Rector: ...`. Warnings that Rector or the config print, such as a deprecated set, don't stop migration.
+```bash
+pun migrate              # pick configs from a list
+pun migrate --from pint  # only Pint
+pun migrate --yes        # every config found
+pun migrate --dry-run    # show the diff, write nothing
+```
 
 ## Options
 
-| Flag | What it does |
+| Option | Description |
 | --- | --- |
-| `--from <tools>` | Migrate only these tools, comma-separated, without a prompt. |
-| `-y`, `--yes` | Migrate every detected config without a prompt. |
+| `--from <tools>` | Only these tools, comma-separated. |
+| `-y`, `--yes` | Every config found, no questions. |
 | `--dry-run` | Print a diff and write nothing. |
 | `--config <path>` | The `pint.json` to read. Default: `./pint.json`. |
-| `--preset <name>` | Use this preset instead of `pint.json`'s. |
-| `--offer-preset` | On a terminal, offer to replace the analyse rules from `phpstan.neon` with the closest Pun preset. |
+| `--preset <name>` | Use this format preset instead of `pint.json`'s. |
+| `--offer-preset` | Offer the closest analyse preset instead of the exact PHPStan rules. |
 
-## Config discovery
+## What happens
 
-| Tool | Files in the project root | Becomes |
-| --- | --- | --- |
-| Pint | `pint.json` or `--config` | `[files]`, `[format]`, and `[lint.rules]` |
-| PHP-CS-Fixer | `.php-cs-fixer.php`, `.php-cs-fixer.dist.php` | Same as Pint |
-| Rector | `rector.php` | `[lint]` |
-| PHPStan | `phpstan.neon`, `phpstan.neon.dist`, `phpstan.dist.neon` | `[analyse]` |
-| Mago | `mago.toml` | Detected, not translated |
+- Finds these configs in the project root:
 
-On a terminal, you pick configs from a checklist. Without a terminal, under a coding agent, or with `--yes`, Pun migrates every detected config that `--from` allows. If you select both Pint and PHP-CS-Fixer, Pint supplies the format config.
+  | Tool | File | Becomes |
+  | --- | --- | --- |
+  | Pint | `pint.json` | `[format]`, `[lint]`, `[files]` |
+  | PHP-CS-Fixer | `.php-cs-fixer.php`, `.php-cs-fixer.dist.php` | `[format]`, `[lint]`, `[files]` |
+  | Rector | `rector.php` | `[lint]` |
+  | PHPStan | `phpstan.neon`, `phpstan.neon.dist`, `phpstan.dist.neon` | `[analyse]` |
 
-You can leave out a Pint or PHP-CS-Fixer config that exists, for example with `--from phpstan,rector` because you keep PHP-CS-Fixer as your formatter. Then `pun.toml` gets no `[format]` section, and `pun format` uses Pint's defaults, as Pint does without a `pint.json`. `@php-cs-fixer-ignore` comments stay as they are.
+- Moves layout rules to `[format]` and risky fixers to `[lint]`.
+- Turns on each extension whose package is in `composer.lock`.
+- Rewrites `@php-cs-fixer-ignore` and `@phpstan-ignore` comments to `@pun-ignore`.
+- Prints each rule it skipped. Send a PR to add it.
+- Leaves your old configs and `composer.json` alone.
+- Does not copy PHPStan baselines. Run `pun analyse --generate-baseline` instead.
 
-Without a Pint or PHP-CS-Fixer config, Pun writes a starter format config from the `laravel` preset, or from `--preset`. The starter puts the preset's risky and code-deleting rules under lint, so run `pun check --fix` to apply everything.
+Reading `.php-cs-fixer.php` or `rector.php` runs project PHP code. Run it only on code you trust, after `composer install`.
 
-## Pint and PHP-CS-Fixer
+Exit code 0 does not mean every rule moved. Read the warnings, then run [`pun check`](/docs/commands/check). Each tool has a [mapping page](/docs/migrate/from).
 
-Migration resolves Pint's `extend`, `--config`, and `--preset`. It reads `.php-cs-fixer.php` through PHP-CS-Fixer, with system PHP. Pun looks for PHP-CS-Fixer in `vendor/`, then in a tool directory (`tools/`, `tools/<name>/` or `vendor-bin/<name>/`), then for Phive's `tools/php-cs-fixer` and a `php-cs-fixer` on `PATH`, such as a global install or the PHAR.
+## Exit codes
 
-- Layout rules go to `[format.rules]`. Risky and code-deleting fixers go to `[lint.rules]` at `"error"`.
-- Finder paths and `exclude` go to `[files]`, so lint and analyse skip those folders too. `notPath` becomes a format exclusion. Migration reports `notName` and leaves it out. [Two exclusion details](/docs/configuration/pint-json) differ from Pint.
-- `per` and rule sets such as `@PER-CS` expand to explicit rules over `preset = "empty"`. Pun does not support Pint's `symfony` preset, so migration stops with an error.
-- Options are renamed to [Pun names and values](/docs/configuration/pun-toml#rule-options).
-- A deprecated PHP-CS-Fixer rule that only runs a newer one, such as `curly_braces_position` or `new_with_braces`, becomes that rule with the same options. If the config also turns on the newer rule with options that one rule can't hold, migration reports the old name and skips it.
-- Migration reports and skips these Finder calls: `name()` other than `*.php`, `path()`, `depth()`, `contains()`, `notContains()`, `size()`, `date()`, `filter()`, `append()`, `followLinks()`, and `ignoreVCSIgnored()`. It also skips a Finder other than Symfony's.
-- `setIndent()` and `setLineEnding()` are ignored without a warning. Pun always indents with four spaces and writes `\n` line endings.
-
-See the [Pint mapping](/docs/migrate/from/pint) and the [PHP-CS-Fixer mapping](/docs/migrate/from/php-cs-fixer).
-
-## Rector
-
-Run `composer install` first. Migration needs system PHP and the project's Rector.
-
-- Prepared sets map to lint sets. `type-declaration` maps to `types`.
-- Explicit rules, set differences, and path skips become rule settings, exclusions, and path overrides.
-- Configured rule keys use kebab-case. Lists use `items`.
-- Migration skips custom rules, closures, null configurations, and upgrade rules that Pun doesn't cover.
-
-Rector rules that only change layout, such as `ReplaceMultipleBooleanNotRector`, are format rules in Pun. Rector migration never writes format settings. Instead, it names each of these rules that your format config doesn't run, so you can turn it on in `[format.rules]`. The `laravel` preset runs all of them except `NewMethodCallWithoutParenthesesRector` and `ShellExecFunctionCallOverBackticksRector`.
-
-See the [Rector mapping](/docs/migrate/from/rector).
-
-## PHPStan and Larastan
-
-If an include is under `vendor/`, such as Larastan's `extension.neon`, run `composer install` first. If that include is missing, Pun skips `phpstan.neon` with a warning and migrates the rest. A missing include outside `vendor/` stops migration with exit code 2.
-
-The level becomes an analyse preset plus rule differences, so `pun analyse` runs the rules your level runs. With `--offer-preset` on a terminal, Pun then offers the closest preset alone, with the number of problems it adds and removes. Without the flag, Pun doesn't ask. Paths, exclusions, stubs, scanned and bootstrap files, ignore entries, and supported extension settings carry over. `phpVersion` becomes `[php] version`. The range form uses `min`, because `[php] version` holds one version.
-
-Migration reports and skips custom rules under `rules:`, services tagged `phpstan.rules.rule` or another `phpstan.*` tag, and your own included configs. Some PHPStan parameters have no Pun setting. See [analysis limitations](/docs/commands/analyse#configuration), the [PHPStan mapping](/docs/migrate/from/phpstan), and the [Larastan mapping](/docs/migrate/from/larastan).
-
-Migration doesn't copy PHPStan baselines. Run `pun analyse --generate-baseline`, then set `[analyse] baseline`.
-
-## Ignore comments
-
-Migration rewrites these ignore comments in your PHP files:
-
-- `@php-cs-fixer-ignore` becomes `@pun-ignore-file`.
-- Known `@phpstan-ignore` identifiers become Pun rule IDs.
-- `@phpstan-ignore-next-line` becomes `@pun-ignore-next-line`, and `@phpstan-ignore-line` becomes `@pun-ignore`. The new comment names the rules of the errors that `pun analyse` reports on the line it covers.
-
-Text after the tag becomes the reason.
-
-Migration leaves a comment as it is, and names its file, line, and reason, in these cases:
-
-- An identifier is unknown, or belongs to a format rule.
-- `pun analyse` reports no error on the covered line, or doesn't check the file.
-- The Pun comment would cover a different line. A `@phpstan-ignore-next-line` followed by more tags in a docblock does this.
-- One comment holds two ignore tags.
-
-`pun analyse` still reads a PHPStan comment that stays, as PHPStan does. See [ignore comments](/docs/configuration/ignore-comments).
-
-## Extensions
-
-Migration turns on each [extension](/docs/configuration/pun-toml#extensions) whose package `composer.lock` locks: `laravel` for `laravel/framework`, `pest` for `pestphp/pest`, and `phpunit` for `phpunit/phpunit`. Each extension brings its own rules, so `pun.toml` lists only the rules your configs change. Nothing else turns an extension on. To drop an extension's rules, delete its line or set it to `"off"`. Blade formatting stays off unless `pint.json` turns it on.
-
-## File changes and errors
-
-Migration leaves the source configs, `composer.json`, and `composer.lock` alone. The [package commands](/docs/commands/install) keep reading Composer's files. Migration may rewrite ignore comments in PHP files. It doesn't edit scripts, CI, hooks, or editor settings.
-
-A second run leaves an identical `pun.toml` alone. If `pun.toml` differs from what migration would write, Pun exits 2 and doesn't overwrite it. Run `pun migrate --dry-run` to see the difference.
-
-Writes aren't transactional, so a write error can leave earlier changes in place. Exit code 2 means migration couldn't finish.
-
-Next, run [`pun check`](/docs/commands/check) and compare the results with your old tools. The [Pint migration guide](/docs/guides/migrating-from-pint) walks through the comparison.
+| Code | Meaning |
+| --- | --- |
+| 0 | `pun.toml` written. |
+| 2 | A config could not be read, `pun.toml` differs from what migrate would write, or another error. |
