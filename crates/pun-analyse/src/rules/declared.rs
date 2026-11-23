@@ -432,11 +432,9 @@ pub(super) fn codex_return_type(
     declaring: Option<&ClassLikeMetadata>,
     name: &str,
 ) -> Type {
-    let native = f
-        .return_type_declaration_metadata
-        .as_ref()
-        .map(|t| native_declaration(c, t, declaring))
-        .or_else(|| declaring.and_then(|_| magic_return(name.as_bytes())));
+    let declared =
+        (f.return_type_declaration_metadata.as_ref()).map(|t| native_declaration(c, t, declaring));
+    let native = magic_native(declaring.map(|_| name.as_bytes()), declared);
     decide_type(
         native.unwrap_or_else(mixed),
         reflected_doc(c, f, declaring, name).ret,
@@ -451,11 +449,9 @@ pub(super) fn reflected_throws_and_return(
     name: &str,
 ) -> (Option<Type>, Type) {
     let doc = reflected_doc(c, f, declaring, name);
-    let native = f
-        .return_type_declaration_metadata
-        .as_ref()
-        .map(|t| native_declaration(c, t, declaring))
-        .or_else(|| declaring.and_then(|_| magic_return(name.as_bytes())));
+    let declared =
+        (f.return_type_declaration_metadata.as_ref()).map(|t| native_declaration(c, t, declaring));
+    let native = magic_native(declaring.map(|_| name.as_bytes()), declared);
     (
         doc.throws,
         decide_type(native.unwrap_or_else(mixed), doc.ret),
@@ -1409,9 +1405,7 @@ fn signature(
             (name, ty, out, closure_this)
         })
         .collect();
-    let native_ret = ret
-        .map(|r| native(c, &r.hint, class))
-        .or_else(|| method.and_then(magic_return));
+    let native_ret = magic_native(method, ret.map(|r| native(c, &r.hint, class)));
     let phpdoc = doc
         .params
         .values()
@@ -1426,6 +1420,21 @@ fn signature(
         asserts: doc.asserts,
         phpdoc,
     }
+}
+
+/// PhpMethodFromParserNodeReflection: a magic method's real return type replaces the declared one, except
+/// `__set_state()` and `__debugInfo()`, whose declared type it narrows (kept here), and a constructor, which PHP
+/// gives no return type (a declared one stays as written); it also fills in a missing one.
+fn magic_native(method: Option<&[u8]>, declared: Option<Type>) -> Option<Type> {
+    let replaced = method.filter(|m| {
+        !(m.eq_ignore_ascii_case(b"__set_state")
+            || m.eq_ignore_ascii_case(b"__debuginfo")
+            || m.eq_ignore_ascii_case(b"__construct"))
+    });
+    replaced
+        .and_then(magic_return)
+        .or(declared)
+        .or_else(|| method.and_then(magic_return))
 }
 
 fn magic_return(name: &[u8]) -> Option<Type> {

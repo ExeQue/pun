@@ -1,0 +1,15 @@
+{
+  "level": 6,
+  "errors": [
+    {
+      "line": 38,
+      "identifier": "missingType.iterableValue",
+      "message": "Method App\\B::plain() return type has no value type specified in iterable type array."
+    },
+    {
+      "line": 12,
+      "identifier": "missingType.iterableValue",
+      "message": "Method App\\A::other() return type has no value type specified in iterable type array."
+    }
+  ]
+}

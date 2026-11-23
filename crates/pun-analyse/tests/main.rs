@@ -103,6 +103,7 @@ mod laravel_aliases;
 mod laravel_schema;
 mod levels;
 mod local_coalesce_declaration_effects;
+mod magic_return_types;
 mod mago;
 mod method_accessories;
 mod method_callable;
