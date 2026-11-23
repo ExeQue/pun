@@ -1,0 +1,15 @@
+{
+ "level": 9,
+ "errors": [
+  {
+   "line": 5,
+   "identifier": "missingType.iterableValue",
+   "message": "Function App\\options() return type has no value type specified in iterable type array."
+  },
+  {
+   "line": 16,
+   "identifier": "offsetAccess.nonOffsetAccessible",
+   "message": "Cannot access offset 'x' on mixed."
+  }
+ ]
+}

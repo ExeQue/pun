@@ -236,6 +236,7 @@ fn implicit_array_creation(c: &Checker, holder: &Expression) -> bool {
     match root {
         Expression::Variable(Variable::Direct(v)) => {
             c.variables.reads.get(&v.span()).is_some_and(|r| r.1.no())
+                || c.variables.undefined_allowed.contains(&v.span())
         }
         _ => false,
     }
