@@ -47,6 +47,7 @@ function commands(root) {
   if (!box) return;
   const tabs = [...box.querySelectorAll('[role="tab"]')];
   const panels = tabs.map((t) => box.querySelector("#" + t.getAttribute("aria-controls")));
+  const matches = [...box.querySelectorAll("[data-match]")];
   let at = 0;
   const show = (n, focus) => {
     at = (n + tabs.length) % tabs.length;
@@ -57,6 +58,8 @@ function commands(root) {
       panels[k].classList.toggle("on", on);
       panels[k].classList.remove("go");
       if (on) panels[k].removeAttribute("aria-hidden"); else panels[k].setAttribute("aria-hidden", "true");
+      matches[k]?.classList.toggle("on", on);
+      if (on) matches[k]?.removeAttribute("aria-hidden"); else matches[k]?.setAttribute("aria-hidden", "true");
     });
     if (focus) tabs[at].focus();
     if (!reduced()) { void panels[at].offsetWidth; panels[at].classList.add("go"); }

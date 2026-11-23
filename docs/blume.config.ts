@@ -31,6 +31,7 @@ export default defineConfig({
 
   navigation: {
     tabs: [{ label: "Docs", path: "/docs" }],
+    actions: [{ href: "https://github.com/shipfastlabs/pun", label: "GitHub" }],
   },
 
   theme: {

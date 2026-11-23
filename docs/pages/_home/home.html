@@ -33,13 +33,20 @@
     <div class="wrap cmds-inner">
       <div class="cmds-copy">
         <h2 id="cmds-title">One binary. <span class="sticker">Every</span> command.</h2>
-        <p>Pick one to see what it prints. Real output from a small project, with timings left out.</p>
+        <p>Pick one to see what it prints, and which tools it gives the same answers as.</p>
         <div class="cmds-tabs" role="tablist" aria-label="Commands">
           <button class="cmd-tab zap" type="button" role="tab" id="cmd-tab-format" aria-controls="cmd-format" aria-selected="true">format<i aria-hidden="true"></i></button>
           <button class="cmd-tab gum" type="button" role="tab" id="cmd-tab-lint" aria-controls="cmd-lint" aria-selected="false" tabindex="-1">lint<i aria-hidden="true"></i></button>
           <button class="cmd-tab lilac" type="button" role="tab" id="cmd-tab-analyse" aria-controls="cmd-analyse" aria-selected="false" tabindex="-1">analyse<i aria-hidden="true"></i></button>
           <button class="cmd-tab cream" type="button" role="tab" id="cmd-tab-install" aria-controls="cmd-install" aria-selected="false" tabindex="-1">install<i aria-hidden="true"></i></button>
         </div>
+        <div class="cmds-match">
+          <p class="match on" data-match><span>Byte for byte with</span> <b class="tag zap">Pint</b> <b class="tag zap">PHP-CS-Fixer</b></p>
+          <p class="match" data-match aria-hidden="true"><span>One set of rule names for</span> <b class="tag gum">Rector</b> <b class="tag gum">rector-laravel</b> <b class="tag gum">Mago</b></p>
+          <p class="match" data-match aria-hidden="true"><span>Identifiers map one to one from</span> <b class="tag lilac">PHPStan</b> <b class="tag lilac">Larastan</b></p>
+          <p class="match" data-match aria-hidden="true"><span>The same lock and vendor/ as</span> <b class="tag cream">Composer</b></p>
+        </div>
+        <a class="cmds-link" href="/docs/parity">See the parity scoreboard <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="term cmds-term">
         <div class="term-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>~/blog</span></div>
@@ -68,33 +75,22 @@
     </div>
   </section>
 
-  <!-- RUN: the one authored moment. pun check does all three jobs in one pass. -->
-  <section class="wrap sec run-sec" data-run>
-    <div class="sec-head">
-      <h2>Three jobs. One pass. <span class="sticker">Done.</span></h2>
-      <button class="btn sm" type="button" data-run-replay><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>Run again</button>
-    </div>
-    <p class="sec-lede">pun check formats, lints and analyses your project in a single run. By the time you look back at the terminal, all three are finished.</p>
-    <div class="term">
+  <!-- RUN: the one authored moment, on a lilac band. pun check does all three jobs in one pass. -->
+  <section class="run-band" data-run>
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Three jobs. One pass. <span class="sticker">Done.</span></h2>
+        <button class="btn sm" type="button" data-run-replay><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>Run again</button>
+      </div>
+      <p class="sec-lede">pun check formats, lints and analyses your project in a single run. By the time you look back at the terminal, all three are finished.</p>
+      <div class="term">
       <div class="term-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>~/blog</span></div>
 <pre class="term-body" data-run-body><span class="cmdline"><span class="prompt">$</span> pun check</span><span class="step" style="--i:0"><span class="ok">✔</span> <b class="cmd-chip zap">format</b> All files formatted</span><span class="step" style="--i:1"><span class="bad">✖</span> <b class="cmd-chip gum">lint</b> 1 error in 1 file</span><span class="step sub" style="--i:2">   <span class="path">app/Http/Controllers/PostController.php:24:9</span>  <span class="rule">lint/laravel/no-request-all</span>
    Avoid using `$request-&gt;all()` or `Request::all()`.</span><span class="step" style="--i:3"><span class="bad">✖</span> <b class="cmd-chip lilac">analyse</b> 1 error in 1 file</span><span class="step sub" style="--i:4">   <span class="path">app/Models/Post.php:18:16</span>  <span class="rule">analyse/undefined/method</span>
    Call to an undefined method App\Models\Post::publsh().</span><span class="step total" style="--i:5"><span class="bad">✖</span> 2 errors</span></pre>
+      </div>
+      <p class="note">Example output from a small Laravel app.</p>
     </div>
-    <p class="note">Example output from a small Laravel app.</p>
-  </section>
-
-  <!-- SPEED: copy only, no figures -->
-  <section class="wrap sec speed-sec">
-    <div>
-      <h2>Fast by design.</h2>
-      <p class="sec-lede">Speed is the feature, not a side effect. Pun is built so you never sit and wait for your tools, whether that is one file on save or a whole monorepo in CI.</p>
-    </div>
-    <ul class="points">
-      <li><h3>Native, all the way down</h3><p>One Rust binary. There is no PHP process to boot before it can read your code.</p></li>
-      <li><h3>Every core, every file</h3><p>Format, lint and analyse spread the work across every core your machine has.</p></li>
-      <li><h3>Fast enough to forget</h3><p>Put it on save, in a pre-commit hook and in every CI run. It keeps up with all three.</p></li>
-    </ul>
   </section>
 
   <!-- ONE CONFIG -->
@@ -127,16 +123,15 @@ baseline = <span class="str">"pun-baseline.toml"</span></pre>
     </div>
   </section>
 
-  <!-- PARITY: same answers as each tool Pun replaces -->
-  <section class="wrap sec">
-    <h2>Same answers as the tools you trust.</h2>
-    <ul class="points four">
-      <li><h3>Format</h3><p>Byte for byte with Pint and PHP-CS-Fixer. Every project on the scoreboard has zero differing files.</p></li>
-      <li><h3>Lint</h3><p>Rector, rector-laravel, Mago and the risky fixers, under one set of rule names. pun migrate maps your config.</p></li>
-      <li><h3>Analyse</h3><p>PHPStan identifiers map to Pun rules, with Larastan built in.</p></li>
-      <li><h3>Install</h3><p>The same lock and vendor/ tree Composer writes for the same requirements.</p></li>
+  <!-- SPEED: copy only, no figures. Three sticker cards. -->
+  <section class="wrap sec speed-sec">
+    <h2>Fast by <span class="sticker gum">design.</span></h2>
+    <p class="sec-lede">Speed is the feature, not a side effect. Pun is built so you never sit and wait for your tools, whether that is one file on save or a whole monorepo in CI.</p>
+    <ul class="cards">
+      <li class="card zap"><h3>Native, all the way down</h3><p>One Rust binary. There is no PHP process to boot before it can read your code.</p></li>
+      <li class="card lilac"><h3>Every core, every file</h3><p>Format, lint and analyse spread the work across every core your machine has.</p></li>
+      <li class="card mint"><h3>Fast enough to forget</h3><p>Put it on save, in a pre-commit hook and in every CI run. It keeps up with all three.</p></li>
     </ul>
-    <a class="btn sm" href="/docs/parity">See the parity scoreboard <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </section>
 
   <!-- AGENTS -->
@@ -144,7 +139,7 @@ baseline = <span class="str">"pun-baseline.toml"</span></pre>
     <div class="code agent">
       <div class="code-bar"><span>pun check · under Claude Code</span><span>agent</span></div>
 <pre><span class="cmdline"><span class="prompt">$</span> pun check</span>
-<span class="hot">pun check: fail, 2 errors (48 checked, 0.31s)</span>
+<span class="hot">pun check: fail, 2 errors (48 checked)</span>
 <span class="dim">app/User.php:</span>42:13 lint/types/no-loose-comparison ...
 <span class="dim">app/Post.php:</span>18:16 analyse/undefined/method ...</pre>
     </div>

@@ -19,6 +19,7 @@
 .pun-home .tag.zap { background: var(--pun-zap); color: var(--pun-on-fill); }
 .pun-home .tag.lilac { background: var(--pun-lilac); color: var(--pun-on-fill); }
 .pun-home .tag.gum { background: var(--pun-gum); color: var(--pun-on-fill); }
+.pun-home .tag.cream { background: #fbf6ec; color: var(--pun-on-fill); }
 
 .pun-home .btn { display: inline-flex; align-items: center; gap: 10px; padding: 13px 20px; border: var(--pun-stroke) solid var(--pun-outline); border-radius: 999px; background: var(--pun-card); color: var(--pun-ink); font: 700 15px/1 var(--blume-font-display); text-decoration: none; box-shadow: var(--pun-pop); cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
 .pun-home .btn:hover { transform: translate(-2px, -2px); box-shadow: var(--pun-pop-hover); }
@@ -78,6 +79,16 @@
 .pun-home .cmd-tab i { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: #17121f; opacity: .35; transform: scaleX(0); transform-origin: left; }
 .pun-home .cmds.auto .cmd-tab[aria-selected="true"] i { animation: pun-fill 4.5s linear both; }
 .pun-home .cmds.auto:is(:hover, :focus-within, .away) .cmd-tab i { animation-play-state: paused; }
+/* parity, folded into the strip: the tools the selected command gives the same answers as */
+.pun-home .cmds-match { display: grid; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #4a4256; }
+.pun-home .cmds-copy .match { grid-area: 1 / 1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; max-width: none; font-size: 15px; visibility: hidden; }
+.pun-home .cmds-copy .match.on { visibility: visible; }
+.pun-home .match span { flex-basis: 100%; font: 600 12px/1.4 var(--blume-font-mono); letter-spacing: .04em; text-transform: uppercase; color: #a79fb8; }
+.pun-home .match .tag { padding: 7px 12px; border-color: #17121f; box-shadow: 3px 3px 0 0 #fbf6ec; font-size: 14px; transform: rotate(-2deg); }
+.pun-home .match .tag:nth-of-type(even) { transform: rotate(1.5deg); }
+.pun-home .cmds-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 24px; color: #fbf6ec; font: 700 15px/1 var(--blume-font-display); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.pun-home .cmds-link .icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: transform .12s ease; }
+.pun-home .cmds-link:hover .icon { transform: translateX(3px); }
 .pun-home .cmds .cmds-term { box-shadow: 8px 8px 0 0 var(--pun-lilac), 8px 8px 0 3px #fbf6ec; }
 .pun-home .cmds-panels { display: grid; }
 .pun-home .cmds-panels > .term-body { grid-area: 1 / 1; min-height: 0; visibility: hidden; }
@@ -87,8 +98,11 @@
 .pun-home .cmds-panels .term-body.go .step { animation: pun-step .28s var(--pun-ease-out) both; animation-delay: calc(var(--i) * 80ms); }
 
 /* ---------- run: pun check, the one authored moment ---------- */
-.pun-home .run-sec .sec-head { margin-bottom: 24px; }
-.pun-home .run-sec .sec-lede { margin: 0 0 32px; }
+/* The band shares the strip's skew, so the two meet on one edge. Its tokens are pinned: lilac is a fill in both themes. */
+.pun-home .run-band { --pun-ink: #17121f; --pun-ink-2: #2e2440; --pun-ink-3: #3d3352; --pun-outline: #17121f; --pun-shadow: #17121f; --pun-card: #ffffff; position: relative; isolation: isolate; margin: 0 -40px; padding: 104px 40px 112px; color: var(--pun-ink); }
+.pun-home .run-band::before { content: ""; position: absolute; inset: 0; z-index: -1; background-color: var(--pun-lilac); background-image: radial-gradient(rgb(23 18 31 / .15) 1.5px, transparent 1.7px); background-size: 22px 22px; border-bottom: var(--pun-stroke) solid #17121f; transform: skewY(-1.5deg); }
+.pun-home .run-band .sec-head { margin-bottom: 24px; }
+.pun-home .run-band .sec-lede { margin: 0 0 32px; }
 .pun-home .term { border: var(--pun-stroke) solid var(--pun-outline); border-radius: 24px; background: var(--pun-code-bg); color: var(--pun-code-ink); box-shadow: 8px 8px 0 0 var(--pun-zap), 8px 8px 0 3px var(--pun-outline); overflow: hidden; }
 .pun-home .term-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--pun-code-bar); font: 600 12px/1 var(--blume-font-mono); color: var(--pun-code-dim); }
 .pun-home .dots { display: inline-flex; gap: 6px; } .pun-home .dots i { width: 10px; height: 10px; border-radius: 50%; background: #4a4256; }
@@ -106,14 +120,14 @@
 .pun-home [data-run].go .step { animation: pun-step .28s var(--pun-ease-out) both; animation-delay: calc(var(--i) * 70ms); }
 .pun-home .note { margin: 18px 0 0; font-size: 14px; line-height: 1.5; color: var(--pun-ink-3); }
 
-/* ---------- speed: copy only ---------- */
-.pun-home .speed-sec { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: start; }
-.pun-home .speed-sec h2 { margin-bottom: 40px; }
-.pun-home .points { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
-.pun-home .points li { padding: 20px 0 22px; border-top: var(--pun-stroke) solid var(--pun-outline); }
-.pun-home .points h3 { font-size: 24px; line-height: 1.15; font-weight: 600; margin-bottom: 6px; letter-spacing: -.01em; }
-.pun-home .points p { margin: 0; font-size: 16px; line-height: 1.55; color: var(--pun-ink-2); max-width: 52ch; }
-.pun-home .points.four { grid-template-columns: repeat(4, 1fr); gap: 0 32px; margin-bottom: 32px; }
+/* ---------- speed: copy only, three sticker cards ---------- */
+.pun-home .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 12px 0 0; padding: 0; list-style: none; }
+.pun-home .card { padding: 28px 24px 30px; border: var(--pun-stroke) solid var(--pun-outline); border-radius: 24px; color: var(--pun-on-fill); box-shadow: var(--pun-pop-lg); transform: rotate(-1deg); transition: transform .15s ease; }
+.pun-home .card:nth-child(even) { transform: rotate(1deg) translateY(10px); }
+.pun-home .card:hover { transform: rotate(0) translate(-2px, -2px); }
+.pun-home .card.zap { background: var(--pun-zap); } .pun-home .card.lilac { background: var(--pun-lilac); } .pun-home .card.mint { background: var(--pun-mint); }
+.pun-home .card h3 { font-size: 26px; line-height: 1.1; font-weight: 700; letter-spacing: -.01em; margin-bottom: 10px; color: inherit; }
+.pun-home .card p { margin: 0; font-size: 16px; line-height: 1.55; color: inherit; }
 
 /* ---------- code ---------- */
 .pun-home .code { border: var(--pun-stroke) solid var(--pun-outline); border-radius: 24px; background: #17121f; color: #ede8f7; box-shadow: var(--pun-pop); overflow: hidden; }
@@ -123,12 +137,12 @@
 .pun-home .code .add { color: #9bf0c9; } .pun-home .code .del { color: #ff9cc8; } .pun-home .code .dim { color: #8d85a0; }
 .pun-home .code .str { color: #9bf0c9; } .pun-home .code .kw { color: #ffe53d; } .pun-home .code .hot { color: #ffe53d; font-weight: 700; }
 
-.pun-home .toml-mini { max-width: 320px; }
-
 /* ---------- one config ---------- */
 .pun-home .config-sec, .pun-home .agents-sec { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
-.pun-home .merge { position: relative; padding-top: 72px; }
-.pun-home .files { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 14px; }
+.pun-home .merge { display: grid; gap: 28px; }
+.pun-home .files { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.pun-home .code.toml { box-shadow: 8px 8px 0 0 var(--pun-mint), 8px 8px 0 3px var(--pun-outline); }
+.pun-home .code.agent { box-shadow: 8px 8px 0 0 var(--pun-lilac), 8px 8px 0 3px var(--pun-outline); }
 .pun-home .file { padding: 10px 14px; border: var(--pun-stroke) solid var(--pun-outline); border-radius: 10px; background: var(--pun-card); box-shadow: var(--pun-pop-sm); font: 600 13px/1 var(--blume-font-mono); }
 .pun-home .file.f1 { transform: rotate(-5deg); background: var(--pun-zap); color: var(--pun-on-fill); }
 .pun-home .file.f2 { transform: rotate(3deg); background: var(--pun-lilac); color: var(--pun-on-fill); }
@@ -156,16 +170,18 @@
   .pun-home .hero { grid-template-columns: 1.4fr .6fr; gap: 40px; }
 }
 @media (max-width: 960px) {
-  .pun-home .hero, .pun-home .cmds-inner, .pun-home .speed-sec, .pun-home .config-sec, .pun-home .agents-sec { grid-template-columns: 1fr; gap: 40px; }
+  .pun-home .hero, .pun-home .cmds-inner, .pun-home .cards, .pun-home .config-sec, .pun-home .agents-sec { grid-template-columns: 1fr; gap: 40px; }
   .pun-home .stage { max-width: 460px; width: 100%; justify-self: center; }
-  .pun-home .points.four { grid-template-columns: 1fr 1fr; }
+  .pun-home .card, .pun-home .card:nth-child(even) { transform: none; }
+  .pun-home .cards { gap: 20px; }
   .pun-home .cta { grid-template-columns: 1fr; padding: 220px 32px 36px; }
   .pun-home .cta-mascot { left: 50%; top: -60px; bottom: auto; width: 240px; margin-left: -120px; }
 }
 @media (max-width: 560px) {
-  .pun-home .points.four { grid-template-columns: 1fr; }
   .pun-home .term-body { font-size: 12.5px; padding: 18px 16px 22px; }
   .pun-home .cmds { padding: 56px 28px; }
+  .pun-home .run-band { padding: 72px 28px 80px; }
+  .pun-home .file { padding: 8px 10px; font-size: 12px; }
   .pun-home .cmds-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .pun-home .cmd-tab { font-size: 15px; padding: 10px 8px 12px; text-align: center; }
   .pun-home .cmd .nobr { white-space: normal; }
