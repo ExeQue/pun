@@ -71,17 +71,6 @@ bun_bin() {
   "$HOME/.bun/bin/bun" --version
 }
 
-pinkary() {
-  # corpus/manifest.toml points at the acceptance checkout on Pushpak's machine; recreate it from upstream.
-  local dir=/home/forge/projects/pinkary.com commit
-  commit=$(awk -F' = ' '/^name/{n=$2} /^commit/ && n=="\"pinkary\""{gsub(/"/,"",$2); print $2; exit}' corpus/manifest.toml)
-  [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" = "$commit" ] && { echo "ok $commit"; return; }
-  sudo mkdir -p "$(dirname "$dir")" && sudo chown "$(id -u):$(id -g)" /home/forge /home/forge/projects
-  rm -rf "$dir" && git init -q "$dir"
-  git -C "$dir" fetch -q --depth 1 https://github.com/pinkary-project/pinkary.com.git "$commit"
-  git -C "$dir" -c advice.detachedHead=false checkout -q FETCH_HEAD
-}
-
 rust_lane() {
   step "rust toolchain" rust
   step "cargo-llvm-cov" llvm_cov
@@ -94,7 +83,6 @@ php_lane() {
   step "apt: php 8.5" apt_packages
   step "composer" composer_bin
   step "oracle (.oracle/)" scripts/oracle.sh
-  step "pinkary acceptance checkout" pinkary
   step "corpus" scripts/corpus.sh pinkary laravel-framework larastan laravel-pint
 }
 
