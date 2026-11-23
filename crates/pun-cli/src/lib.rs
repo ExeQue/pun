@@ -47,53 +47,164 @@ use std::process::ExitCode;
     name = "pun",
     bin_name = "pun",
     version,
-    about = "Pun: format, lint and analyse PHP in one binary"
+    about = "Pun: format, lint and analyse PHP"
 )]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
-    /// Agent output (a summary line, then one line per finding) even when no coding agent is detected.
+    /// Use output for coding agents
     #[arg(long, global = true)]
     agent: bool,
-    /// Human output even under a coding agent.
+    /// Use output for people
     #[arg(long, global = true, conflicts_with = "agent")]
     no_agent: bool,
 }
 
+/// `pun --help`'s commands, in groups.
+const GROUPS: [(&str, &[&str]); 3] = [
+    ("Code", &["format", "lint", "analyse", "check"]),
+    (
+        "Packages",
+        &["install", "update", "require", "remove", "x", "composer"],
+    ),
+    (
+        "Project",
+        &[
+            "init",
+            "migrate",
+            "config",
+            "list-files",
+            "extension",
+            "explain",
+            "self-update",
+        ],
+    ),
+];
+
+/// `cmd` and its subcommands with "Show help" and "Show version" for clap's "Print help" and "Print version", and a
+/// shorter summary for the `help` subcommand.
+fn plain_flags(mut cmd: clap::Command) -> clap::Command {
+    if cmd.get_arguments().any(|a| a.get_id() == "help") {
+        cmd = cmd.mut_arg("help", |a| {
+            a.help("Show help")
+                .long_help("Show help (see a summary with '-h')")
+        });
+    }
+    if cmd.get_arguments().any(|a| a.get_id() == "version") {
+        cmd = cmd.mut_arg("version", |a| a.help("Show version"));
+    }
+    let names: Vec<String> = cmd
+        .get_subcommands()
+        .map(|c| c.get_name().to_owned())
+        .collect();
+    for name in names {
+        cmd = if name == "help" {
+            cmd.mut_subcommand(name, |c| c.about("Show help for a command"))
+        } else {
+            cmd.mut_subcommand(name, plain_flags)
+        };
+    }
+    cmd
+}
+
+/// `pun` with a `--help` that lists the commands in [`GROUPS`], each with its one-line summary.
+fn command() -> clap::Command {
+    use std::fmt::Write as _;
+    let mut cmd = Cli::command();
+    cmd.build();
+    let cmd = plain_flags(cmd);
+    let (header, literal) = (
+        *cmd.get_styles().get_header(),
+        *cmd.get_styles().get_literal(),
+    );
+    let width = GROUPS
+        .iter()
+        .flat_map(|(_, names)| names.iter())
+        .map(|n| n.len())
+        .max()
+        .unwrap_or(0);
+    let mut list = String::new();
+    for (group, names) in GROUPS {
+        let _ = writeln!(list, "{header}{group}:{header:#}");
+        for name in names {
+            let about = cmd
+                .find_subcommand(name)
+                .and_then(clap::Command::get_about)
+                .map_or_else(String::new, ToString::to_string);
+            let _ = writeln!(list, "  {literal}{name:width$}{literal:#}  {about}");
+        }
+        list.push('\n');
+    }
+    debug_assert_eq!(
+        GROUPS.iter().map(|(_, n)| n.len()).sum::<usize>(),
+        cmd.get_subcommands()
+            .filter(|c| c.get_name() != "help")
+            .count(),
+        "every command is in a group"
+    );
+    cmd.help_template(format!(
+        "{{about-with-newline}}\n{{usage-heading}} {{usage}}\n\n{list}{header}Options:{header:#}\n{{options}}{{after-help}}"
+    ))
+}
+
 #[derive(Subcommand)]
 enum Cmd {
-    /// Fix (or check) the layout of the given paths: the `[format]` rules.
+    /// Fix code style
+    ///
+    /// Formats the given paths, or the whole project. Use --test to check without changing files.
     Format(Box<FormatArgs>),
-    /// Report the `[lint]` rules' problems; `--fix` applies their fixes, except for rules with `fix = "off"`.
+    /// Find code that could be written better
+    ///
+    /// Use --fix to apply the fixes.
     Lint(Box<StageCmd>),
-    /// Format, lint and analyse in one run: reports, or `--fix` applies the format and lint fixes.
+    /// Run format, lint and analyse together
+    ///
+    /// Use --fix to apply the format and lint fixes.
     Check(Box<StageCmd>),
-    /// Find bugs with types (PHPStan's rules): the `[analyse]` rules. Never edits a file.
+    /// Find bugs (never edits files)
+    ///
+    /// Also runs as `pun analyze`.
     #[command(visible_alias = "analyze")]
     Analyse(Box<analyse::AnalyseArgs>),
-    /// Write pun.toml from pint.json or .php-cs-fixer(.dist).php, rector.php and phpstan.neon, and rewrite `@php-cs-fixer-ignore` comments.
+    /// Create pun.toml from Pint, PHP CS Fixer, Rector or PHPStan
+    ///
+    /// Reads pint.json, .php-cs-fixer.php, rector.php and phpstan.neon, and rewrites
+    /// @php-cs-fixer-ignore comments.
     Migrate(migrate::MigrateArgs),
-    /// Install composer.lock into vendor/, with Composer's autoloader;
-    /// without a lock, resolve one first.
+    /// Install dependencies from composer.lock
+    ///
+    /// Without a lock file, resolves one first.
     Install(install::InstallArgs),
-    /// Resolve the dependencies again (all, or the packages named), write the lock and install it.
+    /// Update dependencies
+    ///
+    /// Updates every package, or only the ones named, then installs them.
     Update(update::UpdateArgs),
-    /// Add packages to require (or require-dev with --dev), then update and install them.
+    /// Add a package
+    ///
+    /// Use --dev to add it as a dev dependency.
     Require(update::RequireArgs),
-    /// Remove packages from require or require-dev, then update and install.
+    /// Remove a package
+    ///
+    /// Also runs as `pun rm`.
     #[command(visible_alias = "rm")]
     Remove(update::RemoveArgs),
-    /// Run a command from a Composer package without adding it to the project (`punx` for short).
+    /// Run a package's command without installing it
+    ///
+    /// Also runs as `punx`.
     X(x::XArgs),
-    /// Composer's other commands: `dump-autoload`.
+    /// Run other Composer commands
     Composer(composer::ComposerArgs),
-    /// Write pun.toml for a new project: asks the code style, lint sets and analysis preset (`--yes` takes the defaults).
+    /// Create pun.toml
+    ///
+    /// Asks for the code style, lint sets and analysis preset. Use --yes to take the defaults.
     Init(init::InitArgs),
-    /// Replace this pun with the latest release (or the one named), verified as the installer verifies it.
+    /// Update Pun
+    ///
+    /// Installs the latest release, or the version named.
     SelfUpdate(self_update::SelfUpdateArgs),
-    /// Print the files a command would check with the current pun.toml.
+    /// Show the files Pun will check
     ListFiles(list_files::ListFilesArgs),
-    /// Print the resolved configuration.
+    /// Show the resolved config
     Config {
         /// Output format (default: toml).
         #[arg(long, value_enum)]
@@ -105,12 +216,14 @@ enum Cmd {
         #[arg(long)]
         preset: Option<String>,
     },
-    /// The extensions that add a framework's or tool's rules (`pun extension list`).
+    /// List built-in extensions
     Extension {
         #[command(subcommand)]
         cmd: extensions::ExtensionCmd,
     },
-    /// Print a rule's summary, group, sets, fix safety, upstream names and docs link.
+    /// Explain a rule
+    ///
+    /// Shows its summary, group, sets, fix safety, upstream names and docs link.
     Explain {
         /// A rule ID (`format/arrays/syntax`), or an upstream or old name, which is answered with its Pun ID.
         rule: String,
@@ -348,7 +461,7 @@ fn run() -> ExitCode {
     {
         args.insert(1, "x".into());
     }
-    let matches = Cli::command().get_matches_from(args);
+    let matches = command().get_matches_from(args);
     let mut cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     if let (Cmd::Lint(cmd) | Cmd::Check(cmd), Some((_, sub))) = (&mut cli.cmd, matches.subcommand())
     {

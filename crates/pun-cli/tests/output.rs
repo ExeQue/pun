@@ -833,9 +833,7 @@ fn error_boxes_like_pint() {
     cx.same_abort(&t, &["-qv", "app/Missing.php"], PLAIN, "");
     let h = run(&[&PUN[..], &["--help"]].concat(), &cx.dir, PLAIN);
     assert!(
-        h.code == Some(0)
-            && h.stdout
-                .starts_with("Fix (or check) the layout of the given paths"),
+        h.code == Some(0) && h.stdout.starts_with("Fix code style\n"),
         "{h:?}"
     );
     let outside = scratch("out", "perm").join("Fix.php");
