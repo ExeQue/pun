@@ -9921,6 +9921,26 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.2/no-constant-define-name",
+      "command": "lint",
+      "group": "php-7.2",
+      "summary": "Make first argument of define() string",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php72\\Rector\\FuncCall\\StringifyDefineRector",
+        "StringifyDefine",
+        "StringifyDefineRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.3/no-case-insensitive-define",
       "command": "lint",
       "group": "php-7.3",

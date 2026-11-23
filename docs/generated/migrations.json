@@ -10308,9 +10308,11 @@
         "name": "StringifyDefine",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/stringify-define-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.2/no-constant-define-name"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "StringifyStrNeedles",
@@ -10561,7 +10563,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/unset-cast-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not compile on PHP 8.4 (the `(unset)` cast is a fatal error since PHP 8.0)",
         "unsupported": true
       },
       {
