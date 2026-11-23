@@ -20,6 +20,7 @@ mod laravel;
 mod operators;
 mod pest;
 mod php_7_4;
+mod php_8_1;
 mod php_8_2;
 mod php_8_3;
 mod php_8_4;
@@ -160,6 +161,10 @@ rules! {
         php_7_4::no_mb_strrpos_encoding_offset => NoMbStrrposEncodingOffset,
         php_7_4::no_restore_include_path => NoRestoreIncludePath,
         php_7_4::prefer_arrow_function => PreferArrowFunction,
+        php_8_1::no_closure_from_callable => NoClosureFromCallable,
+        php_8_1::no_null_preg_split_limit => NoNullPregSplitLimit,
+        php_8_1::no_reflection_set_accessible => NoReflectionSetAccessible,
+        php_8_1::prefer_first_class_callable_argument => PreferFirstClassCallableArgument,
         php_8_2::add_skip_dots_flag => AddSkipDotsFlag,
         php_8_2::no_dollar_brace_interpolation => NoDollarBraceInterpolation,
         php_8_2::no_utf8_encode_decode => NoUtf8EncodeDecode,
