@@ -39,7 +39,7 @@ New projects use [`pun init`](/docs/commands/init) instead.
 
 ## Why it is built this way
 
-- **Same answers.** Each command aims to match the tool it replaces, so you can switch one command at a time. See [parity](/docs/parity).
+- **Same answers.** Each command aims to match the tool it replaces, so you can switch one command at a time.
 - **Speed and memory first.** Files run in parallel, and nothing waits on a PHP process.
 - **Laravel built in.** Laravel, Pest, and PHPUnit are detected from `composer.lock`. Larastan's rules run inside analyse, with no extra install.
 - **Small config.** `pun.toml` holds a preset per command and the rules you change. To pick them, see [presets and sets](/docs/configuration/presets).

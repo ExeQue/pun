@@ -54,7 +54,6 @@ export default defineConfig({
     copyright: `© ${new Date().getFullYear()} Pun. MIT licensed.`,
     links: [
       { label: "Docs", href: "/docs" },
-      { label: "Parity", href: "/docs/parity" },
       { label: "Report an issue", href: "https://github.com/shipfastlabs/pun/issues" },
     ],
   },
