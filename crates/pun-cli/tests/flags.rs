@@ -484,3 +484,54 @@ fn staged_matches_pint_on_the_same_files() {
     assert_eq!((listed(&got), got.code), (listed(&want), want.code));
     assert_eq!(listed(&got), files);
 }
+
+/// `--staged` outside git fails as Pint's `--dirty` does there: exit 2, and under `--format` or `-q` Pint's error box,
+/// here Pint's `--dirty` box with the flag's name (one character longer) put in.
+#[test]
+fn staged_outside_git_fails_like_dirty() {
+    let Some(cx) = Cx::new() else { return };
+    let dirty = cx.pint(
+        "rm -rf .git",
+        "",
+        &["--dirty", "--test", "--format=json"],
+        b"",
+    );
+    assert_eq!(dirty.code, Some(1), "{dirty:?}");
+    let want: String = (dirty.stdout.split_inclusive('\n'))
+        .map(|l| {
+            if l.len() > 1 && l.trim().is_empty() {
+                format!(" {l}")
+            } else {
+                l.replace("[--dirty]", "[--staged]")
+            }
+        })
+        .collect();
+    assert!(
+        want.contains("\n  The [--staged] option is only available when using Git.  \n"),
+        "{want:?}"
+    );
+    for args in [
+        &["--staged", "--test", "--format=json"][..],
+        &["--staged", "--test", "-q"],
+    ] {
+        let got = cx.ours("rm -rf .git", "", args, b"");
+        assert_eq!(
+            (got.stdout.as_str(), got.stderr.as_str(), got.code),
+            (want.as_str(), "", Some(2)),
+            "{args:?}"
+        );
+    }
+    let got = cx.ours("rm -rf .git", "", &["--staged", "--test"], b"");
+    assert_eq!(
+        (
+            got.stdout.as_str(),
+            common::strip_ansi(&got.stderr),
+            got.code
+        ),
+        (
+            "",
+            "x The [--staged] option is only available when using Git.\n".into(),
+            Some(2)
+        )
+    );
+}

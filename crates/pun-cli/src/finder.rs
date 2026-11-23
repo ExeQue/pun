@@ -418,10 +418,12 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
     };
     let names = match (names, sel) {
         (Some(names), _) => names,
-        (None, GitSelect::Staged) => vec![],
         (None, GitSelect::Dirty) => bail!("The [--dirty] option is only available when using Git."),
         (None, GitSelect::Diff(_)) => {
             bail!("The [--diff] option is only available when using Git.")
+        }
+        (None, GitSelect::Staged) => {
+            bail!("The [--staged] option is only available when using Git.")
         }
     };
     let wanted: std::collections::HashSet<PathBuf> =

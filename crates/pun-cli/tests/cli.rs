@@ -690,9 +690,12 @@ fn pun_only_behaviour() {
     reset(&dir, &files());
     migrate(&dir);
 
-    let (out, _, code) = pun(&dir, &["format", "--staged", "--test", "--format=json"]);
-    assert_eq!(code, Some(0));
-    assert!(out.contains(r#""files":[]"#), "{out}");
+    let (out, err, code) = pun(&dir, &["format", "--staged", "--test", "--format=json"]);
+    assert_eq!((err.as_str(), code), ("", Some(2)));
+    assert!(
+        out.contains("\n  The [--staged] option is only available when using Git.  \n"),
+        "{out}"
+    );
 
     let (out, _, code) = pun(&dir, &["config", "--format=json"]);
     assert_eq!(code, Some(0));

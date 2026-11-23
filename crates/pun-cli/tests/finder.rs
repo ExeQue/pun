@@ -347,11 +347,11 @@ fn git_selection_matches_pint() {
     for (sel, flag) in [
         (GitSelect::Dirty, "dirty"),
         (GitSelect::Diff("main".into()), "diff"),
+        (GitSelect::Staged, "staged"),
     ] {
         let message = format!("The [--{flag}] option is only available when using Git.");
         assert_eq!(ours(&sel).unwrap_err(), message);
     }
-    assert_eq!(ours(&GitSelect::Staged).unwrap(), (BTreeSet::new(), 0));
 
     git(&root, &["init", "-q"]);
     git(&root, &["add", "."]);
