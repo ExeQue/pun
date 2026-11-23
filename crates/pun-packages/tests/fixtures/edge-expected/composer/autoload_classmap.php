@@ -19,4 +19,7 @@ return array(
     'Edge_Legacy_Thing' => $baseDir . '/lib/Edge/Legacy/Thing.php',
     'LegacyCode' => $baseDir . '/packages/legacy/code/LegacyCode.php',
     'PHPUnit\\TestCase' => $baseDir . '/packages/phpunit/src/TestCase.php',
+    'Zÿ' => $baseDir . '/classes/Latin1.php',
+    '©' => $baseDir . '/classes/Latin1.php',
+    'Ã©' => $baseDir . '/classes/Latin1.php',
 );

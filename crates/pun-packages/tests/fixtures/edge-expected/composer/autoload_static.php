@@ -80,6 +80,9 @@ class ComposerStaticInitEdge
         'Edge_Legacy_Thing' => __DIR__ . '/../..' . '/lib/Edge/Legacy/Thing.php',
         'LegacyCode' => __DIR__ . '/../..' . '/packages/legacy/code/LegacyCode.php',
         'PHPUnit\\TestCase' => __DIR__ . '/../..' . '/packages/phpunit/src/TestCase.php',
+        'Zÿ' => __DIR__ . '/../..' . '/classes/Latin1.php',
+        '©' => __DIR__ . '/../..' . '/classes/Latin1.php',
+        'Ã©' => __DIR__ . '/../..' . '/classes/Latin1.php',
     );
 
     public static function getInitializer(ClassLoader $loader)

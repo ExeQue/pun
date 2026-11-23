@@ -108,7 +108,7 @@ impl Dumped {
         let kept = Kept {
             files: (self.files.iter())
                 .map(|f| {
-                    let text = f.bytes.as_deref().map(String::from_utf8_lossy);
+                    let text = f.bytes.as_deref().map(crate::classmap::lossless);
                     (Cow::from(f.path.as_str()), text)
                 })
                 .collect(),
@@ -129,7 +129,7 @@ impl Dumped {
             files: (kept.files.into_iter())
                 .map(|(path, text)| DumpedFile {
                     path: path.into_owned(),
-                    bytes: text.map(|t| t.into_owned().into_bytes()),
+                    bytes: text.map(|t| crate::classmap::restore(&t).into_owned()),
                 })
                 .collect(),
             classes: kept.classes,
@@ -751,7 +751,7 @@ pub fn dump(
 fn dumped_push(dumped: &mut Dumped, target: &str, base: &str, name: &str, body: Option<String>) {
     dumped.files.push(DumpedFile {
         path: rel(base, &format!("{target}/{name}")),
-        bytes: body.map(String::into_bytes),
+        bytes: body.map(|b| crate::classmap::restore(&b).into_owned()),
     });
 }
 

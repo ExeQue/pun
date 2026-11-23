@@ -1,4 +1,4 @@
-use pun_packages::autoload::{Apcu, Scan};
+use pun_packages::autoload::{Apcu, Dumped, DumpedFile, Scan};
 use pun_packages::fetch::{Auth, Fetcher};
 use pun_packages::install::{Added, Options, Report, Updated, dump_autoload, install};
 use pun_packages::lock::Lock;
@@ -87,21 +87,28 @@ fn same_as_composer(dir: &Path, expected: &str) {
             ));
         }
     }
-    let apcu = |text: String| {
-        let Some(at) = text.find("setApcuPrefix('") else {
-            return text;
+    // Bytes, not text: a class name can be any byte above 0x7f, as PHP reads it.
+    let apcu = |mut bytes: Vec<u8>| {
+        let needle = b"setApcuPrefix('";
+        let Some(at) = bytes.windows(needle.len()).position(|w| w == needle) else {
+            return bytes;
         };
-        let prefix = &text[at + 15..at + 35];
-        assert!(prefix.bytes().all(|b| b.is_ascii_hexdigit()) && text[at + 35..].starts_with("')"));
-        text.replace(prefix, "<random>")
+        let prefix = at + 15..at + 35;
+        assert!(
+            bytes[prefix.clone()].iter().all(u8::is_ascii_hexdigit)
+                && bytes[at + 35..].starts_with(b"')")
+        );
+        bytes.splice(prefix, b"<random>".iter().copied());
+        bytes
     };
     for (name, want) in &files {
-        let got = std::fs::read_to_string(dir.join("vendor").join(name))
+        let got = std::fs::read(dir.join("vendor").join(name))
             .unwrap_or_else(|_| panic!("vendor/{name} missing"));
-        assert_eq!(
-            apcu(got),
-            apcu(std::fs::read_to_string(want).unwrap()),
-            "vendor/{name}"
+        let (got, want) = (apcu(got), apcu(std::fs::read(want).unwrap()));
+        assert!(
+            got == want,
+            "vendor/{name}:\n{}",
+            String::from_utf8_lossy(&got)
         );
     }
     let bins = std::fs::read_dir(dir.join("vendor/bin")).unwrap().count();
@@ -420,6 +427,25 @@ fn lock_changes_plugins_and_failures() {
     let report = run(&tmp, &plugins, &no_plugins);
     assert!(!tmp.join("vendor/pest-plugins.json").exists() && report.warnings.is_empty());
     std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// The autoloader kept in the cache gives back the bytes it was given: a class name from a Latin-1 file is the byte
+/// 0xA9, not U+FFFD.
+#[test]
+fn a_kept_dump_keeps_bytes_that_are_not_utf8() {
+    let dir = std::env::temp_dir().join(format!("pun-kept-dump-{}", std::process::id()));
+    let file = dir.join("dump.txt");
+    let dumped = Dumped {
+        files: vec![DumpedFile {
+            path: "vendor/composer/autoload_classmap.php".into(),
+            bytes: Some(b"    '\xa9' => $baseDir . '/classes/Latin1.php',\n".to_vec()),
+        }],
+        classes: 1,
+        warnings: vec![],
+    };
+    dumped.save(&file, "key");
+    assert_eq!(Dumped::load(&file, "key").unwrap().files, dumped.files);
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 /// pest-plugins.json lists the plugins in the order Composer 2.11.2's local repository holds the packages: on a

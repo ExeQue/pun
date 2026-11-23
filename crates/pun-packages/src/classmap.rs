@@ -2,6 +2,7 @@ use crate::error::{Error, Result, bail};
 use pcre2::bytes::{Regex, RegexBuilder};
 use pun_tokens::{Kind, tokenize};
 use rayon::prelude::*;
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -213,6 +214,37 @@ fn strip_whitespace(code: &[u8]) -> Vec<u8> {
     out
 }
 
+/// PHP reads a class name as bytes, so `class ©` in a Latin-1 file names the single byte 0xA9, and Composer writes
+/// that byte into the class map. `lossless` keeps each byte that is not UTF-8 as the code point U+10FF00 + byte, and
+/// `restore` gives the bytes back when a file is written.
+const RAW: u32 = 0x10_FF00;
+
+pub fn lossless(bytes: &[u8]) -> Cow<'_, str> {
+    if let Ok(s) = std::str::from_utf8(bytes) {
+        return Cow::Borrowed(s);
+    }
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for chunk in bytes.utf8_chunks() {
+        out.push_str(chunk.valid());
+        out.extend((chunk.invalid().iter()).filter_map(|&b| char::from_u32(RAW + u32::from(b))));
+    }
+    Cow::Owned(out)
+}
+
+pub fn restore(s: &str) -> Cow<'_, [u8]> {
+    if !s.chars().any(|c| u32::from(c) >= RAW) {
+        return Cow::Borrowed(s.as_bytes());
+    }
+    let mut out = Vec::with_capacity(s.len());
+    for c in s.chars() {
+        match (u32::from(c).checked_sub(RAW)).and_then(|b| u8::try_from(b).ok()) {
+            Some(b) => out.push(b),
+            None => out.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes()),
+        }
+    }
+    Cow::Owned(out)
+}
+
 pub fn find_classes(code: &[u8]) -> Vec<String> {
     let (contents, raw) = if code.contains(&b'`') {
         (strip_whitespace(code), false)
@@ -224,7 +256,7 @@ pub fn find_classes(code: &[u8]) -> Vec<String> {
         return vec![];
     }
     let cleaned = clean(&contents, candidates, raw);
-    let text = |b: &[u8]| String::from_utf8_lossy(b).into_owned();
+    let text = |b: &[u8]| lossless(b).into_owned();
     let mut classes = vec![];
     let mut namespace = String::new();
     let mut locs = DECLARATIONS.capture_locations();
@@ -322,7 +354,7 @@ impl ClassMap {
 
     pub fn sorted(&self) -> Vec<(String, String)> {
         let mut map = self.map.clone();
-        map.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
+        map.sort_by(|a, b| restore(&a.0).cmp(&restore(&b.0)));
         map
     }
 
