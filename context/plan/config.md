@@ -163,7 +163,7 @@ The assistant's calls where the plan is silent:
   needs Laravel on and a locked version >= N; a locked branch has no version, so it passes no gate. A group's level or
   a rule's own line turns rules on whatever the gates. `doctrine` is never detected.
 - `[php] version` must be `major.minor`. Without it, Pun takes the lowest version composer.json's `require.php`
-  admits, else 8.4. The lock is read on every load.
+  admits, else 8.3 (the floor). The lock is read on every load.
 
 **Errors** (Build 3, 6). Config errors exit 2 (output.md).
 - Removed keys are errors that name the replacement: the top-level `preset`, `[format] preset = "per" | "symfony"`,

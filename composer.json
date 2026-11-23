@@ -1,12 +1,12 @@
 {
     "name": "punphp/pun",
-    "description": "Pun formats, lints, and analyses PHP 8.4+ projects in one Rust binary. Downloads the native binary on first run.",
+    "description": "Pun formats, lints, and analyses PHP 8.3+ projects in one Rust binary. Downloads the native binary on first run.",
     "type": "library",
     "license": "MIT",
     "keywords": ["php", "formatter", "linter", "static analysis", "pint", "rector", "phpstan", "laravel", "dev"],
     "homepage": "https://github.com/shipfastlabs/pun",
     "require": {
-        "php": ">=8.4"
+        "php": ">=8.3"
     },
     "bin": ["composer/bin/pun"]
 }

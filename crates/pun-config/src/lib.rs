@@ -298,6 +298,7 @@ fn parse(
     }
     rules.retain(|name, _| !rule_of(name).is_some_and(|id| id.starts_with("lint/")));
     let mut rules = enabled(rules);
+    rules.retain(|r| php_allows(r, php));
     let blade = rules.iter().any(|r| r.name == "Pint/laravel_blade");
     if native_blade {
         for r in rules.iter_mut().filter(|r| r.name == "Pint/laravel_blade") {
@@ -484,17 +485,28 @@ fn resolve_subset(
     Some(rules)
 }
 
+/// Whether format rule `r` can run on a project that targets `php`: dropping the parentheses around
+/// `(new Foo())->bar()` writes PHP 8.4 syntax, so `operators/new-expression-parentheses` skips older targets
+/// unless it adds them (`use-parentheses = true`). PHP-CS-Fixer gates it the same way on the PHP it runs on.
+fn php_allows(r: &Rule, php: PhpVersion) -> bool {
+    r.name != "new_expression_parentheses"
+        || php >= PhpVersion::new(8, 4)
+        || r.options.get("use_parentheses") == Some(&Value::Bool(true))
+}
+
 fn check_composer(composer: &Composer, ignore_php_constraint: bool) -> Result<()> {
     let Some(php) = &composer.php else {
         return Ok(());
     };
+    let floor = PhpVersion::FLOOR;
+    let lowest = (u64::from(floor.major()), u64::from(floor.minor()), 0);
     if php
         .lowest
-        .is_some_and(|l| l < composer::Version::from((8, 4, 0)))
+        .is_some_and(|l| l < composer::Version::from(lowest))
         && !ignore_php_constraint
     {
         bail!(
-            "{} requires PHP \"{}\", which allows PHP < 8.4. Pun only supports projects on PHP 8.4+; raise the constraint (for example \"^8.4\") or keep using Pint.",
+            "{} requires PHP \"{}\", which allows PHP < {floor}. Pun only supports projects on PHP {floor}+; raise the constraint (for example \"^{floor}\") or keep using Pint.",
             (composer.sources.first())
                 .and_then(|p| p.file_name())
                 .map_or("composer.json".into(), |f| f.to_string_lossy()),

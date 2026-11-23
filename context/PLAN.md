@@ -45,7 +45,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   shipfastlabs project. The docs site is https://pun.laravel.cloud.
 - **Positioning:** Pun is to PHP what Bun is to JavaScript: one native binary that formats, lints and analyses PHP and
   installs Composer packages. Each command gives the same answers as the tool it replaces (Pint and PHP-CS-Fixer,
-  Rector, PHPStan and Larastan, Composer), so a project can switch one command at a time. Laravel first, PHP 8.4+
+  Rector, PHPStan and Larastan, Composer), so a project can switch one command at a time. Laravel first, PHP 8.3+
   projects only.
 - **1.0 ships everything at once.** 0.x releases come first; the site presents 1.0 only when `pun format`,
   `pun analyse`, `pun lint` and `pun migrate` all meet the 1.0 bar below. Publishing needs Pushpak's go.
@@ -173,6 +173,10 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Upgrades below the floor too** (Pushpak, 2026-11-23; replaces "No upgrades below the floor" of 2026-10-17):
   Rector's php-5.3 to php-8.3 upgrade rules and the Laravel, PHPUnit and package upgrade rules below the current
   majors are ported. Code on PHP 8.4 can still be written the old way, which they modernize.
+- **PHP 8.3 is the floor** (Pushpak, 2026-11-23; was 8.4): a `require.php` below 8.3 is a config error, and with no
+  `require.php` the target is 8.3. Rules that write PHP 8.4 syntax or call PHP 8.4 functions run only on an 8.4+
+  target: the `php-8.4` group, the rules whose `min_php_version` is 8.4, and `format/operators/new-expression-parentheses`
+  unless it adds parentheses.
 
 ### Engines
 

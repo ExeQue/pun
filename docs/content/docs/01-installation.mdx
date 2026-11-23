@@ -34,7 +34,7 @@ composer require --dev punphp/pun
 vendor/bin/pun --version
 ```
 
-The package needs PHP 8.4 or later. On the first run, it downloads the matching release binary from GitHub Releases, checks its SHA-256 checksum, and keeps the binary in `vendor/bin`. If the download or the checksum check fails, it exits 2.
+The package needs PHP 8.3 or later. On the first run, it downloads the matching release binary from GitHub Releases, checks its SHA-256 checksum, and keeps the binary in `vendor/bin`. If the download or the checksum check fails, it exits 2.
 
 To update, run `composer update punphp/pun`. `pun self-update` does not replace a Composer install.
 
@@ -48,7 +48,7 @@ These docs write commands as `pun`. In a project, run `vendor/bin/pun`, or call 
 
 ## Runtime requirements
 
-- Your project must target PHP 8.4 or later. Pun reads the target from `require.php` in `composer.json`, and `[php] version` overrides it. If `require.php` allows PHP below 8.4, `format`, `lint`, `analyse`, and `check` exit 2.
+- Your project must target PHP 8.3 or later. Pun reads the target from `require.php` in `composer.json`, and `[php] version` overrides it. If `require.php` allows PHP below 8.3, `format`, `lint`, `analyse`, and `check` exit 2.
 - Format, lint, and analyse need no PHP or Node.js runtime.
 - Blade formatting needs Node.js and these dev dependencies, unless you set [`[format] blade = "native"`](/docs/configuration/pun-toml#format). If the project has a `bun.lock` or `bun.lockb` file, Pun runs Prettier with Bun instead. Prettier and its plugins load from the project's `node_modules`, so Blade formatting runs project code.
 
