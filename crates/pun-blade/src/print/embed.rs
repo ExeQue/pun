@@ -42,12 +42,53 @@ const ALPINE_DIRECTIVES: &[(&str, AlpineKind)] = &[
 ];
 
 const CSS_AT_RULE_NAMES: &[&str] = &[
-    "charset", "import", "namespace", "media", "supports", "layer", "container", "scope", "font-face",
-    "font-feature-values", "font-palette-values", "property", "counter-style", "keyframes", "-webkit-keyframes",
-    "-moz-keyframes", "-o-keyframes", "page", "starting-style", "view-transition", "document", "custom-media",
-    "tailwind", "apply", "screen", "responsive", "variants", "utility", "theme", "plugin", "config", "use", "forward",
-    "mixin", "include", "function", "return", "if", "else", "for", "each", "while", "at-root", "extend", "debug",
-    "warn", "error",
+    "charset",
+    "import",
+    "namespace",
+    "media",
+    "supports",
+    "layer",
+    "container",
+    "scope",
+    "font-face",
+    "font-feature-values",
+    "font-palette-values",
+    "property",
+    "counter-style",
+    "keyframes",
+    "-webkit-keyframes",
+    "-moz-keyframes",
+    "-o-keyframes",
+    "page",
+    "starting-style",
+    "view-transition",
+    "document",
+    "custom-media",
+    "tailwind",
+    "apply",
+    "screen",
+    "responsive",
+    "variants",
+    "utility",
+    "theme",
+    "plugin",
+    "config",
+    "use",
+    "forward",
+    "mixin",
+    "include",
+    "function",
+    "return",
+    "if",
+    "else",
+    "for",
+    "each",
+    "while",
+    "at-root",
+    "extend",
+    "debug",
+    "warn",
+    "error",
 ];
 
 fn extract_style_at_rule_name_at(source: &str, pos: usize) -> Option<String> {
@@ -85,7 +126,8 @@ fn has_directive_call_args(text: &str) -> bool {
 fn directive_calls(text: &str) -> impl Iterator<Item = &str> {
     let b = text.as_bytes();
     (0..b.len()).filter_map(move |i| {
-        if b[i] != b'@' || i + 1 >= b.len() || !(b[i + 1].is_ascii_alphabetic() || b[i + 1] == b'_') {
+        if b[i] != b'@' || i + 1 >= b.len() || !(b[i + 1].is_ascii_alphabetic() || b[i + 1] == b'_')
+        {
             return None;
         }
         let mut j = i + 1;
@@ -99,7 +141,8 @@ fn directive_calls(text: &str) -> impl Iterator<Item = &str> {
 fn has_php_like_markers(text: &str) -> bool {
     // `/@[A-Za-z_][A-Za-z0-9_]*\s*\(\s*['"`[]/u`
     let call_with_literal = directive_calls(text).any(|rest| {
-        rest.strip_prefix('(').is_some_and(|r| crate::tree::js_trim_start(r).starts_with(['\'', '"', '`', '[']))
+        rest.strip_prefix('(')
+            .is_some_and(|r| crate::tree::js_trim_start(r).starts_with(['\'', '"', '`', '[']))
     });
     let mut named_args = false;
     if let (Some(open), Some(close)) = (text.find('('), text.rfind(')'))
@@ -107,15 +150,20 @@ fn has_php_like_markers(text: &str) -> bool {
     {
         // `/(^|,)\s*[A-Za-z_][A-Za-z0-9_]*\s*:/u`
         let args = &text[open + 1..close];
-        named_args = std::iter::once(0).chain(args.match_indices(',').map(|(i, _)| i + 1)).any(|start| {
-            let s = crate::tree::js_trim_start(&args[start..]);
-            let b = s.as_bytes();
-            if b.is_empty() || !(b[0].is_ascii_alphabetic() || b[0] == b'_') {
-                return false;
-            }
-            let len = b.iter().take_while(|c| c.is_ascii_alphanumeric() || **c == b'_').count();
-            crate::tree::js_trim_start(&s[len..]).starts_with(':')
-        });
+        named_args = std::iter::once(0)
+            .chain(args.match_indices(',').map(|(i, _)| i + 1))
+            .any(|start| {
+                let s = crate::tree::js_trim_start(&args[start..]);
+                let b = s.as_bytes();
+                if b.is_empty() || !(b[0].is_ascii_alphabetic() || b[0] == b'_') {
+                    return false;
+                }
+                let len = b
+                    .iter()
+                    .take_while(|c| c.is_ascii_alphanumeric() || **c == b'_')
+                    .count();
+                crate::tree::js_trim_start(&s[len..]).starts_with(':')
+            });
     }
     text.contains('$')
         || text.contains("->")
@@ -128,7 +176,9 @@ fn has_php_like_markers(text: &str) -> bool {
 impl Printer<'_> {
     fn is_directive_node_blade_like(&self, id: Id, context: RawContext) -> bool {
         let text = self.full_text(id);
-        let Some(name) = extract_directive_name(text) else { return false };
+        let Some(name) = extract_directive_name(text) else {
+            return false;
+        };
         if context == RawContext::Style {
             if let Some(rule) = extract_style_at_rule_name_at(self.source(), self.n(id).start)
                 && CSS_AT_RULE_NAMES.contains(&rule.as_str())
@@ -136,7 +186,8 @@ impl Printer<'_> {
                 if !self.ast.directives.is_directive(&name) {
                     return false;
                 }
-                return rule == name && (has_php_like_markers(text) || has_directive_call_args(text));
+                return rule == name
+                    && (has_php_like_markers(text) || has_directive_call_args(text));
             }
             if is_frontend_event_style_at_name(&name) {
                 return has_php_like_markers(text);
@@ -169,7 +220,9 @@ impl Printer<'_> {
         if n.open_tag_end_offset > 0 && n.closing_tag_start_offset > n.open_tag_end_offset {
             return &self.source()[n.open_tag_end_offset..n.closing_tag_start_offset];
         }
-        let (Some(f), Some(l)) = (self.first_child(id), self.last_child(id)) else { return "" };
+        let (Some(f), Some(l)) = (self.first_child(id), self.last_child(id)) else {
+            return "";
+        };
         let (s, e) = (self.n(f).start, self.n(l).end);
         if e <= s { "" } else { &self.source()[s..e] }
     }
@@ -178,7 +231,12 @@ impl Printer<'_> {
         if self.kind(id) != NodeKind::Element {
             return false;
         }
-        if self.n(id).children.iter().any(|&c| self.is_blade_construct_child(c, context)) {
+        if self
+            .n(id)
+            .children
+            .iter()
+            .any(|&c| self.is_blade_construct_child(c, context))
+        {
             return true;
         }
         let content = self.element_content(id);
@@ -217,14 +275,22 @@ impl Printer<'_> {
             return None;
         }
         let value = js_trim(&fm.value);
-        let doc = if value.is_empty() { Doc::default() } else { oxc::yaml_to_doc(&self.ids, value)? };
+        let doc = if value.is_empty() {
+            Doc::default()
+        } else {
+            oxc::yaml_to_doc(&self.ids, value)?
+        };
         let has_doc = !value.is_empty();
         Some(crate::doc::mark_as_root(concat(vec![
             Doc::from(fm.start_delimiter.as_str()),
             Doc::from(fm.explicit_language.clone().unwrap_or_default()),
             crate::doc::hardline(),
             doc,
-            if has_doc { crate::doc::hardline() } else { Doc::default() },
+            if has_doc {
+                crate::doc::hardline()
+            } else {
+                Doc::default()
+            },
             Doc::from(fm.end_delimiter.as_str()),
         ])))
     }
@@ -232,9 +298,13 @@ impl Printer<'_> {
     /// `handleElementEmbed`
     fn embed_element(&self, id: Id) -> Option<Doc> {
         if self.should_use_inline_intent_element_embed(id) {
-            let delegated = super::format_with(self.full_text(id), INLINE_INTENT_SUBFORMAT_WIDTH, true);
+            let delegated =
+                super::format_with(self.full_text(id), INLINE_INTENT_SUBFORMAT_WIDTH, true);
             let trimmed = delegated.strip_suffix('\n').unwrap_or(&delegated);
-            return Some(concat(super::utils::replace_eol(trimmed, &crate::doc::hardline())));
+            return Some(concat(super::utils::replace_eol(
+                trimmed,
+                &crate::doc::hardline(),
+            )));
         }
         if !self.is_script_like(id) {
             return None;
@@ -243,14 +313,20 @@ impl Printer<'_> {
             return Some(self.embed_unparsed_raw_content_element(id));
         }
         if self.should_use_mixed_raw_content_embedding(id) {
-            return Some(self.embed_mixed_raw_content_element(id).unwrap_or_else(|| Doc::from(self.full_text(id))));
+            return Some(
+                self.embed_mixed_raw_content_element(id)
+                    .unwrap_or_else(|| Doc::from(self.full_text(id))),
+            );
         }
         let n = self.n(id);
         if self.infer_element_parser(id).is_some()
             && n.tag_name == "style"
             && n.children.iter().any(|&c| self.kind(c) != NodeKind::Text)
         {
-            if n.children.iter().any(|&c| self.is_blade_construct_child(c, RawContext::Style)) {
+            if n.children
+                .iter()
+                .any(|&c| self.is_blade_construct_child(c, RawContext::Style))
+            {
                 return None;
             }
             return self.embed_style_element_children(id);
@@ -261,14 +337,19 @@ impl Printer<'_> {
     /// `shouldUseInlineIntentElementEmbed`
     fn should_use_inline_intent_element_embed(&self, id: Id) -> bool {
         let n = self.n(id);
-        if !n.has_closing_tag || self.inline_intent_delegated || !matches!(n.tag_name.as_str(), "p" | "svg") {
+        if !n.has_closing_tag
+            || self.inline_intent_delegated
+            || !matches!(n.tag_name.as_str(), "p" | "svg")
+        {
             return false;
         }
         if !super::utils::preserve_inline_intent_element(&n.tag_name, &n.namespace) {
             return false;
         }
         let source = crate::tree::js_trim_end(self.full_text(id));
-        source.encode_utf16().count() >= INLINE_INTENT_MIN_LENGTH && !source.contains('\n') && !source.contains('\r')
+        source.encode_utf16().count() >= INLINE_INTENT_MIN_LENGTH
+            && !source.contains('\n')
+            && !source.contains('\r')
     }
 
     fn has_blade_value_syntax(&self, id: Id) -> bool {
@@ -283,25 +364,38 @@ impl Printer<'_> {
         }
         let name = self.static_attribute_name_lower(id);
         let static_value = self.is_static_attribute_value(id);
-        let parent_full = self.n(id).parent.map(|p| self.n(p).full_name.to_lowercase()).unwrap_or_default();
+        let parent_full = self
+            .n(id)
+            .parent
+            .map_or_default(|p| self.n(p).full_name.to_lowercase());
 
         let mut single_quote_wrapper = false;
-        let printed: Doc = if name.as_deref() == Some("srcset") && static_value && (parent_full == "img" || parent_full == "source") {
+        let printed: Doc = if name.as_deref() == Some("srcset")
+            && static_value
+            && (parent_full == "img" || parent_full == "source")
+        {
             print_srcset(&value)?
-        } else if static_value && name.as_deref() == Some("style") && !self.has_blade_value_syntax(id) {
+        } else if static_value
+            && name.as_deref() == Some("style")
+            && !self.has_blade_value_syntax(id)
+        {
             if self.should_preserve_inline_svg_style_attribute(id) {
                 Doc::from(value.as_str())
             } else {
-                print_expand(oxc::css_to_doc(&self.ids, &value, true)?, true)
+                // oxc's style-attribute root already has printExpand's indent and soft lines.
+                oxc::css_to_doc(&self.ids, &value, true)?
             }
-        } else if name.as_deref().is_some_and(crate::frontend::is_html_event_attribute)
+        } else if name
+            .as_deref()
+            .is_some_and(crate::frontend::is_html_event_attribute)
             && static_value
             && !self.has_blade_value_syntax(id)
         {
             oxc::js_to_doc(&self.ids, &value, JsKind::Handler)?
         } else if self.is_colon_bound_attribute(id) {
             if self.n(id).parent.is_some_and(|p| {
-                self.kind(p) == NodeKind::Element && super::utils::is_blade_component_tag_name(&self.n(p).full_name)
+                self.kind(p) == NodeKind::Element
+                    && super::utils::is_blade_component_tag_name(&self.n(p).full_name)
             }) {
                 return None;
             }
@@ -309,27 +403,45 @@ impl Printer<'_> {
             let doc = oxc::js_to_doc(&self.ids, &value, JsKind::GroupExpression)
                 .or_else(|| oxc::js_to_doc(&self.ids, &value, JsKind::HandlerGrouped))?;
             group(doc)
-        } else if static_value && matches!(name.as_deref(), Some("class" | "classname")) && !self.has_blade_value_syntax(id) {
-            Doc::from(js_trim(&value).split(crate::tree::is_js_whitespace).filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" "))
-        } else if static_value && name.as_deref() == Some("allow") && parent_full == "iframe" && !self.has_blade_value_syntax(id) {
+        } else if static_value
+            && matches!(name.as_deref(), Some("class" | "classname"))
+            && !self.has_blade_value_syntax(id)
+        {
+            Doc::from(
+                js_trim(&value)
+                    .split(crate::tree::is_js_whitespace)
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            )
+        } else if static_value
+            && name.as_deref() == Some("allow")
+            && parent_full == "iframe"
+            && !self.has_blade_value_syntax(id)
+        {
             print_permissions_policy(&value)
-        } else if let Some(kind) = self.alpine_directive_kind(id, &value) {
+        } else {
+            let kind = self.alpine_directive_kind(id, &value)?;
             let (first, second) = match kind {
                 AlpineKind::Statement => (JsKind::Handler, JsKind::HugExpression),
                 AlpineKind::Expression => (JsKind::HugExpression, JsKind::Handler),
             };
             oxc::js_to_doc(&self.ids, &value, first)
                 .or_else(|| oxc::js_to_doc(&self.ids, &value, second))
-                .unwrap_or_else(|| Doc::from(normalize_multiline_fallback_value_indentation(&value)))
-        } else {
-            return None;
+                .unwrap_or_else(|| {
+                    Doc::from(normalize_multiline_fallback_value_indentation(&value))
+                })
         };
         Some(self.wrap_attribute_value(id, printed, single_quote_wrapper))
     }
 
     /// `isAlpineAttribute` and `getAlpineDirectiveInfo`.
     fn alpine_directive_kind(&self, id: Id, value: &str) -> Option<AlpineKind> {
-        if value.contains("{{") || value.contains("{!!") || !self.is_static_attribute_value(id) || !self.is_static_attribute_name(id) {
+        if value.contains("{{")
+            || value.contains("{!!")
+            || !self.is_static_attribute_value(id)
+            || !self.is_static_attribute_name(id)
+        {
             return None;
         }
         let name = self.attribute_name_raw(id);
@@ -351,7 +463,9 @@ impl Printer<'_> {
 
     /// `shouldPreserveInlineSvgStyleAttribute`
     fn should_preserve_inline_svg_style_attribute(&self, id: Id) -> bool {
-        let Some(parent) = self.n(id).parent else { return false };
+        let Some(parent) = self.n(id).parent else {
+            return false;
+        };
         let p = self.n(parent);
         if self.kind(parent) != NodeKind::Element || p.namespace != "svg" {
             return false;
@@ -364,7 +478,10 @@ impl Printer<'_> {
     }
 
     fn is_colon_bound_attribute(&self, id: Id) -> bool {
-        if !self.is_static_attribute_name(id) || !self.is_static_attribute_value(id) || self.has_blade_value_syntax(id) {
+        if !self.is_static_attribute_name(id)
+            || !self.is_static_attribute_value(id)
+            || self.has_blade_value_syntax(id)
+        {
             return false;
         }
         let name = self.attribute_name_raw(id);
@@ -383,14 +500,24 @@ impl Printer<'_> {
         if allow_single_quote_wrapper {
             let content = collect_doc_strings(&value);
             if content.contains('"') && !content.contains('\'') {
-                return concat(vec![Doc::from(name), Doc::from("='"), group(value), Doc::from("'")]);
+                return concat(vec![
+                    Doc::from(name),
+                    Doc::from("='"),
+                    group(value),
+                    Doc::from("'"),
+                ]);
             }
         }
         let escaped = map_doc(&value, &mut |d| match &d {
             Doc::Str(s) if s.contains('"') => Doc::from(s.replace('"', "&quot;")),
             _ => d,
         });
-        concat(vec![Doc::from(name), Doc::from("=\""), group(escaped), Doc::from("\"")])
+        concat(vec![
+            Doc::from(name),
+            Doc::from("=\""),
+            group(escaped),
+            Doc::from("\""),
+        ])
     }
 }
 
@@ -407,7 +534,10 @@ fn collect_doc_strings(doc: &Doc) -> String {
 
 /// `printExpand`
 pub(crate) fn print_expand(content: Doc, trailing: bool) -> Doc {
-    concat(vec![indent(concat(vec![softline(), content])), if trailing { softline() } else { Doc::default() }])
+    concat(vec![
+        indent(concat(vec![softline(), content])),
+        if trailing { softline() } else { Doc::default() },
+    ])
 }
 
 fn print_permissions_policy(value: &str) -> Doc {
@@ -415,7 +545,11 @@ fn print_permissions_policy(value: &str) -> Doc {
         .split(';')
         .map(js_trim)
         .filter(|s| !s.is_empty())
-        .map(|d| d.split(crate::tree::is_js_whitespace).filter(|s| !s.is_empty()).collect())
+        .map(|d| {
+            d.split(crate::tree::is_js_whitespace)
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
         .collect();
     if directives.is_empty() {
         return concat(vec![Doc::default()]);
@@ -427,7 +561,11 @@ fn print_permissions_policy(value: &str) -> Doc {
         .map(|(i, words)| {
             concat(vec![
                 Doc::from(words.join(" ")),
-                if i == count - 1 { if_break(";", "") } else { concat(vec![Doc::from(";"), line()]) },
+                if i == count - 1 {
+                    if_break(";", "")
+                } else {
+                    concat(vec![Doc::from(";"), line()])
+                },
             ])
         })
         .collect();
@@ -436,7 +574,9 @@ fn print_permissions_policy(value: &str) -> Doc {
 }
 
 fn line_indent(line: &str) -> usize {
-    line.bytes().take_while(|&b| b == b' ' || b == b'\t').count()
+    line.bytes()
+        .take_while(|&b| b == b' ' || b == b'\t')
+        .count()
 }
 
 /// `normalizeMultilineFallbackValueIndentation`
@@ -446,8 +586,12 @@ fn normalize_multiline_fallback_value_indentation(value: &str) -> String {
     }
     let normalized = value.replace("\r\n", "\n");
     let mut lines: Vec<&str> = normalized.split('\n').collect();
-    let non_empty: Vec<usize> = (0..lines.len()).filter(|&i| !js_trim(lines[i]).is_empty()).collect();
-    let (Some(&first), Some(&last)) = (non_empty.first(), non_empty.last()) else { return value.to_owned() };
+    let non_empty: Vec<usize> = (0..lines.len())
+        .filter(|&i| !js_trim(lines[i]).is_empty())
+        .collect();
+    let (Some(&first), Some(&last)) = (non_empty.first(), non_empty.last()) else {
+        return value.to_owned();
+    };
     if first >= last {
         return value.to_owned();
     }
@@ -457,7 +601,10 @@ fn normalize_multiline_fallback_value_indentation(value: &str) -> String {
         return value.to_owned();
     }
     let close_indent = line_indent(lines[last]);
-    let Some(min_middle) = (first + 1..last).filter(|&i| !js_trim(lines[i]).is_empty()).map(|i| line_indent(lines[i])).min()
+    let Some(min_middle) = (first + 1..last)
+        .filter(|&i| !js_trim(lines[i]).is_empty())
+        .map(|i| line_indent(lines[i]))
+        .min()
     else {
         return value.to_owned();
     };
@@ -481,16 +628,33 @@ fn print_srcset(value: &str) -> Option<Doc> {
         return Some(Doc::from(value));
     }
     let units = [('w', 0usize), ('h', 1), ('x', 2)];
-    let used: Vec<char> = units.iter().filter(|(_, i)| candidates.iter().any(|c| c.descriptors[*i].is_some())).map(|(u, _)| *u).collect();
+    let used: Vec<char> = units
+        .iter()
+        .filter(|(_, i)| candidates.iter().any(|c| c.descriptors[*i].is_some()))
+        .map(|(u, _)| *u)
+        .collect();
     if used.len() > 1 {
         return None;
     }
     let key = used.first().copied();
     let key_index = key.and_then(|k| units.iter().find(|(u, _)| *u == k).map(|(_, i)| *i));
-    let max_url = candidates.iter().map(|c| c.url.chars().count()).max().unwrap_or(0);
-    let descriptors: Vec<String> =
-        candidates.iter().map(|c| key_index.and_then(|i| c.descriptors[i].clone()).unwrap_or_default()).collect();
-    let left: Vec<usize> = descriptors.iter().map(|d| d.find('.').unwrap_or(d.len())).collect();
+    let max_url = candidates
+        .iter()
+        .map(|c| c.url.chars().count())
+        .max()
+        .unwrap_or(0);
+    let descriptors: Vec<String> = candidates
+        .iter()
+        .map(|c| {
+            key_index
+                .and_then(|i| c.descriptors[i].clone())
+                .unwrap_or_default()
+        })
+        .collect();
+    let left: Vec<usize> = descriptors
+        .iter()
+        .map(|d| d.find('.').unwrap_or(d.len()))
+        .collect();
     let max_left = left.iter().copied().max().unwrap_or(0);
     let parts: Vec<Doc> = candidates
         .iter()
@@ -500,10 +664,17 @@ fn print_srcset(value: &str) -> Option<Doc> {
             if !descriptors[i].is_empty() {
                 let pad = max_url - c.url.chars().count() + 1 + max_left - left[i];
                 parts.push(if_break(" ".repeat(pad).as_str(), " "));
-                parts.push(Doc::from(format!("{}{}", descriptors[i], key.map(String::from).unwrap_or_default())));
+                parts.push(Doc::from(format!(
+                    "{}{}",
+                    descriptors[i],
+                    key.map_or_default(String::from)
+                )));
             }
             concat(parts)
         })
         .collect();
-    Some(print_expand(join(&concat(vec![Doc::from(","), line()]), parts), true))
+    Some(print_expand(
+        join(&concat(vec![Doc::from(","), line()]), parts),
+        true,
+    ))
 }

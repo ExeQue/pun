@@ -36,7 +36,11 @@ fn get_front_matter(text: &str) -> Option<FrontMatter> {
     let content_start = skip_line_break(bytes, first_break);
     let explicit = crate::tree::js_trim(&text[3..first_break]).to_owned();
     let language = if explicit.is_empty() {
-        if start_delimiter == "+++" { "toml".to_owned() } else { "yaml".to_owned() }
+        if start_delimiter == "+++" {
+            "toml".to_owned()
+        } else {
+            "yaml".to_owned()
+        }
     } else {
         explicit.clone()
     };
@@ -74,7 +78,11 @@ pub(crate) fn parse_front_matter(text: &str) -> (Option<FrontMatter>, String) {
     };
     let mut content = String::with_capacity(text.len());
     for b in fm.raw.bytes() {
-        content.push(if matches!(b, b'\r' | b'\n') { b as char } else { ' ' });
+        content.push(if matches!(b, b'\r' | b'\n') {
+            b as char
+        } else {
+            ' '
+        });
     }
     content.push_str(&text[fm.raw.len()..]);
     (Some(fm), content)

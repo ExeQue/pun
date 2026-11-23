@@ -5,12 +5,12 @@ use std::collections::{HashMap, HashSet};
 use crate::directives::{Role, TreeDirectives};
 use crate::lexer::{Token, TokenType};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub(crate) enum NodeKind {
+    #[default]
     Root,
     Element,
     Text,
-    Fragment,
     Echo,
     RawEcho,
     TripleEcho,
@@ -69,8 +69,17 @@ fn flat(kind: NodeKind, parent: usize, token_start: usize, token_count: usize) -
     }
 }
 
-fn flat_data(kind: NodeKind, parent: usize, token_start: usize, token_count: usize, data: usize) -> FlatNode {
-    FlatNode { data, ..flat(kind, parent, token_start, token_count) }
+fn flat_data(
+    kind: NodeKind,
+    parent: usize,
+    token_start: usize,
+    token_count: usize,
+    data: usize,
+) -> FlatNode {
+    FlatNode {
+        data,
+        ..flat(kind, parent, token_start, token_count)
+    }
 }
 
 // construct-scanner.ts
@@ -145,23 +154,55 @@ struct Closing {
 }
 
 const P_SIBLINGS: &[&str] = &[
-    "address", "article", "aside", "blockquote", "div", "dl", "fieldset", "footer", "form", "h1", "h2", "h3", "h4",
-    "h5", "h6", "header", "hr", "main", "nav", "ol", "p", "pre", "section", "table", "ul",
+    "address",
+    "article",
+    "aside",
+    "blockquote",
+    "div",
+    "dl",
+    "fieldset",
+    "footer",
+    "form",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "header",
+    "hr",
+    "main",
+    "nav",
+    "ol",
+    "p",
+    "pre",
+    "section",
+    "table",
+    "ul",
 ];
 
 fn closing_conditions(element: &str) -> Option<Closing> {
-    let c = |s: &'static [&'static str], p: &'static [&'static str]| Closing { siblings: Some(s), parents: Some(p) };
+    let c = |s: &'static [&'static str], p: &'static [&'static str]| Closing {
+        siblings: Some(s),
+        parents: Some(p),
+    };
     Some(match element {
         "li" => c(&["li"], &["ul", "ol", "menu"]),
         "dt" | "dd" => c(&["dt", "dd"], &["dl"]),
-        "p" => Closing { siblings: Some(P_SIBLINGS), parents: None },
+        "p" => Closing {
+            siblings: Some(P_SIBLINGS),
+            parents: None,
+        },
         "option" => c(&["option", "optgroup"], &["select", "datalist", "optgroup"]),
         "optgroup" => c(&["optgroup"], &["select"]),
         "rt" | "rp" => c(&["rt", "rp"], &["ruby", "rtc"]),
         "rb" => c(&["rb", "rt", "rp", "rtc"], &["ruby"]),
         "caption" | "colgroup" => c(&["colgroup", "thead", "tbody", "tfoot", "tr"], &["table"]),
         "thead" | "tbody" => c(&["tbody", "tfoot"], &["table"]),
-        "tfoot" => Closing { siblings: None, parents: Some(&["table"]) },
+        "tfoot" => Closing {
+            siblings: None,
+            parents: Some(&["table"]),
+        },
         "tr" => c(&["tr"], &["table", "thead", "tbody", "tfoot"]),
         "td" | "th" => c(&["td", "th"], &["tr"]),
         _ => return None,
@@ -174,7 +215,9 @@ fn is_in_valid_parent_context(element: &str, parent: Option<&str>) -> bool {
     };
     let has_parent_rules = c.parents.is_some();
     let has_sibling_rules = c.siblings.is_some();
-    if (parent == Some(element) || parent.is_none()) && (has_parent_rules || parent == Some(element)) {
+    if (parent == Some(element) || parent.is_none())
+        && (has_parent_rules || parent == Some(element))
+    {
         return false;
     }
     if let Some(parents) = c.parents {
@@ -183,7 +226,12 @@ fn is_in_valid_parent_context(element: &str, parent: Option<&str>) -> bool {
     has_sibling_rules
 }
 
-fn should_auto_close_element(element: &str, next: Option<&str>, parent: Option<&str>, at_parent_end: bool) -> bool {
+fn should_auto_close_element(
+    element: &str,
+    next: Option<&str>,
+    parent: Option<&str>,
+    at_parent_end: bool,
+) -> bool {
     let Some(c) = closing_conditions(element) else {
         return false;
     };
@@ -192,16 +240,16 @@ fn should_auto_close_element(element: &str, next: Option<&str>, parent: Option<&
     {
         return true;
     }
-    if at_parent_end
-        && let (Some(p), Some(parents)) = (parent, c.parents)
-    {
+    if at_parent_end && let (Some(p), Some(parents)) = (parent, c.parents) {
         return parents.contains(&p);
     }
     false
 }
 
-pub(crate) const VOID_ELEMENTS: &[&str] =
-    &["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"];
+pub(crate) const VOID_ELEMENTS: &[&str] = &[
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
+    "track", "wbr",
+];
 
 // argument-scanner.ts
 
@@ -343,21 +391,14 @@ pub(crate) fn js_trim_end(s: &str) -> &str {
 pub(crate) fn is_js_whitespace(c: char) -> bool {
     matches!(
         c,
-        '\u{9}'
-            | '\u{a}'
-            | '\u{b}'
-            | '\u{c}'
-            | '\u{d}'
-            | ' '
-            | '\u{a0}'
-            | '\u{1680}'
-            | '\u{2000}'..='\u{200a}'
-            | '\u{2028}'
-            | '\u{2029}'
-            | '\u{202f}'
-            | '\u{205f}'
-            | '\u{3000}'
-            | '\u{feff}'
+        '\u{9}' | '\u{a}' | '\u{b}' | '\u{c}' | '\u{d}' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}'
+                | '\u{2028}'
+                | '\u{2029}'
+                | '\u{202f}'
+                | '\u{205f}'
+                | '\u{3000}'
+                | '\u{feff}'
     )
 }
 
@@ -399,7 +440,11 @@ pub(crate) fn script_scan_state(source: &[u8], content_start: usize, offset: usi
                 }
             }
             ScanState::Single | ScanState::Double => {
-                let q = if state == ScanState::Single { b'\'' } else { b'"' };
+                let q = if state == ScanState::Single {
+                    b'\''
+                } else {
+                    b'"'
+                };
                 if ch == b'\\' {
                     i += 1;
                 } else if ch == q {
@@ -472,7 +517,11 @@ pub(crate) fn script_scan_state(source: &[u8], content_start: usize, offset: usi
     state
 }
 
-pub(crate) fn is_likely_inside_script_literal_or_comment(source: &[u8], content_start: usize, offset: usize) -> bool {
+pub(crate) fn is_likely_inside_script_literal_or_comment(
+    source: &[u8],
+    content_start: usize,
+    offset: usize,
+) -> bool {
     script_scan_state(source, content_start, offset) != ScanState::Code
 }
 
@@ -556,7 +605,9 @@ fn is_likely_regex_start(source: &[u8], content_start: usize, slash: usize) -> b
         }
         if ch == b'+' || ch == b'-' {
             let mut j = i - 1;
-            while j >= content_start as isize && matches!(source[j as usize], b' ' | b'\t' | b'\r' | b'\n') {
+            while j >= content_start as isize
+                && matches!(source[j as usize], b' ' | b'\t' | b'\r' | b'\n')
+            {
                 j -= 1;
             }
             return !(j >= content_start as isize && source[j as usize] == ch);
@@ -576,7 +627,9 @@ pub(crate) fn has_swallowed_tag_syntax(opening: &str) -> bool {
         return false;
     };
     let b = &opening.as_bytes()[nl..];
-    (0..b.len()).any(|i| b[i] == b'<' && i + 1 < b.len() && b[i + 1] != b'/' && b[i + 1].is_ascii_alphabetic())
+    (0..b.len()).any(|i| {
+        b[i] == b'<' && i + 1 < b.len() && b[i + 1] != b'/' && b[i + 1].is_ascii_alphabetic()
+    })
 }
 
 // directive-token-index.ts
@@ -588,10 +641,17 @@ struct DirectiveTokenIndex {
     has_args: HashMap<usize, bool>,
 }
 
-fn check_directive_args_fast(tokens: &[Token], start: usize, end: usize) -> (bool, Option<usize>, usize) {
+fn check_directive_args_fast(
+    tokens: &[Token],
+    start: usize,
+    end: usize,
+) -> (bool, Option<usize>, usize) {
     let mut consumed = 0;
     let mut i = start;
-    if i < end && tokens[i].kind == TokenType::Whitespace && i + 1 < end && tokens[i + 1].kind == TokenType::DirectiveArgs
+    if i < end
+        && tokens[i].kind == TokenType::Whitespace
+        && i + 1 < end
+        && tokens[i + 1].kind == TokenType::DirectiveArgs
     {
         consumed += 1;
         i += 1;
@@ -609,8 +669,12 @@ fn bsearch_gte(arr: &[usize], target: usize) -> Option<usize> {
 
 impl DirectiveTokenIndex {
     fn new(tokens: &[Token], source: &str, include: impl Fn(usize) -> bool) -> Self {
-        let mut idx =
-            DirectiveTokenIndex { by_name: HashMap::new(), all_positions: Vec::new(), all_names: Vec::new(), has_args: HashMap::new() };
+        let mut idx = DirectiveTokenIndex {
+            by_name: HashMap::new(),
+            all_positions: Vec::new(),
+            all_names: Vec::new(),
+            has_args: HashMap::new(),
+        };
         for (i, t) in tokens.iter().enumerate() {
             if t.kind != TokenType::Directive || !include(i) {
                 continue;
@@ -618,14 +682,17 @@ impl DirectiveTokenIndex {
             let name = directive_name(t, source);
             idx.all_positions.push(i);
             idx.all_names.push(name.clone());
-            idx.has_args.insert(i, check_directive_args_fast(tokens, i + 1, tokens.len()).0);
+            idx.has_args
+                .insert(i, check_directive_args_fast(tokens, i + 1, tokens.len()).0);
             idx.by_name.entry(name).or_default().push(i);
         }
         idx
     }
 
     fn exists_after(&self, name: &str, min: usize) -> bool {
-        self.by_name.get(&name.to_ascii_lowercase()).is_some_and(|p| p.last().is_some_and(|&l| l >= min))
+        self.by_name
+            .get(&name.to_ascii_lowercase())
+            .is_some_and(|p| p.last().is_some_and(|&l| l >= min))
     }
 
     fn exists_between(&self, name: &str, min: usize, max: usize) -> bool {
@@ -826,7 +893,10 @@ fn php_tag_shorthand(source: &str) -> Option<(&'static str, &'static str, &'stat
     }
     let word_then = |kw: &str| -> Option<&str> {
         let r = body.strip_prefix(kw)?;
-        if r.chars().next().is_some_and(|c| c.is_alphanumeric() || c == '_') {
+        if r.chars()
+            .next()
+            .is_some_and(|c| c.is_alphanumeric() || c == '_')
+        {
             return None;
         }
         Some(r)
@@ -873,7 +943,12 @@ fn php_tag_shorthand(source: &str) -> Option<(&'static str, &'static str, &'stat
     {
         return Some(("close", "endswitch", "switch"));
     }
-    for (open, close) in [("for", "endfor"), ("foreach", "endforeach"), ("while", "endwhile"), ("declare", "enddeclare")] {
+    for (open, close) in [
+        ("for", "endfor"),
+        ("foreach", "endforeach"),
+        ("while", "endwhile"),
+        ("declare", "enddeclare"),
+    ] {
         if let Some(r) = word_then(open)
             && ends_colon(r)
         {
@@ -889,7 +964,11 @@ fn php_tag_shorthand(source: &str) -> Option<(&'static str, &'static str, &'stat
 }
 
 impl<'a> TreeBuilder<'a> {
-    pub(crate) fn new(tokens: &'a [Token], source: &'a str, directives: &'a TreeDirectives) -> Self {
+    pub(crate) fn new(
+        tokens: &'a [Token],
+        source: &'a str,
+        directives: &'a TreeDirectives,
+    ) -> Self {
         TreeBuilder {
             tokens,
             source,
@@ -992,7 +1071,13 @@ impl<'a> TreeBuilder<'a> {
         self.open_elements.last().copied().unwrap_or(0)
     }
 
-    fn create_first_child(&mut self, parent: usize, kind: NodeKind, start: usize, count: usize) -> usize {
+    fn create_first_child(
+        &mut self,
+        parent: usize,
+        kind: NodeKind,
+        start: usize,
+        count: usize,
+    ) -> usize {
         let idx = self.nodes.len();
         self.nodes.push(flat(kind, parent, start, count));
         self.nodes[parent].first_child = idx;
@@ -1000,7 +1085,14 @@ impl<'a> TreeBuilder<'a> {
         idx
     }
 
-    fn create_sibling_child(&mut self, prev: usize, parent: usize, kind: NodeKind, start: usize, count: usize) -> usize {
+    fn create_sibling_child(
+        &mut self,
+        prev: usize,
+        parent: usize,
+        kind: NodeKind,
+        start: usize,
+        count: usize,
+    ) -> usize {
         let idx = self.nodes.len();
         self.nodes.push(flat(kind, parent, start, count));
         self.nodes[prev].next_sibling = idx;
@@ -1093,7 +1185,8 @@ impl<'a> TreeBuilder<'a> {
                 let tag = self.tag_names.get(&el).cloned().unwrap_or_default();
                 if !tag.is_empty() {
                     let parent_tag = self.parent_tag_name_of(el);
-                    if should_auto_close_element(&tag, Some(new_tag), parent_tag.as_deref(), false) {
+                    if should_auto_close_element(&tag, Some(new_tag), parent_tag.as_deref(), false)
+                    {
                         close_up_to = Some(i);
                     }
                 }
@@ -1147,7 +1240,7 @@ impl<'a> TreeBuilder<'a> {
         while i > 0 {
             let el = self.open_elements[i];
             if self.nodes[el].kind == NodeKind::Element {
-                let tag = self.tag_names.get(&el).map(String::as_str).unwrap_or("");
+                let tag = self.tag_names.get(&el).map_or("", String::as_str);
                 if !tag.is_empty() {
                     if valid.contains(&tag) {
                         return Some(i);
@@ -1212,7 +1305,10 @@ impl<'a> TreeBuilder<'a> {
                 self.pos += 1;
                 break;
             }
-            if matches!(t, EchoStart | RawEchoStart | TripleEchoStart | BladeCommentStart) {
+            if matches!(
+                t,
+                EchoStart | RawEchoStart | TripleEchoStart | BladeCommentStart
+            ) {
                 self.add_child(flat(NodeKind::Text, 0, start, self.pos - start));
                 return;
             }
@@ -1233,7 +1329,13 @@ impl<'a> TreeBuilder<'a> {
             }
             end_pos += 1;
         }
-        self.add_child(flat_data(kind, 0, start, end_pos - start, usize::from(closing)));
+        self.add_child(flat_data(
+            kind,
+            0,
+            start,
+            end_pos - start,
+            usize::from(closing),
+        ));
         self.pos = end_pos;
     }
 
@@ -1249,7 +1351,13 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn add_standalone_php_tag(&mut self, start: usize, count: usize, closing: bool) {
-        self.add_child(flat_data(NodeKind::PhpTag, 0, start, count, usize::from(closing)));
+        self.add_child(flat_data(
+            NodeKind::PhpTag,
+            0,
+            start,
+            count,
+            usize::from(closing),
+        ));
         self.pos += count;
     }
 
@@ -1270,7 +1378,13 @@ impl<'a> TreeBuilder<'a> {
                 let block = self.add_child(flat(NodeKind::DirectiveBlock, 0, start, count));
                 let base = self.open_elements.len();
                 self.open_elements.push(block);
-                let branch = self.add_child(flat_data(NodeKind::PhpTag, 0, start, count, usize::from(closing)));
+                let branch = self.add_child(flat_data(
+                    NodeKind::PhpTag,
+                    0,
+                    start,
+                    count,
+                    usize::from(closing),
+                ));
                 self.open_elements.push(branch);
                 self.open_php_tag_conditions.push(ConditionFrame {
                     block_idx: block,
@@ -1293,9 +1407,18 @@ impl<'a> TreeBuilder<'a> {
                 }
                 self.pop_if_top(frame.current_branch_idx);
                 self.pop_elements_to_depth(frame.element_stack_base + 1);
-                let branch = self.add_child(flat_data(NodeKind::PhpTag, 0, start, count, usize::from(closing)));
+                let branch = self.add_child(flat_data(
+                    NodeKind::PhpTag,
+                    0,
+                    start,
+                    count,
+                    usize::from(closing),
+                ));
                 self.open_elements.push(branch);
-                self.open_php_tag_conditions.last_mut().unwrap().current_branch_idx = branch;
+                self.open_php_tag_conditions
+                    .last_mut()
+                    .unwrap()
+                    .current_branch_idx = branch;
                 self.pos += count;
             }
             _ => {
@@ -1318,10 +1441,17 @@ impl<'a> TreeBuilder<'a> {
                 self.open_php_tag_conditions.pop();
                 self.pop_elements_to_depth(frame.element_stack_base + 1);
                 self.pop_if_top(frame.current_branch_idx);
-                self.add_child(flat_data(NodeKind::PhpTag, 0, start, count, usize::from(closing)));
+                self.add_child(flat_data(
+                    NodeKind::PhpTag,
+                    0,
+                    start,
+                    count,
+                    usize::from(closing),
+                ));
                 self.pop_if_top(frame.block_idx);
                 let end = start + count;
-                self.nodes[frame.block_idx].token_count = end - self.nodes[frame.block_idx].token_start;
+                self.nodes[frame.block_idx].token_count =
+                    end - self.nodes[frame.block_idx].token_start;
                 self.pos += count;
             }
         }
@@ -1340,7 +1470,13 @@ impl<'a> TreeBuilder<'a> {
             end += 1;
         }
         let full_end = if closing { end + 1 } else { end };
-        let idx = self.add_child(flat_data(NodeKind::ConditionalComment, 0, start, full_end - start, usize::from(closing)));
+        let idx = self.add_child(flat_data(
+            NodeKind::ConditionalComment,
+            0,
+            start,
+            full_end - start,
+            usize::from(closing),
+        ));
         let depth = self.open_elements.len();
         self.open_elements.push(idx);
         self.pos = start + 1;
@@ -1369,8 +1505,18 @@ impl<'a> TreeBuilder<'a> {
             }
             end += 1;
         }
-        let count = if closing { end + 1 - start } else { end - start };
-        let decl = self.add_child(flat_data(NodeKind::Decl, 0, start, count, usize::from(closing)));
+        let count = if closing {
+            end + 1 - start
+        } else {
+            end - start
+        };
+        let decl = self.add_child(flat_data(
+            NodeKind::Decl,
+            0,
+            start,
+            count,
+            usize::from(closing),
+        ));
         self.open_elements.push(decl);
         self.pos += 1;
         while self.pos < total {
@@ -1392,7 +1538,10 @@ impl<'a> TreeBuilder<'a> {
                 self.add_child(flat(kind, 0, s, n));
                 continue;
             }
-            if matches!(t, AttributeName | BoundAttribute | EscapedAttribute | ShorthandAttribute) {
+            if matches!(
+                t,
+                AttributeName | BoundAttribute | EscapedAttribute | ShorthandAttribute
+            ) {
                 self.build_decl_attribute(end);
                 continue;
             }
@@ -1408,7 +1557,10 @@ impl<'a> TreeBuilder<'a> {
         let mut name_count = 0;
         while self.pos < total && self.pos < attr_end {
             let t = self.kind_at(self.pos);
-            if matches!(t, AttributeName | EchoStart | RawEchoStart | TripleEchoStart) {
+            if matches!(
+                t,
+                AttributeName | EchoStart | RawEchoStart | TripleEchoStart
+            ) {
                 name_count += 1;
                 self.pos += 1;
                 continue;
@@ -1459,12 +1611,24 @@ impl<'a> TreeBuilder<'a> {
         let name = self.create_first_child(attr, NodeKind::AttributeName, attr_start, name_count);
         self.build_decl_attribute_parts(attr_start, name_count, name, false);
         if has_value && value_count > 0 {
-            let value = self.create_sibling_child(name, attr, NodeKind::AttributeValue, value_start, value_count);
+            let value = self.create_sibling_child(
+                name,
+                attr,
+                NodeKind::AttributeValue,
+                value_start,
+                value_count,
+            );
             self.build_decl_attribute_parts(value_start, value_count, value, true);
         }
     }
 
-    fn build_decl_attribute_parts(&mut self, start: usize, count: usize, parent: usize, is_value: bool) {
+    fn build_decl_attribute_parts(
+        &mut self,
+        start: usize,
+        count: usize,
+        parent: usize,
+        is_value: bool,
+    ) {
         use TokenType::*;
         let mut last = NONE;
         for i in 0..count {
@@ -1514,7 +1678,8 @@ impl<'a> TreeBuilder<'a> {
         self.build_attributes(el);
         if self.has_swallowed_tag_syntax_in_opening(start, self.pos) {
             self.malformed_raw_element_indexes.insert(el);
-            self.malformed_raw_element_sources.push((lower.clone(), self.tokens[start].start));
+            self.malformed_raw_element_sources
+                .push((lower.clone(), self.tokens[start].start));
         }
         let mut self_closing = false;
         let mut synthetic = false;
@@ -1533,7 +1698,11 @@ impl<'a> TreeBuilder<'a> {
             }
         }
         self.nodes[el].token_count = self.pos - start;
-        self.nodes[el].generic_offset = if generic_offset > 0 { generic_offset + 1 } else { 0 };
+        self.nodes[el].generic_offset = if generic_offset > 0 {
+            generic_offset + 1
+        } else {
+            0
+        };
         self.nodes[el].data = usize::from(self_closing);
         let mut stay_open = !self_closing;
         if synthetic && stay_open && (self.pos >= total || self.kind_at(self.pos) == LessThan) {
@@ -1565,8 +1734,16 @@ impl<'a> TreeBuilder<'a> {
             name_count = 1;
             self.pos += 1;
         }
-        let closing_name = if name_count > 0 { self.tag_name_text(name_start, name_count) } else { String::new() };
-        let closing_raw = if name_count > 0 { self.raw_name_text(name_start, name_count) } else { String::new() };
+        let closing_name = if name_count > 0 {
+            self.tag_name_text(name_start, name_count)
+        } else {
+            String::new()
+        };
+        let closing_raw = if name_count > 0 {
+            self.raw_name_text(name_start, name_count)
+        } else {
+            String::new()
+        };
         let closing_dynamic = name_count > 0 && self.is_dynamic_tag_name(name_start, name_count);
         while self.pos < total && !matches!(self.kind_at(self.pos), GreaterThan | SyntheticClose) {
             self.pos += 1;
@@ -1575,11 +1752,19 @@ impl<'a> TreeBuilder<'a> {
             self.pos += 1;
         }
         if name_count == 0 {
-            self.add_child(flat(NodeKind::UnpairedClosingTag, 0, start, self.pos - start));
+            self.add_child(flat(
+                NodeKind::UnpairedClosingTag,
+                0,
+                start,
+                self.pos - start,
+            ));
             return;
         }
         self.close_malformed_raw_source(&closing_name);
-        let search_limit = self.open_directives.last().map_or(1, |d| d.element_stack_base + 1);
+        let search_limit = self
+            .open_directives
+            .last()
+            .map_or(1, |d| d.element_stack_base + 1);
         let lower = closing_name.to_ascii_lowercase();
         let mut found = None;
         if !closing_dynamic && let Some(stack) = self.tag_name_stacks.get(&lower) {
@@ -1587,7 +1772,7 @@ impl<'a> TreeBuilder<'a> {
             for &oi in stack.iter().rev() {
                 if oi >= search_limit && oi < count {
                     let el = self.open_elements[oi];
-                    if self.tag_names.get(&el).map(String::as_str).unwrap_or("") == lower {
+                    if self.tag_names.get(&el).map_or("", String::as_str) == lower {
                         found = Some(oi);
                         break;
                     }
@@ -1607,7 +1792,9 @@ impl<'a> TreeBuilder<'a> {
                             found = Some(i as usize);
                             break;
                         }
-                    } else if open_tag.to_ascii_lowercase() == lower || is_slot_closing_match(&open_raw, &closing_raw) {
+                    } else if open_tag.to_ascii_lowercase() == lower
+                        || is_slot_closing_match(&open_raw, &closing_raw)
+                    {
                         found = Some(i as usize);
                         break;
                     }
@@ -1620,7 +1807,12 @@ impl<'a> TreeBuilder<'a> {
             let el = self.open_elements[oi];
             self.nodes[el].token_count = self.pos - self.nodes[el].token_start;
             let idx = self.nodes.len();
-            self.nodes.push(flat(NodeKind::ClosingElementName, el, name_start, name_count));
+            self.nodes.push(flat(
+                NodeKind::ClosingElementName,
+                el,
+                name_start,
+                name_count,
+            ));
             let last = self.nodes[el].last_child;
             if last != NONE {
                 self.nodes[last].next_sibling = idx;
@@ -1637,7 +1829,13 @@ impl<'a> TreeBuilder<'a> {
             }
             return;
         }
-        self.add_child(flat_data(NodeKind::UnpairedClosingTag, 0, start, self.pos - start, name_count));
+        self.add_child(flat_data(
+            NodeKind::UnpairedClosingTag,
+            0,
+            start,
+            self.pos - start,
+            name_count,
+        ));
     }
 
     fn scan_element_name(&mut self) -> (usize, usize) {
@@ -1647,7 +1845,10 @@ impl<'a> TreeBuilder<'a> {
         let mut generic = 0;
         while self.pos < limit {
             let t = self.kind_at(self.pos);
-            if matches!(t, Whitespace | GreaterThan | Slash | Directive | TsxGenericType | SyntheticClose) {
+            if matches!(
+                t,
+                Whitespace | GreaterThan | Slash | Directive | TsxGenericType | SyntheticClose
+            ) {
                 if t == TsxGenericType {
                     generic = count + 1;
                 }
@@ -1706,7 +1907,8 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn is_dynamic_tag_name(&self, start: usize, count: usize) -> bool {
-        (start..(start + count).min(self.tokens.len())).any(|i| self.kind_at(i) != TokenType::TagName)
+        (start..(start + count).min(self.tokens.len()))
+            .any(|i| self.kind_at(i) != TokenType::TagName)
     }
 
     fn build_attributes(&mut self, el: usize) {
@@ -1720,7 +1922,8 @@ impl<'a> TreeBuilder<'a> {
         while self.pos < attr_end {
             let t = self.kind_at(self.pos);
             if self.open_directives.last().is_some_and(|d| d.name == "php") {
-                if t == Directive && directive_name(&self.tokens[self.pos], self.source) == "endphp" {
+                if t == Directive && directive_name(&self.tokens[self.pos], self.source) == "endphp"
+                {
                     self.process_directive();
                     continue;
                 }
@@ -1767,7 +1970,10 @@ impl<'a> TreeBuilder<'a> {
             if matches!(t, GreaterThan | SyntheticClose) {
                 break;
             }
-            if t == Slash && end + 1 < total && matches!(self.kind_at(end + 1), GreaterThan | SyntheticClose) {
+            if t == Slash
+                && end + 1 < total
+                && matches!(self.kind_at(end + 1), GreaterThan | SyntheticClose)
+            {
                 break;
             }
             end += 1;
@@ -1784,17 +1990,26 @@ impl<'a> TreeBuilder<'a> {
         }
         self.pos = b.end;
         let first = self.kind_at(attr_start);
-        if is_construct_start(first) && count_construct_tokens(self.tokens, attr_start, attr_end) == b.length {
+        if is_construct_start(first)
+            && count_construct_tokens(self.tokens, attr_start, attr_end) == b.length
+        {
             self.pos = attr_start;
             self.process_construct_in_attributes();
             return;
         }
         if b.is_name_value {
             let attr = self.add_child(flat(NodeKind::Attribute, 0, attr_start, b.length));
-            let name = self.create_first_child(attr, NodeKind::AttributeName, attr_start, b.name_count);
+            let name =
+                self.create_first_child(attr, NodeKind::AttributeName, attr_start, b.name_count);
             self.build_parts(attr_start, attr_start + b.name_count, name, false);
             if b.value_count > 0 {
-                let value = self.create_sibling_child(name, attr, NodeKind::AttributeValue, b.value_start, b.value_count);
+                let value = self.create_sibling_child(
+                    name,
+                    attr,
+                    NodeKind::AttributeValue,
+                    b.value_start,
+                    b.value_count,
+                );
                 self.build_attribute_value_parts(b.value_start, b.value_count, value);
             }
             return;
@@ -1853,7 +2068,14 @@ impl<'a> TreeBuilder<'a> {
         }
         let length = scan - attr_start;
         if length == 0 {
-            return Bounds { length: 0, end: scan, is_name_value: false, name_count: 0, value_start: 0, value_count: 0 };
+            return Bounds {
+                length: 0,
+                end: scan,
+                is_name_value: false,
+                name_count: 0,
+                value_start: 0,
+                value_count: 0,
+            };
         }
         if let (Some(eq), Some(ne)) = (equals, name_end) {
             let name_count = ne - attr_start;
@@ -1861,9 +2083,23 @@ impl<'a> TreeBuilder<'a> {
             while value_start < scan && self.kind_at(value_start) == Whitespace {
                 value_start += 1;
             }
-            return Bounds { length, end: scan, is_name_value: true, name_count, value_start, value_count: scan - value_start };
+            return Bounds {
+                length,
+                end: scan,
+                is_name_value: true,
+                name_count,
+                value_start,
+                value_count: scan - value_start,
+            };
         }
-        Bounds { length, end: scan, is_name_value: false, name_count: 0, value_start: 0, value_count: 0 }
+        Bounds {
+            length,
+            end: scan,
+            is_name_value: false,
+            name_count: 0,
+            value_start: 0,
+            value_count: 0,
+        }
     }
 
     fn build_attribute_value_parts(&mut self, start: usize, count: usize, parent: usize) {
@@ -1889,7 +2125,10 @@ impl<'a> TreeBuilder<'a> {
             let text_like = if as_value {
                 matches!(t, AttributeValue | Text)
             } else {
-                matches!(t, AttributeName | BoundAttribute | EscapedAttribute | ShorthandAttribute | Text)
+                matches!(
+                    t,
+                    AttributeName | BoundAttribute | EscapedAttribute | ShorthandAttribute | Text
+                )
             };
             let node = if text_like {
                 flat(NodeKind::Text, parent, i, 1)
@@ -1923,28 +2162,33 @@ impl<'a> TreeBuilder<'a> {
         while let Some(frame) = self.open_conditions.pop() {
             self.pop_if_top(frame.current_branch_idx);
             self.pop_if_top(frame.block_idx);
-            self.nodes[frame.block_idx].token_count = self.pos - self.nodes[frame.block_idx].token_start;
+            self.nodes[frame.block_idx].token_count =
+                self.pos - self.nodes[frame.block_idx].token_start;
         }
         while let Some(frame) = self.open_directives.pop() {
             self.pop_if_top(frame.start_directive_idx);
             self.pop_if_top(frame.block_idx);
-            self.nodes[frame.block_idx].token_count = self.pos - self.nodes[frame.block_idx].token_start;
+            self.nodes[frame.block_idx].token_count =
+                self.pos - self.nodes[frame.block_idx].token_start;
         }
     }
 
     fn process_directive(&mut self) {
         let start = self.pos;
         if self.is_inside_malformed_raw_element() || self.is_non_structural_directive_token(start) {
-            let (_, _, consumed) = check_directive_args_fast(self.tokens, start + 1, self.tokens.len());
+            let (_, _, consumed) =
+                check_directive_args_fast(self.tokens, start + 1, self.tokens.len());
             let n = 1 + consumed;
             self.add_child(flat(NodeKind::Directive, 0, start, n));
             self.pos += n;
             return;
         }
         let name = directive_name(&self.tokens[self.pos], self.source);
-        let (has_args, args_idx, consumed) = check_directive_args_fast(self.tokens, self.pos + 1, self.tokens.len());
+        let (has_args, args_idx, consumed) =
+            check_directive_args_fast(self.tokens, self.pos + 1, self.tokens.len());
         let n = 1 + consumed;
-        let args = args_idx.map(|i| self.source[self.tokens[i].start..self.tokens[i].end].to_string());
+        let args =
+            args_idx.map(|i| self.source[self.tokens[i].start..self.tokens[i].end].to_string());
 
         if self.is_switch_related(&name) {
             self.process_switch_directive(&name, start, n);
@@ -1970,7 +2214,11 @@ impl<'a> TreeBuilder<'a> {
             self.open_directive_branch(&name, start, n);
             return;
         }
-        if self.open_directives.iter().any(|f| f.terminators.contains(&name)) {
+        if self
+            .open_directives
+            .iter()
+            .any(|f| f.terminators.contains(&name))
+        {
             self.close_directive(&name, start, n);
             return;
         }
@@ -1998,7 +2246,9 @@ impl<'a> TreeBuilder<'a> {
             self.ensure_literal_indexes();
             let script = self.script_literal_directives.as_ref().unwrap();
             let attr = self.attribute_literal_directives.as_ref().unwrap();
-            let idx = DirectiveTokenIndex::new(self.tokens, self.source, |i| !script.contains(&i) && !attr.contains(&i));
+            let idx = DirectiveTokenIndex::new(self.tokens, self.source, |i| {
+                !script.contains(&i) && !attr.contains(&i)
+            });
             self.directive_index = Some(idx);
         }
         self.directive_index.as_ref().unwrap()
@@ -2016,7 +2266,10 @@ impl<'a> TreeBuilder<'a> {
             if !in_range(idx, &family.end_name, dstart, search_end) {
                 return false;
             }
-            if idx.find_matching_terminator(&family.openers, dstart, &terms, search_end, 0).is_none() {
+            if idx
+                .find_matching_terminator(&family.openers, dstart, &terms, search_end, 0)
+                .is_none()
+            {
                 return false;
             }
             self.open_paired_directive(
@@ -2035,8 +2288,13 @@ impl<'a> TreeBuilder<'a> {
             v.extend(generic.iter().cloned());
             v
         };
-        let branches = vec![family.else_name.clone(), "else".to_string(), "elseif".to_string()];
-        let search_end = self.directive_search_end(&family.openers, dstart, &terminators, &branches);
+        let branches = vec![
+            family.else_name.clone(),
+            "else".to_string(),
+            "elseif".to_string(),
+        ];
+        let search_end =
+            self.directive_search_end(&family.openers, dstart, &terminators, &branches);
         let idx = self.directive_index();
         if !in_range(idx, &family.end_name, dstart, search_end)
             && !in_range(idx, &family.else_name, dstart, search_end)
@@ -2044,8 +2302,13 @@ impl<'a> TreeBuilder<'a> {
         {
             return false;
         }
-        let (term_idx, term_name, branch_idx) =
-            idx.analyze_unknown_family(&family.openers, dstart, &terminators, &branches, search_end);
+        let (term_idx, term_name, branch_idx) = idx.analyze_unknown_family(
+            &family.openers,
+            dstart,
+            &terminators,
+            &branches,
+            search_end,
+        );
         let (Some(_), Some(term_name)) = (term_idx, term_name) else {
             return false;
         };
@@ -2053,7 +2316,11 @@ impl<'a> TreeBuilder<'a> {
         let meta = if condition_like {
             (terminators, branches, family.openers.clone())
         } else {
-            (vec![family.end_name.clone()], Vec::new(), family.openers.clone())
+            (
+                vec![family.end_name.clone()],
+                Vec::new(),
+                family.openers.clone(),
+            )
         };
         self.open_paired_directive(name, start, n, Some(meta));
         true
@@ -2088,14 +2355,24 @@ impl<'a> TreeBuilder<'a> {
         }
         let else_name = format!("else{base}");
         let end_name = format!("end{base}");
-        let has_pair = self.directives.has_advisory_pair(&base) || self.directives.has_seen(&end_name);
-        let has_cond = self.directives.has_advisory_condition(&base) || self.directives.has_seen(&else_name);
+        let has_pair =
+            self.directives.has_advisory_pair(&base) || self.directives.has_seen(&end_name);
+        let has_cond =
+            self.directives.has_advisory_condition(&base) || self.directives.has_seen(&else_name);
         if !has_pair && !has_cond {
             return None;
         }
-        let openers =
-            if is_unless || self.directives.has_seen(&unless_name) { vec![base, unless_name] } else { vec![name.to_string()] };
-        Some(Family { else_name, end_name, openers, has_advisory_condition: has_cond })
+        let openers = if is_unless || self.directives.has_seen(&unless_name) {
+            vec![base, unless_name]
+        } else {
+            vec![name.to_string()]
+        };
+        Some(Family {
+            else_name,
+            end_name,
+            openers,
+            has_advisory_condition: has_cond,
+        })
     }
 
     fn should_open_known_paired(&mut self, name: &str, start: usize, n: usize) -> bool {
@@ -2103,7 +2380,8 @@ impl<'a> TreeBuilder<'a> {
             Some(d) => (d.terminators.clone(), d.condition_like_branches.clone()),
             None => (Vec::new(), Vec::new()),
         };
-        !terms.is_empty() && self.has_matching_terminator_in_scope(name, start + n, Some(&terms), None, &branches)
+        !terms.is_empty()
+            && self.has_matching_terminator_in_scope(name, start + n, Some(&terms), None, &branches)
     }
 
     fn openers_for_terminators(&self, name: &str, terms: &[String]) -> Vec<String> {
@@ -2111,10 +2389,20 @@ impl<'a> TreeBuilder<'a> {
         if !openers.is_empty() {
             return openers;
         }
-        if name.is_empty() { Vec::new() } else { vec![name.to_ascii_lowercase()] }
+        if name.is_empty() {
+            Vec::new()
+        } else {
+            vec![name.to_ascii_lowercase()]
+        }
     }
 
-    fn directive_search_end(&mut self, openers: &[String], start: usize, terms: &[String], branches: &[String]) -> Option<usize> {
+    fn directive_search_end(
+        &mut self,
+        openers: &[String],
+        start: usize,
+        terms: &[String],
+        branches: &[String],
+    ) -> Option<usize> {
         let mut end = self.attribute_region_end;
         let b = self.find_open_element_boundary(start);
         end = earlier(end, b);
@@ -2198,9 +2486,17 @@ impl<'a> TreeBuilder<'a> {
             if frame.terminators.is_empty() && frame.branches.is_empty() {
                 continue;
             }
-            let reserves = intersects(&frame.openers, openers) || intersects(&frame.terminators, terms);
+            let reserves =
+                intersects(&frame.openers, openers) || intersects(&frame.terminators, terms);
             let b = boundary_branches(&frame.branches, branches);
-            if let Some(i) = self.find_frame_boundary(&frame.openers, start, &frame.terminators, &b, reserves, openers) {
+            if let Some(i) = self.find_frame_boundary(
+                &frame.openers,
+                start,
+                &frame.terminators,
+                &b,
+                reserves,
+                openers,
+            ) {
                 boundary = earlier(boundary, Some(i));
             }
         }
@@ -2224,7 +2520,9 @@ impl<'a> TreeBuilder<'a> {
         for frame in &frames {
             let b = boundary_branches(&self.condition_boundary_branches(&frame.name), branches);
             let reserves = intersects(&cond_openers, openers) || intersects(&terminators, terms);
-            if let Some(i) = self.find_frame_boundary(&cond_openers, start, &terminators, &b, reserves, openers) {
+            if let Some(i) =
+                self.find_frame_boundary(&cond_openers, start, &terminators, &b, reserves, openers)
+            {
                 boundary = earlier(boundary, Some(i));
             }
         }
@@ -2233,18 +2531,33 @@ impl<'a> TreeBuilder<'a> {
 
     fn condition_boundary_branches(&self, name: &str) -> Vec<String> {
         let terms: HashSet<&String> = self.directives.condition_terminators().iter().collect();
-        self.directives.branches(name).into_iter().filter(|b| !terms.contains(b)).collect()
+        self.directives
+            .branches(name)
+            .into_iter()
+            .filter(|b| !terms.contains(b))
+            .collect()
     }
 
-    fn find_open_switch_boundary(&mut self, openers: &[String], terms: &[String], start: usize) -> Option<usize> {
+    fn find_open_switch_boundary(
+        &mut self,
+        openers: &[String],
+        terms: &[String],
+        start: usize,
+    ) -> Option<usize> {
         let frames: Vec<String> = self.open_switches.iter().map(|f| f.name.clone()).collect();
         let mut boundary = None;
         let endswitch = vec!["endswitch".to_string()];
         for name in &frames {
             let reserves = openers.contains(name) || intersects(&endswitch, terms);
             let branches = self.directives.switch_branches(name);
-            if let Some(i) = self.find_frame_boundary(std::slice::from_ref(name), start, &endswitch, &branches, reserves, openers)
-            {
+            if let Some(i) = self.find_frame_boundary(
+                std::slice::from_ref(name),
+                start,
+                &endswitch,
+                &branches,
+                reserves,
+                openers,
+            ) {
                 boundary = earlier(boundary, Some(i));
             }
         }
@@ -2262,8 +2575,11 @@ impl<'a> TreeBuilder<'a> {
     ) -> Option<usize> {
         self.directive_index();
         let idx = self.directive_index.as_ref().unwrap();
-        let candidate_set: Option<HashSet<&String>> =
-            if candidate_openers.is_empty() { None } else { Some(candidate_openers.iter().collect()) };
+        let candidate_set: Option<HashSet<&String>> = if candidate_openers.is_empty() {
+            None
+        } else {
+            Some(candidate_openers.iter().collect())
+        };
         let should_count = |token_idx: usize, name: &str| -> bool {
             let Some(set) = &candidate_set else {
                 return true;
@@ -2273,7 +2589,9 @@ impl<'a> TreeBuilder<'a> {
                 return !shadowed;
             }
             match self.directives.get(name) {
-                Some(d) if d.role == Role::Opening && !d.terminators.is_empty() => !idx.has_args(token_idx) && !shadowed,
+                Some(d) if d.role == Role::Opening && !d.terminators.is_empty() => {
+                    !idx.has_args(token_idx) && !shadowed
+                }
                 _ => !shadowed,
             }
         };
@@ -2281,7 +2599,14 @@ impl<'a> TreeBuilder<'a> {
             if branches.is_empty() {
                 idx.find_matching_terminator(openers, start, terminators, None, nesting)
             } else {
-                idx.find_matching_boundary(openers, start, terminators, branches, nesting, &should_count)
+                idx.find_matching_boundary(
+                    openers,
+                    start,
+                    terminators,
+                    branches,
+                    nesting,
+                    &should_count,
+                )
             }
         };
         if !reserves {
@@ -2316,7 +2641,12 @@ impl<'a> TreeBuilder<'a> {
         !stack.is_empty()
     }
 
-    fn branch_boundary_shield(&self, name: &str, has_args: bool, branch: &str) -> Option<(Vec<String>, Vec<String>)> {
+    fn branch_boundary_shield(
+        &self,
+        name: &str,
+        has_args: bool,
+        branch: &str,
+    ) -> Option<(Vec<String>, Vec<String>)> {
         let d = self.directives.get(name)?;
         if d.role != Role::Opening || d.terminators.is_empty() {
             return None;
@@ -2324,16 +2654,28 @@ impl<'a> TreeBuilder<'a> {
         if name == branch && !has_args {
             return None;
         }
-        let branches = if d.is_condition { self.condition_boundary_branches(name) } else { d.condition_like_branches.clone() };
+        let branches = if d.is_condition {
+            self.condition_boundary_branches(name)
+        } else {
+            d.condition_like_branches.clone()
+        };
         if !branches.iter().any(|b| b == branch) {
             return None;
         }
-        let terms = if d.is_condition { self.directives.condition_terminators().to_vec() } else { d.terminators.clone() };
+        let terms = if d.is_condition {
+            self.directives.condition_terminators().to_vec()
+        } else {
+            d.terminators.clone()
+        };
         Some((terms, branches))
     }
 
     fn should_treat_as_branch_of_open_directive(&self, name: &str, args: Option<&str>) -> bool {
-        if !self.open_directives.iter().any(|f| f.branches.iter().any(|b| b == name)) {
+        if !self
+            .open_directives
+            .iter()
+            .any(|f| f.branches.iter().any(|b| b == name))
+        {
             return false;
         }
         if args.is_some()
@@ -2346,7 +2688,13 @@ impl<'a> TreeBuilder<'a> {
         true
     }
 
-    fn open_paired_directive(&mut self, name: &str, start: usize, n: usize, meta: Option<(Vec<String>, Vec<String>, Vec<String>)>) {
+    fn open_paired_directive(
+        &mut self,
+        name: &str,
+        start: usize,
+        n: usize,
+        meta: Option<(Vec<String>, Vec<String>, Vec<String>)>,
+    ) {
         let block = self.add_child(flat(NodeKind::DirectiveBlock, 0, start, n));
         let base = self.open_elements.len();
         self.open_elements.push(block);
@@ -2355,8 +2703,8 @@ impl<'a> TreeBuilder<'a> {
             Some(m) => m,
             None => {
                 let d = self.directives.get(name);
-                let terms = d.map(|d| d.terminators.clone()).unwrap_or_default();
-                let branches = d.map(|d| d.condition_like_branches.clone()).unwrap_or_default();
+                let terms = d.map_or_default(|d| d.terminators.clone());
+                let branches = d.map_or_default(|d| d.condition_like_branches.clone());
                 let openers = self.openers_for_terminators(name, &terms);
                 (terms, branches, openers)
             }
@@ -2375,7 +2723,11 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn open_directive_branch(&mut self, name: &str, start: usize, n: usize) {
-        let Some(matched) = self.open_directives.iter().rposition(|f| f.branches.iter().any(|b| b == name)) else {
+        let Some(matched) = self
+            .open_directives
+            .iter()
+            .rposition(|f| f.branches.iter().any(|b| b == name))
+        else {
             self.create_standalone(start, n);
             return;
         };
@@ -2396,7 +2748,11 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn close_directive(&mut self, name: &str, start: usize, n: usize) {
-        let Some(matched) = self.open_directives.iter().rposition(|f| f.terminators.iter().any(|t| t == name)) else {
+        let Some(matched) = self
+            .open_directives
+            .iter()
+            .rposition(|f| f.terminators.iter().any(|t| t == name))
+        else {
             self.create_standalone(start, n);
             return;
         };
@@ -2425,29 +2781,55 @@ impl<'a> TreeBuilder<'a> {
             return true;
         }
         if let Some(c) = self.open_conditions.last()
-            && self.directives.branches(&c.name).iter().any(|b| b.to_ascii_lowercase() == name)
+            && self
+                .directives
+                .branches(&c.name)
+                .iter()
+                .any(|b| b.to_ascii_lowercase() == name)
         {
             return true;
         }
-        self.directives.condition_terminators().iter().any(|t| t == name)
+        self.directives
+            .condition_terminators()
+            .iter()
+            .any(|t| t == name)
     }
 
-    fn process_condition_directive(&mut self, name: &str, start: usize, n: usize, args: Option<&str>) {
+    fn process_condition_directive(
+        &mut self,
+        name: &str,
+        start: usize,
+        n: usize,
+        args: Option<&str>,
+    ) {
         if self.try_handle_condition_with_open_directive(name, start, n, args) {
             return;
         }
-        let is_final = self.directives.condition_terminators().iter().any(|t| t == name);
+        let is_final = self
+            .directives
+            .condition_terminators()
+            .iter()
+            .any(|t| t == name);
         if is_final && !self.open_conditions.is_empty() {
             self.close_condition(start, n);
             return;
         }
         if let Some(c) = self.open_conditions.last()
-            && self.directives.branches(&c.name).iter().any(|b| b.to_ascii_lowercase() == name)
+            && self
+                .directives
+                .branches(&c.name)
+                .iter()
+                .any(|b| b.to_ascii_lowercase() == name)
         {
             self.open_condition_branch(start, n);
             return;
         }
-        if self.directives.is_condition(name) && self.directives.get(name).is_some_and(|d| d.role == Role::Opening) {
+        if self.directives.is_condition(name)
+            && self
+                .directives
+                .get(name)
+                .is_some_and(|d| d.role == Role::Opening)
+        {
             if self.should_open_known_condition(name, start, n) {
                 self.open_condition(name, start, n);
             } else {
@@ -2461,10 +2843,17 @@ impl<'a> TreeBuilder<'a> {
     fn should_open_known_condition(&mut self, name: &str, start: usize, n: usize) -> bool {
         let terms = self.directives.condition_terminators().to_vec();
         let branches = self.condition_boundary_branches(name);
-        !terms.is_empty() && self.has_matching_terminator_in_scope(name, start + n, Some(&terms), None, &branches)
+        !terms.is_empty()
+            && self.has_matching_terminator_in_scope(name, start + n, Some(&terms), None, &branches)
     }
 
-    fn try_handle_condition_with_open_directive(&mut self, name: &str, start: usize, n: usize, args: Option<&str>) -> bool {
+    fn try_handle_condition_with_open_directive(
+        &mut self,
+        name: &str,
+        start: usize,
+        n: usize,
+        args: Option<&str>,
+    ) -> bool {
         let mut matched = None;
         for (i, f) in self.open_directives.iter().enumerate().rev() {
             if f.branches.iter().any(|b| b == name) {
@@ -2481,18 +2870,27 @@ impl<'a> TreeBuilder<'a> {
         };
         if is_branch
             && args.is_some()
-            && self.directives.get(name).is_some_and(|d| d.role == Role::Opening)
+            && self
+                .directives
+                .get(name)
+                .is_some_and(|d| d.role == Role::Opening)
             && self.directives.is_condition(name)
         {
             return false;
         }
         if let Some(c) = self.open_conditions.last() {
             let terms = self.directives.condition_terminators();
-            let cond_match = terms.iter().any(|t| t == name) || self.directives.branches(&c.name).iter().any(|b| b == name);
+            let cond_match = terms.iter().any(|t| t == name)
+                || self.directives.branches(&c.name).iter().any(|b| b == name);
             if cond_match {
-                let cond_start = self.nodes.get(c.current_branch_idx).map_or(-1, |n| n.token_start as isize);
-                let dir_start =
-                    self.nodes.get(self.open_directives[fi].start_directive_idx).map_or(-1, |n| n.token_start as isize);
+                let cond_start = self
+                    .nodes
+                    .get(c.current_branch_idx)
+                    .map_or(-1, |n| n.token_start as isize);
+                let dir_start = self
+                    .nodes
+                    .get(self.open_directives[fi].start_directive_idx)
+                    .map_or(-1, |n| n.token_start as isize);
                 if cond_start >= dir_start {
                     return false;
                 }
@@ -2551,7 +2949,9 @@ impl<'a> TreeBuilder<'a> {
         if self.directives.is_switch(name) || name == "endswitch" {
             return true;
         }
-        !self.open_switches.is_empty() && (self.directives.is_switch_branch(name) || self.directives.is_switch_terminator(name))
+        !self.open_switches.is_empty()
+            && (self.directives.is_switch_branch(name)
+                || self.directives.is_switch_terminator(name))
     }
 
     fn process_switch_directive(&mut self, name: &str, start: usize, n: usize) {
@@ -2568,7 +2968,13 @@ impl<'a> TreeBuilder<'a> {
             self.nodes[f.block_idx].token_count = start + n - self.nodes[f.block_idx].token_start;
             self.pos += n;
         } else if self.directives.is_switch_terminator(name) && open {
-            if self.open_switches.last().unwrap().current_case_idx.is_none() {
+            if self
+                .open_switches
+                .last()
+                .unwrap()
+                .current_case_idx
+                .is_none()
+            {
                 self.create_standalone(start, n);
                 return;
             }
@@ -2590,7 +2996,13 @@ impl<'a> TreeBuilder<'a> {
         } else if self.directives.is_switch(name) {
             let terms = vec!["endswitch".to_string()];
             let openers = vec![name.to_string()];
-            if self.has_matching_terminator_in_scope(name, start + n, Some(&terms), Some(&openers), &[]) {
+            if self.has_matching_terminator_in_scope(
+                name,
+                start + n,
+                Some(&terms),
+                Some(&openers),
+                &[],
+            ) {
                 let block = self.add_child(flat(NodeKind::DirectiveBlock, 0, start, n));
                 let base = self.open_elements.len();
                 self.open_elements.push(block);
@@ -2612,7 +3024,13 @@ impl<'a> TreeBuilder<'a> {
         }
     }
 
-    fn should_pair_directive(&mut self, name: &str, start: usize, n: usize, args: Option<&str>) -> bool {
+    fn should_pair_directive(
+        &mut self,
+        name: &str,
+        start: usize,
+        n: usize,
+        args: Option<&str>,
+    ) -> bool {
         let Some(strategy) = self.directives.pairing_strategy(name) else {
             return false;
         };
@@ -2633,10 +3051,12 @@ impl<'a> TreeBuilder<'a> {
                 self.has_matching_terminator_in_scope(name, start + n, None, None, &[])
             }
             "no_arguments_block" => {
-                arg_count(args) == 0 && self.has_matching_terminator_in_scope(name, start + n, None, None, &[])
+                arg_count(args) == 0
+                    && self.has_matching_terminator_in_scope(name, start + n, None, None, &[])
             }
             "single_argument_block" => {
-                arg_count(args) == 1 && self.has_matching_terminator_in_scope(name, start + n, None, None, &[])
+                arg_count(args) == 1
+                    && self.has_matching_terminator_in_scope(name, start + n, None, None, &[])
             }
             _ => false,
         }
@@ -2650,11 +3070,21 @@ impl<'a> TreeBuilder<'a> {
         openers: Option<&[String]>,
         branches: &[String],
     ) -> bool {
-        let terms = terms_override.map_or_else(|| self.directives.terminators(name), <[String]>::to_vec);
-        let search_terms = if terms.is_empty() { vec![format!("end{name}")] } else { terms };
-        let search_openers = openers.map_or_else(|| self.openers_for_terminators(name, &search_terms), <[String]>::to_vec);
+        let terms =
+            terms_override.map_or_else(|| self.directives.terminators(name), <[String]>::to_vec);
+        let search_terms = if terms.is_empty() {
+            vec![format!("end{name}")]
+        } else {
+            terms
+        };
+        let search_openers = openers.map_or_else(
+            || self.openers_for_terminators(name, &search_terms),
+            <[String]>::to_vec,
+        );
         let search_end = self.directive_search_end(&search_openers, after, &search_terms, branches);
-        self.directive_index().find_matching_terminator(&search_openers, after, &search_terms, search_end, 0).is_some()
+        self.directive_index()
+            .find_matching_terminator(&search_openers, after, &search_terms, search_end, 0)
+            .is_some()
     }
 
     fn close_remaining_directives(&mut self) {
@@ -2702,23 +3132,38 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn is_non_structural_directive_token_ro(&self, i: usize) -> bool {
-        self.script_literal_directives.as_ref().is_some_and(|s| s.contains(&i))
-            || self.attribute_literal_directives.as_ref().is_some_and(|s| s.contains(&i))
+        self.script_literal_directives
+            .as_ref()
+            .is_some_and(|s| s.contains(&i))
+            || self
+                .attribute_literal_directives
+                .as_ref()
+                .is_some_and(|s| s.contains(&i))
     }
 
     fn is_inside_malformed_raw_element(&self) -> bool {
-        if self.open_elements.iter().any(|e| self.malformed_raw_element_indexes.contains(e)) {
+        if self
+            .open_elements
+            .iter()
+            .any(|e| self.malformed_raw_element_indexes.contains(e))
+        {
             return true;
         }
         let Some(t) = self.tokens.get(self.pos) else {
             return false;
         };
-        self.malformed_raw_element_sources.iter().any(|(_, s)| t.start > *s)
+        self.malformed_raw_element_sources
+            .iter()
+            .any(|(_, s)| t.start > *s)
     }
 
     fn close_malformed_raw_source(&mut self, name: &str) {
         let lower = name.to_ascii_lowercase();
-        if let Some(i) = self.malformed_raw_element_sources.iter().rposition(|(n, _)| *n == lower) {
+        if let Some(i) = self
+            .malformed_raw_element_sources
+            .iter()
+            .rposition(|(n, _)| *n == lower)
+        {
             self.malformed_raw_element_sources.remove(i);
         }
     }
@@ -2755,7 +3200,11 @@ impl<'a> TreeBuilder<'a> {
             let content_end = closing.unwrap_or(total);
             for j in open_end + 1..content_end {
                 if self.kind_at(j) == TokenType::Directive
-                    && is_likely_inside_script_literal_or_comment(src, content_start, self.tokens[j].start)
+                    && is_likely_inside_script_literal_or_comment(
+                        src,
+                        content_start,
+                        self.tokens[j].start,
+                    )
                 {
                     out.insert(j);
                 }
@@ -2775,7 +3224,8 @@ impl<'a> TreeBuilder<'a> {
         let src = self.source.as_bytes();
         let mut i = 0;
         while i < total {
-            if self.kind_at(i) != LessThan || self.tokens.get(i + 1).map(|t| t.kind) == Some(Slash) {
+            if self.kind_at(i) != LessThan || self.tokens.get(i + 1).map(|t| t.kind) == Some(Slash)
+            {
                 i += 1;
                 continue;
             }
@@ -2804,7 +3254,11 @@ impl<'a> TreeBuilder<'a> {
                 let content_start = self.tokens[vs].end;
                 for k in vs + 1..ve {
                     if self.kind_at(k) == Directive
-                        && is_likely_inside_script_literal_or_comment(src, content_start, self.tokens[k].start)
+                        && is_likely_inside_script_literal_or_comment(
+                            src,
+                            content_start,
+                            self.tokens[k].start,
+                        )
                     {
                         out.insert(k);
                     }
@@ -2891,7 +3345,10 @@ impl<'a> TreeBuilder<'a> {
                 while b > ts as isize && matches!(src[b as usize], b' ' | b'\t' | b'\n' | b'\r') {
                     b -= 1;
                 }
-                if b > ts as isize && src[b as usize] == b'=' && self.is_unclosed_quote_before(i, offset) {
+                if b > ts as isize
+                    && src[b as usize] == b'='
+                    && self.is_unclosed_quote_before(i, offset)
+                {
                     return Some(i + 1);
                 }
             }
@@ -2910,7 +3367,10 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn is_static_opening_tag_at(&self, i: usize, tag: &str) -> bool {
-        if i + 1 >= self.tokens.len() || self.kind_at(i) != TokenType::LessThan || self.kind_at(i + 1) != TokenType::TagName {
+        if i + 1 >= self.tokens.len()
+            || self.kind_at(i) != TokenType::LessThan
+            || self.kind_at(i + 1) != TokenType::TagName
+        {
             return false;
         }
         let t = &self.tokens[i + 1];
@@ -2958,7 +3418,7 @@ struct Bounds {
 }
 
 fn is_slot_closing_match(open: &str, close: &str) -> bool {
-    if close.to_ascii_lowercase() != "x-slot" {
+    if !close.eq_ignore_ascii_case("x-slot") {
         return false;
     }
     let o = open.to_ascii_lowercase();
@@ -2981,7 +3441,11 @@ fn boundary_branches(frame: &[String], candidate: &[String]) -> Vec<String> {
     if candidate.is_empty() || frame.is_empty() {
         return frame.to_vec();
     }
-    frame.iter().filter(|b| !candidate.contains(b)).cloned().collect()
+    frame
+        .iter()
+        .filter(|b| !candidate.contains(b))
+        .cloned()
+        .collect()
 }
 
 fn in_range(idx: &DirectiveTokenIndex, name: &str, min: usize, max: Option<usize>) -> bool {

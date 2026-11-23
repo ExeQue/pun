@@ -4,14 +4,15 @@ use std::collections::HashMap;
 
 use super::Printer;
 use super::utils::{
-    NamePart, ValueKind, directive_arg_spacing, is_blade_component_tag_name, is_html_tag, normalize_line_endings_to_lf,
-    preserve_inline_intent_attributes, preserve_inline_intent_element, preserve_inline_intent_namespace, replace_eol,
+    NamePart, ValueKind, directive_arg_spacing, is_blade_component_tag_name, is_html_tag,
+    normalize_line_endings_to_lf, preserve_inline_intent_attributes,
+    preserve_inline_intent_element, preserve_inline_intent_namespace, replace_eol,
     replace_eol_literal, unescape_quote_entities,
 };
 use crate::ast::Id;
 use crate::doc::{Doc, concat, hardline, indent, join, line, softline};
 use crate::lexer::TokenType;
-use crate::tree::{NodeKind, VOID_ELEMENTS, has_swallowed_tag_syntax, js_trim, js_trim_end};
+use crate::tree::{NodeKind, has_swallowed_tag_syntax, js_trim, js_trim_end};
 
 impl Printer<'_> {
     fn can_borrow_parent_tag_markers(&self, id: Id) -> bool {
@@ -32,13 +33,20 @@ impl Printer<'_> {
 
     fn should_trim_malformed_eof_tag_name(&self, id: Id) -> bool {
         let n = self.n(id);
-        n.kind == NodeKind::Element && n.end == self.source().len() && n.open_tag_end_offset <= n.start && !n.has_closing_tag
+        n.kind == NodeKind::Element
+            && n.end == self.source().len()
+            && n.open_tag_end_offset <= n.start
+            && !n.has_closing_tag
     }
 
     fn display_tag_name(&self, id: Id) -> String {
         let n = self.n(id);
         let trim = |s: &str| -> String {
-            if self.should_trim_malformed_eof_tag_name(id) { js_trim_end(s).to_owned() } else { s.to_owned() }
+            if self.should_trim_malformed_eof_tag_name(id) {
+                js_trim_end(s).to_owned()
+            } else {
+                s.to_owned()
+            }
         };
         if n.namespace == "svg" {
             return trim(&n.raw_tag_name);
@@ -60,7 +68,10 @@ impl Printer<'_> {
         for t in self.tokens_of(id).iter().skip(1) {
             match t.kind {
                 TokenType::TsxGenericType => return self.tok_text(t).to_owned(),
-                TokenType::Whitespace | TokenType::GreaterThan | TokenType::Slash | TokenType::SyntheticClose => break,
+                TokenType::Whitespace
+                | TokenType::GreaterThan
+                | TokenType::Slash
+                | TokenType::SyntheticClose => break,
                 _ => {}
             }
         }
@@ -74,8 +85,11 @@ impl Printer<'_> {
 
     fn display_closing_tag_name(&self, id: Id) -> String {
         let n = self.n(id);
-        let dynamic = |s: &str| s.contains("{{") || s.contains("{!!") || s.contains("<?") || s.contains('@');
-        if !n.raw_closing_tag_name.is_empty() && (dynamic(&n.raw_tag_name) || dynamic(&n.raw_closing_tag_name)) {
+        let dynamic =
+            |s: &str| s.contains("{{") || s.contains("{!!") || s.contains("<?") || s.contains('@');
+        if !n.raw_closing_tag_name.is_empty()
+            && (dynamic(&n.raw_tag_name) || dynamic(&n.raw_closing_tag_name))
+        {
             return n.raw_closing_tag_name.clone();
         }
         self.display_tag_name(id)
@@ -85,7 +99,13 @@ impl Printer<'_> {
         if self.is_malformed_opening_recovery_element(id) {
             return false;
         }
-        matches!(self.kind(id), NodeKind::Element | NodeKind::ConditionalComment | NodeKind::Comment | NodeKind::BogusComment)
+        matches!(
+            self.kind(id),
+            NodeKind::Element
+                | NodeKind::ConditionalComment
+                | NodeKind::Comment
+                | NodeKind::BogusComment
+        )
     }
 
     fn can_borrow_prev_closing_tag_end_marker(&self, id: Id) -> bool {
@@ -133,7 +153,9 @@ impl Printer<'_> {
         let raw = js_trim(self.full_text(id));
         let rest = crate::tree::js_trim_start(raw.strip_prefix('<')?);
         let rest = crate::tree::js_trim_start(rest.strip_prefix('/')?);
-        let name_len = rest.find(|c: char| crate::tree::is_js_whitespace(c) || c == '>' || c == '/').unwrap_or(rest.len());
+        let name_len = rest
+            .find(|c: char| crate::tree::is_js_whitespace(c) || c == '>' || c == '/')
+            .unwrap_or(rest.len());
         if name_len == 0 {
             return None;
         }
@@ -153,14 +175,20 @@ impl Printer<'_> {
         if open.starts_with("x-slot:") || open.starts_with("x-slot[") {
             candidates.push("x-slot".to_owned());
         }
-        candidates.iter().any(|c| index.get(c).is_some_and(|p| p.last().is_some_and(|&last| last > n.end)))
+        candidates.iter().any(|c| {
+            index
+                .get(c)
+                .is_some_and(|p| p.last().is_some_and(|&last| last > n.end))
+        })
     }
 
     pub(crate) fn needs_to_borrow_prev_closing_tag_end_marker(&self, id: Id) -> bool {
         let n = self.n(id);
         self.can_borrow_prev_closing_tag_end_marker(id)
             && n.prev.is_some_and(|p| {
-                self.is_borrowable_marker_node(p) && self.kind(p) != NodeKind::Doctype && !self.is_text_like(p)
+                self.is_borrowable_marker_node(p)
+                    && self.kind(p) != NodeKind::Doctype
+                    && !self.is_text_like(p)
             })
             && n.kind != NodeKind::DirectiveBlock
             && n.is_leading_space_sensitive
@@ -171,7 +199,9 @@ impl Printer<'_> {
         if !self.can_borrow_parent_tag_markers(id) {
             return false;
         }
-        let Some(last) = self.last_child(id) else { return false };
+        let Some(last) = self.last_child(id) else {
+            return false;
+        };
         let l = self.n(last);
         self.is_borrowable_marker_node(last)
             && l.is_trailing_space_sensitive
@@ -191,7 +221,8 @@ impl Printer<'_> {
 
     pub(crate) fn needs_to_borrow_next_opening_tag_start_marker(&self, id: Id) -> bool {
         let n = self.n(id);
-        n.next.is_some_and(|x| self.is_borrowable_marker_node(x) && !self.is_text_like(x))
+        n.next
+            .is_some_and(|x| self.is_borrowable_marker_node(x) && !self.is_text_like(x))
             && self.is_text_like(id)
             && n.is_trailing_space_sensitive
             && !n.has_trailing_spaces
@@ -241,8 +272,10 @@ impl Printer<'_> {
             // `bladeInsertOptionalClosingTags` is off.
             return true;
         }
-        let has_unpaired_child =
-            n.kind == NodeKind::Element && n.children.iter().any(|&c| self.kind(c) == NodeKind::UnpairedClosingTag);
+        let has_unpaired_child = n.kind == NodeKind::Element
+            && n.children
+                .iter()
+                .any(|&c| self.kind(c) == NodeKind::UnpairedClosingTag);
         !n.is_self_closing
             && !n.has_closing_tag
             && (self.has_closing_tag_like_text_in_body(id)
@@ -269,9 +302,18 @@ impl Printer<'_> {
             NodeKind::Doctype => doctype_start_marker(&n.raw_text),
             NodeKind::Element => {
                 if n.condition.is_empty() {
-                    format!("<{}{}", self.display_tag_name(id), self.element_generic_suffix(id))
+                    format!(
+                        "<{}{}",
+                        self.display_tag_name(id),
+                        self.element_generic_suffix(id)
+                    )
                 } else {
-                    format!("<!--[if {}]><!--><{}{}", n.condition, self.display_tag_name(id), self.element_generic_suffix(id))
+                    format!(
+                        "<!--[if {}]><!--><{}{}",
+                        n.condition,
+                        self.display_tag_name(id),
+                        self.element_generic_suffix(id)
+                    )
                 }
             }
             _ => format!("<{}", self.display_tag_name(id)),
@@ -281,9 +323,12 @@ impl Printer<'_> {
     pub(crate) fn opening_tag_end_marker(&self, id: Id) -> String {
         let n = self.n(id);
         match n.kind {
-            NodeKind::ConditionalComment => {
-                if n.conditional_start_is_revealed { "]><!-->" } else { "]>" }.to_owned()
+            NodeKind::ConditionalComment => if n.conditional_start_is_revealed {
+                "]><!-->"
+            } else {
+                "]>"
             }
+            .to_owned(),
             NodeKind::Element => {
                 let future = self.has_future_matching_unpaired_closing_tag(id);
                 if n.open_tag_end_offset <= n.start && !n.has_closing_tag && !future {
@@ -304,7 +349,12 @@ impl Printer<'_> {
         }
         let n = self.n(id);
         match n.kind {
-            NodeKind::ConditionalComment => if n.conditional_end_is_hidden { "<!--<!" } else { "<!" }.to_owned(),
+            NodeKind::ConditionalComment => if n.conditional_end_is_hidden {
+                "<!--<!"
+            } else {
+                "<!"
+            }
+            .to_owned(),
             NodeKind::Element => {
                 if n.has_htm_component_closing_tag {
                     "<//".to_owned()
@@ -323,11 +373,21 @@ impl Printer<'_> {
         let n = self.n(id);
         match n.kind {
             NodeKind::ConditionalComment => "[endif]-->".to_owned(),
-            NodeKind::Comment => if n.is_ie_conditional_start_comment { "]><!-->" } else { ">" }.to_owned(),
+            NodeKind::Comment => if n.is_ie_conditional_start_comment {
+                "]><!-->"
+            } else {
+                ">"
+            }
+            .to_owned(),
             NodeKind::Echo => "}}".to_owned(),
             NodeKind::RawEcho => "!!}".to_owned(),
             NodeKind::TripleEcho => "}}}".to_owned(),
-            NodeKind::Element => if self.should_print_self_closing_slash(id) { "/>" } else { ">" }.to_owned(),
+            NodeKind::Element => if self.should_print_self_closing_slash(id) {
+                "/>"
+            } else {
+                ">"
+            }
+            .to_owned(),
             _ => ">".to_owned(),
         }
     }
@@ -336,7 +396,9 @@ impl Printer<'_> {
         let n = self.n(id);
         if self.needs_to_borrow_parent_opening_tag_end_marker(id) {
             return match n.parent {
-                Some(p) if self.can_borrow_parent_tag_markers(p) => Doc::from(self.opening_tag_end_marker(p)),
+                Some(p) if self.can_borrow_parent_tag_markers(p) => {
+                    Doc::from(self.opening_tag_end_marker(p))
+                }
                 _ => Doc::default(),
             };
         }
@@ -349,14 +411,24 @@ impl Printer<'_> {
     }
 
     pub(crate) fn opening_tag_start(&self, id: Id) -> Doc {
-        if self.n(id).prev.is_some_and(|p| self.needs_to_borrow_next_opening_tag_start_marker(p)) {
+        if self
+            .n(id)
+            .prev
+            .is_some_and(|p| self.needs_to_borrow_next_opening_tag_start_marker(p))
+        {
             return Doc::default();
         }
-        concat(vec![self.opening_tag_prefix(id), Doc::from(self.opening_tag_start_marker(id))])
+        concat(vec![
+            self.opening_tag_prefix(id),
+            Doc::from(self.opening_tag_start_marker(id)),
+        ])
     }
 
     fn opening_tag_end(&self, id: Id) -> Doc {
-        if self.first_child(id).is_some_and(|c| self.needs_to_borrow_parent_opening_tag_end_marker(c)) {
+        if self
+            .first_child(id)
+            .is_some_and(|c| self.needs_to_borrow_parent_opening_tag_end_marker(c))
+        {
             return Doc::default();
         }
         Doc::from(self.opening_tag_end_marker(id))
@@ -391,22 +463,33 @@ impl Printer<'_> {
     }
 
     fn closing_tag_start(&self, id: Id) -> Doc {
-        if self.last_child(id).is_some_and(|c| self.needs_to_borrow_parent_closing_tag_start_marker(c)) {
+        if self
+            .last_child(id)
+            .is_some_and(|c| self.needs_to_borrow_parent_closing_tag_start_marker(c))
+        {
             return Doc::default();
         }
-        concat(vec![self.closing_tag_prefix(id), Doc::from(self.closing_tag_start_marker(id))])
+        concat(vec![
+            self.closing_tag_prefix(id),
+            Doc::from(self.closing_tag_start_marker(id)),
+        ])
     }
 
     pub(crate) fn closing_tag_end(&self, id: Id) -> Doc {
         let n = self.n(id);
         let borrowed = match n.next {
             Some(x) => self.needs_to_borrow_prev_closing_tag_end_marker(x),
-            None => n.parent.is_some_and(|p| self.needs_to_borrow_last_child_closing_tag_end_marker(p)),
+            None => n
+                .parent
+                .is_some_and(|p| self.needs_to_borrow_last_child_closing_tag_end_marker(p)),
         };
         if borrowed {
             return Doc::default();
         }
-        concat(vec![Doc::from(self.closing_tag_end_marker(id)), self.closing_tag_suffix(id)])
+        concat(vec![
+            Doc::from(self.closing_tag_end_marker(id)),
+            self.closing_tag_suffix(id),
+        ])
     }
 
     pub(crate) fn print_opening_tag(&self, id: Id) -> Doc {
@@ -414,13 +497,24 @@ impl Printer<'_> {
         concat(vec![
             self.opening_tag_start(id),
             self.print_attributes(id),
-            if n.is_self_closing { Doc::default() } else { self.opening_tag_end(id) },
+            if n.is_self_closing {
+                Doc::default()
+            } else {
+                self.opening_tag_end(id)
+            },
         ])
     }
 
     pub(crate) fn print_closing_tag(&self, id: Id) -> Vec<Doc> {
         let n = self.n(id);
-        vec![if n.is_self_closing { Doc::default() } else { self.closing_tag_start(id) }, self.closing_tag_end(id)]
+        vec![
+            if n.is_self_closing {
+                Doc::default()
+            } else {
+                self.closing_tag_start(id)
+            },
+            self.closing_tag_end(id),
+        ]
     }
 
     fn print_attributes(&self, id: Id) -> Doc {
@@ -446,7 +540,9 @@ impl Printer<'_> {
                     None => false,
                 };
                 if ignored {
-                    crate::doc::replace_end_of_line(&Doc::from(&self.source()[self.n(a).start..self.n(a).end]))
+                    crate::doc::replace_end_of_line(&Doc::from(
+                        &self.source()[self.n(a).start..self.n(a).end],
+                    ))
                 } else {
                     self.print(a)
                 }
@@ -476,8 +572,12 @@ impl Printer<'_> {
             line()
         };
         let mut parts = vec![indent(concat(vec![first_sep, join(&sep, printed)]))];
-        let force_flat = self.first_child(id).is_some_and(|c| self.needs_to_borrow_parent_opening_tag_end_marker(c))
-            || (n.is_self_closing && n.parent.is_some_and(|p| self.needs_to_borrow_last_child_closing_tag_end_marker(p)))
+        let force_flat = self
+            .first_child(id)
+            .is_some_and(|c| self.needs_to_borrow_parent_opening_tag_end_marker(c))
+            || (n.is_self_closing
+                && n.parent
+                    .is_some_and(|p| self.needs_to_borrow_last_child_closing_tag_end_marker(p)))
             || inline_intent
             || force_not_to_break;
         if multiline_svg {
@@ -510,13 +610,16 @@ impl Printer<'_> {
         n.kind == NodeKind::Element
             && n.namespace == "svg"
             && !n.attrs.is_empty()
-            && !(preserve_inline_intent_element(&n.tag_name, &n.namespace) || preserve_inline_intent_namespace(&n.namespace))
+            && !(preserve_inline_intent_element(&n.tag_name, &n.namespace)
+                || preserve_inline_intent_namespace(&n.namespace))
     }
 
     // -- attribute values --------------------------------------------------------------------
 
     fn format_dynamic_attribute_value(&self, id: Id, original: &str) -> String {
-        let Some((start, end)) = self.attribute_value_token_range(id) else { return original.to_owned() };
+        let Some((start, end)) = self.attribute_value_token_range(id) else {
+            return original.to_owned();
+        };
         if start >= end {
             return original.to_owned();
         }
@@ -546,7 +649,11 @@ impl Printer<'_> {
                 }
                 i += 1;
             }
-            out.push_str(&format_echo_construct(&self.source()[seg_start..seg_end], open, close));
+            out.push_str(&format_echo_construct(
+                &self.source()[seg_start..seg_end],
+                open,
+                close,
+            ));
             i += 1;
         }
         out
@@ -570,7 +677,9 @@ impl Printer<'_> {
         } else {
             self.normalize_attribute_name(&raw_name, self.n(id).parent)
         };
-        let Some(value) = self.attribute_raw_value(id) else { return Doc::from(name) };
+        let Some(value) = self.attribute_raw_value(id) else {
+            return Doc::from(name);
+        };
         if self.attribute_value_kind(id) != ValueKind::StaticText {
             let formatted = self.format_dynamic_attribute_value(id, &value);
             return match self.attribute_value_quote(id) {
@@ -581,23 +690,39 @@ impl Printer<'_> {
                     replace_eol_literal(&formatted),
                     Doc::from(q),
                 ]),
-                _ => concat(vec![Doc::from(name), Doc::from("="), replace_eol_literal(&formatted)]),
+                _ => concat(vec![
+                    Doc::from(name),
+                    Doc::from("="),
+                    replace_eol_literal(&formatted),
+                ]),
             };
         }
         let unescaped = unescape_quote_entities(&value);
         let quote = preferred_quote(&unescaped);
         let indent_array = bound && is_multiline_bracket_array_value(&unescaped);
-        let escaped_value =
-            if quote == '"' { unescaped.replace('"', "&quot;") } else { unescaped.replace('\'', "&apos;") };
-        let rendered =
-            if indent_array { print_multiline_bound_array_value(&escaped_value) } else { replace_eol_literal(&escaped_value) };
-        concat(vec![Doc::from(name), Doc::from("="), Doc::from(quote.to_string()), rendered, Doc::from(quote.to_string())])
+        let escaped_value = if quote == '"' {
+            unescaped.replace('"', "&quot;")
+        } else {
+            unescaped.replace('\'', "&apos;")
+        };
+        let rendered = if indent_array {
+            print_multiline_bound_array_value(&escaped_value)
+        } else {
+            replace_eol_literal(&escaped_value)
+        };
+        concat(vec![
+            Doc::from(name),
+            Doc::from("="),
+            Doc::from(quote.to_string()),
+            rendered,
+            Doc::from(quote.to_string()),
+        ])
     }
 
     pub(crate) fn is_component_attribute_name(&self, id: Id) -> bool {
-        self.n(id)
-            .parent
-            .is_some_and(|p| self.kind(p) == NodeKind::Element && is_blade_component_tag_name(&self.n(p).full_name))
+        self.n(id).parent.is_some_and(|p| {
+            self.kind(p) == NodeKind::Element && is_blade_component_tag_name(&self.n(p).full_name)
+        })
     }
 
     pub(crate) fn format_attribute_name_for_print(&self, id: Id) -> String {
@@ -624,7 +749,9 @@ impl Printer<'_> {
         if !text.starts_with('@') {
             return text.to_owned();
         }
-        let Some(args_start) = text.find('(') else { return text.to_owned() };
+        let Some(args_start) = text.find('(') else {
+            return text.to_owned();
+        };
         let before = &text[..args_start];
         let name = js_trim_end(before);
         let args = &text[args_start..];
@@ -660,7 +787,12 @@ fn prettier_ignore_attribute_data(raw: &str) -> Option<IgnoreAttr> {
     if names.is_empty() {
         return Some(IgnoreAttr::All);
     }
-    Some(IgnoreAttr::Names(names.split(crate::tree::is_js_whitespace).map(str::to_owned).collect()))
+    Some(IgnoreAttr::Names(
+        names
+            .split(crate::tree::is_js_whitespace)
+            .map(str::to_owned)
+            .collect(),
+    ))
 }
 
 /// `formatEchoConstruct` with `bladeEchoSpacing: "space"`.
@@ -691,7 +823,10 @@ pub(crate) fn print_multiline_bound_array_value(value: &str) -> Doc {
     let body = super::utils::dedent_string(&lines[1..lines.len() - 1].join("\n"));
     concat(vec![
         Doc::from("["),
-        indent(concat(vec![hardline(), concat(replace_eol(&body, &hardline()))])),
+        indent(concat(vec![
+            hardline(),
+            concat(replace_eol(&body, &hardline())),
+        ])),
         hardline(),
         Doc::from("]"),
     ])
@@ -754,7 +889,10 @@ fn parse_doctype(raw: &str) -> Option<String> {
     // `.replace(/^html\b/i, "html")`
     let value = if value.len() >= 4
         && value.as_bytes()[..4].eq_ignore_ascii_case(b"html")
-        && value.as_bytes().get(4).is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_'))
+        && value
+            .as_bytes()
+            .get(4)
+            .is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_'))
     {
         format!("html{}", &value[4..])
     } else {
@@ -770,8 +908,13 @@ pub(crate) fn format_doctype(raw: &str) -> String {
             let b = raw.as_bytes();
             let starts = b.len() >= 9
                 && b[..9].eq_ignore_ascii_case(b"<!doctype")
-                && b.get(9).is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_'));
-            if starts && !raw.contains('>') { js_trim_end(raw).to_owned() } else { raw.to_owned() }
+                && b.get(9)
+                    .is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_'));
+            if starts && !raw.contains('>') {
+                js_trim_end(raw).to_owned()
+            } else {
+                raw.to_owned()
+            }
         }
     }
 }

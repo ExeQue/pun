@@ -30,9 +30,15 @@ pub(crate) fn find(src: &[u8], needle: &[u8], from: usize) -> Option<usize> {
         return None;
     }
     if needle.len() == 1 {
-        return src[from..].iter().position(|&b| b == needle[0]).map(|p| p + from);
+        return src[from..]
+            .iter()
+            .position(|&b| b == needle[0])
+            .map(|p| p + from);
     }
-    src[from..].windows(needle.len()).position(|w| w == needle).map(|p| p + from)
+    src[from..]
+        .windows(needle.len())
+        .position(|w| w == needle)
+        .map(|p| p + from)
 }
 
 pub(crate) fn find_line_ending(src: &[u8], pos: usize, len: usize) -> Option<usize> {

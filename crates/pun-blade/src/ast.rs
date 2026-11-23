@@ -5,7 +5,7 @@
 
 use crate::directives::{Directives, TreeDirectives};
 use crate::frontmatter::{FrontMatter, parse_front_matter};
-use crate::lexer::{IgnoreRangeRegion, Token, TokenType, collect_ignore_ranges, tokenize};
+use crate::lexer::{Token, TokenType, collect_ignore_ranges, tokenize};
 use crate::tree::{FlatNode, NONE, NodeKind, TreeBuilder, VOID_ELEMENTS, js_trim};
 
 pub(crate) type Id = usize;
@@ -53,19 +53,12 @@ pub(crate) struct Node {
     pub(crate) has_dangling_spaces: bool,
 }
 
-impl Default for NodeKind {
-    fn default() -> Self {
-        NodeKind::Root
-    }
-}
-
 pub(crate) struct Ast {
     pub(crate) nodes: Vec<Node>,
     /// The source with any front matter blanked out (what every offset points into).
     pub(crate) source: String,
     pub(crate) tokens: Vec<Token>,
     pub(crate) flat: Vec<FlatNode>,
-    pub(crate) ignore_ranges: Vec<IgnoreRangeRegion>,
     pub(crate) directives: TreeDirectives,
     pub(crate) front_matter: Option<FrontMatter>,
     pub(crate) line_offsets: Vec<usize>,
@@ -92,7 +85,9 @@ pub(crate) fn build_line_offsets(source: &str) -> Vec<usize> {
 }
 
 pub(crate) fn get_line(offset: usize, line_offsets: &[usize]) -> usize {
-    line_offsets.partition_point(|&o| o <= offset).saturating_sub(1)
+    line_offsets
+        .partition_point(|&o| o <= offset)
+        .saturating_sub(1)
 }
 
 fn is_internal_kind(kind: NodeKind) -> bool {
@@ -196,8 +191,12 @@ fn is_ie_conditional_end_comment(node: &Node) -> bool {
     if node.kind != NodeKind::Comment {
         return false;
     }
-    let Some(value) = comment_value(&node.raw_text) else { return false };
-    let Some(rest) = value.strip_prefix("<!") else { return false };
+    let Some(value) = comment_value(&node.raw_text) else {
+        return false;
+    };
+    let Some(rest) = value.strip_prefix("<!") else {
+        return false;
+    };
     js_trim_start_ws(rest) == "[endif]"
 }
 
@@ -224,7 +223,15 @@ pub(crate) fn parse(text: &str) -> Ast {
     directives.train(&names);
     let flat = TreeBuilder::new(&tokens, &content, &directives).build();
     let line_offsets = build_line_offsets(&content);
-    let mut ast = Ast { nodes: Vec::new(), source: content, tokens, flat, ignore_ranges, directives, front_matter, line_offsets };
+    let mut ast = Ast {
+        nodes: Vec::new(),
+        source: content,
+        tokens,
+        flat,
+        directives,
+        front_matter,
+        line_offsets,
+    };
     wrap_tree(&mut ast);
     if ast.front_matter.is_some() {
         prepend_front_matter(&mut ast);
@@ -259,7 +266,12 @@ fn wrap_tree(ast: &mut Ast) {
         let (start, end, start_line, end_line) = if f.token_count > 0 {
             let first = f.token_start;
             let last = f.token_start + f.token_count - 1;
-            (tokens[first].start, tokens[last].end, start_lines[first], end_lines[last])
+            (
+                tokens[first].start,
+                tokens[last].end,
+                start_lines[first],
+                end_lines[last],
+            )
         } else {
             (0, 0, 0, 0)
         };
@@ -268,7 +280,11 @@ fn wrap_tree(ast: &mut Ast) {
             flat: i,
             start,
             end,
-            raw_text: if should_materialize_raw_text(f.kind) { source[start..end].to_owned() } else { String::new() },
+            raw_text: if should_materialize_raw_text(f.kind) {
+                source[start..end].to_owned()
+            } else {
+                String::new()
+            },
             complete: true,
             css_display: "inline".to_owned(),
             start_line,
@@ -326,13 +342,18 @@ fn wrap_tree(ast: &mut Ast) {
                 }
                 c = ast.flat[c].next_sibling;
             }
-            if let Some(t) = tokens[f.token_start..opening_end].iter().find(|t| t.kind == TokenType::GreaterThan) {
+            if let Some(t) = tokens[f.token_start..opening_end]
+                .iter()
+                .find(|t| t.kind == TokenType::GreaterThan)
+            {
                 nodes[i].open_tag_end_offset = t.end;
             }
             if nodes[i].has_closing_tag {
                 let mut j = token_end - 1;
                 while j > f.token_start {
-                    if tokens[j].kind == TokenType::Slash && tokens[j - 1].kind == TokenType::LessThan {
+                    if tokens[j].kind == TokenType::Slash
+                        && tokens[j - 1].kind == TokenType::LessThan
+                    {
                         nodes[i].closing_tag_start_offset = tokens[j - 1].start;
                         break;
                     }
@@ -359,7 +380,8 @@ fn wrap_tree(ast: &mut Ast) {
             let complete = last.kind == TokenType::ConditionalCommentEnd;
             nodes[i].complete = complete;
             if complete {
-                nodes[i].conditional_end_is_hidden = source[last.start..last.end].starts_with("<!--<![");
+                nodes[i].conditional_end_is_hidden =
+                    source[last.start..last.end].starts_with("<!--<![");
                 nodes[i].has_closing_tag = true;
                 nodes[i].closing_tag_start_offset = last.start;
             }
@@ -533,10 +555,6 @@ impl Ast {
         &self.nodes[id]
     }
 
-    pub(crate) fn kind(&self, id: Id) -> NodeKind {
-        self.nodes[id].kind
-    }
-
     pub(crate) fn has_parent(&self, id: Id, pred: impl Fn(&Node) -> bool) -> bool {
         let mut cur = Some(id);
         while let Some(c) = cur {
@@ -551,7 +569,11 @@ impl Ast {
     pub(crate) fn is_unknown_namespace(&self, id: Id) -> bool {
         let n = &self.nodes[id];
         let ns = n.namespace.to_lowercase();
-        n.kind == NodeKind::Element && !n.full_name.contains(':') && !ns.is_empty() && ns != "html" && ns != "svg"
+        n.kind == NodeKind::Element
+            && !n.full_name.contains(':')
+            && !ns.is_empty()
+            && ns != "html"
+            && ns != "svg"
     }
 
     pub(crate) fn is_script_like_tag(&self, id: Id) -> bool {
@@ -565,19 +587,26 @@ impl Ast {
             || full == "style"
             || full == "svg:style"
             || full == "svg:script"
-            || ((n.namespace == "svg" || n.parent.is_some_and(|p| self.nodes[p].namespace == "svg")) && script_or_style)
+            || ((n.namespace == "svg"
+                || n.parent.is_some_and(|p| self.nodes[p].namespace == "svg"))
+                && script_or_style)
             || (self.is_unknown_namespace(id) && script_or_style)
     }
 
     fn in_svg_foreign_object(&self, id: Id) -> bool {
-        self.has_parent(id, |p| p.kind == NodeKind::Element && p.namespace == "svg" && p.tag_name == "foreignobject")
+        self.has_parent(id, |p| {
+            p.kind == NodeKind::Element && p.namespace == "svg" && p.tag_name == "foreignobject"
+        })
     }
 
     fn prev_non_whitespace_sibling(&self, id: Id) -> Option<Id> {
         let mut s = self.nodes[id].prev;
         while let Some(i) = s {
             let n = &self.nodes[i];
-            let ws_only = n.kind == NodeKind::Text && n.raw_text.bytes().all(|b| matches!(b, b'\t' | b'\n' | 0x0c | b'\r' | b' '));
+            let ws_only = n.kind == NodeKind::Text
+                && n.raw_text
+                    .bytes()
+                    .all(|b| matches!(b, b'\t' | b'\n' | 0x0c | b'\r' | b' '));
             if !ws_only {
                 return Some(i);
             }
@@ -598,10 +627,17 @@ impl Ast {
             return display;
         }
         if n.kind == NodeKind::Element && n.namespace == "svg" && !self.in_svg_foreign_object(id) {
-            return if n.tag_name == "svg" { "inline-block" } else { "block" }.to_owned();
+            return if n.tag_name == "svg" {
+                "inline-block"
+            } else {
+                "block"
+            }
+            .to_owned();
         }
         if n.kind == NodeKind::Element
-            && (n.namespace.is_empty() || self.in_svg_foreign_object(id) || self.is_unknown_namespace(id))
+            && (n.namespace.is_empty()
+                || self.in_svg_foreign_object(id)
+                || self.is_unknown_namespace(id))
             && let Some(d) = lookup(CSS_DISPLAY_TAGS, &n.tag_name)
         {
             return d.to_owned();
@@ -695,7 +731,11 @@ impl Ast {
                 continue;
             }
             let (p, f) = (prev.unwrap_or(child), first.unwrap_or(child));
-            let (p_start, p_line, f_end) = (self.nodes[p].start, self.nodes[p].start_line, self.nodes[f].end);
+            let (p_start, p_line, f_end) = (
+                self.nodes[p].start,
+                self.nodes[p].start_line,
+                self.nodes[f].end,
+            );
             let c = &mut self.nodes[child];
             c.condition = condition.unwrap_or_default();
             c.start = p_start;
@@ -716,10 +756,11 @@ impl Ast {
                     .parent
                     .filter(|&p| self.nodes[p].kind == NodeKind::Element)
                     .map(|p| self.nodes[p].tag_name.clone());
-                if self.nodes[id].tag_name == "svg" {
-                    self.nodes[id].namespace = "svg".to_owned();
-                } else if inherited == "svg" && parent_tag.as_deref().is_some_and(|t| t != "foreignobject") {
-                    self.nodes[id].namespace = "svg".to_owned();
+                if self.nodes[id].tag_name == "svg"
+                    || (inherited == "svg"
+                        && parent_tag.as_deref().is_some_and(|t| t != "foreignobject"))
+                {
+                    "svg".clone_into(&mut self.nodes[id].namespace);
                 } else if inherited == "svg" && parent_tag.as_deref() == Some("foreignobject") {
                     self.nodes[id].namespace = String::new();
                 }
@@ -749,7 +790,10 @@ impl Ast {
         if children.is_empty() {
             return;
         }
-        if children.len() == 1 && self.nodes[children[0]].kind == NodeKind::Text && html_trim(&self.nodes[children[0]].raw_text).is_empty() {
+        if children.len() == 1
+            && self.nodes[children[0]].kind == NodeKind::Text
+            && html_trim(&self.nodes[children[0]].raw_text).is_empty()
+        {
             let dangling = !self.nodes[children[0]].raw_text.is_empty();
             self.nodes[id].has_dangling_spaces = dangling;
             self.nodes[id].children.clear();
@@ -817,7 +861,10 @@ impl Ast {
     }
 
     fn is_ws_text_like(&self, id: Id) -> bool {
-        matches!(self.nodes[id].kind, NodeKind::Text | NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho)
+        matches!(
+            self.nodes[id].kind,
+            NodeKind::Text | NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho
+        )
     }
 
     fn leading_space_sensitive(&self, id: Id) -> bool {
@@ -898,11 +945,13 @@ impl Ast {
         for i in 0..children.len() {
             let c = children[i];
             if i > 0 {
-                let v = self.nodes[children[i - 1]].is_trailing_space_sensitive && self.nodes[c].is_leading_space_sensitive;
+                let v = self.nodes[children[i - 1]].is_trailing_space_sensitive
+                    && self.nodes[c].is_leading_space_sensitive;
                 self.nodes[c].is_leading_space_sensitive = v;
             }
             if i + 1 < children.len() {
-                let v = self.nodes[children[i + 1]].is_leading_space_sensitive && self.nodes[c].is_trailing_space_sensitive;
+                let v = self.nodes[children[i + 1]].is_leading_space_sensitive
+                    && self.nodes[c].is_trailing_space_sensitive;
                 self.nodes[c].is_trailing_space_sensitive = v;
             }
         }
@@ -928,7 +977,10 @@ impl Ast {
                 && c.children.len() == 1
                 && {
                     let f = &self.nodes[c.children[0]];
-                    f.kind == NodeKind::Text && !has_html_whitespace(&f.raw_text) && !f.has_leading_spaces && !f.has_trailing_spaces
+                    f.kind == NodeKind::Text
+                        && !has_html_whitespace(&f.raw_text)
+                        && !f.has_leading_spaces
+                        && !f.has_trailing_spaces
                 }
                 && c.is_leading_space_sensitive
                 && !c.has_leading_spaces
@@ -943,10 +995,18 @@ impl Ast {
             };
             let first = self.nodes[child].children[0];
             let tag = self.nodes[child].raw_tag_name.clone();
-            let merged = format!("<{tag}>{}</{tag}>{}", self.nodes[first].raw_text, self.nodes[n].raw_text);
+            let merged = format!(
+                "<{tag}>{}</{tag}>{}",
+                self.nodes[first].raw_text, self.nodes[n].raw_text
+            );
             let (n_end, n_end_line, n_tss, n_hts) = {
                 let nn = &self.nodes[n];
-                (nn.end, nn.end_line, nn.is_trailing_space_sensitive, nn.has_trailing_spaces)
+                (
+                    nn.end,
+                    nn.end_line,
+                    nn.is_trailing_space_sensitive,
+                    nn.has_trailing_spaces,
+                )
             };
             let pn = &mut self.nodes[p];
             pn.raw_text.push_str(&merged);
@@ -1003,7 +1063,8 @@ impl Ast {
         for id in self.preorder() {
             let n = &self.nodes[id];
             let closing = if n.kind == NodeKind::Element {
-                VOID_ELEMENTS.contains(&n.full_name.to_lowercase().as_str()) || self.flat[n.flat].data == 1
+                VOID_ELEMENTS.contains(&n.full_name.to_lowercase().as_str())
+                    || self.flat[n.flat].data == 1
             } else {
                 n.children.is_empty()
             };
@@ -1014,16 +1075,25 @@ impl Ast {
             if n.kind == NodeKind::Element && n.has_closing_tag {
                 let end = n.end.min(self.source.len());
                 // `lastIndexOf("</", end)` may match a "</" that starts at `end`.
-                let hay_end = (end + 2).min(self.source.len());
+                let mut hay_end = (end + 2).min(self.source.len());
+                while !self.source.is_char_boundary(hay_end) {
+                    hay_end -= 1;
+                }
                 if let Some(cs) = self.source[..hay_end].rfind("</") {
-                    let closing = if cs <= n.end { &self.source[cs..n.end.max(cs)] } else { "" };
+                    let closing = if cs <= n.end {
+                        &self.source[cs..n.end.max(cs)]
+                    } else {
+                        ""
+                    };
                     let htm = is_htm_closing(closing);
                     self.nodes[id].has_htm_component_closing_tag = htm;
                 }
             }
         }
         for id in self.preorder() {
-            let ws = self.is_script_like_tag(id) || is_echo_like(self.nodes[id].kind) || self.is_pre_like(id);
+            let ws = self.is_script_like_tag(id)
+                || is_echo_like(self.nodes[id].kind)
+                || self.is_pre_like(id);
             let pre = self.is_pre_like(id);
             let n = &mut self.nodes[id];
             n.is_whitespace_sensitive = ws;
@@ -1049,7 +1119,10 @@ fn is_htm_closing(s: &str) -> bool {
 }
 
 pub(crate) fn is_echo_like(kind: NodeKind) -> bool {
-    matches!(kind, NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho)
+    matches!(
+        kind,
+        NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho
+    )
 }
 
 /// `/^x-slot(?::|\[|$)/iu`

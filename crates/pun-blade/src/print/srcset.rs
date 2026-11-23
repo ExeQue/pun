@@ -22,16 +22,23 @@ fn is_floating_point(s: &str) -> bool {
         None => (s, None),
     };
     let mantissa_ok = match mantissa.split_once('.') {
-        Some((int, frac)) => int.bytes().all(|b| b.is_ascii_digit()) && is_non_negative_integer(frac),
+        Some((int, frac)) => {
+            int.bytes().all(|b| b.is_ascii_digit()) && is_non_negative_integer(frac)
+        }
         None => is_non_negative_integer(mantissa),
     };
-    let exponent_ok = exponent.is_none_or(|e| is_non_negative_integer(e.strip_prefix(['+', '-']).unwrap_or(e)));
+    let exponent_ok =
+        exponent.is_none_or(|e| is_non_negative_integer(e.strip_prefix(['+', '-']).unwrap_or(e)));
     mantissa_ok && exponent_ok
 }
 
 /// `String(number)` for the numbers a descriptor holds.
 fn js_number(v: f64) -> String {
-    if v.fract() == 0.0 && v.abs() < 1e21 { format!("{v:.0}") } else { format!("{v}") }
+    if v.fract() == 0.0 && v.abs() < 1e21 {
+        format!("{v:.0}")
+    } else {
+        format!("{v}")
+    }
 }
 
 fn parse_descriptors(url: String, descriptors: &[String]) -> Option<Candidate> {
@@ -72,7 +79,10 @@ fn parse_descriptors(url: String, descriptors: &[String]) -> Option<Candidate> {
         }
     }
     let shown = |v: Option<f64>| v.filter(|v| *v != 0.0).map(js_number);
-    Some(Candidate { url, descriptors: [shown(w), shown(h), shown(d)] })
+    Some(Candidate {
+        url,
+        descriptors: [shown(w), shown(h), shown(d)],
+    })
 }
 
 /// `None` where the JS parser throws.
@@ -94,7 +104,7 @@ pub(crate) fn parse_srcset(input: &str) -> Option<Vec<Candidate>> {
         let mut url: String = chars[start..pos].iter().collect();
         let mut descriptors = Vec::new();
         if url.ends_with(',') {
-            url = url.trim_end_matches(',').to_owned();
+            url.truncate(url.trim_end_matches(',').len());
         } else {
             while pos < chars.len() && is_space(chars[pos]) {
                 pos += 1;

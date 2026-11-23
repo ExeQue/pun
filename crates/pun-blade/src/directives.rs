@@ -21,34 +21,6 @@ impl Directives {
     }
 }
 
-const DEFAULT_DIRECTIVES: &[&str] = &[
-    "if", "elseif", "else", "endif", "unless", "endunless", "isset", "endisset", "empty", "endempty", "switch",
-    "case", "break", "default", "endswitch", "foreach", "endforeach", "for", "endfor", "while", "endwhile",
-    "forelse", "endforelse", "continue", "auth", "elseauth", "endauth", "guest", "elseguest", "endguest", "can",
-    "elsecan", "endcan", "canany", "elsecanany", "endcanany", "cannot", "elsecannot", "endcannot", "env",
-    "elseenv", "endenv", "production", "elseproduction", "endproduction", "section", "endsection", "yield",
-    "show", "stop", "append", "overwrite", "extends", "extendsFirst", "parent", "hasSection", "sectionMissing",
-    "endhasSection", "endsectionMissing", "include", "includeIf", "includeWhen", "includeUnless",
-    "includeFirst", "includeIsolated", "each", "once", "endonce", "push", "endpush", "pushOnce", "endPushOnce",
-    "pushIf", "elsePushIf", "elsePush", "endPushIf", "prepend", "endprepend", "prependOnce", "endPrependOnce",
-    "stack", "hasStack", "component", "endcomponent", "endComponentClass", "componentFirst",
-    "endComponentFirst", "slot", "endslot", "props", "aware", "csrf", "method", "error", "enderror", "old",
-    "inject", "dd", "dump", "vite", "viteReactRefresh", "fonts", "json", "js", "unset", "class", "style",
-    "checked", "selected", "disabled", "readonly", "required", "bool", "php", "endphp", "verbatim",
-    "endverbatim", "fragment", "endfragment", "session", "endsession", "context", "endcontext", "lang",
-    "endlang", "choice", "livewire", "livewireStyles", "livewireScripts", "entangle", "this", "persist",
-    "endpersist", "teleport", "endteleport", "volt", "inertia", "inertiaHead", "filamentStyles",
-    "filamentScripts", "svg", "role", "endrole", "hasrole", "endhasrole", "hasanyrole", "endhasanyrole",
-    "hasallroles", "endhasallroles", "unlessrole", "endunlessrole", "feature", "endfeature", "featureany",
-    "endfeatureany", "paddleJS", "use",
-];
-
-/// `getCanonicalDirectiveName`: the default directive list's spelling of a name, if it is known.
-pub(crate) fn canonical_directive_name(name: &str) -> Option<&'static str> {
-    let lower = name.to_ascii_lowercase();
-    DEFAULT_DIRECTIVES.iter().copied().find(|d| d.to_ascii_lowercase() == lower)
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Role {
     None,
@@ -117,11 +89,37 @@ struct Def {
 }
 
 const fn d(name: &'static str, args: ArgReq) -> Def {
-    Def { name, args, role: "", condition: false, terminators: "", branches: "", kind: "", parent: "", pairing: "" }
+    Def {
+        name,
+        args,
+        role: "",
+        condition: false,
+        terminators: "",
+        branches: "",
+        kind: "",
+        parent: "",
+        pairing: "",
+    }
 }
 
-const fn s(name: &'static str, args: ArgReq, role: &'static str, condition: bool, terminators: &'static str) -> Def {
-    Def { name, args, role, condition, terminators, branches: "", kind: "", parent: "", pairing: "" }
+const fn s(
+    name: &'static str,
+    args: ArgReq,
+    role: &'static str,
+    condition: bool,
+    terminators: &'static str,
+) -> Def {
+    Def {
+        name,
+        args,
+        role,
+        condition,
+        terminators,
+        branches: "",
+        kind: "",
+        parent: "",
+        pairing: "",
+    }
 }
 
 use ArgReq::{NotAllowed as NO, Optional as OPT, Required as REQ};
@@ -266,7 +264,11 @@ const BUNDLED: &[Def] = &[
 ];
 
 fn parse_list(value: &str) -> Vec<String> {
-    value.split(',').map(|s| s.trim().to_ascii_lowercase()).filter(|s| !s.is_empty()).collect()
+    value
+        .split(',')
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect()
 }
 
 /// The tree builder's directive registry. `order` keeps JS `Map` insertion order, which the
@@ -306,7 +308,11 @@ impl TreeDirectives {
             };
             let terminators = parse_list(def.terminators);
             let branches = parse_list(def.branches);
-            let switch_parent = if def.parent.is_empty() { None } else { Some(def.parent.to_ascii_lowercase()) };
+            let switch_parent = if def.parent.is_empty() {
+                None
+            } else {
+                Some(def.parent.to_ascii_lowercase())
+            };
             for name in def.name.split(',').map(str::trim).filter(|n| !n.is_empty()) {
                 let mut dir = Directive::new(name);
                 dir.args = def.args;
@@ -317,7 +323,8 @@ impl TreeDirectives {
                 dir.terminator = terminators.last().cloned();
                 dir.is_switch = def.kind == "switch";
                 dir.switch_parent.clone_from(&switch_parent);
-                dir.is_switch_branch = def.role == "branch" && switch_parent.as_deref() == Some("switch");
+                dir.is_switch_branch =
+                    def.role == "branch" && switch_parent.as_deref() == Some("switch");
                 dir.is_switch_terminator =
                     def.role == "branch_terminator" && switch_parent.as_deref() == Some("switch");
                 dir.is_conditional_pair = def.role == "conditional_pair";
@@ -375,8 +382,9 @@ impl TreeDirectives {
     }
 
     pub(crate) fn is_paired(&self, name: &str) -> bool {
-        self.get(name)
-            .is_some_and(|d| d.role == Role::Opening && !d.terminators.is_empty() && d.terminator.is_some())
+        self.get(name).is_some_and(|d| {
+            d.role == Role::Opening && !d.terminators.is_empty() && d.terminator.is_some()
+        })
     }
 
     pub(crate) fn is_switch(&self, name: &str) -> bool {
@@ -396,7 +404,7 @@ impl TreeDirectives {
     }
 
     pub(crate) fn terminators(&self, name: &str) -> Vec<String> {
-        self.get(name).map(|d| d.terminators.clone()).unwrap_or_default()
+        self.get(name).map_or_default(|d| d.terminators.clone())
     }
 
     pub(crate) fn openers_for_terminators(&self, terminators: &[String]) -> Vec<String> {
@@ -453,7 +461,8 @@ impl TreeDirectives {
     }
 
     pub(crate) fn has_advisory_condition(&self, name: &str) -> bool {
-        self.advisory_conditions.contains(&name.to_ascii_lowercase())
+        self.advisory_conditions
+            .contains(&name.to_ascii_lowercase())
     }
 
     /// `train`: remember every directive name in the token stream and the custom `@x`/`@endx`

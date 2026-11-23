@@ -5,7 +5,8 @@
 use super::Printer;
 use super::oxc::{self, Lang};
 use super::utils::{
-    RawContext, TAB_WIDTH, dedent_string, normalize_line_endings_to_lf, replace_eol, trim_trailing_horizontal_whitespace,
+    RawContext, TAB_WIDTH, dedent_string, normalize_line_endings_to_lf, replace_eol,
+    trim_trailing_horizontal_whitespace,
 };
 use crate::ast::Id;
 use crate::directives::Role;
@@ -14,8 +15,10 @@ use crate::lexer::TokenType;
 use crate::tree::{NodeKind, is_js_whitespace, js_trim, js_trim_end, js_trim_start};
 
 const EXPRESSION_DIRECTIVES: &[&str] = &["json", "js", "entangle", "this"];
-const STYLE_OPENERS: &[&str] =
-    &["if", "unless", "isset", "empty", "for", "foreach", "forelse", "while", "switch", "php", "verbatim"];
+const STYLE_OPENERS: &[&str] = &[
+    "if", "unless", "isset", "empty", "for", "foreach", "forelse", "while", "switch", "php",
+    "verbatim",
+];
 const STYLE_CLOSERS: &[&str] = &[
     "endif",
     "endunless",
@@ -95,12 +98,17 @@ fn leading_ws(line: &str) -> &str {
 
 /// `^[ \t]*` length
 fn indent_len(line: &str) -> usize {
-    line.bytes().take_while(|&b| b == b' ' || b == b'\t').count()
+    line.bytes()
+        .take_while(|&b| b == b' ' || b == b'\t')
+        .count()
 }
 
 /// `split(/\r?\n/u)`
 fn split_lines(value: &str) -> Vec<String> {
-    value.split('\n').map(|l| l.strip_suffix('\r').unwrap_or(l).to_owned()).collect()
+    value
+        .split('\n')
+        .map(|l| l.strip_suffix('\r').unwrap_or(l).to_owned())
+        .collect()
 }
 
 fn utf16_len(s: &str) -> usize {
@@ -168,18 +176,26 @@ fn is_directive_comment(t: &str) -> bool {
 
 /// `/^([.#:[*]|[A-Za-z_]).*\{/u` (or with `\{\s*$` when `at_end`).
 fn is_selector_like(t: &str, at_end: bool) -> bool {
-    let Some(&first) = t.as_bytes().first() else { return false };
+    let Some(&first) = t.as_bytes().first() else {
+        return false;
+    };
     if !(matches!(first, b'.' | b'#' | b':' | b'[' | b'*') || is_ident_start(first)) {
         return false;
     }
     let first_line = t.split('\n').next().unwrap_or("");
-    if at_end { js_trim_end(t).ends_with('{') && !t.contains('\n') } else { first_line[1..].contains('{') }
+    if at_end {
+        js_trim_end(t).ends_with('{') && !t.contains('\n')
+    } else {
+        first_line[1..].contains('{')
+    }
 }
 
 fn normalize_directive_line_arg_spacing(line: &str) -> String {
     let b = line.as_bytes();
     let ind = indent_len(line);
-    let Some((name_end, _)) = directive_match_end(b, ind) else { return line.to_owned() };
+    let Some((name_end, _)) = directive_match_end(b, ind) else {
+        return line.to_owned();
+    };
     let mut k = name_end;
     while k < b.len() && is_js_whitespace(b[k] as char) && b[k].is_ascii() {
         k += 1;
@@ -191,7 +207,12 @@ fn normalize_directive_line_arg_spacing(line: &str) -> String {
     if !is_structural(&name) && !EXPRESSION_DIRECTIVES.contains(&name.as_str()) {
         return line.to_owned();
     }
-    format!("{}@{} ({}", &line[..ind], &line[ind + 1..name_end], &line[k + 1..])
+    format!(
+        "{}@{} ({}",
+        &line[..ind],
+        &line[ind + 1..name_end],
+        &line[k + 1..]
+    )
 }
 
 fn is_blade_value_line(t: &str) -> bool {
@@ -302,11 +323,17 @@ fn normalize_style_blade_value_indentation(value: &str) -> String {
                 continue;
             }
             let name = directive_name_from_line(t);
-            if name.as_deref().is_some_and(|n| STYLE_CLOSERS.contains(&n) || STYLE_BRANCHES.contains(&n)) {
+            if name
+                .as_deref()
+                .is_some_and(|n| STYLE_CLOSERS.contains(&n) || STYLE_BRANCHES.contains(&n))
+            {
                 depth = depth.saturating_sub(1);
             }
             replacement.push(format!("{base}  {}{t}", "  ".repeat(depth)));
-            if name.as_deref().is_some_and(|n| STYLE_OPENERS.contains(&n) || STYLE_BRANCHES.contains(&n)) {
+            if name
+                .as_deref()
+                .is_some_and(|n| STYLE_OPENERS.contains(&n) || STYLE_BRANCHES.contains(&n))
+            {
                 depth += 1;
             }
         }
@@ -377,7 +404,9 @@ where
                         out.push(b[i + 1]);
                         i += 1;
                     }
-                } else if (state == Scan::Single && ch == b'\'') || (state == Scan::Double && ch == b'"') {
+                } else if (state == Scan::Single && ch == b'\'')
+                    || (state == Scan::Double && ch == b'"')
+                {
                     state = Scan::Code;
                 } else if ch == b'\n' {
                     on_string_newline();
@@ -434,7 +463,9 @@ fn normalize_style_directive_boundaries(value: &str) -> String {
 fn trailing_directive_name(line_code: &str) -> Option<String> {
     let b = line_code.as_bytes();
     for (i, _) in line_code.match_indices('@') {
-        let Some((name_end, full_end)) = directive_match_end(b, i) else { continue };
+        let Some((name_end, full_end)) = directive_match_end(b, i) else {
+            continue;
+        };
         let rest_ws = |e: usize| b[e..].iter().all(u8::is_ascii_whitespace);
         if rest_ws(full_end) || rest_ws(name_end) {
             return Some(line_code[i + 1..name_end].to_lowercase());
@@ -465,7 +496,10 @@ fn normalize_style_structural_directive_semicolons(value: &str) -> String {
                     }
                     let n = b.get(j).copied();
                     let nn = b.get(j + 1).copied();
-                    if n.is_none() || n == Some(b'\n') || (n == Some(b'/') && matches!(nn, Some(b'*' | b'/'))) {
+                    if n.is_none()
+                        || n == Some(b'\n')
+                        || (n == Some(b'/') && matches!(nn, Some(b'*' | b'/')))
+                    {
                         return true;
                     }
                 }
@@ -475,7 +509,11 @@ fn normalize_style_structural_directive_semicolons(value: &str) -> String {
                 line_code.borrow_mut().clear();
             } else {
                 // Bytes of a multi-byte char land one by one; only ASCII is ever matched.
-                line_code.borrow_mut().push(if ch.is_ascii() { ch as char } else { '\u{fffd}' });
+                line_code.borrow_mut().push(if ch.is_ascii() {
+                    ch as char
+                } else {
+                    '\u{fffd}'
+                });
             }
             true
         },
@@ -521,17 +559,25 @@ fn normalize_style_directive_comment_chains(value: &str) -> String {
         }
         let ind = leading_ws(&line).to_owned();
         let (tokens, remainder) = directive_comment_tokens(trimmed);
-        if tokens.len() <= 1 || !js_trim(&remainder).is_empty() || !tokens.iter().any(|t| t.starts_with('@')) {
+        if tokens.len() <= 1
+            || !js_trim(&remainder).is_empty()
+            || !tokens.iter().any(|t| t.starts_with('@'))
+        {
             out.push(line);
             continue;
         }
-        if !tokens.iter().all(|t| t.starts_with('@') || t.starts_with("/*")) {
+        if !tokens
+            .iter()
+            .all(|t| t.starts_with('@') || t.starts_with("/*"))
+        {
             out.push(line);
             continue;
         }
         for token in tokens {
             if token.starts_with('@') {
-                out.push(normalize_directive_line_arg_spacing(&format!("{ind}{token}")));
+                out.push(normalize_directive_line_arg_spacing(&format!(
+                    "{ind}{token}"
+                )));
             } else {
                 out.push(format!("{ind}{token}"));
             }
@@ -550,7 +596,9 @@ fn leading_comments(s: &str, from: usize) -> (Vec<&str>, usize, bool) {
         if !rest.starts_with("/*") {
             return (comments, cursor, false);
         }
-        let Some(end) = rest.find("*/") else { return (comments, cursor, true) };
+        let Some(end) = rest.find("*/") else {
+            return (comments, cursor, true);
+        };
         comments.push(&rest[..end + 2]);
         cursor = s.len() - rest.len() + end + 2;
     }
@@ -575,7 +623,9 @@ fn normalize_style_directive_comment_selector_lines(value: &str) -> String {
             out.push(line);
             continue;
         }
-        out.push(normalize_directive_line_arg_spacing(&format!("{ind}{prefix}")));
+        out.push(normalize_directive_line_arg_spacing(&format!(
+            "{ind}{prefix}"
+        )));
         for c in comments {
             out.push(format!("{ind}{c}"));
         }
@@ -601,12 +651,17 @@ fn classify_chain_line(line: &str) -> ChainLine {
         return ChainLine::Structural;
     }
     if is_style_comment_line(t) {
-        return if is_directive_comment(t) { ChainLine::DirectiveComment } else { ChainLine::GenericComment };
+        return if is_directive_comment(t) {
+            ChainLine::DirectiveComment
+        } else {
+            ChainLine::GenericComment
+        };
     }
     ChainLine::Other
 }
 
 fn normalize_style_directive_chain_blank_lines(value: &str) -> String {
+    use ChainLine::{DirectiveComment as D, GenericComment as G, Structural as S};
     let lines = split_lines(value);
     let mut out: Vec<String> = Vec::new();
     for (i, current) in lines.iter().enumerate() {
@@ -620,10 +675,9 @@ fn normalize_style_directive_chain_blank_lines(value: &str) -> String {
             out.push(current.clone());
             continue;
         };
-        use ChainLine::{DirectiveComment as D, GenericComment as G, Structural as S};
         let drop = matches!(
             (classify_chain_line(&out[p]), classify_chain_line(&lines[n])),
-            (S, S) | (S, G) | (G, S) | (D, S) | (S, D) | (D, G) | (G, D)
+            (S | G | D, S) | (S | D, G) | (S | G, D)
         );
         if !drop {
             out.push(current.clone());
@@ -660,12 +714,16 @@ fn normalize_style_standalone_semicolon_lines(value: &str) -> String {
             out.push(line);
             continue;
         };
-        let structural = directive_name_from_line(js_trim(&out[prev])).is_some_and(|n| is_structural(&n));
+        let structural =
+            directive_name_from_line(js_trim(&out[prev])).is_some_and(|n| is_structural(&n));
         if structural {
             let mut in_value = false;
             for candidate in out[..prev].iter().rev() {
                 let c = js_trim(candidate);
-                if c.is_empty() || directive_name_from_line(c).is_some() || is_style_comment_line(c) || is_blade_value_line(c)
+                if c.is_empty()
+                    || directive_name_from_line(c).is_some()
+                    || is_style_comment_line(c)
+                    || is_blade_value_line(c)
                 {
                     continue;
                 }
@@ -720,7 +778,10 @@ fn normalize_style_comment_run_lines(value: &str) -> String {
         }
         let tail = js_trim_start(&trimmed[cursor..]);
         let split = comments.len() >= 2
-            || (!tail.is_empty() && (is_selector_like(tail, false) || tail.starts_with('@') || tail.starts_with("/*")));
+            || (!tail.is_empty()
+                && (is_selector_like(tail, false)
+                    || tail.starts_with('@')
+                    || tail.starts_with("/*")));
         if !split {
             out.push(line);
             continue;
@@ -750,7 +811,9 @@ fn normalize_style_directive_css_context_indent(value: &str, unit: &str) -> Stri
         if !is_structural_line(&trimmed) {
             continue;
         }
-        let Some(p) = prev_non_blank(&lines, i) else { continue };
+        let Some(p) = prev_non_blank(&lines, i) else {
+            continue;
+        };
         let prev_trimmed = js_trim(&lines[p]).to_owned();
         let current_indent = leading_ws(&lines[i]).len();
         let prev_indent = leading_ws(&lines[p]).to_owned();
@@ -783,7 +846,6 @@ fn set_line(lines: &mut [String], i: usize, next: String, changed: &mut bool) {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> String {
     let mut lines = split_lines(value);
     for _ in 0..4 {
@@ -797,7 +859,9 @@ fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> Stri
             if current.is_empty() {
                 continue;
             }
-            let Some(p) = prev_non_blank(&lines, i) else { continue };
+            let Some(p) = prev_non_blank(&lines, i) else {
+                continue;
+            };
             if !is_structural_line(js_trim(&lines[p])) {
                 continue;
             }
@@ -808,14 +872,21 @@ fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> Stri
             if leading_ws(&lines[i]).len() <= prev_indent.len() {
                 continue;
             }
-            set_line(&mut lines, i, format!("{prev_indent}{current}"), &mut changed);
+            set_line(
+                &mut lines,
+                i,
+                format!("{prev_indent}{current}"),
+                &mut changed,
+            );
         }
         for i in 0..lines.len() {
             let current = js_trim(&lines[i]).to_owned();
             if !is_style_comment_line(&current) || !is_directive_comment(&current) {
                 continue;
             }
-            let Some(p) = prev_non_blank(&lines, i) else { continue };
+            let Some(p) = prev_non_blank(&lines, i) else {
+                continue;
+            };
             let mut prev_indent = leading_ws(&lines[p]).to_owned();
             let mut structural = is_structural_line(js_trim(&lines[p]));
             if !structural {
@@ -828,7 +899,7 @@ fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> Stri
                     }
                     if is_structural_line(at) {
                         structural = true;
-                        prev_indent = leading_ws(&lines[a]).to_owned();
+                        leading_ws(&lines[a]).clone_into(&mut prev_indent);
                     }
                     break;
                 }
@@ -836,31 +907,56 @@ fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> Stri
             if !structural || leading_ws(&lines[i]).len() <= prev_indent.len() {
                 continue;
             }
-            set_line(&mut lines, i, format!("{prev_indent}{current}"), &mut changed);
+            set_line(
+                &mut lines,
+                i,
+                format!("{prev_indent}{current}"),
+                &mut changed,
+            );
         }
         for i in 0..lines.len() {
             let current = js_trim(&lines[i]).to_owned();
-            let Some(cur_name) = directive_name_from_line(&current).filter(|n| is_structural(n)) else { continue };
-            let Some(p) = prev_non_blank(&lines, i) else { continue };
+            let Some(cur_name) = directive_name_from_line(&current).filter(|n| is_structural(n))
+            else {
+                continue;
+            };
+            let Some(p) = prev_non_blank(&lines, i) else {
+                continue;
+            };
             let prev_trimmed = js_trim(&lines[p]).to_owned();
             let prev_indent = leading_ws(&lines[p]).to_owned();
             let current_indent = leading_ws(&lines[i]).len();
             if is_style_comment_line(&prev_trimmed) && current_indent > prev_indent.len() {
-                set_line(&mut lines, i, format!("{prev_indent}{current}"), &mut changed);
+                set_line(
+                    &mut lines,
+                    i,
+                    format!("{prev_indent}{current}"),
+                    &mut changed,
+                );
                 continue;
             }
-            let Some(prev_name) = directive_name_from_line(&prev_trimmed).filter(|n| is_structural(n)) else {
+            let Some(prev_name) =
+                directive_name_from_line(&prev_trimmed).filter(|n| is_structural(n))
+            else {
                 continue;
             };
             if current_indent <= prev_indent.len() {
                 continue;
             }
-            let branch_or_close = |n: &str| STYLE_BRANCHES.contains(&n) || STYLE_CLOSERS.contains(&n);
+            let branch_or_close =
+                |n: &str| STYLE_BRANCHES.contains(&n) || STYLE_CLOSERS.contains(&n);
             if branch_or_close(&cur_name) || branch_or_close(&prev_name) {
-                set_line(&mut lines, i, format!("{prev_indent}{current}"), &mut changed);
+                set_line(
+                    &mut lines,
+                    i,
+                    format!("{prev_indent}{current}"),
+                    &mut changed,
+                );
                 continue;
             }
-            if STYLE_OPENERS.contains(&cur_name.as_str()) && STYLE_OPENERS.contains(&prev_name.as_str()) {
+            if STYLE_OPENERS.contains(&cur_name.as_str())
+                && STYLE_OPENERS.contains(&prev_name.as_str())
+            {
                 let mut leads_to_selector = false;
                 for line in &lines[i + 1..] {
                     let nt = js_trim(line);
@@ -874,7 +970,12 @@ fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> Stri
                     break;
                 }
                 if leads_to_selector {
-                    set_line(&mut lines, i, format!("{prev_indent}{current}"), &mut changed);
+                    set_line(
+                        &mut lines,
+                        i,
+                        format!("{prev_indent}{current}"),
+                        &mut changed,
+                    );
                 }
             }
         }
@@ -883,28 +984,93 @@ fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> Stri
         }
     }
     let adjusted = normalize_style_directive_css_context_indent(&lines.join("\n"), unit);
-    let aligned = realign_after_directive_lines(&adjusted, &[
-        "else", "elseif", "case", "default", "endif", "endunless", "endisset", "endempty", "endfor", "endforeach",
-        "endforelse", "endwhile", "endswitch", "endphp", "endverbatim",
-    ], |second| {
-        second.starts_with('@')
-            && [
-                "if", "unless", "isset", "empty", "for", "foreach", "forelse", "while", "switch", "php", "verbatim",
-                "else", "elseif", "case", "default", "endif", "endunless", "endisset", "endempty", "endfor",
-                "endforeach", "endforelse", "endwhile", "endswitch", "endphp", "endverbatim",
-            ]
-            .iter()
-            .any(|w| second[1..].starts_with(w))
-    });
+    let aligned = realign_after_directive_lines(
+        &adjusted,
+        &[
+            "else",
+            "elseif",
+            "case",
+            "default",
+            "endif",
+            "endunless",
+            "endisset",
+            "endempty",
+            "endfor",
+            "endforeach",
+            "endforelse",
+            "endwhile",
+            "endswitch",
+            "endphp",
+            "endverbatim",
+        ],
+        |second| {
+            second.starts_with('@')
+                && [
+                    "if",
+                    "unless",
+                    "isset",
+                    "empty",
+                    "for",
+                    "foreach",
+                    "forelse",
+                    "while",
+                    "switch",
+                    "php",
+                    "verbatim",
+                    "else",
+                    "elseif",
+                    "case",
+                    "default",
+                    "endif",
+                    "endunless",
+                    "endisset",
+                    "endempty",
+                    "endfor",
+                    "endforeach",
+                    "endforelse",
+                    "endwhile",
+                    "endswitch",
+                    "endphp",
+                    "endverbatim",
+                ]
+                .iter()
+                .any(|w| second[1..].starts_with(w))
+        },
+    );
     realign_after_directive_lines(
         &aligned,
         &[
-            "if", "unless", "isset", "empty", "for", "foreach", "forelse", "while", "switch", "php", "verbatim", "else",
-            "elseif", "case", "default", "endif", "endunless", "endisset", "endempty", "endfor", "endforeach",
-            "endforelse", "endwhile", "endswitch", "endphp", "endverbatim",
+            "if",
+            "unless",
+            "isset",
+            "empty",
+            "for",
+            "foreach",
+            "forelse",
+            "while",
+            "switch",
+            "php",
+            "verbatim",
+            "else",
+            "elseif",
+            "case",
+            "default",
+            "endif",
+            "endunless",
+            "endisset",
+            "endempty",
+            "endfor",
+            "endforeach",
+            "endforelse",
+            "endwhile",
+            "endswitch",
+            "endphp",
+            "endverbatim",
         ],
         |second| {
-            let Some(&first) = second.as_bytes().first() else { return false };
+            let Some(&first) = second.as_bytes().first() else {
+                return false;
+            };
             (matches!(first, b'.' | b'#' | b':' | b'[' | b'*') || is_ident_start(first))
                 && second.trim_end_matches([' ', '\t']).ends_with('{')
         },
@@ -914,7 +1080,11 @@ fn normalize_style_directive_selector_alignment(value: &str, unit: &str) -> Stri
 /// The two final `replace`s of `normalizeStyleDirectiveSelectorAlignment`: a line that starts
 /// with `@` and one of `firsts`, then an indented line `second` accepts, which takes the first
 /// line's indent.
-fn realign_after_directive_lines(value: &str, firsts: &[&str], second: impl Fn(&str) -> bool) -> String {
+fn realign_after_directive_lines(
+    value: &str,
+    firsts: &[&str],
+    second: impl Fn(&str) -> bool,
+) -> String {
     let mut lines: Vec<String> = value.split('\n').map(str::to_owned).collect();
     let mut k = 0;
     while k + 1 < lines.len() {
@@ -953,18 +1123,30 @@ fn normalize_style_embedded_output(value: &str) -> String {
 }
 
 fn strip_boundary_line_breaks(value: &str) -> &str {
-    let v = value.strip_prefix("\r\n").or_else(|| value.strip_prefix('\n')).unwrap_or(value);
-    v.strip_suffix("\r\n").or_else(|| v.strip_suffix('\n')).unwrap_or(v)
+    let v = value
+        .strip_prefix("\r\n")
+        .or_else(|| value.strip_prefix('\n'))
+        .unwrap_or(value);
+    v.strip_suffix("\r\n")
+        .or_else(|| v.strip_suffix('\n'))
+        .unwrap_or(v)
 }
 
 /// `value.replace(/\r?\n[^\S\r\n]*$/u, "")`
 fn trim_trailing_whitespace_only_line(value: &str) -> &str {
     let t = value.trim_end_matches(|c: char| c != '\n' && c != '\r' && is_js_whitespace(c));
-    if let Some(s) = t.strip_suffix('\n') { s.strip_suffix('\r').unwrap_or(s) } else { value }
+    if let Some(s) = t.strip_suffix('\n') {
+        s.strip_suffix('\r').unwrap_or(s)
+    } else {
+        value
+    }
 }
 
 fn trim_final_line_break(value: &str) -> &str {
-    value.strip_suffix("\r\n").or_else(|| value.strip_suffix('\n')).unwrap_or(value)
+    value
+        .strip_suffix("\r\n")
+        .or_else(|| value.strip_suffix('\n'))
+        .unwrap_or(value)
 }
 
 fn normalize_embedded_raw_content_fallback(value: &str) -> String {
@@ -973,7 +1155,11 @@ fn normalize_embedded_raw_content_fallback(value: &str) -> String {
 }
 
 fn normalize_embedded_output(value: &str, style: bool) -> String {
-    let normalized = if style { normalize_style_embedded_output(value) } else { value.to_owned() };
+    let normalized = if style {
+        normalize_style_embedded_output(value)
+    } else {
+        value.to_owned()
+    };
     let lf = normalize_line_endings_to_lf(&normalized);
     trim_final_line_break(trim_trailing_whitespace_only_line(&lf)).to_owned()
 }
@@ -984,7 +1170,12 @@ fn normalize_multiline_replacement_text(value: &str) -> String {
     if lines.len() <= 1 {
         return value.to_owned();
     }
-    let min = lines.iter().skip(1).filter(|l| !js_trim(l).is_empty()).map(|l| indent_len(l)).min();
+    let min = lines
+        .iter()
+        .skip(1)
+        .filter(|l| !js_trim(l).is_empty())
+        .map(|l| indent_len(l))
+        .min();
     match min {
         Some(m) if m > 0 => {
             for l in lines.iter_mut().skip(1) {
@@ -1003,15 +1194,27 @@ fn normalize_multiline_directive_replacement_text(value: &str, unit: &str) -> St
     let lines: Vec<&str> = normalized.split('\n').collect();
     let last = lines.len() - 1;
     // `/\(\s*\[\s*$/u`
-    let first_ok = js_trim_end(lines[0]).strip_suffix('[').is_some_and(|r| js_trim_end(r).ends_with('('));
-    if !first_ok || js_trim(lines[last]) != "])" || !lines[1..last].iter().any(|l| l.chars().next().is_some_and(|c| !is_js_whitespace(c)))
+    let first_ok = js_trim_end(lines[0])
+        .strip_suffix('[')
+        .is_some_and(|r| js_trim_end(r).ends_with('('));
+    if !first_ok
+        || js_trim(lines[last]) != "])"
+        || !lines[1..last]
+            .iter()
+            .any(|l| l.chars().next().is_some_and(|c| !is_js_whitespace(c)))
     {
         return normalized;
     }
     lines
         .iter()
         .enumerate()
-        .map(|(i, l)| if i > 0 && i < last && !js_trim(l).is_empty() { format!("{unit}{l}") } else { (*l).to_owned() })
+        .map(|(i, l)| {
+            if i > 0 && i < last && !js_trim(l).is_empty() {
+                format!("{unit}{l}")
+            } else {
+                (*l).to_owned()
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -1115,8 +1318,19 @@ fn is_regex_after_condition_paren(b: &[u8], content_start: usize, close: usize) 
 
 fn is_likely_regex_start(b: &[u8], content_start: usize, slash: usize) -> bool {
     const PREFIX: &[&[u8]] = &[
-        b"return", b"throw", b"do", b"case", b"delete", b"void", b"typeof", b"instanceof", b"in", b"of", b"yield",
-        b"await", b"else",
+        b"return",
+        b"throw",
+        b"do",
+        b"case",
+        b"delete",
+        b"void",
+        b"typeof",
+        b"instanceof",
+        b"in",
+        b"of",
+        b"yield",
+        b"await",
+        b"else",
     ];
     let mut i = slash;
     while i > content_start {
@@ -1166,7 +1380,9 @@ fn script_scan_state(source: &str, content_start: usize, offset: usize) -> Scrip
             ScriptScan::Single | ScriptScan::Double => {
                 if ch == b'\\' {
                     i += 1;
-                } else if (state == ScriptScan::Single && ch == b'\'') || (state == ScriptScan::Double && ch == b'"') {
+                } else if (state == ScriptScan::Single && ch == b'\'')
+                    || (state == ScriptScan::Double && ch == b'"')
+                {
                     state = ScriptScan::Code;
                 }
             }
@@ -1237,7 +1453,11 @@ fn script_scan_state(source: &str, content_start: usize, offset: usize) -> Scrip
 }
 
 /// `isLikelyInsideStyleLiteralOrComment`
-fn is_likely_inside_style_literal_or_comment(source: &str, content_start: usize, offset: usize) -> bool {
+fn is_likely_inside_style_literal_or_comment(
+    source: &str,
+    content_start: usize,
+    offset: usize,
+) -> bool {
     let b = source.as_bytes();
     let mut state = Scan::Code;
     let mut i = content_start;
@@ -1259,7 +1479,9 @@ fn is_likely_inside_style_literal_or_comment(source: &str, content_start: usize,
             Scan::Single | Scan::Double => {
                 if ch == b'\\' {
                     i += 1;
-                } else if (state == Scan::Single && ch == b'\'') || (state == Scan::Double && ch == b'"') {
+                } else if (state == Scan::Single && ch == b'\'')
+                    || (state == Scan::Double && ch == b'"')
+                {
                     state = Scan::Code;
                 }
             }
@@ -1267,7 +1489,10 @@ fn is_likely_inside_style_literal_or_comment(source: &str, content_start: usize,
                 if ch == b'/' && next == b'*' {
                     state = Scan::BlockComment;
                     i += 1;
-                } else if ch == b'/' && next == b'/' && treat_as_style_line_comment(b, content_start, i) {
+                } else if ch == b'/'
+                    && next == b'/'
+                    && treat_as_style_line_comment(b, content_start, i)
+                {
                     state = Scan::LineComment;
                     i += 1;
                 } else if ch == b'\'' {
@@ -1283,17 +1508,31 @@ fn is_likely_inside_style_literal_or_comment(source: &str, content_start: usize,
 }
 
 fn is_inside_style_comment_by_line(source: &str, content_start: usize, offset: usize) -> bool {
-    let line_start = content_start.max(source[..content_start.max(offset)].rfind('\n').map_or(0, |p| p + 1)).min(offset);
+    let line_start = content_start
+        .max(
+            source[..content_start.max(offset)]
+                .rfind('\n')
+                .map_or(0, |p| p + 1),
+        )
+        .min(offset);
     let prefix = &source[line_start..offset];
     let open = prefix.rfind("/*").map_or(-1, |p| p as isize);
     let close = prefix.rfind("*/").map_or(-1, |p| p as isize);
     if open > close {
         return true;
     }
-    prefix.rfind("//").is_some_and(|lc| treat_as_style_line_comment(source.as_bytes(), content_start, line_start + lc))
+    prefix.rfind("//").is_some_and(|lc| {
+        treat_as_style_line_comment(source.as_bytes(), content_start, line_start + lc)
+    })
 }
 
-fn is_slash_delimited_style_literal(b: &[u8], start: usize, end: usize, content_start: usize, content_end: usize) -> bool {
+fn is_slash_delimited_style_literal(
+    b: &[u8],
+    start: usize,
+    end: usize,
+    content_start: usize,
+    content_end: usize,
+) -> bool {
     let prev = (content_start..start).rev().find(|&i| !is_ws_byte(b[i]));
     if prev.is_none_or(|p| b[p] != b'/') {
         return false;
@@ -1313,9 +1552,23 @@ fn is_slash_delimited_style_literal(b: &[u8], start: usize, end: usize, content_
 }
 
 /// The `[lineStart, lineEnd)` of the line around `[start, end)`, inside the content.
-fn line_bounds(source: &str, start: usize, end: usize, content_start: usize, content_end: usize) -> (usize, usize) {
-    let line_start = content_start.max(source[..content_start.max(start)].rfind('\n').map_or(0, |p| p + 1));
-    let line_end = source[end..].find('\n').map(|p| p + end).filter(|&e| e <= content_end).unwrap_or(content_end);
+fn line_bounds(
+    source: &str,
+    start: usize,
+    end: usize,
+    content_start: usize,
+    content_end: usize,
+) -> (usize, usize) {
+    let line_start = content_start.max(
+        source[..content_start.max(start)]
+            .rfind('\n')
+            .map_or(0, |p| p + 1),
+    );
+    let line_end = source[end..]
+        .find('\n')
+        .map(|p| p + end)
+        .filter(|&e| e <= content_end)
+        .unwrap_or(content_end);
     (line_start, line_end)
 }
 
@@ -1324,18 +1577,27 @@ impl Printer<'_> {
         if self.kind(id) != NodeKind::Directive {
             return None;
         }
-        let t = self.tokens_of(id).iter().find(|t| t.kind == TokenType::Directive)?;
+        let t = self
+            .tokens_of(id)
+            .iter()
+            .find(|t| t.kind == TokenType::Directive)?;
         let raw = self.tok_text(t);
         raw.strip_prefix('@').map(str::to_lowercase)
     }
 
     fn has_directive_args_token(&self, id: Id) -> bool {
-        self.kind(id) == NodeKind::Directive && self.tokens_of(id).iter().any(|t| t.kind == TokenType::DirectiveArgs)
+        self.kind(id) == NodeKind::Directive
+            && self
+                .tokens_of(id)
+                .iter()
+                .any(|t| t.kind == TokenType::DirectiveArgs)
     }
 
     fn is_expression_directive(&self, id: Id) -> bool {
-        self.directive_name_of(id)
-            .is_some_and(|n| EXPRESSION_DIRECTIVES.contains(&n.as_str()) || (n == "php" && self.has_directive_args_token(id)))
+        self.directive_name_of(id).is_some_and(|n| {
+            EXPRESSION_DIRECTIVES.contains(&n.as_str())
+                || (n == "php" && self.has_directive_args_token(id))
+        })
     }
 
     /// `isKnownBladeDirective`: `getDirective(name) !== undefined`, and `getDirective` answers
@@ -1346,14 +1608,21 @@ impl Printer<'_> {
 
     fn placeholder_kind(&self, id: Id) -> Slot {
         match self.kind(id) {
-            NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho | NodeKind::PhpTag | NodeKind::PhpBlock => Slot::Expr,
+            NodeKind::Echo
+            | NodeKind::RawEcho
+            | NodeKind::TripleEcho
+            | NodeKind::PhpTag
+            | NodeKind::PhpBlock => Slot::Expr,
             NodeKind::Directive if self.is_expression_directive(id) => Slot::Expr,
             _ => Slot::Stmt,
         }
     }
 
     fn is_echo_construct(&self, id: Id) -> bool {
-        matches!(self.kind(id), NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho)
+        matches!(
+            self.kind(id),
+            NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho
+        )
     }
 
     fn is_multiline_echo_construct(&self, id: Id) -> bool {
@@ -1440,7 +1709,8 @@ impl Printer<'_> {
     fn construct_replacement_text(&self, id: Id) -> String {
         match self.kind(id) {
             NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho => {
-                let rendered = doc_to_flat_string(&self.print_echo(id)).unwrap_or_else(|| self.full_text(id).to_owned());
+                let rendered = doc_to_flat_string(&self.print_echo(id))
+                    .unwrap_or_else(|| self.full_text(id).to_owned());
                 self.normalize_multiline_echo_indent_text(id, &rendered)
             }
             NodeKind::Directive => self.render_directive_tokens(id),
@@ -1448,23 +1718,42 @@ impl Printer<'_> {
         }
     }
 
-    fn is_construct_inside_script_literal_or_comment(&self, id: Id, start: usize, end: usize) -> bool {
+    fn is_construct_inside_script_literal_or_comment(
+        &self,
+        id: Id,
+        start: usize,
+        end: usize,
+    ) -> bool {
         let (s, e) = self.replacement_range(id);
         s >= start && e <= end && script_scan_state(self.source(), start, s) != ScriptScan::Code
     }
 
-    fn is_directive_inside_script_literal_or_comment(&self, id: Id, start: usize, end: usize) -> bool {
-        self.kind(id) == NodeKind::Directive && self.is_construct_inside_script_literal_or_comment(id, start, end)
+    fn is_directive_inside_script_literal_or_comment(
+        &self,
+        id: Id,
+        start: usize,
+        end: usize,
+    ) -> bool {
+        self.kind(id) == NodeKind::Directive
+            && self.is_construct_inside_script_literal_or_comment(id, start, end)
     }
 
     fn is_construct_inside_script_comment(&self, id: Id, start: usize, end: usize) -> bool {
         let (s, e) = self.replacement_range(id);
         s >= start
             && e <= end
-            && matches!(script_scan_state(self.source(), start, s), ScriptScan::LineComment | ScriptScan::BlockComment)
+            && matches!(
+                script_scan_state(self.source(), start, s),
+                ScriptScan::LineComment | ScriptScan::BlockComment
+            )
     }
 
-    fn is_directive_inside_style_literal_or_comment(&self, id: Id, start: usize, end: usize) -> bool {
+    fn is_directive_inside_style_literal_or_comment(
+        &self,
+        id: Id,
+        start: usize,
+        end: usize,
+    ) -> bool {
         if self.kind(id) != NodeKind::Directive {
             return false;
         }
@@ -1478,7 +1767,12 @@ impl Printer<'_> {
             || is_likely_inside_style_literal_or_comment(src, start, s)
     }
 
-    fn is_construct_inside_style_literal_or_comment(&self, id: Id, start: usize, end: usize) -> bool {
+    fn is_construct_inside_style_literal_or_comment(
+        &self,
+        id: Id,
+        start: usize,
+        end: usize,
+    ) -> bool {
         if self.kind(id) == NodeKind::Directive {
             return self.is_directive_inside_style_literal_or_comment(id, start, end);
         }
@@ -1486,7 +1780,8 @@ impl Printer<'_> {
         if s < start || e > end {
             return false;
         }
-        is_inside_style_comment_by_line(self.source(), start, s) || is_likely_inside_style_literal_or_comment(self.source(), start, s)
+        is_inside_style_comment_by_line(self.source(), start, s)
+            || is_likely_inside_style_literal_or_comment(self.source(), start, s)
     }
 
     fn is_structural_script_directive(&self, id: Id) -> bool {
@@ -1496,7 +1791,12 @@ impl Printer<'_> {
         if !self.n(id).children.is_empty() {
             return true;
         }
-        let Some(d) = self.directive_name_of(id).and_then(|n| self.ast.directives.get(&n)) else { return false };
+        let Some(d) = self
+            .directive_name_of(id)
+            .and_then(|n| self.ast.directives.get(&n))
+        else {
+            return false;
+        };
         d.role != Role::None
             || d.is_condition
             || d.is_switch
@@ -1543,10 +1843,14 @@ impl Printer<'_> {
     }
 
     fn is_style_directive_boundary(&self, id: Id) -> bool {
-        let Some(name) = self.directive_name_of(id) else { return false };
+        let Some(name) = self.directive_name_of(id) else {
+            return false;
+        };
         STYLE_BRANCHES.contains(&name.as_str())
             || STYLE_CLOSERS.contains(&name.as_str())
-            || name.strip_prefix("end").is_some_and(|rest| self.ast.directives.has_seen(rest))
+            || name
+                .strip_prefix("end")
+                .is_some_and(|rest| self.ast.directives.has_seen(rest))
     }
 
     fn body_lang(&self, id: Id) -> Option<(&'static str, Option<Lang>)> {
@@ -1566,7 +1870,10 @@ impl Printer<'_> {
         if self.kind(id) != NodeKind::Element || self.n(id).tag_name != "style" {
             return false;
         }
-        if !self.infer_element_parser(id).is_some_and(|p| matches!(p, "css" | "scss" | "less")) {
+        if !self
+            .infer_element_parser(id)
+            .is_some_and(|p| matches!(p, "css" | "scss" | "less"))
+        {
             return false;
         }
         let (start, end) = self.element_content_range(id);
@@ -1581,7 +1888,8 @@ impl Printer<'_> {
 
     /// `shouldUseMixedRawContentEmbedding`
     pub(crate) fn should_use_mixed_raw_content_embedding(&self, id: Id) -> bool {
-        if self.should_bypass_style_parser_embedding(id) || self.infer_element_parser(id).is_none() {
+        if self.should_bypass_style_parser_embedding(id) || self.infer_element_parser(id).is_none()
+        {
             return false;
         }
         let (start, end) = self.element_content_range(id);
@@ -1591,14 +1899,15 @@ impl Printer<'_> {
             if constructs.is_empty() {
                 return false;
             }
-            if constructs
-                .iter()
-                .any(|&c| self.is_echo_construct(c) && !self.is_construct_inside_script_literal_or_comment(c, start, end))
-            {
+            if constructs.iter().any(|&c| {
+                self.is_echo_construct(c)
+                    && !self.is_construct_inside_script_literal_or_comment(c, start, end)
+            }) {
                 return true;
             }
             if constructs.iter().any(|&c| {
-                self.is_multiline_echo_construct(c) && !self.is_construct_inside_script_literal_or_comment(c, start, end)
+                self.is_multiline_echo_construct(c)
+                    && !self.is_construct_inside_script_literal_or_comment(c, start, end)
             }) {
                 return true;
             }
@@ -1619,7 +1928,12 @@ impl Printer<'_> {
                     && self.is_directive_inside_script_literal_or_comment(c, start, end)
             });
         }
-        if self.n(id).children.iter().any(|&c| self.is_blade_construct_child(c, RawContext::Style)) {
+        if self
+            .n(id)
+            .children
+            .iter()
+            .any(|&c| self.is_blade_construct_child(c, RawContext::Style))
+        {
             return true;
         }
         if constructs.iter().any(|&c| {
@@ -1643,19 +1957,31 @@ impl Printer<'_> {
         let (start, end) = self.element_content_range(id);
         let constructs = self.collect_leaf_constructs(id, start, end);
         if self.infer_element_parser(id).is_none() {
-            return constructs.iter().any(|&c| self.is_blade_or_php_fallback_construct(c));
+            return constructs
+                .iter()
+                .any(|&c| self.is_blade_or_php_fallback_construct(c));
         }
-        if !constructs.iter().any(|&c| self.is_multiline_echo_construct(c)) {
+        if !constructs
+            .iter()
+            .any(|&c| self.is_multiline_echo_construct(c))
+        {
             return false;
         }
         self.n(id).tag_name == "script"
-            && constructs
-                .iter()
-                .any(|&c| self.is_multiline_echo_construct(c) && self.is_construct_inside_script_comment(c, start, end))
+            && constructs.iter().any(|&c| {
+                self.is_multiline_echo_construct(c)
+                    && self.is_construct_inside_script_comment(c, start, end)
+            })
     }
 
     /// `buildScriptLikeElementDoc`
-    pub(crate) fn script_like_element_doc(&self, id: Id, content: Doc, raw: &str, already_indented: bool) -> Doc {
+    pub(crate) fn script_like_element_doc(
+        &self,
+        id: Id,
+        content: Doc,
+        raw: &str,
+        already_indented: bool,
+    ) -> Doc {
         let empty = js_trim(raw).is_empty();
         let body = if empty {
             Doc::default()
@@ -1664,7 +1990,11 @@ impl Printer<'_> {
         } else {
             indent(concat(vec![hardline(), content]))
         };
-        let mut parts = vec![self.opening_tag_prefix(id), group(self.print_opening_tag(id)), body];
+        let mut parts = vec![
+            self.opening_tag_prefix(id),
+            group(self.print_opening_tag(id)),
+            body,
+        ];
         parts.push(if empty { Doc::default() } else { hardline() });
         parts.extend(self.print_closing_tag(id));
         parts.push(self.closing_tag_suffix(id));
@@ -1685,7 +2015,6 @@ impl Printer<'_> {
     }
 
     /// `embedMixedRawContentElement`
-    #[allow(clippy::too_many_lines)]
     pub(crate) fn embed_mixed_raw_content_element(&self, id: Id) -> Option<Doc> {
         let (parser, lang) = self.body_lang(id)?;
         let style_parser = matches!(parser, "css" | "scss" | "less");
@@ -1700,13 +2029,19 @@ impl Printer<'_> {
                 if self.kind(c) != NodeKind::Directive {
                     return true;
                 }
-                if tag == "script" && self.is_directive_inside_script_literal_or_comment(c, start, end) {
+                if tag == "script"
+                    && self.is_directive_inside_script_literal_or_comment(c, start, end)
+                {
                     return false;
                 }
-                if tag == "style" && self.is_directive_inside_style_literal_or_comment(c, start, end) {
+                if tag == "style"
+                    && self.is_directive_inside_style_literal_or_comment(c, start, end)
+                {
                     return false;
                 }
-                !(tag == "style" && !self.is_blade_construct_child(c, RawContext::Style) && !self.is_style_directive_boundary(c))
+                !(tag == "style"
+                    && !self.is_blade_construct_child(c, RawContext::Style)
+                    && !self.is_style_directive_boundary(c))
             })
             .collect();
         let key = marker_session_key(source, start, end);
@@ -1714,10 +2049,12 @@ impl Printer<'_> {
             .iter()
             .map(|&c| {
                 let (s, e) = self.replacement_range(c);
-                let inside_literal = tag == "style" && self.is_construct_inside_style_literal_or_comment(c, start, end);
+                let inside_literal = tag == "style"
+                    && self.is_construct_inside_style_literal_or_comment(c, start, end);
                 let mut kind = self.placeholder_kind(c);
                 if kind == Slot::Stmt && self.kind(c) == NodeKind::Directive {
-                    if tag == "script" && self.is_inline_script_directive_expression(c, start, end) {
+                    if tag == "script" && self.is_inline_script_directive_expression(c, start, end)
+                    {
                         kind = Slot::Expr;
                     }
                     if tag == "style" && self.is_inline_style_directive_expression(c, start, end) {
@@ -1725,9 +2062,24 @@ impl Printer<'_> {
                     }
                 }
                 let in_value = style_parser && is_in_css_value_context(source, s, start);
-                let base = if inside_literal { self.full_text(c).to_owned() } else { self.construct_replacement_text(c) };
-                let replacement = if in_value { normalize_multiline_replacement_text(&base) } else { base };
-                Candidate { node: c, start: s, end: e, kind, in_value, replacement }
+                let base = if inside_literal {
+                    self.full_text(c).to_owned()
+                } else {
+                    self.construct_replacement_text(c)
+                };
+                let replacement = if in_value {
+                    normalize_multiline_replacement_text(&base)
+                } else {
+                    base
+                };
+                Candidate {
+                    node: c,
+                    start: s,
+                    end: e,
+                    kind,
+                    in_value,
+                    replacement,
+                }
             })
             .collect();
 
@@ -1761,12 +2113,28 @@ impl Printer<'_> {
                     replacement = format!("\n{}\n  ", lines.join("\n"));
                 }
                 let marker = placeholder_marker(&key, Slot::Expr, slots.len(), style_parser, true);
-                slots.push((gs, ge, PlaceholderSlot { node: c.node, marker, replacement }));
+                slots.push((
+                    gs,
+                    ge,
+                    PlaceholderSlot {
+                        node: c.node,
+                        marker,
+                        replacement,
+                    },
+                ));
                 i = j;
                 continue;
             }
             let marker = placeholder_marker(&key, c.kind, slots.len(), style_parser, c.in_value);
-            slots.push((c.start, c.end, PlaceholderSlot { node: c.node, marker, replacement: c.replacement.clone() }));
+            slots.push((
+                c.start,
+                c.end,
+                PlaceholderSlot {
+                    node: c.node,
+                    marker,
+                    replacement: c.replacement.clone(),
+                },
+            ));
             i += 1;
         }
 
@@ -1779,21 +2147,31 @@ impl Printer<'_> {
         }
         masked.push_str(&source[cursor.min(end)..end]);
 
-        let comment_slots = if tag == "style" { Some(mask_style_directive_like_comments(&masked, &key)) } else { None };
-        let for_formatting = comment_slots.as_ref().map_or(masked.as_str(), |(t, _)| t.as_str());
+        let comment_slots = if tag == "style" {
+            Some(mask_style_directive_like_comments(&masked, &key))
+        } else {
+            None
+        };
+        let for_formatting = comment_slots
+            .as_ref()
+            .map_or(masked.as_str(), |(t, _)| t.as_str());
         let normalized = dedent_string(strip_boundary_line_breaks(for_formatting));
-        let value = if parser == "markdown" { dedent_string(strip_first_blank_line(&normalized)) } else { normalized };
+        let value = if parser == "markdown" {
+            dedent_string(strip_first_blank_line(&normalized))
+        } else {
+            normalized
+        };
 
-        if std::env::var_os("PUN_BLADE_DEBUG").is_some() {
-            eprintln!("--- masked\n{value}\n---");
-        }
         let Some(formatted) = lang.and_then(|l| oxc::format_body(&value, l)) else {
             return Some(self.fallback_doc(id, raw));
         };
         let slot_refs: Vec<&PlaceholderSlot> = slots.iter().map(|(_, _, s)| s).collect();
         let unit = " ".repeat(TAB_WIDTH);
-        let Some(mut restored) = self.apply_marker_replacements(&formatted, &slot_refs, (tag == "script").then_some(unit.as_str()))
-        else {
+        let Some(mut restored) = self.apply_marker_replacements(
+            &formatted,
+            &slot_refs,
+            (tag == "script").then_some(unit.as_str()),
+        ) else {
             return Some(self.fallback_doc(id, raw));
         };
         if let Some((_, comments)) = &comment_slots
@@ -1805,10 +2183,20 @@ impl Printer<'_> {
             restored = r;
         }
         let output = normalize_embedded_output(&restored, tag == "style");
-        Some(self.script_like_element_doc(id, concat(replace_eol(&output, &hardline())), raw, false))
+        Some(self.script_like_element_doc(
+            id,
+            concat(replace_eol(&output, &hardline())),
+            raw,
+            false,
+        ))
     }
 
-    fn apply_marker_replacements(&self, value: &str, slots: &[&PlaceholderSlot], unit: Option<&str>) -> Option<String> {
+    fn apply_marker_replacements(
+        &self,
+        value: &str,
+        slots: &[&PlaceholderSlot],
+        unit: Option<&str>,
+    ) -> Option<String> {
         let mut out = value.to_owned();
         let mut all_found = true;
         for slot in slots {
@@ -1821,11 +2209,12 @@ impl Printer<'_> {
                 continue;
             }
             let mut replacement = slot.replacement.clone();
-            let multiline_directive =
-                self.kind(slot.node) == NodeKind::Directive && (replacement.contains('\n') || replacement.contains('\r'));
+            let multiline_directive = self.kind(slot.node) == NodeKind::Directive
+                && (replacement.contains('\n') || replacement.contains('\r'));
             if let Some(unit) = unit {
                 if multiline_directive {
-                    replacement = normalize_multiline_directive_replacement_text(&replacement, unit);
+                    replacement =
+                        normalize_multiline_directive_replacement_text(&replacement, unit);
                 }
                 if self.is_multiline_echo_construct(slot.node) || multiline_directive {
                     let line_start = out[..start].rfind('\n').map_or(0, |p| p + 1);
@@ -1834,7 +2223,12 @@ impl Printer<'_> {
                     replacement = indent_continuation_lines(&replacement, ind);
                 }
             }
-            out = format!("{}{}{}", &out[..start], replacement, &out[start + slot.marker.len()..]);
+            out = format!(
+                "{}{}{}",
+                &out[..start],
+                replacement,
+                &out[start + slot.marker.len()..]
+            );
         }
         all_found.then_some(out)
     }
@@ -1844,10 +2238,17 @@ impl Printer<'_> {
         let (parser, lang) = self.body_lang(id)?;
         let lang = lang?;
         let raw = self.raw_element_content(id);
-        let value = if parser == "markdown" { dedent_string(strip_first_blank_line(raw)) } else { raw.to_owned() };
+        let value = if parser == "markdown" {
+            dedent_string(strip_first_blank_line(raw))
+        } else {
+            raw.to_owned()
+        };
         let doc = oxc::body_to_doc(&self.ids, &value, lang)?;
         let empty = js_trim(raw).is_empty() || doc.is_empty_str();
-        let mut parts = vec![self.opening_tag_prefix(id), group(self.print_opening_tag(id))];
+        let mut parts = vec![
+            self.opening_tag_prefix(id),
+            group(self.print_opening_tag(id)),
+        ];
         if !empty {
             parts.push(indent(concat(vec![hardline(), doc])));
             parts.push(hardline());
@@ -1877,9 +2278,18 @@ impl Printer<'_> {
             return None;
         }
         let raw = &self.n(id).raw_text;
-        let value = if parser == "markdown" { dedent_string(strip_first_blank_line(raw)) } else { raw.clone() };
+        let value = if parser == "markdown" {
+            dedent_string(strip_first_blank_line(raw))
+        } else {
+            raw.clone()
+        };
         let doc = oxc::body_to_doc(&self.ids, &value, lang?)?;
-        Some(concat(vec![crate::doc::break_parent(), self.opening_tag_prefix(id), doc, self.closing_tag_suffix(id)]))
+        Some(concat(vec![
+            crate::doc::break_parent(),
+            self.opening_tag_prefix(id),
+            doc,
+            self.closing_tag_suffix(id),
+        ]))
     }
 }
 
@@ -1895,7 +2305,11 @@ fn indent_continuation_lines(s: &str, ind: &str) -> String {
     let mut chars = s.chars().peekable();
     while let Some(c) = chars.next() {
         out.push(c);
-        if c == '\n' && chars.peek().is_some_and(|&n| !matches!(n, '\n' | '\r' | '\u{2028}' | '\u{2029}')) {
+        if c == '\n'
+            && chars
+                .peek()
+                .is_some_and(|&n| !matches!(n, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+        {
             out.push_str(ind);
         }
     }
@@ -1919,7 +2333,11 @@ fn marker_session_key(source: &str, start: usize, end: usize) -> String {
     );
     let mut attempt = 0;
     loop {
-        let candidate = if attempt == 0 { base.clone() } else { format!("{base}_{}", to_base36(attempt)) };
+        let candidate = if attempt == 0 {
+            base.clone()
+        } else {
+            format!("{base}_{}", to_base36(attempt))
+        };
         if !source.contains(&format!("__blade_expr_slot_{candidate}_"))
             && !source.contains(&format!("__blade_stmt_slot_{candidate}_"))
             && !source.contains(&format!("__blade_value_slot_{candidate}_"))
@@ -1957,14 +2375,18 @@ fn is_in_css_value_context(source: &str, slot_start: usize, content_start: usize
             b' ' | b'\t' | b'\r' | b'\n' => {}
             b':' => return true,
             b'}' => {
-                if (i > content_start && b[i - 1] == b'}') || (i + 1 < slot_start && b[i + 1] == b'}') || (i > content_start && b[i - 1] == b'!')
+                if (i > content_start && b[i - 1] == b'}')
+                    || (i + 1 < slot_start && b[i + 1] == b'}')
+                    || (i > content_start && b[i - 1] == b'!')
                 {
                     continue;
                 }
                 return false;
             }
             b'{' => {
-                if (i > content_start && b[i - 1] == b'{') || (i + 1 < slot_start && matches!(b[i + 1], b'{' | b'!')) {
+                if (i > content_start && b[i - 1] == b'{')
+                    || (i + 1 < slot_start && matches!(b[i + 1], b'{' | b'!'))
+                {
                     continue;
                 }
                 return false;
@@ -1981,7 +2403,9 @@ fn mask_style_directive_like_comments(value: &str, key: &str) -> (String, Vec<(S
     let mut out = String::with_capacity(value.len());
     let mut rest = value;
     while let Some(open) = rest.find("/*") {
-        let Some(close) = rest[open + 2..].find("*/") else { break };
+        let Some(close) = rest[open + 2..].find("*/") else {
+            break;
+        };
         let end = open + 2 + close + 2;
         let comment = &rest[open..end];
         out.push_str(&rest[..open]);

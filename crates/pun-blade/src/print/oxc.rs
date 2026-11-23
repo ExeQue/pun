@@ -5,18 +5,21 @@ use std::collections::HashMap;
 
 use oxc_allocator::Allocator;
 use oxc_formatter::{
-    ExpressionLayout, ExpressionRoot, JsEmbeddedIn, JsFormatOptions, JsRoot, ProgramLayout, ProgramSemicolons,
-    QuoteStyle,
+    ExpressionLayout, ExpressionRoot, JsEmbeddedIn, JsFormatOptions, JsRoot, ProgramLayout,
+    ProgramSemicolons, QuoteStyle,
 };
 use oxc_formatter_core::{DedentMode, Tag};
-use oxc_formatter_core::{FormatElement, FormatSession, GroupMode, IndentWidth, InputKind, LineMode, LineWidth, PrintMode};
+use oxc_formatter_core::{
+    FormatElement, FormatSession, GroupMode, IndentWidth, InputKind, LineMode, LineWidth, PrintMode,
+};
 use oxc_formatter_css::{CssEmbeddedIn, CssFormatOptions};
 use oxc_span::SourceType;
 
 use crate::doc::{
-    AlignKind, Doc, clean_doc, strip_trailing_hardline, GroupId, HARDLINE_WITHOUT_BREAK_PARENT, Ids, align, break_parent, concat, conditional_group,
-    dedent, dedent_to_root, fill, group_with, hardline, if_break_group, indent, indent_if_break, line, line_suffix,
-    literalline, mark_as_root, softline,
+    AlignKind, Doc, GroupId, HARDLINE_WITHOUT_BREAK_PARENT, Ids, LITERALLINE_WITHOUT_BREAK_PARENT,
+    align, break_parent, clean_doc, concat, conditional_group, dedent, dedent_to_root, fill,
+    group_with, hardline, if_break_group, indent, indent_if_break, line, line_suffix, literalline,
+    mark_as_root, softline, strip_trailing_hardline,
 };
 
 /// What a JS part is parsed and printed as.
@@ -30,8 +33,6 @@ pub(crate) enum JsKind {
     Handler,
     /// `babel` with `__isHtmlInlineEventHandler`, in a group (`:attr`'s fallback).
     HandlerGrouped,
-    /// A `<script>` body.
-    Script { module: bool },
 }
 
 const UNIT: u8 = 4;
@@ -39,7 +40,7 @@ const WIDTH: u16 = 120;
 
 /// `textToDoc` for JS: `None` when the code does not parse.
 pub(crate) fn js_to_doc(ids: &Ids, text: &str, kind: JsKind) -> Option<Doc> {
-    let mut options = JsFormatOptions {
+    let options = JsFormatOptions {
         indent_width: IndentWidth::try_from(UNIT).ok()?,
         line_width: LineWidth::try_from(WIDTH).ok()?,
         quote_style: QuoteStyle::Single,
@@ -54,29 +55,37 @@ pub(crate) fn js_to_doc(ids: &Ids, text: &str, kind: JsKind) -> Option<Doc> {
             in_parens: false,
         })
     };
-    let handler = |layout| JsRoot::Program { semicolons: ProgramSemicolons::LoneExpressionOmitted, layout };
-    let (root, in_attribute) = match kind {
-        JsKind::HugExpression => (expression(ExpressionLayout::Hug { literals: false }), true),
-        JsKind::GroupExpression => (expression(ExpressionLayout::Group), true),
-        JsKind::Handler => (handler(ProgramLayout::Indented), true),
-        JsKind::HandlerGrouped => (handler(ProgramLayout::Bare), true),
-        JsKind::Script { .. } => {
-            (JsRoot::Program { semicolons: ProgramSemicolons::AsOptions, layout: ProgramLayout::Bare }, false)
-        }
+    let handler = |layout| JsRoot::Program {
+        semicolons: ProgramSemicolons::LoneExpressionOmitted,
+        layout,
     };
-    if !in_attribute {
-        options.quote_style = QuoteStyle::Single;
-    }
-    let embedded_in = JsEmbeddedIn { in_html_attribute: in_attribute, ..JsEmbeddedIn::default() };
+    let root = match kind {
+        JsKind::HugExpression => expression(ExpressionLayout::Hug { literals: false }),
+        JsKind::GroupExpression => expression(ExpressionLayout::Group),
+        JsKind::Handler => handler(ProgramLayout::Indented),
+        JsKind::HandlerGrouped => handler(ProgramLayout::Bare),
+    };
+    let embedded_in = JsEmbeddedIn {
+        in_html_attribute: true,
+        ..JsEmbeddedIn::default()
+    };
     // Babel tries JSX first, then without it (`a < b > c`).
-    let types: &[SourceType] = match kind {
-        JsKind::Script { module: true } => &[SourceType::mjs().with_jsx(true), SourceType::mjs()],
-        _ => &[SourceType::mjs().with_jsx(true), SourceType::cjs().with_jsx(true), SourceType::cjs()],
-    };
+    let types = [
+        SourceType::mjs().with_jsx(true),
+        SourceType::cjs().with_jsx(true),
+        SourceType::cjs(),
+    ];
     let allocator = Allocator::default();
     let session = FormatSession::new(&allocator, InputKind::Fragment);
-    for &source_type in types {
-        if let Ok(ir) = oxc_formatter::format_to_ir(&session, text, source_type, options.clone(), root, embedded_in) {
+    for source_type in types {
+        if let Ok(ir) = oxc_formatter::format_to_ir(
+            &session,
+            text,
+            source_type,
+            options.clone(),
+            root,
+            embedded_in,
+        ) {
             return Some(text_to_doc(Converter::new(ids).convert(&ir.ir)));
         }
     }
@@ -177,21 +186,40 @@ fn js_types(lang: Lang) -> &'static [SourceType] {
 
 /// `textToDoc` for a `<script>`/`<style>` body: `None` when it does not parse.
 pub(crate) fn body_to_doc(ids: &Ids, text: &str, lang: Lang) -> Option<Doc> {
-    let (masked, restore) = if lang.is_style() { mask_at_rule_echoes(text) } else { (text.to_owned(), Vec::new()) };
+    let (masked, restore) = if lang.is_style() {
+        mask_at_rule_echoes(text)
+    } else {
+        (text.to_owned(), Vec::new())
+    };
     let text = masked.as_str();
     let allocator = Allocator::default();
     let session = FormatSession::new(&allocator, InputKind::Fragment);
     let ir = match lang {
         Lang::Babel { .. } | Lang::TypeScript => {
-            let root = JsRoot::Program { semicolons: ProgramSemicolons::AsOptions, layout: ProgramLayout::Bare };
+            let root = JsRoot::Program {
+                semicolons: ProgramSemicolons::AsOptions,
+                layout: ProgramLayout::Bare,
+            };
             js_types(lang).iter().find_map(|&ty| {
-                oxc_formatter::format_to_ir(&session, text, ty, script_options()?, root, JsEmbeddedIn::default()).ok()
+                oxc_formatter::format_to_ir(
+                    &session,
+                    text,
+                    ty,
+                    script_options()?,
+                    root,
+                    JsEmbeddedIn::default(),
+                )
+                .ok()
             })?
         }
         Lang::Json => oxc_formatter_json::format_to_ir(&session, text, json_options()?).ok()?,
-        Lang::Markdown => oxc_formatter_markdown::format_to_ir(&session, text, markdown_options()?, false).ok()?,
+        Lang::Markdown => {
+            oxc_formatter_markdown::format_to_ir(&session, text, markdown_options()?, false).ok()?
+        }
+        Lang::Css | Lang::Scss | Lang::Less if has_empty_selector_rule(text) => return None,
         Lang::Css | Lang::Scss | Lang::Less => {
-            oxc_formatter_css::format_to_ir(&session, text, css_options(css_variant(lang))?, None).ok()?
+            oxc_formatter_css::format_to_ir(&session, text, css_options(css_variant(lang))?, None)
+                .ok()?
         }
     };
     let mut converter = Converter::new(ids);
@@ -219,7 +247,14 @@ pub(crate) fn yaml_to_doc(ids: &Ids, text: &str) -> Option<Doc> {
 
 /// `prettier.format` for a body: `None` when it does not parse. Ends in a line break.
 pub(crate) fn format_body(text: &str, lang: Lang) -> Option<String> {
-    let (masked, restore) = if lang.is_style() { mask_at_rule_echoes(text) } else { (text.to_owned(), Vec::new()) };
+    if lang.is_style() && has_empty_selector_rule(text) {
+        return None;
+    }
+    let (masked, restore) = if lang.is_style() {
+        mask_at_rule_echoes(text)
+    } else {
+        (text.to_owned(), Vec::new())
+    };
     let text = masked.as_str();
     let allocator = Allocator::default();
     let code = match lang {
@@ -227,15 +262,62 @@ pub(crate) fn format_body(text: &str, lang: Lang) -> Option<String> {
             let formatted = oxc_formatter::format(&allocator, text, ty, script_options()?).ok()?;
             Some(formatted.print().ok()?.into_code())
         })?,
-        Lang::Json => oxc_formatter_json::format(&allocator, text, json_options()?).ok()?.print().ok()?.into_code(),
-        Lang::Markdown => {
-            oxc_formatter_markdown::format(&allocator, text, markdown_options()?).ok()?.print().ok()?.into_code()
-        }
+        Lang::Json => oxc_formatter_json::format(&allocator, text, json_options()?)
+            .ok()?
+            .print()
+            .ok()?
+            .into_code(),
+        Lang::Markdown => oxc_formatter_markdown::format(&allocator, text, markdown_options()?)
+            .ok()?
+            .print()
+            .ok()?
+            .into_code(),
         Lang::Css | Lang::Scss | Lang::Less => {
-            oxc_formatter_css::format(&allocator, text, css_options(css_variant(lang))?).ok()?.print().ok()?.into_code()
+            oxc_formatter_css::format(&allocator, text, css_options(css_variant(lang))?)
+                .ok()?
+                .print()
+                .ok()?
+                .into_code()
         }
     };
     Some(unmask(&code, &restore))
+}
+
+/// A rule with no selector (`{a: b}`, or one after a comment): Prettier's postcss printer throws on it
+/// ("Unexpected PostCSS node type"), where oxc formats it.
+fn has_empty_selector_rule(text: &str) -> bool {
+    let b = text.as_bytes();
+    let mut last: Option<u8> = None;
+    let mut depth = 0usize;
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'*') => {
+                i = text[i + 2..].find("*/").map_or(b.len(), |p| i + 2 + p + 2);
+                continue;
+            }
+            q @ (b'\'' | b'"') => {
+                let mut j = i + 1;
+                while j < b.len() && b[j] != q && b[j] != b'\n' {
+                    j += if b[j] == b'\\' { 2 } else { 1 };
+                }
+                i = j + 1;
+                last = Some(q);
+                continue;
+            }
+            b'(' => depth += 1,
+            b')' => depth = depth.saturating_sub(1),
+            b'{' if depth == 0 && matches!(last, None | Some(b'{' | b'}' | b';')) => return true,
+            c if c.is_ascii_whitespace() => {
+                i += 1;
+                continue;
+            }
+            _ => {}
+        }
+        last = Some(b[i]);
+        i += 1;
+    }
+    false
 }
 
 /// oxc's CSS formatter leaves an at-rule's params as written when they hold a Blade echo
@@ -262,9 +344,18 @@ fn mask_at_rule_echoes(text: &str) -> (String, Vec<(String, String)>) {
                 i = j + 1;
                 continue;
             }
-            b'@' if b.get(i + 1).is_some_and(|c| c.is_ascii_alphabetic() || *c == b'-') => in_prelude = true,
+            b'@' if b
+                .get(i + 1)
+                .is_some_and(|c| c.is_ascii_alphabetic() || *c == b'-') =>
+            {
+                in_prelude = true
+            }
             b'{' if in_prelude && (text[i..].starts_with("{{") || text[i..].starts_with("{!!")) => {
-                let close = if text[i..].starts_with("{!!") { "!!}" } else { "}}" };
+                let close = if text[i..].starts_with("{!!") {
+                    "!!}"
+                } else {
+                    "}}"
+                };
                 if let Some(p) = text[i + 2..].find(close) {
                     let end = i + 2 + p + close.len();
                     let original = &text[i..end];
@@ -353,7 +444,13 @@ struct Converter<'i> {
 
 impl<'i> Converter<'i> {
     fn new(ids: &'i Ids) -> Self {
-        Self { ids, groups: HashMap::new(), last: LastLine::None, space: false, restore: Vec::new() }
+        Self {
+            ids,
+            groups: HashMap::new(),
+            last: LastLine::None,
+            space: false,
+            restore: Vec::new(),
+        }
     }
 
     fn id(&mut self, id: Option<oxc_formatter_core::GroupId>) -> Option<GroupId> {
@@ -391,8 +488,21 @@ impl<'i> Converter<'i> {
                 FormatElement::Text { text, .. } => {
                     self.last = LastLine::None;
                     self.space = false;
-                    let doc = if self.restore.is_empty() { Doc::from(&**text) } else { Doc::from(unmask(text, &self.restore)) };
-                    Self::push(stack, doc);
+                    let text = if self.restore.is_empty() {
+                        (**text).to_owned()
+                    } else {
+                        unmask(text, &self.restore)
+                    };
+                    // oxc prints a multiline text (a template literal's) as written, and measures only up to
+                    // its first line break: literal lines without a break parent do both.
+                    for (i, piece) in text.split('\n').enumerate() {
+                        if i > 0 {
+                            Self::push(stack, LITERALLINE_WITHOUT_BREAK_PARENT);
+                        }
+                        if !piece.is_empty() {
+                            Self::push(stack, Doc::from(piece));
+                        }
+                    }
                 }
                 FormatElement::Line(mode) => {
                     for doc in self.line(*mode) {
@@ -408,7 +518,11 @@ impl<'i> Converter<'i> {
                         .iter()
                         .map(|variant| {
                             let inner = match variant {
-                                [FormatElement::Tag(Tag::StartEntry), rest @ .., FormatElement::Tag(Tag::EndEntry)] => rest,
+                                [
+                                    FormatElement::Tag(Tag::StartEntry),
+                                    rest @ ..,
+                                    FormatElement::Tag(Tag::EndEntry),
+                                ] => rest,
                                 all => all,
                             };
                             let last = self.last;
@@ -443,7 +557,11 @@ impl<'i> Converter<'i> {
                     return Vec::new();
                 }
                 self.last = LastLine::Hard;
-                vec![if mode == LineMode::Hard { hardline() } else { HARDLINE_WITHOUT_BREAK_PARENT }]
+                vec![if mode == LineMode::Hard {
+                    hardline()
+                } else {
+                    HARDLINE_WITHOUT_BREAK_PARENT
+                }]
             }
             LineMode::Empty => {
                 self.last = LastLine::Empty;
@@ -470,10 +588,14 @@ impl<'i> Converter<'i> {
             Tag::StartAlign(a) => Frame::Align(a.count().get()),
             Tag::StartPrefix(p) => Frame::Prefix(p.text()),
             Tag::StartDedent(mode) => Frame::Dedent(*mode),
-            Tag::StartGroup(g) => Frame::Group { id: self.id(g.id()), brk: g.mode() != GroupMode::Flat },
-            Tag::StartConditionalContent(c) => {
-                Frame::Conditional { flat: c.mode() == PrintMode::Flat, id: self.id(c.group_id()) }
-            }
+            Tag::StartGroup(g) => Frame::Group {
+                id: self.id(g.id()),
+                brk: g.mode() != GroupMode::Flat,
+            },
+            Tag::StartConditionalContent(c) => Frame::Conditional {
+                flat: c.mode() == PrintMode::Flat,
+                id: self.id(c.group_id()),
+            },
             Tag::StartIndentIfGroupBreaks(id) => Frame::IndentIfBreak(self.id(Some(*id))),
             Tag::StartFill => Frame::Fill,
             Tag::StartEntry => Frame::Entry,
@@ -481,7 +603,9 @@ impl<'i> Converter<'i> {
             Tag::StartLabelled(_) => Frame::Labelled,
             Tag::StartMarkAsRoot => Frame::MarkAsRoot,
             _ => {
-                let Some((frame, parts)) = stack.pop() else { return };
+                let Some((frame, parts)) = stack.pop() else {
+                    return;
+                };
                 let doc = Self::close(frame, parts);
                 Self::push(stack, doc);
                 return;
@@ -499,8 +623,12 @@ impl<'i> Converter<'i> {
             Frame::Dedent(DedentMode::Level) => dedent(concat(parts)),
             Frame::Dedent(DedentMode::Root) => dedent_to_root(concat(parts)),
             Frame::Group { id, brk } => group_with(concat(parts), brk, id),
-            Frame::Conditional { flat: true, id } => if_break_group(Doc::default(), concat(parts), id),
-            Frame::Conditional { flat: false, id } => if_break_group(concat(parts), Doc::default(), id),
+            Frame::Conditional { flat: true, id } => {
+                if_break_group(Doc::default(), concat(parts), id)
+            }
+            Frame::Conditional { flat: false, id } => {
+                if_break_group(concat(parts), Doc::default(), id)
+            }
             Frame::IndentIfBreak(id) => indent_if_break(concat(parts), id, false),
             Frame::Fill => fill(parts),
             Frame::LineSuffix => line_suffix(concat(parts)),

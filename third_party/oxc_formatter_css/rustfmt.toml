@@ -1,0 +1,8 @@
+# oxc's rustfmt.toml, so `cargo fmt --all` keeps the vendored crate in oxc's style.
+edition = "2024"
+style_edition = "2024"
+use_small_heuristics = "Max"
+use_field_init_shorthand = true
+reorder_modules = true
+merge_derives = true
+remove_nested_parens = true

@@ -18,10 +18,23 @@ pub(crate) const PRINT_WIDTH: usize = 120;
 pub(crate) const TAB_WIDTH: usize = 4;
 
 const BLADE_COMPONENT_PREFIXES: &[&str] = &[
-    "x-", "x:", "s-", "s:", "statamic-", "statamic:", "flux-", "flux:", "livewire-", "livewire:", "native-", "native:",
+    "x-",
+    "x:",
+    "s-",
+    "s:",
+    "statamic-",
+    "statamic:",
+    "flux-",
+    "flux:",
+    "livewire-",
+    "livewire:",
+    "native-",
+    "native:",
 ];
 
-const DIRECTIVE_ARG_SPACING_SPACE: &[&str] = &["if", "elseif", "unless", "while", "for", "foreach", "forelse", "switch", "case"];
+const DIRECTIVE_ARG_SPACING_SPACE: &[&str] = &[
+    "if", "elseif", "unless", "while", "for", "foreach", "forelse", "switch", "case",
+];
 
 pub(crate) fn is_blade_component_tag_name(full_name: &str) -> bool {
     let n = js_trim(full_name).to_lowercase();
@@ -36,7 +49,11 @@ pub(crate) fn directive_arg_spacing(name: &str, in_component_attribute: bool) ->
     }
     let trimmed = js_trim(name);
     let lookup = trimmed.strip_prefix('@').unwrap_or(trimmed).to_lowercase();
-    if DIRECTIVE_ARG_SPACING_SPACE.contains(&lookup.as_str()) { " " } else { "" }
+    if DIRECTIVE_ARG_SPACING_SPACE.contains(&lookup.as_str()) {
+        " "
+    } else {
+        ""
+    }
 }
 
 /// Inline intent elements are `["svg", "svg:*"]`.
@@ -72,11 +89,6 @@ pub(crate) fn is_js_ws(c: char) -> bool {
     crate::tree::is_js_whitespace(c)
 }
 
-/// `s.replace(/\s+$/u, "")`
-pub(crate) fn trim_end_js(s: &str) -> &str {
-    crate::tree::js_trim_end(s)
-}
-
 /// `s.split(/[\t\n\f\r ]+/)`
 pub(crate) fn html_whitespace_split(s: &str) -> Vec<String> {
     let mut out = Vec::new();
@@ -106,7 +118,9 @@ fn slice_chars(line: &str, n: usize) -> &str {
 }
 
 fn leading_indent(line: &str) -> usize {
-    line.bytes().take_while(|b| matches!(b, b' ' | b'\t')).count()
+    line.bytes()
+        .take_while(|b| matches!(b, b' ' | b'\t'))
+        .count()
 }
 
 /// `dedentString`
@@ -122,15 +136,26 @@ pub(crate) fn dedent_string(s: &str) -> String {
     if min == 0 || min == usize::MAX {
         return s.to_owned();
     }
-    lines.iter().map(|l| slice_chars(l, min)).collect::<Vec<_>>().join("\n")
+    lines
+        .iter()
+        .map(|l| slice_chars(l, min))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// `htmlTrimPreserveIndentation`
 pub(crate) fn html_trim_preserve_indentation(s: &str) -> String {
     let s = s.trim_end_matches(is_html_ws);
     // `/^[\t\f\r ]*\n/g` only ever matches once, at the start.
-    let skip = s.bytes().take_while(|b| matches!(b, b'\t' | 0x0c | b'\r' | b' ')).count();
-    if s.as_bytes().get(skip) == Some(&b'\n') { s[skip + 1..].to_owned() } else { s.to_owned() }
+    let skip = s
+        .bytes()
+        .take_while(|b| matches!(b, b'\t' | 0x0c | b'\r' | b' '))
+        .count();
+    if s.as_bytes().get(skip) == Some(&b'\n') {
+        s[skip + 1..].to_owned()
+    } else {
+        s.to_owned()
+    }
 }
 
 /// `trimTrailingHorizontalWhitespace`: `/[ \t]+(?=\r?\n|$)/gu` → "".
@@ -189,7 +214,10 @@ pub(crate) fn is_html_tag(name: &str) -> bool {
 }
 
 fn element_attributes(tag: &str) -> Option<&'static [&'static str]> {
-    HTML_ELEMENT_ATTRIBUTES.binary_search_by(|(k, _)| (*k).cmp(tag)).ok().map(|i| HTML_ELEMENT_ATTRIBUTES[i].1)
+    HTML_ELEMENT_ATTRIBUTES
+        .binary_search_by(|(k, _)| (*k).cmp(tag))
+        .ok()
+        .map(|i| HTML_ELEMENT_ATTRIBUTES[i].1)
 }
 
 pub(crate) fn has_blank_line_between(between: &str) -> bool {
@@ -251,7 +279,11 @@ impl Printer<'_> {
     pub(crate) fn full_text(&self, id: Id) -> &str {
         let n = self.n(id);
         if n.kind == NodeKind::FrontMatter {
-            return self.ast.front_matter.as_ref().map_or("", |f| f.raw.as_str());
+            return self
+                .ast
+                .front_matter
+                .as_ref()
+                .map_or("", |f| f.raw.as_str());
         }
         &self.ast.source[n.start..n.end]
     }
@@ -268,10 +300,6 @@ impl Printer<'_> {
         &self.ast.source[t.start..t.end]
     }
 
-    pub(crate) fn flat_data(&self, id: Id) -> usize {
-        self.ast.flat[self.n(id).flat].data
-    }
-
     pub(crate) fn last_child(&self, id: Id) -> Option<Id> {
         self.n(id).children.last().copied()
     }
@@ -285,8 +313,13 @@ impl Printer<'_> {
         if n.kind == NodeKind::Comment {
             return !n.is_ie_conditional_start_comment;
         }
-        matches!(n.kind, NodeKind::Text | NodeKind::Cdata | NodeKind::BogusComment | NodeKind::UnpairedClosingTag)
-            || is_echo_like(n.kind)
+        matches!(
+            n.kind,
+            NodeKind::Text
+                | NodeKind::Cdata
+                | NodeKind::BogusComment
+                | NodeKind::UnpairedClosingTag
+        ) || is_echo_like(n.kind)
     }
 
     pub(crate) fn is_script_like(&self, id: Id) -> bool {
@@ -334,7 +367,10 @@ impl Printer<'_> {
     }
 
     fn has_non_text_child(&self, id: Id) -> bool {
-        self.n(id).children.iter().any(|&c| self.kind(c) != NodeKind::Text && !is_echo_like(self.kind(c)))
+        self.n(id)
+            .children
+            .iter()
+            .any(|&c| self.kind(c) != NodeKind::Text && !is_echo_like(self.kind(c)))
     }
 
     pub(crate) fn force_break_children(&self, id: Id) -> bool {
@@ -342,8 +378,10 @@ impl Printer<'_> {
         if n.kind != NodeKind::Element || n.children.is_empty() {
             return false;
         }
-        matches!(n.tag_name.as_str(), "html" | "head" | "ul" | "ol" | "select")
-            || (n.css_display.starts_with("table") && n.css_display != "table-cell")
+        matches!(
+            n.tag_name.as_str(),
+            "html" | "head" | "ul" | "ol" | "select"
+        ) || (n.css_display.starts_with("table") && n.css_display != "table-cell")
     }
 
     pub(crate) fn force_break_content(&self, id: Id) -> bool {
@@ -365,7 +403,8 @@ impl Printer<'_> {
                 && self.kind(first) != NodeKind::Text
                 && !is_echo_like(self.kind(first))
                 && self.has_leading_line_break(first)
-                && (!self.n(last).is_trailing_space_sensitive || self.has_trailing_line_break(last)))
+                && (!self.n(last).is_trailing_space_sensitive
+                    || self.has_trailing_line_break(last)))
     }
 
     pub(crate) fn prefer_hardline_as_surrounding_spaces(&self, id: Id) -> bool {
@@ -384,7 +423,10 @@ impl Printer<'_> {
 
     pub(crate) fn prefer_hardline_as_leading_spaces(&self, id: Id) -> bool {
         self.prefer_hardline_as_surrounding_spaces(id)
-            || self.n(id).prev.is_some_and(|p| self.prefer_hardline_as_trailing_spaces(p))
+            || self
+                .n(id)
+                .prev
+                .is_some_and(|p| self.prefer_hardline_as_trailing_spaces(p))
             || self.has_surrounding_line_break(id)
     }
 
@@ -406,16 +448,24 @@ impl Printer<'_> {
             if !n.complete {
                 return true;
             }
-            if n.children.iter().any(|&c| self.kind(c) == NodeKind::UnpairedClosingTag) {
+            if n.children
+                .iter()
+                .any(|&c| self.kind(c) == NodeKind::UnpairedClosingTag)
+            {
                 return true;
             }
         }
         if self.is_pre_like(id)
-            && n.children.iter().any(|&c| self.kind(c) != NodeKind::Text && !is_echo_like(self.kind(c)))
+            && n.children
+                .iter()
+                .any(|&c| self.kind(c) != NodeKind::Text && !is_echo_like(self.kind(c)))
         {
             return true;
         }
-        if n.kind == NodeKind::Element && self.is_script_like(id) && self.should_preserve_raw_content_element_with_blade(id) {
+        if n.kind == NodeKind::Element
+            && self.is_script_like(id)
+            && self.should_preserve_raw_content_element_with_blade(id)
+        {
             return true;
         }
         false
@@ -429,10 +479,10 @@ impl Printer<'_> {
             _ => RawContext::Generic,
         };
         if context == RawContext::Script {
-            let has = n
-                .children
-                .iter()
-                .any(|&c| self.kind(c) != NodeKind::IgnoreRange && self.is_blade_construct_child(c, RawContext::Script));
+            let has = n.children.iter().any(|&c| {
+                self.kind(c) != NodeKind::IgnoreRange
+                    && self.is_blade_construct_child(c, RawContext::Script)
+            });
             if !has {
                 return false;
             }
@@ -446,7 +496,8 @@ impl Printer<'_> {
         if n.kind == NodeKind::FrontMatter {
             return true;
         }
-        n.next.is_some_and(|x| n.end_line + 1 < self.n(x).start_line)
+        n.next
+            .is_some_and(|x| n.end_line + 1 < self.n(x).start_line)
     }
 
     // -- prettier-ignore ----------------------------------------------------------------------
@@ -483,7 +534,9 @@ impl Printer<'_> {
         if self.kind(id) == NodeKind::Attribute {
             return false;
         }
-        let Some(parent) = self.n(id).parent else { return false };
+        let Some(parent) = self.n(id).parent else {
+            return false;
+        };
         self.ignored_children(parent).contains(&id)
     }
 
@@ -550,7 +603,9 @@ impl Printer<'_> {
             let construct = match t.kind {
                 TokenType::EchoStart => Some((NamePart::Echo, TokenType::EchoEnd)),
                 TokenType::RawEchoStart => Some((NamePart::RawEcho, TokenType::RawEchoEnd)),
-                TokenType::TripleEchoStart => Some((NamePart::TripleEcho, TokenType::TripleEchoEnd)),
+                TokenType::TripleEchoStart => {
+                    Some((NamePart::TripleEcho, TokenType::TripleEchoEnd))
+                }
                 TokenType::PhpTagStart => Some((NamePart::PhpTag, TokenType::PhpTagEnd)),
                 TokenType::PhpBlockStart => Some((NamePart::PhpBlock, TokenType::PhpBlockEnd)),
                 _ => None,
@@ -598,17 +653,29 @@ impl Printer<'_> {
             start += 1;
         }
         if start >= tokens.len() {
-            return Some(ValueRange { start, end: start, quote: None });
+            return Some(ValueRange {
+                start,
+                end: start,
+                quote: None,
+            });
         }
         if tokens[start].kind != TokenType::Quote {
-            return Some(ValueRange { start, end: tokens.len(), quote: None });
+            return Some(ValueRange {
+                start,
+                end: tokens.len(),
+                quote: None,
+            });
         }
         let quote = self.tok_text(&tokens[start]).to_owned();
         let mut end = tokens.len();
         if end > start + 1 && tokens[end - 1].kind == TokenType::Quote {
             end -= 1;
         }
-        Some(ValueRange { start: start + 1, end, quote: Some(quote) })
+        Some(ValueRange {
+            start: start + 1,
+            end,
+            quote: Some(quote),
+        })
     }
 
     pub(crate) fn attribute_raw_value(&self, id: Id) -> Option<String> {
@@ -632,7 +699,9 @@ impl Printer<'_> {
     }
 
     pub(crate) fn attribute_value_kind(&self, id: Id) -> ValueKind {
-        let Some(range) = self.attribute_value_range(id) else { return ValueKind::None };
+        let Some(range) = self.attribute_value_range(id) else {
+            return ValueKind::None;
+        };
         if range.start >= range.end {
             return ValueKind::StaticText;
         }
@@ -734,7 +803,8 @@ impl Printer<'_> {
             if ty.is_none() && lang.is_none() {
                 return Some("babel");
             }
-            return infer_parser_by_language(lang.as_deref()).or_else(|| infer_parser_by_type(ty.as_deref()));
+            return infer_parser_by_language(lang.as_deref())
+                .or_else(|| infer_parser_by_type(ty.as_deref()));
         }
         if full == "style" {
             if let Some(lang) = self.attr_map_get(id, "lang").filter(|s| !s.is_empty()) {
@@ -746,7 +816,9 @@ impl Printer<'_> {
     }
 
     pub(crate) fn normalize_attribute_name(&self, name: &str, parent: Option<Id>) -> String {
-        let Some(p) = parent.filter(|&p| self.kind(p) == NodeKind::Element) else { return name.to_owned() };
+        let Some(p) = parent.filter(|&p| self.kind(p) == NodeKind::Element) else {
+            return name.to_owned();
+        };
         if name.contains(':') {
             return name.to_owned();
         }
@@ -754,20 +826,13 @@ impl Printer<'_> {
         let tag = &self.n(p).tag_name;
         if let Some(attrs) = element_attributes(tag) {
             let global = element_attributes("*").unwrap_or(&[]);
-            if global.binary_search(&lower.as_str()).is_ok() || attrs.binary_search(&lower.as_str()).is_ok() {
+            if global.binary_search(&lower.as_str()).is_ok()
+                || attrs.binary_search(&lower.as_str()).is_ok()
+            {
                 return lower;
             }
         }
         name.to_owned()
-    }
-
-    pub(crate) fn is_static_element_name(&self, id: Id) -> bool {
-        let n = self.n(id);
-        n.kind != NodeKind::Element
-            || !(n.raw_tag_name.contains("{{")
-                || n.raw_tag_name.contains("{!!")
-                || n.raw_tag_name.contains("<?")
-                || n.raw_tag_name.contains('@'))
     }
 }
 
@@ -817,13 +882,18 @@ fn infer_parser_by_language(lang: Option<&str>) -> Option<&'static str> {
         ("gql", "graphql"),
         ("hbs", "glimmer"),
     ];
-    by_alias_or_ext.iter().find(|(n, _)| *n == lang).map(|(_, p)| *p)
+    by_alias_or_ext
+        .iter()
+        .find(|(n, _)| *n == lang)
+        .map(|(_, p)| *p)
 }
 
 fn infer_parser_by_type(ty: Option<&str>) -> Option<&'static str> {
     let ty = ty?;
     let explicit = match ty {
-        "module" | "text/javascript" | "text/babel" | "text/jsx" | "application/javascript" => Some("babel"),
+        "module" | "text/javascript" | "text/babel" | "text/jsx" | "application/javascript" => {
+            Some("babel")
+        }
         "application/x-typescript" => Some("typescript"),
         "text/markdown" => Some("markdown"),
         "text/html" => Some("html"),

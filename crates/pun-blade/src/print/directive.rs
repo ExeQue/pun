@@ -1,6 +1,9 @@
 //! `print/directive.ts` and `directive-spacing-context.ts`.
 
-use super::utils::{directive_arg_spacing, has_blank_line_between, has_line_break, is_blade_component_tag_name, replace_eol_literal, trim_trailing_horizontal_whitespace};
+use super::utils::{
+    directive_arg_spacing, has_blank_line_between, has_line_break, is_blade_component_tag_name,
+    replace_eol_literal, trim_trailing_horizontal_whitespace,
+};
 use super::{Between, Printer};
 use crate::ast::{Id, is_echo_like};
 use crate::directives::Role;
@@ -14,7 +17,10 @@ fn is_branch(kind: NodeKind) -> bool {
 
 impl Printer<'_> {
     pub(crate) fn directive_name(&self, id: Id) -> Option<String> {
-        let t = self.tokens_of(id).iter().find(|t| t.kind == TokenType::Directive)?;
+        let t = self
+            .tokens_of(id)
+            .iter()
+            .find(|t| t.kind == TokenType::Directive)?;
         let raw = self.tok_text(t);
         Some(raw.strip_prefix('@').unwrap_or(raw).to_lowercase())
     }
@@ -27,7 +33,9 @@ impl Printer<'_> {
             cur = p;
         }
         let parent = self.n(cur).parent?;
-        (self.kind(parent) == NodeKind::Element && self.n(cur).end <= self.n(parent).open_tag_end_offset).then_some(parent)
+        (self.kind(parent) == NodeKind::Element
+            && self.n(cur).end <= self.n(parent).open_tag_end_offset)
+            .then_some(parent)
     }
 
     fn arg_spacing(&self, id: Id) -> &'static str {
@@ -99,7 +107,9 @@ impl Printer<'_> {
 
     pub(crate) fn print_directive_block(&self, id: Id) -> Doc {
         let n = self.n(id);
-        if n.children.iter().any(|&c| !is_branch(self.kind(c))) || self.should_fallback_unterminated_root_block(id) {
+        if n.children.iter().any(|&c| !is_branch(self.kind(c)))
+            || self.should_fallback_unterminated_root_block(id)
+        {
             return Doc::from(js_trim_end(self.full_text(id)));
         }
         if n.children.is_empty() {
@@ -116,11 +126,21 @@ impl Printer<'_> {
         if n.parent.is_none_or(|p| self.kind(p) != NodeKind::Root) {
             return false;
         }
-        if self.source()[n.end..].chars().any(|c| !crate::tree::is_js_whitespace(c)) {
+        if self.source()[n.end..]
+            .chars()
+            .any(|c| !crate::tree::is_js_whitespace(c))
+        {
             return false;
         }
-        let branches: Vec<Id> = n.children.iter().copied().filter(|&c| is_branch(self.kind(c))).collect();
-        let Some(&last) = branches.last() else { return false };
+        let branches: Vec<Id> = n
+            .children
+            .iter()
+            .copied()
+            .filter(|&c| is_branch(self.kind(c)))
+            .collect();
+        let Some(&last) = branches.last() else {
+            return false;
+        };
         if self.n(last).children.is_empty() {
             return false;
         }
@@ -136,7 +156,9 @@ impl Printer<'_> {
             .children
             .iter()
             .copied()
-            .filter(|&c| !(self.kind(c) == NodeKind::Text && js_trim(&self.n(c).raw_text).is_empty()))
+            .filter(|&c| {
+                !(self.kind(c) == NodeKind::Text && js_trim(&self.n(c).raw_text).is_empty())
+            })
             .collect();
         meaningful.len() == 1 && self.is_simple_leaf_body_node(meaningful[0])
     }
@@ -180,17 +202,24 @@ impl Printer<'_> {
                 }
             })
             .collect();
-        let segments: Vec<usize> =
-            (0..children.len()).filter(|&i| self.kind(children[i]) != NodeKind::AttributeWhitespace).collect();
+        let segments: Vec<usize> = (0..children.len())
+            .filter(|&i| self.kind(children[i]) != NodeKind::AttributeWhitespace)
+            .collect();
         let mut docs = Vec::new();
         for (si, &ci) in segments.iter().enumerate() {
             let child = children[ci];
             if !docs.is_empty() && si > 0 {
-                docs.push(self.directive_between_segments(children[segments[si - 1]], child).doc());
+                docs.push(
+                    self.directive_between_segments(children[segments[si - 1]], child)
+                        .doc(),
+                );
             }
             let (branch_doc, nested) = &rendered[ci];
             docs.push(branch_doc.clone());
-            if is_branch(self.kind(child)) && !self.n(child).children.is_empty() && !nested.is_empty() {
+            if is_branch(self.kind(child))
+                && !self.n(child).children.is_empty()
+                && !nested.is_empty()
+            {
                 docs.push(indent(concat(vec![hardline(), concat(nested.clone())])));
             }
         }
@@ -199,12 +228,16 @@ impl Printer<'_> {
 
     fn print_directive_body_inline(&self, branch: Id) -> Vec<Doc> {
         let children = self.n(branch).children.clone();
-        let printed: Vec<Doc> = children.iter().map(|&c| self.print_directive_body_child(c)).collect();
+        let printed: Vec<Doc> = children
+            .iter()
+            .map(|&c| self.print_directive_body_child(c))
+            .collect();
         let mut docs = Vec::new();
         for (i, &c) in children.iter().enumerate() {
             if i > 0 {
                 let prev = children[i - 1];
-                let ignore = self.kind(prev) == NodeKind::IgnoreRange || self.kind(c) == NodeKind::IgnoreRange;
+                let ignore = self.kind(prev) == NodeKind::IgnoreRange
+                    || self.kind(c) == NodeKind::IgnoreRange;
                 if ignore {
                     let between = self.segment_source_between(prev, c);
                     if !between.is_empty() {
@@ -216,7 +249,11 @@ impl Printer<'_> {
                             Doc::from(between)
                         });
                     }
-                } else if self.node_source_between(prev, c).chars().any(crate::tree::is_js_whitespace) {
+                } else if self
+                    .node_source_between(prev, c)
+                    .chars()
+                    .any(crate::tree::is_js_whitespace)
+                {
                     docs.push(Doc::from(" "));
                 }
             }
@@ -256,7 +293,11 @@ impl Printer<'_> {
 
     fn print_directive_block_multiline(&self, id: Id) -> Doc {
         let children = self.n(id).children.clone();
-        let branches: Vec<Id> = children.iter().copied().filter(|&c| is_branch(self.kind(c))).collect();
+        let branches: Vec<Id> = children
+            .iter()
+            .copied()
+            .filter(|&c| is_branch(self.kind(c)))
+            .collect();
         if branches.is_empty() {
             return concat(children.iter().map(|&c| self.print(c)).collect());
         }
@@ -275,7 +316,9 @@ impl Printer<'_> {
                 }
             }
             segments.push(concat(segment));
-            let Some(&next) = branches.get(index + 1) else { continue };
+            let Some(&next) = branches.get(index + 1) else {
+                continue;
+            };
             separators.push(self.directive_separator(c, next));
             index += 1;
         }
@@ -296,7 +339,8 @@ impl Printer<'_> {
         }
         let n = self.n(id);
         if n.kind == NodeKind::Text
-            && (n.prev.is_some_and(|p| is_echo_like(self.kind(p))) || n.next.is_some_and(|x| is_echo_like(self.kind(x))))
+            && (n.prev.is_some_and(|p| is_echo_like(self.kind(p)))
+                || n.next.is_some_and(|x| is_echo_like(self.kind(x))))
         {
             return replace_eol_literal(&n.raw_text);
         }
@@ -307,10 +351,20 @@ impl Printer<'_> {
         if self.should_suppress_directive_separator(prev, next) {
             return Doc::default();
         }
-        let prev_end = self.last_child(prev).map_or(self.n(prev).end, |c| self.n(c).end);
+        let prev_end = self
+            .last_child(prev)
+            .map_or(self.n(prev).end, |c| self.n(c).end);
         let start = self.n(next).start;
-        let between = if prev_end <= start { &self.source()[prev_end..start] } else { "" };
-        if has_blank_line_between(between) { concat(vec![hardline(), hardline()]) } else { hardline() }
+        let between = if prev_end <= start {
+            &self.source()[prev_end..start]
+        } else {
+            ""
+        };
+        if has_blank_line_between(between) {
+            concat(vec![hardline(), hardline()])
+        } else {
+            hardline()
+        }
     }
 
     fn inline_directive_separator(&self, prev: Option<Id>, next: Id) -> &'static str {
@@ -322,7 +376,11 @@ impl Printer<'_> {
         if between.is_empty() {
             return "";
         }
-        if between.ends_with(crate::tree::is_js_whitespace) { " " } else { "" }
+        if between.ends_with(crate::tree::is_js_whitespace) {
+            " "
+        } else {
+            ""
+        }
     }
 
     fn php_tag_keyword(&self, id: Id) -> Option<String> {
@@ -337,7 +395,10 @@ impl Printer<'_> {
             if b.is_empty() || !(b[0].is_ascii_alphabetic() || b[0] == b'_') {
                 return None;
             }
-            let len = b.iter().take_while(|c| c.is_ascii_alphanumeric() || **c == b'_').count();
+            let len = b
+                .iter()
+                .take_while(|c| c.is_ascii_alphanumeric() || **c == b'_')
+                .count();
             Some(s[..len].to_lowercase())
         };
         if rest.len() >= 3
@@ -352,11 +413,20 @@ impl Printer<'_> {
     fn should_suppress_directive_separator(&self, prev: Id, next: Id) -> bool {
         self.n(prev).children.is_empty()
             && self.php_tag_keyword(prev).as_deref() == Some("switch")
-            && matches!(self.php_tag_keyword(next).as_deref(), Some("case" | "default"))
+            && matches!(
+                self.php_tag_keyword(next).as_deref(),
+                Some("case" | "default")
+            )
     }
 
     fn is_inline_directive_block(&self, id: Id) -> bool {
-        let directives: Vec<Id> = self.n(id).children.iter().copied().filter(|&c| is_branch(self.kind(c))).collect();
+        let directives: Vec<Id> = self
+            .n(id)
+            .children
+            .iter()
+            .copied()
+            .filter(|&c| is_branch(self.kind(c)))
+            .collect();
         if directives.is_empty() {
             return false;
         }
@@ -382,7 +452,10 @@ impl Printer<'_> {
                     }
                 }
             }
-            let branch_end_line = dn.children.last().map_or(dn.end_line, |&c| self.n(c).end_line);
+            let branch_end_line = dn
+                .children
+                .last()
+                .map_or(dn.end_line, |&c| self.n(c).end_line);
             if let Some(&next) = directives.get(i + 1)
                 && self.n(next).start_line > branch_end_line
             {
@@ -450,16 +523,32 @@ impl Printer<'_> {
             if p.is_trailing_space_sensitive {
                 if p.has_trailing_spaces {
                     if echo {
-                        return if line_break { Between::Hardline } else { Between::Text(" ".to_owned()) };
+                        return if line_break {
+                            Between::Hardline
+                        } else {
+                            Between::Text(" ".to_owned())
+                        };
                     }
-                    return if self.prefer_hardline_as_leading_spaces(next) { Between::Hardline } else { Between::Line };
+                    return if self.prefer_hardline_as_leading_spaces(next) {
+                        Between::Hardline
+                    } else {
+                        Between::Line
+                    };
                 }
                 return Between::Empty;
             }
             if echo {
-                return if line_break { Between::Hardline } else { Between::Empty };
+                return if line_break {
+                    Between::Hardline
+                } else {
+                    Between::Empty
+                };
             }
-            return if self.prefer_hardline_as_leading_spaces(next) { Between::Hardline } else { Between::Softline };
+            return if self.prefer_hardline_as_leading_spaces(next) {
+                Between::Hardline
+            } else {
+                Between::Softline
+            };
         }
         if !x.is_leading_space_sensitive || self.prefer_hardline_as_leading_spaces(next) {
             return Between::Hardline;
@@ -481,9 +570,16 @@ impl Printer<'_> {
         if self.kind(id) != NodeKind::Directive {
             return false;
         }
-        let Some(name) = self.directive_name(id) else { return false };
-        let Some(d) = self.ast.directives.get(&name) else { return false };
-        matches!(d.role, Role::Mixed | Role::Closing) || d.is_switch_branch || d.is_switch_terminator || d.is_conditional_close
+        let Some(name) = self.directive_name(id) else {
+            return false;
+        };
+        let Some(d) = self.ast.directives.get(&name) else {
+            return false;
+        };
+        matches!(d.role, Role::Mixed | Role::Closing)
+            || d.is_switch_branch
+            || d.is_switch_terminator
+            || d.is_conditional_close
     }
 
     fn is_meaningful_body_sibling(&self, id: Id) -> bool {

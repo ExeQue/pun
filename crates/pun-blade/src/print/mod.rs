@@ -14,8 +14,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::ast::{Ast, Id, ROOT, is_echo_like};
 use crate::doc::{
-    Doc, GroupId, Ids, break_parent, concat, dedent_to_root, group, group_with, hardline, if_break_group, indent,
-    indent_if_break, line, softline,
+    Doc, GroupId, Ids, break_parent, concat, dedent_to_root, group, group_with, hardline,
+    if_break_group, indent, indent_if_break, line, softline,
 };
 use crate::lexer::TokenType;
 use crate::tree::{NodeKind, has_swallowed_tag_syntax, js_trim_end};
@@ -101,10 +101,9 @@ impl<'a> Printer<'a> {
                 if children.is_empty() {
                     return Doc::default();
                 }
-                let last_is_eof_ignore = n
-                    .children
-                    .last()
-                    .is_some_and(|&c| self.kind(c) == NodeKind::IgnoreRange && self.n(c).end == self.source().len());
+                let last_is_eof_ignore = n.children.last().is_some_and(|&c| {
+                    self.kind(c) == NodeKind::IgnoreRange && self.n(c).end == self.source().len()
+                });
                 if last_is_eof_ignore {
                     group(concat(children))
                 } else {
@@ -114,9 +113,11 @@ impl<'a> Printer<'a> {
             NodeKind::Element | NodeKind::ConditionalComment => self.print_element(id),
             NodeKind::Text => self.print_text(id),
             NodeKind::IgnoreRange => Doc::from(self.full_text(id)),
-            NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho => {
-                concat(vec![self.opening_tag_prefix(id), self.print_echo(id), self.closing_tag_suffix(id)])
-            }
+            NodeKind::Echo | NodeKind::RawEcho | NodeKind::TripleEcho => concat(vec![
+                self.opening_tag_prefix(id),
+                self.print_echo(id),
+                self.closing_tag_suffix(id),
+            ]),
             NodeKind::Directive => Doc::from(self.render_directive_tokens(id)),
             NodeKind::DirectiveBlock => self.print_directive_block(id),
             NodeKind::Comment | NodeKind::BogusComment => self.print_comment(id),
@@ -127,19 +128,26 @@ impl<'a> Printer<'a> {
                 Doc::from(tag::format_doctype(&n.raw_text)),
                 self.closing_tag_suffix(id),
             ]),
-            NodeKind::Verbatim | NodeKind::PhpBlock | NodeKind::PhpTag => Doc::from(self.trim_unterminated_at_eof(id)),
+            NodeKind::Verbatim | NodeKind::PhpBlock | NodeKind::PhpTag => {
+                Doc::from(self.trim_unterminated_at_eof(id))
+            }
             NodeKind::Cdata | NodeKind::Decl | NodeKind::ProcessingInstruction => concat(vec![
                 self.opening_tag_prefix(id),
                 Doc::from(self.trim_unterminated_at_eof(id)),
                 self.closing_tag_suffix(id),
             ]),
-            NodeKind::Fragment => concat(self.print_children(id)),
-            NodeKind::NonOutput | NodeKind::ElementName | NodeKind::AttributeWhitespace | NodeKind::AttributeName | NodeKind::AttributeValue => {
-                Doc::from(self.full_text(id))
-            }
+            NodeKind::NonOutput
+            | NodeKind::ElementName
+            | NodeKind::AttributeWhitespace
+            | NodeKind::AttributeName
+            | NodeKind::AttributeValue => Doc::from(self.full_text(id)),
             NodeKind::UnpairedClosingTag | NodeKind::ClosingElementName => {
                 let text = self.full_text(id);
-                if n.end == self.source().len() { Doc::from(js_trim_end(text)) } else { Doc::from(text) }
+                if n.end == self.source().len() {
+                    Doc::from(js_trim_end(text))
+                } else {
+                    Doc::from(text)
+                }
             }
         }
     }
@@ -189,13 +197,19 @@ impl<'a> Printer<'a> {
         let n = self.n(id);
         let end = self.printable_subtree_end(id);
         let start = n.start
-            + if n.prev.is_some_and(|p| self.needs_to_borrow_next_opening_tag_start_marker(p)) {
+            + if n
+                .prev
+                .is_some_and(|p| self.needs_to_borrow_next_opening_tag_start_marker(p))
+            {
                 self.opening_tag_start_marker(id).len()
             } else {
                 0
             };
         let end = end
-            - if n.next.is_some_and(|x| self.needs_to_borrow_prev_closing_tag_end_marker(x)) {
+            - if n
+                .next
+                .is_some_and(|x| self.needs_to_borrow_prev_closing_tag_end_marker(x))
+            {
                 self.closing_tag_end_marker(id).len()
             } else {
                 0
@@ -204,7 +218,11 @@ impl<'a> Printer<'a> {
         if n.kind == NodeKind::Text {
             preserved = crate::ast::html_trim_start(preserved);
         }
-        concat(vec![self.opening_tag_prefix(id), replace_eol_literal(preserved), self.closing_tag_suffix(id)])
+        concat(vec![
+            self.opening_tag_prefix(id),
+            replace_eol_literal(preserved),
+            self.closing_tag_suffix(id),
+        ])
     }
 
     fn source_between_segments(&self, prev: Id, next: Id) -> &str {
@@ -249,30 +267,45 @@ impl<'a> Printer<'a> {
                     if is_echo_like(p.kind) || is_echo_like(x.kind) {
                         return Between::Text(" ".to_owned());
                     }
-                    return if self.prefer_hardline_as_leading_spaces(next) { Between::Hardline } else { Between::Line };
+                    return if self.prefer_hardline_as_leading_spaces(next) {
+                        Between::Hardline
+                    } else {
+                        Between::Line
+                    };
                 }
                 return Between::Empty;
             }
             if is_echo_like(p.kind) || is_echo_like(x.kind) {
                 return Between::Empty;
             }
-            return if self.prefer_hardline_as_leading_spaces(next) { Between::Hardline } else { Between::Softline };
+            return if self.prefer_hardline_as_leading_spaces(next) {
+                Between::Hardline
+            } else {
+                Between::Softline
+            };
         }
         if (self.needs_to_borrow_next_opening_tag_start_marker(prev)
             && (self.has_prettier_ignore(next)
                 || !x.children.is_empty()
                 || x.is_self_closing
                 || (x.kind == NodeKind::Element && !x.attrs.is_empty())))
-            || (p.kind == NodeKind::Element && p.is_self_closing && self.needs_to_borrow_prev_closing_tag_end_marker(next))
+            || (p.kind == NodeKind::Element
+                && p.is_self_closing
+                && self.needs_to_borrow_prev_closing_tag_end_marker(next))
         {
             return Between::Empty;
         }
         let nested_borrow = self.needs_to_borrow_prev_closing_tag_end_marker(next)
             && self.last_child(prev).is_some_and(|lc| {
                 self.needs_to_borrow_parent_closing_tag_start_marker(lc)
-                    && self.last_child(lc).is_some_and(|llc| self.needs_to_borrow_parent_closing_tag_start_marker(llc))
+                    && self.last_child(lc).is_some_and(|llc| {
+                        self.needs_to_borrow_parent_closing_tag_start_marker(llc)
+                    })
             });
-        if !x.is_leading_space_sensitive || self.prefer_hardline_as_leading_spaces(next) || nested_borrow {
+        if !x.is_leading_space_sensitive
+            || self.prefer_hardline_as_leading_spaces(next)
+            || nested_borrow
+        {
             return Between::Hardline;
         }
         if x.has_leading_spaces {
@@ -288,13 +321,21 @@ impl<'a> Printer<'a> {
         if self.force_break_children(id) {
             let mut out = vec![break_parent()];
             for (i, &c) in children.iter().enumerate() {
-                let between = if i > 0 { self.print_between_segments(children[i - 1], c) } else { Between::Empty };
+                let between = if i > 0 {
+                    self.print_between_segments(children[i - 1], c)
+                } else {
+                    Between::Empty
+                };
                 let lead = if between.is_empty() {
                     Doc::default()
                 } else {
                     concat(vec![
                         between.doc(),
-                        if self.has_empty_line_between_segments(children[i - 1], c) { hardline() } else { Doc::default() },
+                        if self.has_empty_line_between_segments(children[i - 1], c) {
+                            hardline()
+                        } else {
+                            Doc::default()
+                        },
                     ])
                 };
                 out.push(concat(vec![lead, printed[i].clone()]));
@@ -303,7 +344,10 @@ impl<'a> Printer<'a> {
         }
 
         let needs_ids = children.iter().any(|&c| !self.is_text_like(c));
-        let ids: Vec<Option<GroupId>> = children.iter().map(|_| needs_ids.then(|| self.ids.next())).collect();
+        let ids: Vec<Option<GroupId>> = children
+            .iter()
+            .map(|_| needs_ids.then(|| self.ids.next()))
+            .collect();
 
         let mut out = Vec::with_capacity(children.len());
         for (i, &c) in children.iter().enumerate() {
@@ -409,13 +453,18 @@ impl<'a> Printer<'a> {
         };
         let attr_group_id = self.ids.next();
         let print_tag = |content: Doc| -> Doc {
-            let mut parts = vec![group_with(self.print_opening_tag(id), false, Some(attr_group_id)), content];
+            let mut parts = vec![
+                group_with(self.print_opening_tag(id), false, Some(attr_group_id)),
+                content,
+            ];
             parts.push(concat(self.print_closing_tag(id)));
             group(concat(parts))
         };
 
         if n.children.is_empty() {
-            let dangling = n.has_dangling_spaces && n.is_dangling_space_sensitive && !self.should_suppress_dangling_space_at_eof(id);
+            let dangling = n.has_dangling_spaces
+                && n.is_dangling_space_sensitive
+                && !self.should_suppress_dangling_space_at_eof(id);
             return print_tag(if dangling { line() } else { Doc::default() });
         }
 
@@ -428,13 +477,17 @@ impl<'a> Printer<'a> {
             if_break_group(softline(), Doc::default(), Some(attr_group_id))
         } else if first.has_leading_spaces && first.is_leading_space_sensitive {
             line()
-        } else if first.kind == NodeKind::Text && n.is_whitespace_sensitive && n.is_indentation_sensitive {
+        } else if first.kind == NodeKind::Text
+            && n.is_whitespace_sensitive
+            && n.is_indentation_sensitive
+        {
             dedent_to_root(softline())
         } else {
             softline()
         };
 
-        let line_after = self.line_after_children(id, inline_intent, multiline_svg, hug, attr_group_id);
+        let line_after =
+            self.line_after_children(id, inline_intent, multiline_svg, hug, attr_group_id);
 
         let children_doc = concat(vec![line_before, concat(self.print_children(id))]);
         let children_doc = if inline_intent {
@@ -448,13 +501,24 @@ impl<'a> Printer<'a> {
         };
 
         print_tag(concat(vec![
-            if self.force_break_content(id) { break_parent() } else { Doc::default() },
+            if self.force_break_content(id) {
+                break_parent()
+            } else {
+                Doc::default()
+            },
             children_doc,
             line_after,
         ]))
     }
 
-    fn line_after_children(&self, id: Id, inline_intent: bool, multiline_svg: bool, hug: bool, attr_group_id: GroupId) -> Doc {
+    fn line_after_children(
+        &self,
+        id: Id,
+        inline_intent: bool,
+        multiline_svg: bool,
+        hug: bool,
+        attr_group_id: GroupId,
+    ) -> Doc {
         let n = self.n(id);
         let last_id = n.children[n.children.len() - 1];
         let last = self.n(last_id);
@@ -472,10 +536,18 @@ impl<'a> Printer<'a> {
         }
         let borrow = match n.next {
             Some(x) => self.needs_to_borrow_prev_closing_tag_end_marker(x),
-            None => n.parent.is_some_and(|p| self.needs_to_borrow_last_child_closing_tag_end_marker(p)),
+            None => n
+                .parent
+                .is_some_and(|p| self.needs_to_borrow_last_child_closing_tag_end_marker(p)),
         };
         if borrow {
-            return Doc::from(if last.has_trailing_spaces && last.is_trailing_space_sensitive { " " } else { "" });
+            return Doc::from(
+                if last.has_trailing_spaces && last.is_trailing_space_sensitive {
+                    " "
+                } else {
+                    ""
+                },
+            );
         }
         if hug {
             return if_break_group(softline(), Doc::default(), Some(attr_group_id));
@@ -484,14 +556,22 @@ impl<'a> Printer<'a> {
             return line();
         }
         let value = if last.kind == NodeKind::Comment {
-            last.raw_text.strip_prefix("<!--").and_then(|r| r.strip_suffix("-->")).unwrap_or(&last.raw_text)
+            last.raw_text
+                .strip_prefix("<!--")
+                .and_then(|r| r.strip_suffix("-->"))
+                .unwrap_or(&last.raw_text)
         } else {
             &last.raw_text
         };
         if (last.kind == NodeKind::Comment
             || last.kind == NodeKind::BogusComment
-            || (last.kind == NodeKind::Text && n.is_whitespace_sensitive && n.is_indentation_sensitive))
-            && ends_with_indented_newline(value, utils::TAB_WIDTH * self.ancestor_count(id).saturating_sub(1))
+            || (last.kind == NodeKind::Text
+                && n.is_whitespace_sensitive
+                && n.is_indentation_sensitive))
+            && ends_with_indented_newline(
+                value,
+                utils::TAB_WIDTH * self.ancestor_count(id).saturating_sub(1),
+            )
         {
             return Doc::default();
         }
@@ -503,7 +583,9 @@ impl<'a> Printer<'a> {
         if n.kind != NodeKind::Element || n.has_closing_tag || n.is_self_closing {
             return false;
         }
-        if n.open_tag_end_offset > n.start && !has_swallowed_tag_syntax(&self.source()[n.start + 1..n.open_tag_end_offset]) {
+        if n.open_tag_end_offset > n.start
+            && !has_swallowed_tag_syntax(&self.source()[n.start + 1..n.open_tag_end_offset])
+        {
             return false;
         }
         if n.attrs.is_empty() && n.children.len() == 1 {
@@ -517,7 +599,9 @@ impl<'a> Printer<'a> {
 
     fn max_descendant_end(&self, id: Id) -> usize {
         let n = self.n(id);
-        n.children.iter().fold(n.end, |e, &c| e.max(self.max_descendant_end(c)))
+        n.children
+            .iter()
+            .fold(n.end, |e, &c| e.max(self.max_descendant_end(c)))
     }
 
     fn is_recovery_unclosed_element_with_closing_text(&self, id: Id) -> bool {
@@ -548,7 +632,13 @@ impl<'a> Printer<'a> {
         if self.contains_block_directive_descendant(id) {
             return false;
         }
-        if n.tag_name == "svg" && n.children.iter().filter(|&&c| self.kind(c) == NodeKind::Element).count() > 1 {
+        if n.tag_name == "svg"
+            && n.children
+                .iter()
+                .filter(|&&c| self.kind(c) == NodeKind::Element)
+                .count()
+                > 1
+        {
             return false;
         }
         let src = &self.source()[n.start..n.end];
@@ -557,15 +647,22 @@ impl<'a> Printer<'a> {
         }
         let first = self.n(n.children[0]);
         let last = self.n(n.children[n.children.len() - 1]);
-        if has_line_break(&self.source()[n.open_tag_end_offset..first.start.max(n.open_tag_end_offset)]) {
+        if has_line_break(
+            &self.source()[n.open_tag_end_offset..first.start.max(n.open_tag_end_offset)],
+        ) {
             return false;
         }
-        !has_line_break(&self.source()[last.end.min(n.closing_tag_start_offset)..n.closing_tag_start_offset])
+        !has_line_break(
+            &self.source()[last.end.min(n.closing_tag_start_offset)..n.closing_tag_start_offset],
+        )
     }
 
     fn should_suppress_dangling_space_at_eof(&self, id: Id) -> bool {
         let n = self.n(id);
-        n.kind == NodeKind::Element && n.end == self.source().len() && !n.has_closing_tag && !n.is_self_closing
+        n.kind == NodeKind::Element
+            && n.end == self.source().len()
+            && !n.has_closing_tag
+            && !n.is_self_closing
     }
 
     fn should_force_multiline_svg_children(&self, id: Id) -> bool {
@@ -573,7 +670,11 @@ impl<'a> Printer<'a> {
         if n.kind != NodeKind::Element {
             return false;
         }
-        let element_children = n.children.iter().filter(|&&c| self.kind(c) == NodeKind::Element).count();
+        let element_children = n
+            .children
+            .iter()
+            .filter(|&&c| self.kind(c) == NodeKind::Element)
+            .count();
         if n.tag_name == "clippath" {
             return element_children > 0;
         }
@@ -584,7 +685,9 @@ impl<'a> Printer<'a> {
         let mut stack: Vec<Id> = self.n(id).children.clone();
         while let Some(c) = stack.pop() {
             let n = self.n(c);
-            if n.kind == NodeKind::DirectiveBlock || (n.kind == NodeKind::Directive && !n.children.is_empty()) {
+            if n.kind == NodeKind::DirectiveBlock
+                || (n.kind == NodeKind::Directive && !n.children.is_empty())
+            {
                 return true;
             }
             stack.extend(n.children.iter().copied());
@@ -600,7 +703,12 @@ impl<'a> Printer<'a> {
         if n.parent.is_none_or(|p| self.kind(p) != NodeKind::Root) {
             return false;
         }
-        let elements: Vec<Id> = n.children.iter().copied().filter(|&c| self.kind(c) == NodeKind::Element).collect();
+        let elements: Vec<Id> = n
+            .children
+            .iter()
+            .copied()
+            .filter(|&c| self.kind(c) == NodeKind::Element)
+            .collect();
         !elements.is_empty()
             && elements.iter().all(|&c| {
                 let cn = self.n(c);
@@ -615,7 +723,10 @@ impl<'a> Printer<'a> {
             return String::new();
         }
         let mut start = n.open_tag_end_offset;
-        if self.first_child(id).is_some_and(|c| self.needs_to_borrow_parent_opening_tag_end_marker(c)) {
+        if self
+            .first_child(id)
+            .is_some_and(|c| self.needs_to_borrow_parent_opening_tag_end_marker(c))
+        {
             start -= self.opening_tag_end_marker(id).len();
         }
         let mut end = n.closing_tag_start_offset;
@@ -666,5 +777,11 @@ pub(crate) fn format_with(text: &str, print_width: usize, inline_intent_delegate
     let mut printer = Printer::new(&ast);
     printer.inline_intent_delegated = inline_intent_delegated;
     let doc = printer.print_root();
-    crate::doc::print_doc_to_string(&doc, &crate::doc::PrintOptions { print_width, tab_width: utils::TAB_WIDTH })
+    crate::doc::print_doc_to_string(
+        &doc,
+        &crate::doc::PrintOptions {
+            print_width,
+            tab_width: utils::TAB_WIDTH,
+        },
+    )
 }

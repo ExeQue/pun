@@ -20,7 +20,11 @@ pub(crate) fn kind_from_payload(payload: &str) -> Option<IgnoreKind> {
 
 /// `blade` selects `{{-- … --}}`, otherwise `<!-- … -->`.
 pub(crate) fn comment_kind(text: &str, blade: bool) -> Option<IgnoreKind> {
-    let (open, close) = if blade { ("{{--", "--}}") } else { ("<!--", "-->") };
+    let (open, close) = if blade {
+        ("{{--", "--}}")
+    } else {
+        ("<!--", "-->")
+    };
     let inner = text.strip_prefix(open)?.strip_suffix(close)?;
     kind_from_payload(inner)
 }

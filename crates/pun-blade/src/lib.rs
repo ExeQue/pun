@@ -1,8 +1,8 @@
 //! Native Blade formatter: a Rust port of prettier-plugin-blade, used when `[format] blade = "native"`.
 
 mod ast;
-mod doc;
 mod directives;
+mod doc;
 mod frontend;
 mod frontmatter;
 mod html_data;
@@ -52,7 +52,13 @@ pub mod debug {
                     .collect();
                 directives.train(&names);
                 let nodes = crate::tree::TreeBuilder::new(&tokens, &content, &directives).build();
-                let n = |v: usize| if v == crate::tree::NONE { "-1".to_owned() } else { v.to_string() };
+                let n = |v: usize| {
+                    if v == crate::tree::NONE {
+                        "-1".to_owned()
+                    } else {
+                        v.to_string()
+                    }
+                };
                 for (i, f) in nodes.iter().enumerate() {
                     out.push(format!(
                         "{i} k{:?} p{} fc{} lc{} ns{} ts{} tc{} g{} d{}",
@@ -91,7 +97,13 @@ pub mod debug {
         ));
         for &a in &n.attrs {
             let an = ast.node(a);
-            out.push(format!("{}@{:?} {}-{}", "  ".repeat(depth + 1), an.kind, an.start, an.end));
+            out.push(format!(
+                "{}@{:?} {}-{}",
+                "  ".repeat(depth + 1),
+                an.kind,
+                an.start,
+                an.end
+            ));
         }
         for &c in &n.children {
             dump_ast(ast, c, depth + 1, out);

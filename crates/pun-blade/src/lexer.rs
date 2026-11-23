@@ -153,7 +153,12 @@ pub(crate) struct IgnoreRangeCollector<'a> {
 
 impl<'a> IgnoreRangeCollector<'a> {
     pub(crate) fn new(source: &'a str) -> Self {
-        IgnoreRangeCollector { source, ranges: Vec::new(), depth: 0, outer_start: None }
+        IgnoreRangeCollector {
+            source,
+            ranges: Vec::new(),
+            depth: 0,
+            outer_start: None,
+        }
     }
 
     fn handle_comment(
@@ -197,7 +202,11 @@ impl<'a> IgnoreRangeCollector<'a> {
         if self.depth != 0 {
             return;
         }
-        self.ranges.push(IgnoreRangeRegion { start: self.outer_start.unwrap_or(start), end, resume });
+        self.ranges.push(IgnoreRangeRegion {
+            start: self.outer_start.unwrap_or(start),
+            end,
+            resume,
+        });
         self.outer_start = None;
     }
 
@@ -205,7 +214,11 @@ impl<'a> IgnoreRangeCollector<'a> {
         if self.depth > 0
             && let Some(start) = self.outer_start
         {
-            self.ranges.push(IgnoreRangeRegion { start, end: eof, resume });
+            self.ranges.push(IgnoreRangeRegion {
+                start,
+                end: eof,
+                resume,
+            });
         }
         self.ranges
     }
@@ -216,7 +229,10 @@ pub(crate) fn collect_ignore_ranges(source: &str) -> Vec<IgnoreRangeRegion> {
     let mut lexer = Lexer::new(source, &directives, &[]);
     lexer.collector = Some(IgnoreRangeCollector::new(source));
     lexer.run();
-    let collector = lexer.collector.take().unwrap_or_else(|| IgnoreRangeCollector::new(source));
+    let collector = lexer
+        .collector
+        .take()
+        .unwrap_or_else(|| IgnoreRangeCollector::new(source));
     collector.finish(ResumeState::default(), source.len())
 }
 
@@ -253,12 +269,20 @@ pub(crate) struct Lexer<'a> {
     directives: &'a Directives,
 }
 
-pub(crate) fn tokenize(source: &str, directives: &Directives, ignore_ranges: &[IgnoreRangeRegion]) -> Vec<Token> {
+pub(crate) fn tokenize(
+    source: &str,
+    directives: &Directives,
+    ignore_ranges: &[IgnoreRangeRegion],
+) -> Vec<Token> {
     Lexer::new(source, directives, ignore_ranges).tokenize()
 }
 
 impl<'a> Lexer<'a> {
-    pub(crate) fn new(source: &'a str, directives: &'a Directives, ignore_ranges: &'a [IgnoreRangeRegion]) -> Self {
+    pub(crate) fn new(
+        source: &'a str,
+        directives: &'a Directives,
+        ignore_ranges: &'a [IgnoreRangeRegion],
+    ) -> Self {
         Lexer {
             src: source.as_bytes(),
             text: source,
@@ -291,13 +315,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn at(&self, p: usize) -> u8 {
-        self.src[p]
-    }
-
     fn peek_ahead(&self, n: usize) -> Option<u8> {
         let p = self.pos + n;
-        if p < self.len { Some(self.src[p]) } else { None }
+        if p < self.len {
+            Some(self.src[p])
+        } else {
+            None
+        }
     }
 
     fn lower_slice(&self, a: usize, b: usize) -> String {
@@ -409,20 +433,40 @@ impl<'a> Lexer<'a> {
     }
 
     fn next_ignore_range_start(&self) -> Option<usize> {
-        self.ignore_ranges.get(self.next_ignore_range_index).map(|r| r.start)
+        self.ignore_ranges
+            .get(self.next_ignore_range_index)
+            .map(|r| r.start)
     }
 
-    fn record_blade_comment(&mut self, start: usize, end: usize, origin: State, tag_start: Option<usize>) {
+    fn record_blade_comment(
+        &mut self,
+        start: usize,
+        end: usize,
+        origin: State,
+        tag_start: Option<usize>,
+    ) {
         if self.collector.is_some() {
             let snap = self.snapshot();
-            self.collector.as_mut().unwrap().handle_comment(true, start, end, origin, tag_start, snap);
+            let Some(collector) = self.collector.as_mut() else {
+                return;
+            };
+            collector.handle_comment(true, start, end, origin, tag_start, snap);
         }
     }
 
-    fn record_html_comment(&mut self, start: usize, end: usize, origin: State, tag_start: Option<usize>) {
+    fn record_html_comment(
+        &mut self,
+        start: usize,
+        end: usize,
+        origin: State,
+        tag_start: Option<usize>,
+    ) {
         if self.collector.is_some() {
             let snap = self.snapshot();
-            self.collector.as_mut().unwrap().handle_comment(false, start, end, origin, tag_start, snap);
+            let Some(collector) = self.collector.as_mut() else {
+                return;
+            };
+            collector.handle_comment(false, start, end, origin, tag_start, snap);
         }
     }
 
@@ -495,7 +539,10 @@ impl<'a> Lexer<'a> {
                 self.skip_to_line_end_inclusive();
                 continue;
             }
-            if ch == b'<' && self.pos + 2 < self.len && self.src[self.pos + 1] == b'<' && self.src[self.pos + 2] == b'<'
+            if ch == b'<'
+                && self.pos + 2 < self.len
+                && self.src[self.pos + 1] == b'<'
+                && self.src[self.pos + 2] == b'<'
             {
                 self.pos += 3;
                 skip_heredoc(self.src, &mut self.pos, self.len);
@@ -503,7 +550,9 @@ impl<'a> Lexer<'a> {
             }
             if ch == b'@' && !self.verbatim && !self.php_tag {
                 let mut name_end = self.pos + 1;
-                while name_end < self.len && (is_alnum(self.src[name_end]) || self.src[name_end] == b'_') {
+                while name_end < self.len
+                    && (is_alnum(self.src[name_end]) || self.src[name_end] == b'_')
+                {
                     name_end += 1;
                 }
                 if name_end > self.pos + 1 {
@@ -536,7 +585,9 @@ impl<'a> Lexer<'a> {
         }
         let byte = self.src[self.pos];
         let p1 = self.peek_ahead(1);
-        if byte == b'{' && (p1 == Some(b'{') || (p1 == Some(b'!') && self.peek_ahead(2) == Some(b'!'))) {
+        if byte == b'{'
+            && (p1 == Some(b'{') || (p1 == Some(b'!') && self.peek_ahead(2) == Some(b'!')))
+        {
             return true;
         }
         if byte == b'@' && self.pos + 1 < self.len && is_alpha(self.src[self.pos + 1]) {
@@ -557,7 +608,12 @@ impl<'a> Lexer<'a> {
 
     fn next_interesting_tsx(&self, from: usize) -> usize {
         (from..self.len)
-            .find(|&i| matches!(self.src[i], b'<' | b'>' | b'"' | b'\'' | b'`' | b'@' | b'\n' | b'\r'))
+            .find(|&i| {
+                matches!(
+                    self.src[i],
+                    b'<' | b'>' | b'"' | b'\'' | b'`' | b'@' | b'\n' | b'\r'
+                )
+            })
             .unwrap_or(self.len)
     }
 
@@ -658,7 +714,10 @@ impl<'a> Lexer<'a> {
                     }
                     self.scan_echo();
                     return;
-                } else if next1 == Some(b'!') && self.pos + 2 < self.len && self.src[self.pos + 2] == b'!' {
+                } else if next1 == Some(b'!')
+                    && self.pos + 2 < self.len
+                    && self.src[self.pos + 2] == b'!'
+                {
                     if start < self.pos {
                         self.emit(TokenType::Text, start, self.pos);
                     }
@@ -727,7 +786,10 @@ impl<'a> Lexer<'a> {
                     self.scan_doctype();
                     return;
                 }
-                if self.pos + 3 <= self.len && self.src[self.pos + 1] == b'!' && self.src[self.pos + 2] == b'[' {
+                if self.pos + 3 <= self.len
+                    && self.src[self.pos + 1] == b'!'
+                    && self.src[self.pos + 2] == b'['
+                {
                     if start < self.pos {
                         self.emit(TokenType::Text, start, self.pos);
                     }
@@ -767,7 +829,10 @@ impl<'a> Lexer<'a> {
                             self.emit(TokenType::BogusComment, bogus_start, self.pos);
                             return;
                         }
-                        if self.pos + 1 < self.len && self.src[self.pos] == b'-' && self.src[self.pos + 1] == b'>' {
+                        if self.pos + 1 < self.len
+                            && self.src[self.pos] == b'-'
+                            && self.src[self.pos + 1] == b'>'
+                        {
                             self.pos += 2;
                             self.emit(TokenType::BogusComment, bogus_start, self.pos);
                             return;
@@ -780,10 +845,19 @@ impl<'a> Lexer<'a> {
                 if self.pos + 1 < self.len && self.src[self.pos + 1] == b'?' {
                     let scan_start = self.pos;
                     let tokens_before = self.tokens.len();
-                    if self.try_scan_decl() || self.try_scan_processing_instruction() || self.try_scan_bogus_comment() {
+                    if self.try_scan_decl()
+                        || self.try_scan_processing_instruction()
+                        || self.try_scan_bogus_comment()
+                    {
                         if start < scan_start {
-                            self.tokens
-                                .insert(tokens_before, Token { kind: TokenType::Text, start, end: scan_start });
+                            self.tokens.insert(
+                                tokens_before,
+                                Token {
+                                    kind: TokenType::Text,
+                                    start,
+                                    end: scan_start,
+                                },
+                            );
                         }
                         return;
                     }
@@ -805,8 +879,14 @@ impl<'a> Lexer<'a> {
                     let tokens_before = self.tokens.len();
                     if self.try_scan_bogus_comment() {
                         if start < scan_start {
-                            self.tokens
-                                .insert(tokens_before, Token { kind: TokenType::Text, start, end: scan_start });
+                            self.tokens.insert(
+                                tokens_before,
+                                Token {
+                                    kind: TokenType::Text,
+                                    start,
+                                    end: scan_start,
+                                },
+                            );
                         }
                         return;
                     }
@@ -814,7 +894,8 @@ impl<'a> Lexer<'a> {
                     continue;
                 }
                 let next = self.peek_ahead(1);
-                let valid = next.is_some_and(|c| is_alpha(c) || matches!(c, b'/' | b'_' | b'>' | b'{' | b'@'));
+                let valid = next
+                    .is_some_and(|c| is_alpha(c) || matches!(c, b'/' | b'_' | b'>' | b'{' | b'@'));
                 if valid {
                     if start < self.pos {
                         self.emit(TokenType::Text, start, self.pos);
@@ -852,7 +933,10 @@ impl<'a> Lexer<'a> {
 
     fn scan_comment(&mut self) {
         let start = self.pos;
-        let origin = self.pending_html_comment_origin.take().unwrap_or(State::Data);
+        let origin = self
+            .pending_html_comment_origin
+            .take()
+            .unwrap_or(State::Data);
         let tag_start = self.pending_html_comment_tag_start.take();
         self.emit(TokenType::CommentStart, start, start + 4);
         self.pos += 4;
@@ -928,7 +1012,10 @@ impl<'a> Lexer<'a> {
     fn scan_blade_comment_content(&mut self) {
         let start = self.pos;
         let comment_start = start - 4;
-        let origin = self.pending_blade_comment_origin.take().unwrap_or(self.return_state);
+        let origin = self
+            .pending_blade_comment_origin
+            .take()
+            .unwrap_or(self.return_state);
         let tag_start = self.pending_blade_comment_tag_start.take();
         if self.pos < self.len {
             match find(self.src, b"--}}", self.pos) {
@@ -1111,7 +1198,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn try_scan_php_tag(&mut self) -> bool {
-        if self.pos + 1 >= self.len || self.src[self.pos] != b'<' || self.src[self.pos + 1] != b'?' {
+        if self.pos + 1 >= self.len || self.src[self.pos] != b'<' || self.src[self.pos + 1] != b'?'
+        {
             return false;
         }
         let start = self.pos;
@@ -1150,7 +1238,10 @@ impl<'a> Lexer<'a> {
                 self.pos += 1;
                 break;
             }
-            if self.pos + 2 <= self.len && self.src[self.pos] == b'?' && self.src[self.pos + 1] == b'>' {
+            if self.pos + 2 <= self.len
+                && self.src[self.pos] == b'?'
+                && self.src[self.pos + 1] == b'>'
+            {
                 break;
             }
             self.pos += 1;
@@ -1166,7 +1257,10 @@ impl<'a> Lexer<'a> {
                 }
                 return;
             }
-            if self.pos + 1 < self.len && self.src[self.pos] == b'?' && self.src[self.pos + 1] == b'>' {
+            if self.pos + 1 < self.len
+                && self.src[self.pos] == b'?'
+                && self.src[self.pos + 1] == b'>'
+            {
                 if self.pos > start {
                     self.emit(TokenType::PhpContent, start, self.pos);
                 }
@@ -1335,7 +1429,8 @@ impl<'a> Lexer<'a> {
         }
         let ch = self.src[self.pos];
         if ch == b'<' {
-            if self.pos + 1 < self.len && self.src[self.pos + 1] == b'?' && self.try_scan_php_tag() {
+            if self.pos + 1 < self.len && self.src[self.pos + 1] == b'?' && self.try_scan_php_tag()
+            {
                 self.state = State::TagName;
                 self.continued_tag_name = true;
                 return;
@@ -1382,7 +1477,9 @@ impl<'a> Lexer<'a> {
         while self.pos < self.len && is_space(self.src[self.pos]) {
             self.pos += 1;
         }
-        if self.is_closing_tag && (self.pos >= self.len || !matches!(self.src[self.pos], b'>' | b'/')) {
+        if self.is_closing_tag
+            && (self.pos >= self.len || !matches!(self.src[self.pos], b'>' | b'/'))
+        {
             self.emit(TokenType::SyntheticClose, start, start);
             self.pos = start;
             self.state = State::Data;
@@ -1404,7 +1501,9 @@ impl<'a> Lexer<'a> {
             if temp > name_start {
                 let name_lower = self.lower_slice(name_start, temp);
                 if self.is_at_attribute_candidate(&name_lower, temp) {
-                } else if self.directives.accepts_all() || self.directives.is_directive_lower(&name_lower) {
+                } else if self.directives.accepts_all()
+                    || self.directives.is_directive_lower(&name_lower)
+                {
                     self.return_state = State::BeforeAttrName;
                     self.scan_directive();
                     return;
@@ -1412,7 +1511,11 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        if ch == b'<' && self.pos + 1 < self.len && self.src[self.pos + 1] == b'?' && self.try_scan_php_tag() {
+        if ch == b'<'
+            && self.pos + 1 < self.len
+            && self.src[self.pos + 1] == b'?'
+            && self.try_scan_php_tag()
+        {
             self.state = State::BeforeAttrName;
             return;
         }
@@ -1440,7 +1543,12 @@ impl<'a> Lexer<'a> {
             return;
         }
 
-        if ch == b'{' && !self.verbatim && !self.php_block && !self.php_tag && self.try_scan_jsx_shorthand_attribute() {
+        if ch == b'{'
+            && !self.verbatim
+            && !self.php_block
+            && !self.php_tag
+            && self.try_scan_jsx_shorthand_attribute()
+        {
             return;
         }
 
@@ -1457,7 +1565,10 @@ impl<'a> Lexer<'a> {
                 self.scan_echo();
                 if self.pos < self.len {
                     let next = self.src[self.pos];
-                    if !matches!(next, b' ' | b'\t' | b'\n' | b'\r' | b'>' | b'/' | b'=' | b'<') {
+                    if !matches!(
+                        next,
+                        b' ' | b'\t' | b'\n' | b'\r' | b'>' | b'/' | b'=' | b'<'
+                    ) {
                         self.state = State::AttrName;
                         return;
                     }
@@ -1470,7 +1581,11 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        if self.in_xml_declaration && ch == b'?' && self.pos + 1 < self.len && self.src[self.pos + 1] == b'>' {
+        if self.in_xml_declaration
+            && ch == b'?'
+            && self.pos + 1 < self.len
+            && self.src[self.pos + 1] == b'>'
+        {
             self.emit(TokenType::DeclEnd, self.pos, self.pos + 2);
             self.pos += 2;
             self.in_xml_declaration = false;
@@ -1571,7 +1686,8 @@ impl<'a> Lexer<'a> {
                     known = if self.is_at_attribute_candidate(&name_lower, temp) {
                         false
                     } else {
-                        self.directives.accepts_all() || self.directives.is_directive_lower(&name_lower)
+                        self.directives.accepts_all()
+                            || self.directives.is_directive_lower(&name_lower)
                     };
                 }
                 if known {
@@ -1589,7 +1705,20 @@ impl<'a> Lexer<'a> {
                 continue;
             }
             if is_alnum(byte)
-                || matches!(byte, b'-' | b':' | b'_' | b'$' | b'@' | b'.' | b'[' | b']' | b'(' | b')' | b'*' | b'#')
+                || matches!(
+                    byte,
+                    b'-' | b':'
+                        | b'_'
+                        | b'$'
+                        | b'@'
+                        | b'.'
+                        | b'['
+                        | b']'
+                        | b'('
+                        | b')'
+                        | b'*'
+                        | b'#'
+                )
             {
                 self.pos += 1;
             } else {
@@ -1608,7 +1737,11 @@ impl<'a> Lexer<'a> {
             self.emit(TokenType::Equals, self.pos, self.pos + 1);
             self.pos += 1;
             self.state = State::BeforeAttrValue;
-        } else if self.in_xml_declaration && ch == b'?' && self.pos + 1 < self.len && self.src[self.pos + 1] == b'>' {
+        } else if self.in_xml_declaration
+            && ch == b'?'
+            && self.pos + 1 < self.len
+            && self.src[self.pos + 1] == b'>'
+        {
             self.emit(TokenType::DeclEnd, self.pos, self.pos + 2);
             self.pos += 2;
             self.in_xml_declaration = false;
@@ -1653,7 +1786,11 @@ impl<'a> Lexer<'a> {
             self.emit(TokenType::Equals, self.pos, self.pos + 1);
             self.pos += 1;
             self.state = State::BeforeAttrValue;
-        } else if self.in_xml_declaration && ch == b'?' && self.pos + 1 < self.len && self.src[self.pos + 1] == b'>' {
+        } else if self.in_xml_declaration
+            && ch == b'?'
+            && self.pos + 1 < self.len
+            && self.src[self.pos + 1] == b'>'
+        {
             self.emit(TokenType::DeclEnd, self.pos, self.pos + 2);
             self.pos += 2;
             self.in_xml_declaration = false;
@@ -1716,7 +1853,11 @@ impl<'a> Lexer<'a> {
         }
         if ch == b'"' || ch == b'\'' {
             self.state = State::AttrValueQuoted;
-        } else if self.in_xml_declaration && ch == b'?' && self.pos + 1 < self.len && self.src[self.pos + 1] == b'>' {
+        } else if self.in_xml_declaration
+            && ch == b'?'
+            && self.pos + 1 < self.len
+            && self.src[self.pos + 1] == b'>'
+        {
             self.emit(TokenType::DeclEnd, self.pos, self.pos + 2);
             self.pos += 2;
             self.in_xml_declaration = false;
@@ -1833,7 +1974,11 @@ impl<'a> Lexer<'a> {
                 break;
             }
             let byte = self.src[self.pos];
-            if self.in_xml_declaration && byte == b'?' && self.pos + 1 < self.len && self.src[self.pos + 1] == b'>' {
+            if self.in_xml_declaration
+                && byte == b'?'
+                && self.pos + 1 < self.len
+                && self.src[self.pos + 1] == b'>'
+            {
                 break;
             }
             if is_space(byte) || byte == b'>' {
@@ -1857,7 +2002,10 @@ impl<'a> Lexer<'a> {
                     }
                     self.return_state = State::AttrValueUnquoted;
                     if self.peek_ahead(2) == Some(b'-') && self.peek_ahead(3) == Some(b'-') {
-                        self.begin_blade_comment_capture(State::AttrValueUnquoted, self.current_tag_start);
+                        self.begin_blade_comment_capture(
+                            State::AttrValueUnquoted,
+                            self.current_tag_start,
+                        );
                         self.scan_blade_comment_start();
                         self.scan_blade_comment_content();
                     } else {
@@ -2003,7 +2151,10 @@ impl<'a> Lexer<'a> {
             } else if byte == b'`' {
                 self.pos += 1;
                 skip_backtick_string(self.src, &mut self.pos, self.len);
-            } else if byte == b'<' && self.peek_ahead(1) == Some(b'<') && self.peek_ahead(2) == Some(b'<') {
+            } else if byte == b'<'
+                && self.peek_ahead(1) == Some(b'<')
+                && self.peek_ahead(2) == Some(b'<')
+            {
                 self.pos += 3;
                 skip_heredoc(self.src, &mut self.pos, self.len);
             } else if byte == b'/' && self.peek_ahead(1) == Some(b'*') {
@@ -2043,7 +2194,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_endphp_at(&self, pos: usize) -> bool {
-        if pos + 7 > self.len || self.src[pos] != b'@' || !self.has_ascii_word_at(pos + 1, "endphp") {
+        if pos + 7 > self.len || self.src[pos] != b'@' || !self.has_ascii_word_at(pos + 1, "endphp")
+        {
             return false;
         }
         if pos + 7 < self.len {
@@ -2055,7 +2207,13 @@ impl<'a> Lexer<'a> {
         true
     }
 
-    fn scan_echo_like(&mut self, open: usize, start_kind: TokenType, end_kind: TokenType, close: &[u8]) {
+    fn scan_echo_like(
+        &mut self,
+        open: usize,
+        start_kind: TokenType,
+        end_kind: TokenType,
+        close: &[u8],
+    ) {
         let start = self.pos;
         self.emit(start_kind, start, start + open);
         self.pos += open;
@@ -2068,7 +2226,10 @@ impl<'a> Lexer<'a> {
             } else if byte == b'`' {
                 self.pos += 1;
                 skip_backtick_string(self.src, &mut self.pos, self.len);
-            } else if byte == b'<' && self.peek_ahead(1) == Some(b'<') && self.peek_ahead(2) == Some(b'<') {
+            } else if byte == b'<'
+                && self.peek_ahead(1) == Some(b'<')
+                && self.peek_ahead(2) == Some(b'<')
+            {
                 self.pos += 3;
                 skip_heredoc(self.src, &mut self.pos, self.len);
             } else if byte == b'/' && self.peek_ahead(1) == Some(b'*') {
@@ -2112,8 +2273,16 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan_echo(&mut self) {
-        if self.peek_ahead(0) == Some(b'{') && self.peek_ahead(1) == Some(b'{') && self.peek_ahead(2) == Some(b'{') {
-            self.scan_echo_like(3, TokenType::TripleEchoStart, TokenType::TripleEchoEnd, b"}}}");
+        if self.peek_ahead(0) == Some(b'{')
+            && self.peek_ahead(1) == Some(b'{')
+            && self.peek_ahead(2) == Some(b'{')
+        {
+            self.scan_echo_like(
+                3,
+                TokenType::TripleEchoStart,
+                TokenType::TripleEchoEnd,
+                b"}}}",
+            );
             return;
         }
         self.scan_echo_like(2, TokenType::EchoStart, TokenType::EchoEnd, b"}}");
@@ -2151,7 +2320,16 @@ impl<'a> Lexer<'a> {
             }
             fast += 1;
         }
-        self.scan_balanced_js_like(start, TokenType::JsxShorthandAttribute, original, 1, 0, false, true, true)
+        self.scan_balanced_js_like(
+            start,
+            TokenType::JsxShorthandAttribute,
+            original,
+            1,
+            0,
+            false,
+            true,
+            true,
+        )
     }
 
     fn scan_jsx_attribute_value(&mut self) -> bool {
@@ -2180,7 +2358,16 @@ impl<'a> Lexer<'a> {
                 fast += 1;
             }
         }
-        self.scan_balanced_js_like(start, TokenType::JsxAttributeValue, original, brace_depth, paren_depth, true, true, false)
+        self.scan_balanced_js_like(
+            start,
+            TokenType::JsxAttributeValue,
+            original,
+            brace_depth,
+            paren_depth,
+            true,
+            true,
+            false,
+        )
     }
 
     fn try_scan_tsx_generic_type(&mut self) -> bool {
@@ -2195,7 +2382,11 @@ impl<'a> Lexer<'a> {
         self.pos += 1;
         if self.pos < self.len {
             let nb = self.src[self.pos];
-            let pascal = self.current_tag_name.as_bytes().first().is_some_and(u8::is_ascii_uppercase);
+            let pascal = self
+                .current_tag_name
+                .as_bytes()
+                .first()
+                .is_some_and(u8::is_ascii_uppercase);
             let mut looks = nb == b'{' || nb.is_ascii_uppercase() || nb == b'_';
             if pascal {
                 looks = looks
@@ -2321,7 +2512,10 @@ impl<'a> Lexer<'a> {
                                 let ch = self.src[self.pos];
                                 if ch == b'\n' || ch == b'\r' {
                                     self.pos += 1;
-                                    if ch == b'\r' && self.pos < self.len && self.src[self.pos] == b'\n' {
+                                    if ch == b'\r'
+                                        && self.pos < self.len
+                                        && self.src[self.pos] == b'\n'
+                                    {
                                         self.pos += 1;
                                     }
                                     break;
@@ -2358,7 +2552,11 @@ impl<'a> Lexer<'a> {
         while self.pos < self.len {
             if self.next_ignore_range_start() == Some(self.pos) {
                 if start < self.pos {
-                    let kind = if self.php_block { TokenType::PhpBlock } else { TokenType::Text };
+                    let kind = if self.php_block {
+                        TokenType::PhpBlock
+                    } else {
+                        TokenType::Text
+                    };
                     self.emit(kind, start, self.pos);
                 }
                 return;
@@ -2433,7 +2631,10 @@ impl<'a> Lexer<'a> {
                     }
                     self.scan_echo();
                     return;
-                } else if next1 == Some(b'!') && self.pos + 2 < self.len && self.src[self.pos + 2] == b'!' {
+                } else if next1 == Some(b'!')
+                    && self.pos + 2 < self.len
+                    && self.src[self.pos + 2] == b'!'
+                {
                     if start < self.pos {
                         self.emit(TokenType::Text, start, self.pos);
                     }
@@ -2534,7 +2735,11 @@ impl<'a> Lexer<'a> {
             self.pos += 1;
         }
         if start < self.pos {
-            let kind = if self.php_block { TokenType::PhpBlock } else { TokenType::Text };
+            let kind = if self.php_block {
+                TokenType::PhpBlock
+            } else {
+                TokenType::Text
+            };
             self.emit(kind, start, self.pos);
         }
         self.rawtext_tag_name.clear();

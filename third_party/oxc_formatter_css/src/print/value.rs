@@ -651,7 +651,10 @@ pub(super) fn write_declaration_value<'a>(
         f.context().comments().iter_before(value_end).any(|c| c.span.start >= value_start);
     let force_hard_line = !ctx.decl_prop.is_some_and(|p| p.starts_with("--"))
         && (groups.iter().any(|(g, _)| comma_group_is_multi(g))
-            || groups.iter().skip(1).any(|(g, _)| comma_group_is_signed(g, f.context().source_text().as_str()))
+            || groups
+                .iter()
+                .skip(1)
+                .any(|(g, _)| comma_group_is_signed(g, f.context().source_text().as_str()))
             || has_comments);
 
     write_value_groups(&groups, ctx, force_hard_line, false, f);
