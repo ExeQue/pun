@@ -1,19 +1,19 @@
 ---
 title: Presets
-description: Format presets, lint sets, and analyse presets.
+description: Pick the rules each command runs with format presets, lint sets, and analyse presets.
 ---
 
-Each command picks its rules on its own. There is no top-level preset.
+Each command picks its rules on its own. `[format] preset`, `[lint] sets`, and `[analyse] preset` set them. There is no top-level preset. To see the full rule list of one choice, open its page under [rule presets](/docs/rules/presets) or [lint sets](/docs/rules/sets).
 
 ## Format presets
 
 | Preset | Rules |
 | --- | --- |
-| `laravel` | Pint's default rules. The default |
-| `psr12` | PSR-12 rules |
+| `laravel` | Pint's default rules. The default. |
+| `psr12` | The PSR-12 rules |
 | `empty` | Only the rules you turn on |
 
-`[format.rules]` overrides the preset. Pint's `per` is not a Pun preset. `pun migrate` expands it into rules over `empty`. Pun has no `symfony` preset, and `pun migrate` stops with an error on a `pint.json` that uses it.
+`[format.rules]` overrides the preset. Pint's `per` is not a Pun preset: `pun migrate` expands it into rules over `empty`. Pun has no `symfony` preset, and `pun migrate` stops with an error on a `pint.json` that uses it.
 
 ## Lint sets
 
@@ -26,8 +26,8 @@ Sets turn on groups of lint rules at `"error"`. A rule can belong to several set
 | `code-quality` | Simpler equivalents and likely bugs |
 | `types` | Missing type declarations and PHPDoc types |
 | `early-return` | Early returns and continues instead of nesting |
-| `privatization` | Narrower visibility, final classes and constants |
-| `naming` | Names that match their types. Currently empty |
+| `privatization` | Narrower visibility, and final classes and constants |
+| `naming` | Names that match their types. It holds no rules today |
 | `coding-style` | One consistent way to write the same thing |
 
 ```toml pun.toml
@@ -35,19 +35,19 @@ Sets turn on groups of lint rules at `"error"`. A rule can belong to several set
 sets = ["dead-code", "modernize"]
 ```
 
-Laravel, Pest, and PHPUnit rules also need their [extension](/docs/configuration/pun-toml#extensions). To turn on a rule outside your sets, name the rule or its group. See [`[lint]`](/docs/configuration/pun-toml#lint) for precedence and path overrides.
+Laravel, Pest, and PHPUnit rules also need their [extension](/docs/configuration/pun-toml#extensions). To turn on a rule outside your sets, name the rule or its group. For precedence and path overrides, see [`[lint]`](/docs/configuration/pun-toml#lint).
 
 ## Analyse presets
 
-Each preset includes the ones above it.
+Each preset includes the ones above it in this table.
 
 | Preset | PHPStan levels | Adds |
 | --- | --- | --- |
-| `basic` | 0–1 | Unknown classes, functions and methods on `$this`, wrong argument counts, undefined variables |
-| `essential` | 2–3 | Unknown methods and properties on every expression, PHPDoc, return and property types |
-| `recommended` | 4–5 | Dead code, constant conditions, argument types. The default |
-| `strict` | 6–8 | Missing typehints, union types, and nullables |
-| `max` | 9–10 | Explicit and implicit `mixed` |
+| `basic` | 0 and 1 | Unknown classes, functions, and methods on `$this`, wrong argument counts, and undefined variables |
+| `essential` | 2 and 3 | Unknown methods and properties on every expression, and PHPDoc, return, and property types |
+| `recommended` | 4 and 5 | Dead code, constant conditions, and argument types. The default. |
+| `strict` | 6 to 8 | Missing typehints, union types, and nullable values |
+| `max` | 9 and 10 | Explicit and implicit `mixed` |
 
 ```toml pun.toml
 [analyse]

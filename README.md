@@ -8,9 +8,9 @@
 
 ## Introduction
 
-Pun is an ultrafast, unified toolchain for PHP 8.4+ projects. One native binary formats, lints and analyses your code and installs your Composer packages from `composer.json` and `composer.lock`, with its own settings in a single `pun.toml`. It formats code byte for byte like [Laravel Pint](https://github.com/laravel/pint), and `pun migrate` converts your existing Pint, PHP-CS-Fixer, Rector and PHPStan configs.
+Pun is one native binary for projects that target PHP 8.4 or later. It formats, lints, and analyses your code, and installs your Composer packages from `composer.json` and `composer.lock`. Its own settings live in one `pun.toml`. It formats code byte for byte like [Laravel Pint](https://github.com/laravel/pint), and `pun migrate` converts your existing Pint, PHP-CS-Fixer, Rector, and PHPStan configs.
 
-Install the binary for Linux or macOS (x86_64 or arm64):
+Install the binary on Linux or macOS (x86_64 or arm64):
 
 ```sh
 curl -fsSL https://pun.laravel.cloud/install | sh
@@ -27,15 +27,15 @@ vendor/bin/pun check --fix
 
 ## Official Documentation
 
-Documentation for Pun can be found on the [Pun website](https://pun.laravel.cloud/docs).
+The documentation is on the [Pun website](https://pun.laravel.cloud/docs).
 
 ## Contributing
 
-Thank you for considering contributing to Pun! Read [AGENTS.md](AGENTS.md) for how to build Pun (Rust 1.100 or later), the checks to run, and the upstream tools it is tested against. If Pun is missing a rule you rely on, please open an issue or send a pull request.
+Thank you for considering contributing to Pun! [AGENTS.md](AGENTS.md) explains how to build Pun (Rust 1.100 or later), which checks to run, and which upstream tools Pun is tested against. If Pun is missing a rule you rely on, open an issue or send a pull request.
 
 ## Security Vulnerabilities
 
-Please review [our security policy](https://github.com/shipfastlabs/pun/security/policy) on how to report security vulnerabilities.
+To report a security vulnerability, follow [our security policy](https://github.com/shipfastlabs/pun/security/policy).
 
 ## Credits
 

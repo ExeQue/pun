@@ -3,7 +3,7 @@ title: pun analyse
 description: Report type errors without editing files.
 ---
 
-`pun analyse` (alias `pun analyze`) reports type errors. It doesn't cover every PHPStan or Larastan check yet. The [rule reference](/docs/rules/analyse) lists the implemented ones.
+`pun analyse` (alias `pun analyze`) reports type errors across your project. It never edits files. It doesn't cover every PHPStan or Larastan check yet. The [rule reference](/docs/rules/analyse) lists the implemented ones.
 
 ```bash
 pun analyse
@@ -21,27 +21,61 @@ paths = ["app", "tests"]
 "types/missing-return-type" = "off"
 ```
 
-The five [analyse presets](/docs/configuration/presets#analyse-presets) group PHPStan levels. A rule takes `"on"` or `"off"`. Pun analyses at the highest PHPStan level among the enabled core rules and the preset's type switches.
+The five [analyse presets](/docs/configuration/presets#analyse-presets) group PHPStan levels. A rule takes `"on"` or `"off"`. Pun analyses at the highest PHPStan level of the enabled core rules and the preset's type switches.
 
-`stubs`, `[[analyse.ignore]]`, and the rule options `pun migrate` writes work like PHPStan's `stubFiles`, `ignoreErrors`, and parameters. An ignore entry that matches nothing is an error, unless it sets `report-unmatched = false`. When you pass files on the command line, entries for other files and entries without a path aren't reported.
-
-Larastan's rules are on when the `laravel` [extension](/docs/configuration/pun-toml#extensions) is on, unless the lock pins a Laravel that Larastan 3 doesn't support. Larastan 3 supports 11.44.2 and later 11.x, 12.4.1 and later 12.x, and 13.x.
-
-Pun reads model properties from the migrations in `database/migrations` and the schema dumps in `database/schema`, as Larastan does. The `database-migrations-path`, `squashed-migrations-path`, `disable-migration-scan`, and `disable-schema-scan` options that `pun migrate` writes from Larastan's parameters change those directories. Pun doesn't support `enableMigrationCache`. Schema dumps are read with Larastan's MySQL-style parser.
-
-Larastan boots your app to learn its macros. Pun doesn't run PHP, so it reads the `X::macro('name', ...)` and `X::mixin(new Mixin())` calls in your bootstrap files, in `app/Providers`, in the Laravel and package service providers, and in every analysed file. For `mixin()`, every public and protected method of the mixin class becomes a macro, typed by the native return type of the closure the method returns. Pun looks for the mixin class in the files it has already read, then in the analysed or scanned file named after the class. A macro registered in a `foreach` over a literal array, or over a class constant that holds one, gets one macro per string in the array: per value for the loop's value variable, per key for its key variable.
-
-Pun misses these macros:
-
-- A macro whose name is computed in any other way, such as a variable from a function call or a concatenation.
-- A `mixin()` whose argument isn't `new` with a class name (such as `new self()` or a variable), and a mixin class Pun can't find.
-- A macro that a vendor file outside those providers registers.
-
-A closure macro's type is its native return type, so a closure without one gives `mixed`, as it does in Larastan.
+`stubs`, `[[analyse.ignore]]`, and the rule options that `pun migrate` writes work like PHPStan's `stubFiles`, `ignoreErrors`, and parameters. An ignore entry that matches nothing is an error, unless it sets `report-unmatched = false`. When you pass files on the command line, Pun doesn't report unmatched entries for other files or entries without a path.
 
 `pun.toml` can't override `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference`, or `checkThisOnly` on their own. `pun migrate` reports them as unsupported and keeps the level.
 
 With every analyse rule off, `pun analyse` prints "No rules detected" and exits 2.
+
+## Laravel analysis
+
+Larastan's rules are on when the `laravel` [extension](/docs/configuration/pun-toml#extensions) is on, unless the lock pins a Laravel version that Larastan 3 doesn't support. Larastan 3 supports 11.44.2 and later 11.x, 12.4.1 and later 12.x, and 13.x.
+
+Pun reads model properties from the migrations in `database/migrations` and the schema dumps in `database/schema`, as Larastan does. The `database-migrations-path`, `squashed-migrations-path`, `disable-migration-scan`, and `disable-schema-scan` options change those directories. `pun migrate` writes them from Larastan's parameters. Pun doesn't support `enableMigrationCache`. Pun reads schema dumps with Larastan's MySQL-style parser.
+
+### Macros
+
+Larastan boots your app to learn its macros. Pun doesn't run PHP. Instead, it reads the `X::macro('name', ...)` and `X::mixin(new Mixin())` calls in these files:
+
+- Your bootstrap files and `app/Providers`.
+- The Laravel and package service providers.
+- Every analysed file.
+
+For `mixin()`, every public and protected method of the mixin class becomes a macro. The macro's type is the native return type of the closure that the method returns. Pun looks for the mixin class in the files it has already read, then in the analysed or scanned file named after the class.
+
+A macro registered in a `foreach` over a literal array, or over a class constant that holds one, becomes one macro per string in the array. The loop's value variable gives one macro per value, and its key variable gives one per key.
+
+Pun misses these macros:
+
+- A macro whose name is computed in any other way, such as a variable from a function call or a concatenation.
+- A `mixin()` whose argument isn't `new` with a class name, such as `new self()` or a variable.
+- A mixin class that Pun can't find.
+- A macro that a vendor file outside those providers registers.
+
+A closure macro's type is its native return type. A closure without one gives `mixed`, as it does in Larastan.
+
+### Class aliases
+
+With the `laravel` extension on, Pun reads class aliases without running PHP. It reads them from these sources:
+
+- The installed framework's `Facade::defaultAliases()` and default application config.
+- A literal `aliases` array in `config/app.php`, or `defaultAliases()->merge([...])->toArray()`. A literal array without `merge` drops the defaults.
+- `app.aliases` in `bootstrap/cache/config.php`. When that file exists, it replaces the source config.
+- `bootstrap/cache/packages.php`. When that manifest is absent, Pun reads package aliases from `vendor/composer/installed.json`. Package discovery respects the `dont-discover` lists of the application and its packages.
+
+Package aliases override application aliases. An imported global `Blade` alias means `Illuminate\Support\Facades\Blade`. Without an import, `Blade` inside `namespace App` means `App\Blade`, and the global alias does not define that class.
+
+A reference with the alias's exact spelling activates the alias everywhere, in any order. Known class declarations win over aliases.
+
+Pun does not support these alias sources and cases:
+
+- Method forwarding to container services through an alias.
+- Aliases from service providers, dynamic config expressions, or `AliasLoader` calls.
+- Custom bootstrap, config, cache, or vendor paths, and real-time `Facades\...` classes.
+- A lookup with different casing before the exact-spelling reference. PHPStan models this case.
+- Runtime load-order collisions, such as aliases with different casing and different targets.
 
 ## Rule names
 
@@ -57,11 +91,11 @@ If PHP can't parse a file, the run fails with a `parser-error` problem and repor
 
 ## Files
 
-Path arguments replace `[analyse] paths`, which defaults to `[files] paths`, then the project root. Analysis skips Blade templates, `vendor/`, `bootstrap/cache`, `build`, `node_modules`, and `storage`. [`pun list-files --command analyse`](/docs/commands/list-files) shows the selection.
+Path arguments replace `[analyse] paths`. Without `[analyse] paths`, Pun uses `[files] paths`, then the project root. Analysis skips Blade templates, `vendor/`, `bootstrap/cache`, `build`, `node_modules`, and `storage`. [`pun list-files --command analyse`](/docs/commands/list-files) shows the selection.
 
 `[analyse] exclude` removes files from analysis and from the symbol scan. Pun still reads Composer dependencies for symbols.
 
-Include checks resolve local files, `file://` URLs, and local `phar://` members of PHAR, ZIP, TAR, and gzip archives. They don't support bzip2, OpenSSL signatures, PHAR aliases and mounts, or runtime-registered wrappers. A `zip://` include is always reported missing.
+Include checks resolve local files, `file://` URLs, and local `phar://` members of PHAR, ZIP, TAR, and gzip archives. They don't support bzip2, OpenSSL signatures, PHAR aliases and mounts, or runtime-registered wrappers. Pun always reports a `zip://` include as missing.
 
 ## Baseline
 
@@ -70,16 +104,16 @@ pun analyse --generate-baseline
 pun analyse --generate-baseline old.toml
 ```
 
-The baseline goes to `[analyse] baseline`, or `pun-baseline.toml` when unset, and the run exits 0. Set `[analyse] baseline` to suppress its findings on later runs:
+Pun writes the baseline to `[analyse] baseline`, or to `pun-baseline.toml` when that key is unset, and the run exits 0. To suppress the baseline's findings on later runs, set `[analyse] baseline`:
 
-```toml
+```toml pun.toml
 [analyse]
 baseline = "pun-baseline.toml"
 ```
 
-Entries match by file, rule, message, and count, not line number. Pun notes entries that no longer match. Pun doesn't read PHPStan baselines.
+Entries match by file, rule, message, and count, not by line number. Pun notes entries that no longer match. Pun doesn't read PHPStan baselines.
 
-Non-ignorable errors, such as a duplicate parameter, stay visible even when an ignore comment or baseline entry matches. Generated baselines leave them out, and JSON reports mark them `"ignorable": false`.
+Non-ignorable errors, such as a duplicate parameter, stay visible even when an ignore comment or baseline entry matches them. Generated baselines leave them out, and JSON reports mark them `"ignorable": false`.
 
 ## Options
 
@@ -88,12 +122,12 @@ Non-ignorable errors, such as a duplicate parameter, stay visible even when an i
 | `--config <path>` | Read another `pun.toml`. |
 | `--format`, `--error-format` | `table`, `raw`, `json`, `prettyJson`, `checkstyle`, `junit`, `gitlab`, `github`, or `teamcity`. |
 | `--generate-baseline [<file>]` | Write every error to the baseline and exit 0. |
-| `--concise` | One line per finding. |
+| `--concise` | Print one line per finding. |
 | `-v` | Add identifiers to `raw` output. |
-| `-q`, `--quiet` | Print nothing, also with `--format` or under a coding agent. The exit code still reports the result, as PHPStan does. |
+| `-q`, `--quiet` | Print nothing, also with `--format` or under a coding agent. The exit code still reports the result, as in PHPStan. |
 | `--color=auto\|always\|never` | Color mode. |
-| `--max-processes=N` | Cap worker threads. |
-| `--memory-limit=<limit>` | Accepted and ignored, so `phpstan analyse --memory-limit=2G` scripts keep working. Pun has no PHP memory limit. |
+| `--max-processes=N` | Cap worker threads. Default: one per core. |
+| `--memory-limit=<limit>` | Accepted and ignored, so scripts that call `phpstan analyse --memory-limit=2G` keep working. Pun has no PHP memory limit. |
 
 `json` and `prettyJson` add `"fixable": true` to errors that PHPStan's `--fix` can fix. `table` marks them with 🔧 and counts them, plus ignored errors that `--fix-ignored` can fix. Pun doesn't fix them.
 
@@ -104,3 +138,5 @@ Non-ignorable errors, such as a duplicate parameter, stay visible even when an i
 | 0 | No errors |
 | 1 | Errors |
 | 2 | Pun could not run |
+
+To run analysis with format and lint in one pass, use [`pun check`](/docs/commands/check).

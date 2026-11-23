@@ -6,18 +6,25 @@ description: Replace pun with the latest release.
 ```bash
 pun self-update
 pun self-update --check
-pun self-update v0.1.0
+pun self-update v0.2.7
 ```
 
-`pun self-update` installs the latest release, or the version you name. `--check` only reports whether a newer release is out.
+`pun self-update` replaces the running `pun` with the latest release, or with the version you name. `--check` only reports whether a newer release is out.
 
-The download passes the same checks as the [install script](/docs/installation): HTTPS only, the published SHA-256 checksum, an archive with only regular files and directories under `punphp-<target>/`, and a new binary that reports the expected version. With a signed-in GitHub CLI (`gh`), the GitHub build attestation must also verify. Set `PUN_REQUIRE_ATTESTATION=1` to fail without it.
+The download passes the same checks as the [installer](/docs/installation):
 
-If Composer installed Pun, run `composer update punphp/pun` instead.
+- It uses HTTPS only.
+- The archive matches the published SHA-256 checksum.
+- The archive holds only regular files and directories under `punphp-<target>/`.
+- The new binary reports the expected version.
+
+With a signed-in GitHub CLI (`gh`), the GitHub build attestation must also verify. To fail when Pun can't check the attestation, set `PUN_REQUIRE_ATTESTATION=1`.
+
+If you installed Pun with Composer, `pun self-update` exits 2. Run `composer update punphp/pun` instead.
 
 ## Update from v0.1.1 or older
 
-v0.1.1 and older check the attestation against the old repository name, `punphp/pun`, so `pun self-update` fails when `gh` is signed in. Reinstall once with the installer:
+v0.1.1 and older check the attestation against the old repository name, `punphp/pun`. So `pun self-update` fails when `gh` is signed in. Reinstall once with the installer:
 
 ```bash
 curl -fsSL https://pun.laravel.cloud/install | sh

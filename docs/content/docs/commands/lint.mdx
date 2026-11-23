@@ -3,7 +3,7 @@ title: pun lint
 description: Report code issues and apply fixes with --fix.
 ---
 
-`pun lint` reports `[lint]` problems without editing files. `--fix` applies the available fixes. Lint doesn't format the result. [`pun check --fix`](/docs/commands/check) runs both.
+`pun lint` reports the problems that the `[lint]` rules find, without editing files. `--fix` applies the available fixes. Lint doesn't format the result, so run [`pun check --fix`](/docs/commands/check) to do both.
 
 ```bash
 pun lint
@@ -12,7 +12,7 @@ pun lint --fix
 
 ## Configure rules
 
-A rule takes a level, or a table with a level, a fix setting, and options:
+A rule takes a level, or a table with a level, a fix setting, and the rule's options:
 
 ```toml pun.toml
 [lint]
@@ -26,12 +26,12 @@ sets = ["dead-code", "modernize"]
 
 | Value | Meaning |
 | --- | --- |
-| `"error"` | Report, and fail the run |
-| `"warn"` | Report |
-| `"off"` | Disable |
-| `{ fix = "off" }` | Report, never fix, even with `--fix` |
+| `"error"` | Report the problem and fail the run |
+| `"warn"` | Report the problem |
+| `"off"` | Turn the rule off |
+| `{ fix = "off" }` | Report the problem, and never fix it, even with `--fix` |
 
-Only errors fail the run, unless you set a warning limit. Path overrides take levels only. See [rule selection](/docs/configuration/pun-toml#lint) and the [rule reference](/docs/rules/lint).
+Only errors fail the run, unless you set a warning limit. Path overrides take levels only. For the full precedence, see [`[lint]`](/docs/configuration/pun-toml#lint). The [lint rule reference](/docs/rules/lint) lists every rule.
 
 ## Levels on the command line
 
@@ -51,23 +51,23 @@ pun lint --max-warnings 10
 | `--deny-warnings` | Fail on any warning. |
 | `--max-warnings N` | Fail on more than `N` warnings. |
 
-`-A`, `-W`, and `-D` apply after `pun.toml` and path overrides, in command-line order. The last match wins. A group selects only implemented rules. Naming an unimplemented rule directly is a configuration error.
+`-A`, `-W`, and `-D` apply after `pun.toml` and path overrides, in command-line order. The last match wins. A group selects only implemented rules. A Planned rule named directly is a configuration error.
 
 Lint also takes [`pun format`'s file-selection and output flags](/docs/commands/format#pints-flags), such as `--dirty`, `--diff`, `--staged`, `--format`, and `--stdin`.
 
-`-q` prints nothing, as PHP-CS-Fixer's `fix -q` does, and the exit code reports the result. `pun format -q` and `pun check -q` keep Pint's stderr line per file.
+`-q` prints nothing, as PHP-CS-Fixer's `fix -q` does. The exit code reports the result. `pun format -q` and `pun check -q` keep Pint's stderr line for each file.
 
 Lint reuses each unchanged file's result from the last run, through the [result cache](/docs/commands/format#cache). `--no-cache` checks every file.
 
 ## Output
 
-`--concise` prints one line per problem. `--format` takes `json`, `txt`, `checkstyle`, `junit`, `xml`, `gitlab`, `github`, or `agent`.
+`--concise` prints one line per problem. `--format` takes `json`, `txt`, `checkstyle`, `junit`, `xml`, `gitlab`, `github`, or `agent`. `--format=json` is PHP-CS-Fixer's JSON report.
 
 ## Files
 
 Lint skips Blade templates, `vendor/`, `bootstrap/cache`, `build`, `node_modules`, and `storage`. [`pun list-files --command lint`](/docs/commands/list-files) shows the selected files.
 
-The `types/*` rules find classes in every file lint selects and in Composer's autoload. An overriding method gets a return type only when both classes are in `vendor/`, or both are outside it.
+The `types/*` rules find classes in every file that lint selects and in Composer's autoload. An overriding method gets a return type only when both classes are in `vendor/`, or both are outside it.
 
 ## Ignore comments
 
@@ -75,7 +75,7 @@ The `types/*` rules find classes in every file lint selects and in Composer's au
 $x = eval($code); // @pun-ignore lint/security/no-eval -- legacy plugin loader
 ```
 
-PHP-CS-Fixer rules support only `@pun-ignore-file`. Other lint rules also support line and region ignores. An ignore without a rule ID is an error. See [ignore comments](/docs/configuration/ignore-comments).
+Lint rules that come from PHP-CS-Fixer accept only `@pun-ignore-file`. Other lint rules also accept line and region ignores. An ignore comment without a rule ID is an error. See [ignore comments](/docs/configuration/ignore-comments).
 
 ## Exit codes
 
@@ -84,3 +84,5 @@ PHP-CS-Fixer rules support only `@pun-ignore-file`. Other lint rules also suppor
 | 0 | No remaining errors and no warning limit exceeded |
 | 1 | Remaining errors or a warning limit exceeded |
 | 2 | Pun could not run |
+
+To run lint with format and analyse in one pass, use [`pun check`](/docs/commands/check).

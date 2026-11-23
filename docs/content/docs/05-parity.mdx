@@ -1,15 +1,15 @@
 ---
 title: Parity
-description: Recorded Pint comparisons and compatibility limits.
+description: Recorded comparisons of pun format with Pint, and how to reproduce them.
 ---
 
-Pun's formatter is compared with Pint 1.32.1 and PHP-CS-Fixer 3.95.25. These are recorded runs, not a guarantee for every configuration.
+Pun's formatter is compared with Pint 1.32.1 and PHP-CS-Fixer 3.95.25. The results below are recorded runs, not a guarantee for every configuration.
 
-PHPStan, Larastan, and Rector support is incomplete, and a mapped rule is not always implemented. The [rule reference](/docs/rules) marks unimplemented rules as Planned.
+Lint and analyse cover part of Rector, PHPStan, and Larastan. A rule that has an upstream mapping is not always implemented. The [rule reference](/docs/rules) marks unimplemented rules as Planned.
 
 ## Byte-for-byte output
 
-Each run formats one copy of a project with Pint and another with `pun migrate` and `pun check --fix`, then compares every file. Results of the 2026-11-09 run against Pint 1.32.1:
+Each run formats one copy of a project with Pint and another with `pun migrate` and `pun check --fix`. Then it compares every file. These are the results of the 2026-11-09 run against Pint 1.32.1:
 
 | Project | Files | Identical | Differing |
 | --- | --- | --- | --- |
@@ -22,34 +22,16 @@ Each run formats one copy of a project with Pint and another with `pun migrate` 
 | pinkary | 799 | 799 | 0 |
 | pinkary (unformatted copy) | 799 | 799 | 0 |
 
-In the unformatted Pinkary copy, Pint changes 346 files. The `psr12` preset also has zero differing files.
+In the unformatted Pinkary copy, Pint changes 346 files. Runs with the `psr12` preset also have zero differing files.
 
-`scripts/cli-parity.sh` compares exit codes, machine reports, and changed files. Pun exits 2 when it cannot run, where Pint exits 1. `scripts/fuzz-parity.sh` mutates real files and compares both tools. The scoreboard includes fuzz runs on Pinkary and laravel/framework, with CRLF and mixed line endings.
+Two more checks run beside the file comparison:
 
-## Laravel class aliases
-
-With Laravel analysis on, Pun reads class aliases without running PHP, from:
-
-- The installed framework's `Facade::defaultAliases()` and default application config.
-- A literal `aliases` array in `config/app.php`, or `defaultAliases()->merge([...])->toArray()`. A literal array without `merge` drops the defaults.
-- `app.aliases` in `bootstrap/cache/config.php`, which replaces the source config when it exists.
-- `bootstrap/cache/packages.php`, or package aliases in `vendor/composer/installed.json` when that manifest is absent. Package discovery respects the `dont-discover` lists of the application and its packages.
-
-Package aliases override application aliases. An imported global `Blade` alias means `Illuminate\Support\Facades\Blade`. Without an import, `Blade` inside `namespace App` means `App\Blade`, and the global alias does not define that class.
-
-A reference with the alias's exact spelling activates it everywhere, in any order. Known class declarations win.
-
-Pun does not support these:
-
-- Method forwarding to container services through an alias.
-- Aliases from service providers, dynamic config expressions, or `AliasLoader` calls.
-- Custom bootstrap, config, cache, or vendor paths, and real-time `Facades\...` classes.
-- A differently cased lookup before the exact-spelling reference. PHPStan models it.
-- Runtime load-order collisions, such as differently cased aliases with different targets.
+- `scripts/cli-parity.sh` compares exit codes, machine reports, and changed files. The one intended difference: Pun exits 2 when it cannot run, where Pint exits 1.
+- `scripts/fuzz-parity.sh` mutates real files and compares both tools. The scoreboard includes fuzz runs on Pinkary and laravel/framework, with CRLF and mixed line endings.
 
 ## Reproduce a comparison
 
-From the repository root:
+To repeat a run, clone the [Pun repository](https://github.com/shipfastlabs/pun) and run these commands from its root. They need Rust 1.100 or later and system PHP, which runs the pinned Pint.
 
 ```bash
 scripts/oracle.sh

@@ -1,13 +1,13 @@
 ---
 title: CI
-description: Check a project in CI and publish reports.
+description: Check a project in CI, publish reports, and add a pre-commit hook.
 ---
 
 In CI, run [`pun check`](/docs/commands/check) without `--fix`, so it reports findings without editing files. It exits 0 when clean, 1 on findings, and 2 when Pun could not run. Warnings fail the run only with `--deny-warnings` or when they exceed `--max-warnings`.
 
 ## GitHub Actions
 
-Add this step after your PHP setup and `composer install`, which installs Pun from `require-dev`:
+If Pun is in `require-dev`, `composer install` (or `pun install`) puts it in `vendor/bin`. Add this step after the install:
 
 ```yaml .github/workflows/style.yml
 - name: Check
@@ -22,7 +22,7 @@ When `GITHUB_ACTIONS=true`, Pun adds annotations to its default output. `pun che
 pun format --test --output-to-file=pun.xml --output-format=checkstyle
 ```
 
-`--output-format` also accepts `junit`, `gitlab`, `json`, `xml`, and `txt`.
+`--output-format` also accepts `junit`, `gitlab`, `json`, `xml`, and `txt`. `--format` sets the report that Pun prints on stdout instead.
 
 ## Add a pre-commit hook
 
@@ -30,4 +30,6 @@ pun format --test --output-to-file=pun.xml --output-format=checkstyle
 pun check --staged
 ```
 
-`--staged` selects files with staged changes, but Pun checks their working-tree contents, including unstaged edits.
+`--staged` selects files with staged changes. Pun checks their working-tree contents, including unstaged edits.
+
+To make coding agents run Pun the same way, see [coding agents](/docs/guides/coding-agents).

@@ -16,10 +16,10 @@ curl -fsSL https://pun.laravel.cloud/install | sh
 To install a specific version, pass it to the script:
 
 ```bash
-curl -fsSL https://pun.laravel.cloud/install | sh -s -- v0.2.1
+curl -fsSL https://pun.laravel.cloud/install | sh -s -- v0.2.7
 ```
 
-The installer also installs `punx`, which runs [`pun x`](/docs/commands/x). It never asks for `sudo` and does not edit your shell profile. If `~/.pun/bin` is not on your `PATH`, it prints the line to add.
+The installer also installs `punx`, a short name for [`pun x`](/docs/commands/x). It never asks for `sudo` and does not edit your shell profile. If `~/.pun/bin` is not on your `PATH`, it prints the line to add.
 
 - To install somewhere else, set `PUN_INSTALL`. The binary goes in `$PUN_INSTALL/bin`.
 - To update, run [`pun self-update`](/docs/commands/self-update) or the installer again.
@@ -34,7 +34,7 @@ composer require --dev punphp/pun
 vendor/bin/pun --version
 ```
 
-The package needs PHP 8.4 or later. On first run, it downloads the matching release binary from GitHub Releases, checks its SHA-256 checksum, and keeps it in `vendor/bin`. If the download or the checksum fails, it exits 2.
+The package needs PHP 8.4 or later. On the first run, it downloads the matching release binary from GitHub Releases, checks its SHA-256 checksum, and keeps the binary in `vendor/bin`. If the download or the checksum check fails, it exits 2.
 
 To update, run `composer update punphp/pun`. `pun self-update` does not replace a Composer install.
 
@@ -48,15 +48,16 @@ These docs write commands as `pun`. In a project, run `vendor/bin/pun`, or call 
 
 ## Runtime requirements
 
-- Your project must target PHP 8.4 or later. Pun reads the target from `require.php` in `composer.json`, and `[php] version` overrides it. If `require.php` allows PHP below 8.4, every check exits 2.
-- PHP checks need no PHP or Node runtime.
-- Blade formatting needs Node.js and these dev dependencies. If the project has a `bun.lock` or `bun.lockb` file, Pun runs Prettier with Bun. Prettier and its plugins load from the project's `node_modules`, so Blade formatting runs project code.
+- Your project must target PHP 8.4 or later. Pun reads the target from `require.php` in `composer.json`, and `[php] version` overrides it. If `require.php` allows PHP below 8.4, `format`, `lint`, `analyse`, and `check` exit 2.
+- Format, lint, and analyse need no PHP or Node.js runtime.
+- Blade formatting needs Node.js and these dev dependencies. If the project has a `bun.lock` or `bun.lockb` file, Pun runs Prettier with Bun instead. Prettier and its plugins load from the project's `node_modules`, so Blade formatting runs project code.
 
   ```bash
   npm install --save-dev prettier@^3.9.6 prettier-plugin-blade@^3.3.3 prettier-plugin-tailwindcss@^0.8.1
   ```
 
 - Like Pint, Pun skips `no_unused_imports`, `fully_qualified_strict_types`, `global_namespace_import`, and `declare_strict_types` in `*.blade.php` files.
-- Migrating `.php-cs-fixer.php` or `rector.php` needs PHP and that tool. For Rector, run `composer install` first.
+- Migrating `.php-cs-fixer.php` or `rector.php` needs system PHP and that tool. For Rector, run `composer install` first.
+- The package commands read the platform from the PHP on your `PATH`. `config.platform` in `composer.json` overrides it.
 
-Continue with [Get started](/docs#get-started).
+Next, follow [Get started](/docs#get-started) to create `pun.toml` and check your project.

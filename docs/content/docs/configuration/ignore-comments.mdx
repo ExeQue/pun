@@ -3,7 +3,7 @@ title: Ignore comments
 description: Suppress specific rules for a line, region, or file.
 ---
 
-An ignore comment names full rule IDs, such as `lint/security/no-eval`, or groups, such as `lint/dead-code`. Separate several with commas.
+An ignore comment turns off named rules for a line, a region, or a file. It names full rule IDs, such as `lint/security/no-eval`, or groups, such as `lint/dead-code`. Separate several IDs with commas.
 
 | Form | Applies to |
 | --- | --- |
@@ -13,7 +13,7 @@ An ignore comment names full rule IDs, such as `lint/security/no-eval`, or group
 | `// @pun-ignore-file <id>` before the first statement | The whole file |
 | `// @pun-ignore-start <id>` … `// @pun-ignore-end` | A region |
 
-Add a reason after ` -- `:
+To record why, add a reason after ` -- `:
 
 ```php
 eval($code); // @pun-ignore lint/security/no-eval -- legacy plugin loader
@@ -22,8 +22,9 @@ eval($code); // @pun-ignore lint/security/no-eval -- legacy plugin loader
 ## Scope and validation
 
 - `/* */` and `/** */` comments work too.
-- Format rules and the token-based lint rules from PHP-CS-Fixer accept only `@pun-ignore-file`.
+- Format rules, and the lint rules that come from PHP-CS-Fixer, accept only `@pun-ignore-file`.
 - An ignore comment without an ID is an error.
-- `lint/comments/no-unused-ignore` reports IDs that suppress nothing. `--fix` removes them.
+- Non-ignorable analyse errors stay visible. Their [rule pages](/docs/rules/analyse) say so.
+- [`lint/comments/no-unused-ignore`](/docs/rules/lint/comments/no-unused-ignore) reports IDs that suppress nothing. `--fix` removes them.
 
 [`pun migrate`](/docs/commands/migrate#ignore-comments) converts the PHPStan and PHP-CS-Fixer ignore comments it recognizes.

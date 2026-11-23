@@ -3,7 +3,7 @@ title: pun format
 description: Format PHP layout, casing, and spelling.
 ---
 
-`pun format` applies the `[format]` rules in `pun.toml`. Risky and code-deleting fixers are [`pun lint`](/docs/commands/lint) rules. [`pun check --fix`](/docs/commands/check) runs both.
+`pun format` applies the `[format]` rules in `pun.toml`. It changes layout only. Pint's risky and code-deleting fixers are [`pun lint`](/docs/commands/lint) rules, and [`pun check --fix`](/docs/commands/check) runs both.
 
 ```bash
 pun format
@@ -15,43 +15,44 @@ pun format app/Models
 
 | Flag | What it does |
 | --- | --- |
-| `--test` (`--check`) | Report style errors without fixing them. Exit 1 on any. |
-| `--bail` | Like `--test`, but stop at the first error. |
-| `--repair` | Fix errors, and exit 1 if anything changed. |
-| `--dirty` | Only files with uncommitted changes. |
-| `--diff=<branch>` | Only files changed since branching off `<branch>`. |
-| `--blade` | Also format Blade files. |
+| `--test` (`--check`) | Report files that need formatting without changing them. Exit 1 if any do. |
+| `--bail` | Like `--test`, but stop at the first file that needs formatting. |
+| `--repair` | Format the files, and exit 1 if any file changed. |
+| `--dirty` | Select only files with uncommitted changes. |
+| `--diff=<branch>` | Select only files changed since you branched from `<branch>`. |
+| `--blade` | Also format Blade files. This turns on `format/laravel/blade`. |
 | `--config=<path>` | Use this `pun.toml`. |
 | `--preset=<name>` | Use `laravel`, `psr12`, or `empty` instead of `pun.toml`. For `per`, run `pun migrate --preset per`. |
 | `--no-config` | Use the `laravel` preset and no config file. |
 | `--format=<fmt>` | `json`, `txt`, `agent`, `checkstyle`, `junit`, `xml`, `gitlab`, or `github`. |
-| `--output-to-file=<path>` | Also write a report to a file, in `--output-format=<fmt>`. |
-| `--stdin-filename=<path>` | Path for code read from stdin (`-` as the path). |
-| `-v`, `-q` | `-v` adds unchanged files and diffs. `-q` prints only Pint's stderr line per changed file. With `--format` or under a coding agent, it prints nothing, as Pint does. |
-| `--max-processes=N` | Cap threads and Prettier workers. Default: one per core. Invalid or nonpositive values keep the default. |
+| `--output-to-file=<path>` | Also write a report to this file, in the format that `--output-format=<fmt>` names. |
+| `--stdin-filename=<path>` | The path of code read from stdin. Pass `-` as the path argument to read stdin. |
+| `-v` | Add unchanged files and diffs. |
+| `-q` | Print only Pint's stderr line for each changed file. With `--format` or under a coding agent, print nothing, as Pint does. |
+| `--max-processes=N` | Cap threads and Prettier workers. Default: one per core. An invalid or nonpositive value keeps the default. |
 | `--cache-file=<path>` | Keep the [result cache](#cache) in this file. |
 
 ## Pun's own flags
 
 | Flag | What it does |
 | --- | --- |
-| `--staged` | Only files with staged changes. Reads the working tree, not the index. |
-| `--since=<ref>` | Only files changed since a commit, plus untracked files. |
-| `--watch` | Keep running and re-format files as they change. |
+| `--staged` | Select only files with staged changes. Pun reads the working tree, not the index. |
+| `--since=<ref>` | Select only files changed since a commit, plus untracked files. |
+| `--watch` | Keep running and format files again as they change. |
 | `--stdin` | Read code from stdin. `--stdin-filename` gives it a path for exclusions. |
-| `--explain` | Print the fixers the run applies, in priority order. |
+| `--explain` | Print the fixers the run applies, in priority order, on stderr. |
 | `--no-cache` | Check every file. Don't read or write the [result cache](#cache). |
 | `--color=auto\|always\|never` | Color mode. `auto` respects `NO_COLOR`. `--ansi` and `--no-ansi` also work. |
 
 ## Cache
 
-Pun remembers each file's result, including its findings. The next run reuses the result while the file's content, the config, the flags, and the Pun binary stay the same. A file that `--fix` just changed is checked again on the next run.
+Pun remembers each file's result, including its findings. The next run reuses that result while the file's content, the config, the flags, and the Pun binary stay the same. Pun checks a file again on the next run after `--fix` changes it.
 
-The cache is one file per project in `$PUN_CACHE_DIR/results`. The default cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. `--no-cache` or `PUN_NO_CACHE=1` turns it off. Code from stdin never uses it. Deleting the file is safe.
+The cache is one file per project in `$PUN_CACHE_DIR/results`. `PUN_CACHE_DIR` defaults to `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. `--no-cache` or `PUN_NO_CACHE=1` turns the cache off. Code from stdin never uses it. You can delete the file at any time.
 
-Blade formatting keeps its Prettier worker scripts and Node's compile cache in `$PUN_CACHE_DIR/blade-*` too, which makes later runs start faster. A `NODE_COMPILE_CACHE` you set yourself takes precedence.
+Blade formatting keeps its Prettier worker scripts and Node's compile cache in `$PUN_CACHE_DIR/blade-*`, so later runs start faster. A `NODE_COMPILE_CACHE` that you set yourself takes precedence.
 
-Lint results that use other files, such as a parent class, also depend on every file in the project and on `vendor/composer/installed.json`. A change to any of them makes lint check those files again.
+Some lint results use other files, such as a parent class. Those results also depend on every file in the project and on `vendor/composer/installed.json`. A change to any of them makes lint check those files again.
 
 ## Output
 
@@ -69,14 +70,14 @@ Formatted 2 files, 482 unchanged · 484 files in 0.21s
 | Code | When |
 | --- | --- |
 | 0 | No changes needed, or all changes applied |
-| 1 | Formatting changes in test or repair mode, or a syntax error |
+| 1 | A file needs formatting with `--test` or `--bail`, a file changed with `--repair`, or a syntax error |
 | 2 | Pun could not run: invalid config, unsupported rule, unreadable file, report error, or missing Blade dependency |
 
-Pun prints a run error with a hint on stderr. With `--format` or `-q`, it prints Pint's error box on stdout.
+Pun prints a run error and a hint on stderr. With `--format` or `-q`, it prints Pint's error box on stdout instead.
 
 ## GitHub Actions
 
-Under `GITHUB_ACTIONS=true`, the output includes an annotation for each file that needs formatting. `--format=github` prints only annotations:
+When `GITHUB_ACTIONS=true`, the output includes an annotation for each file that needs formatting. `--format=github` prints only the annotations:
 
 ```
 ::error file=app/Models/User.php,line=12,col=0,title=format/arrays/syntax::File needs formatting
@@ -87,6 +88,8 @@ A run error prints `::error ::<message>`.
 
 ## Configuration errors
 
-Without `pun.toml`, run `pun init` or `pun migrate`, or pass `--preset` or `--no-config`.
+Without `pun.toml`, format exits 2. Run `pun init` or `pun migrate` to create the file, or pass `--preset` or `--no-config`.
 
 A rule that Pun doesn't implement is a configuration error. Pun names the rule and exits 2 before it edits any file.
+
+To apply code fixes as well, see [`pun lint`](/docs/commands/lint).

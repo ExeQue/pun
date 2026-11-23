@@ -3,7 +3,7 @@ title: pun config
 description: Print resolved settings and enabled rules as TOML or JSON.
 ---
 
-`pun config` prints the resolved configuration, in the same sections as `pun.toml`: `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`.
+`pun config` prints the resolved configuration: what each command runs after presets, sets, extensions, and your settings. The output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`.
 
 ```bash
 pun config
@@ -18,12 +18,12 @@ pun config --preset psr12
 | Command `rules` tables | Enabled rules after preset, set, group, and rule settings, with levels and options |
 | `[[lint.overrides]]` | Path overrides as configured, not applied to a file |
 | Command `exclude` lists | Shared exclusions plus command-specific exclusions |
-| `[extensions]` | Each extension as `"on"` or `"off"`; one pun.toml leaves out is `"off"` |
+| `[extensions]` | Each extension as `"on"` or `"off"`. An extension that `pun.toml` leaves out is `"off"` |
 | `ecosystems` | The extensions on for that command, minus those whose group is `"off"` |
-| `[analyse] switches` | The preset's type switches, which with the enabled rules set the analysis level |
+| `[analyse] switches` | The preset's type switches. With the enabled rules, they set the analysis level |
 | `[php] version` | The explicit setting, otherwise the lowest version `require.php` allows, otherwise 8.4 |
 
-Disabled rules are left out. The TOML output starts with a comment that names the configuration sources.
+The output leaves out disabled rules. The TOML output starts with a comment that names the configuration sources, such as `# Resolved from composer.json, pun.toml.`
 
 ## Options
 
@@ -33,4 +33,4 @@ Disabled rules are left out. The TOML output starts with a comment that names th
 | `--config <path>` | Read another config file. |
 | `--preset <name>` | Resolve a built-in format preset without `pun.toml`. |
 
-A resolved setting isn't always supported at run time. See [analysis limitations](/docs/commands/analyse#configuration).
+A resolved setting isn't always supported at run time. See [analysis limitations](/docs/commands/analyse#configuration). To see which files each command checks, run [`pun list-files`](/docs/commands/list-files).

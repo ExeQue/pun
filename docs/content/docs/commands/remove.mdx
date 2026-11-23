@@ -8,7 +8,7 @@ pun remove laravel/sanctum
 pun rm 'spatie/*'
 ```
 
-`pun remove` deletes packages from `require` or `require-dev`, then runs [`pun update`](/docs/commands/update). Packages nothing else needs leave the lock and `vendor/`. `pun rm` is an alias.
+`pun remove` deletes packages from `require` or `require-dev`, then runs [`pun update`](/docs/commands/update). Packages that nothing else needs leave the lock and `vendor/`. `pun rm` is an alias.
 
 Pun edits `composer.json` only after the requirements resolve. If the install fails, Pun restores `composer.json` and `composer.lock`.
 
@@ -16,7 +16,7 @@ Pun edits `composer.json` only after the requirements resolve. If the install fa
 
 | Option | Effect |
 | --- | --- |
-| `--no-update` | Edit `composer.json` only |
+| `--no-update` | Edit `composer.json` only, without resolving or installing |
 | `-p`, `--package=MEMBER` | Edit this [workspace](/docs/guides/workspaces) member's `composer.json` |
 
 `pun remove` also takes the [`pun update`](/docs/commands/update#options) options except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option.

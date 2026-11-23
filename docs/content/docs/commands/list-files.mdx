@@ -3,7 +3,7 @@ title: pun list-files
 description: List the files a command selects after paths and exclusions.
 ---
 
-`pun list-files` prints one path per line, sorted and relative to the project root.
+`pun list-files` prints the files a command would check with the current `pun.toml`. It prints one path per line, sorted and relative to the project root.
 
 ```bash
 pun list-files
@@ -23,11 +23,11 @@ pun list-files --format json
 
 Command exclusions include `[files] exclude`. The default excluded directories are `bootstrap/cache`, `build`, `node_modules`, and `storage`.
 
-Path arguments replace the configured paths. Outside format, exclusions still apply to files you name. `vendor/` is never listed, though analysis reads it for symbols.
+Path arguments replace the configured paths. In lint and analyse, exclusions still apply to files you name. `vendor/` is never listed, though analysis reads it for symbols.
 
-For example, with this config the default selection includes `app` and `tests`, and the analyse selection includes only `app`:
+For example, with this config, the default selection includes `app` and `tests`, and the analyse selection includes only `app`:
 
-```toml
+```toml pun.toml
 [files]
 paths = ["app", "tests"]
 exclude = ["storage/**"]
@@ -45,4 +45,4 @@ exclude = ["tests/**"]
 | `--format json` | Print a JSON array. |
 | `--config <path>` | Read another `pun.toml`. |
 
-Under a coding agent, the summary line goes to stderr, so stdout stays safe to pipe.
+Under a coding agent, Pun prints the summary line on stderr, so stdout stays safe to pipe.

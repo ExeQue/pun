@@ -1,15 +1,15 @@
 ---
 title: From pint.json
-description: How pun migrate translates pint.json keys and rules.
+description: How pun migrate translates pint.json keys and rules into pun.toml.
 ---
 
-Pun reads `pun.toml`, not `pint.json`. [`pun migrate --from pint`](/docs/commands/migrate) translates the settings:
+Pun reads `pun.toml`, not `pint.json`. [`pun migrate --from pint`](/docs/commands/migrate) translates the settings like this:
 
 | pint.json | pun.toml |
 | --- | --- |
 | `"preset": "laravel"` | `[format] preset = "laravel"` |
 | `"preset": "per"` | `preset = "empty"` and the preset's rules in `[format.rules]` |
-| `"preset": "symfony"` | Not supported. `pun migrate` stops with an error |
+| `"preset": "symfony"` | Not supported. `pun migrate` stops with an error. |
 | `"rules"` that differ from the preset | `[format.rules]`, with Pun IDs and [option names](/docs/configuration/pun-toml#rule-options) |
 | Risky and code-deleting rules | `[lint.rules]` at `"error"` |
 | `"in"` | `[files] paths` |
@@ -18,11 +18,11 @@ Pun reads `pun.toml`, not `pint.json`. [`pun migrate --from pint`](/docs/command
 | `"extend"` | Resolved as Pint resolves it |
 | `"Pun/prefer_fake_helper": true` | `[lint.rules] "laravel/prefer-fake-helper" = "error"` |
 
-Two Pint behaviours differ after migration:
+After migration, two behaviours differ from Pint:
 
 - A plain folder name in `exclude`, such as `tmp`, matches at any depth only for format. Lint and analyse skip only `tmp` at the project root. Write `**/tmp` to skip it everywhere. See [exclusions](/docs/configuration/pun-toml#php-and-files).
 - Lint rules that came from Pint, such as `imports/no-unused`, still check files that `notName` and `notPath` skip.
 
-`pun migrate` reads a `.php-cs-fixer.php` through PHP-CS-Fixer with system PHP. If you select both configs, `pint.json` wins.
+`pun migrate` reads a `.php-cs-fixer.php` through PHP-CS-Fixer with system PHP. If you select both configs, `pint.json` supplies the format config.
 
-Migration reports the rules it skips. The [Pint rule mapping](/docs/migrate/from/pint) lists every rule, its options, and what is unsupported. To apply the format and lint rules of a migrated config, run `pun check --fix`. The [migration guide](/docs/guides/migrating-from-pint) covers the rest of the switch.
+Migration reports the rules it skips. The [Pint rule mapping](/docs/migrate/from/pint) lists every rule, its options, and what Pun doesn't support. To apply the format and lint rules of a migrated config, run `pun check --fix`. The [migration guide](/docs/guides/migrating-from-pint) covers the rest of the switch.

@@ -9,9 +9,9 @@ pun require spatie/laravel-data:^4.0
 pun require --dev pestphp/pest
 ```
 
-`pun require` adds packages to `require`, or to `require-dev` with `--dev`, creating `composer.json` if needed. Then it updates those packages and their dependencies and installs them, as [`pun update`](/docs/commands/update) does.
+`pun require` adds packages to `require`, or to `require-dev` with `--dev`. It creates `composer.json` if the project has none. Then it updates those packages and their dependencies and installs them, as [`pun update`](/docs/commands/update) does.
 
-Write a package as `vendor/name`, `vendor/name:^1.2`, or `vendor/name ^1.2`. Without a version, Pun writes the newest version that resolves as `^major.minor`. A package in the other section moves, with a warning.
+Write a package as `vendor/name`, `vendor/name:^1.2`, or `vendor/name ^1.2`. Without a version, Pun writes the newest version that resolves, as `^major.minor`. If the package is already in the other section, Pun moves it and prints a warning.
 
 If the requirements don't resolve, nothing changes and `pun require` exits 2. If the install fails, Pun restores `composer.json` and `composer.lock`.
 
@@ -21,7 +21,7 @@ If the requirements don't resolve, nothing changes and `pun require` exits 2. If
 | --- | --- |
 | `--dev` | Add to `require-dev` |
 | `--sort-packages` | Keep the section sorted. Also `config.sort-packages`. |
-| `--no-update` | Edit `composer.json` only |
+| `--no-update` | Edit `composer.json` only, without resolving or installing |
 | `-p`, `--package=MEMBER` | Edit this [workspace](/docs/guides/workspaces) member's `composer.json` |
 
 `pun require` also takes the [`pun update`](/docs/commands/update#options) options except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option.

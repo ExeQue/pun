@@ -3,7 +3,7 @@ title: pun extension
 description: List the built-in extensions and whether each is on for the project.
 ---
 
-An extension adds the rules and analysis for a framework or test tool. `pun extension list` prints each one's ID, `on` or `off`, and why.
+An extension adds the rules and analysis for a framework or test tool. `pun extension list` prints each extension's ID, whether it is `on` or `off`, and why.
 
 ```bash
 pun extension list
@@ -18,11 +18,11 @@ phpunit  off  Rules for PHPUnit tests: not in pun.toml
 
 | Extension | Adds |
 | --- | --- |
-| `laravel` | The `laravel` lint and analyse groups and Larastan's analysis. The `laravel-*` upgrade groups and `format/laravel/blade` stay opt-in |
+| `laravel` | The `laravel` lint and analyse groups and Larastan's analysis. The `laravel-*` upgrade groups and `format/laravel/blade` stay opt-in. |
 | `pest` | The `pest` lint group |
 | `phpunit` | The `phpunit` lint group |
 
-An extension is on only when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`. A locked package never turns one on by itself. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) write `"on"` for each extension whose package `composer.lock` locks.
+An extension is on only when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`. A locked package never turns an extension on by itself. When `pun.toml` leaves out an extension whose package is locked, the list says so and shows the line to add. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) write `"on"` for each extension whose package `composer.lock` locks.
 
 ## Options
 

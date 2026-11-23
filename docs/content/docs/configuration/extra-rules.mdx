@@ -1,9 +1,9 @@
 ---
 title: Extra rules
-description: Mago-derived lint rules for Laravel, Pest, and code cleanup.
+description: Lint rules ported from Mago for Laravel, Pest, and code cleanup.
 ---
 
-These lint rules come from [Mago](https://github.com/carthage-software/mago). Turn them on in `[lint.rules]`:
+These lint rules come from [Mago's](https://github.com/carthage-software/mago) linter. Many are in a lint set already. To turn one on by name, add it to `[lint.rules]`:
 
 ```toml pun.toml
 [lint.rules]
@@ -11,7 +11,7 @@ These lint rules come from [Mago](https://github.com/carthage-software/mago). Tu
 "laravel/prefer-fake-helper" = "error"
 ```
 
-`pun lint --fix` applies available fixes. Review the changes from rules marked risky. Each [rule page](/docs/rules/lint) lists the rule's sets.
+`pun lint --fix` applies the available fixes. Review the changes from rules marked risky, because they can change behaviour. Each [rule page](/docs/rules/lint) lists the sets that turn the rule on. A rule that you name runs even when its [extension](/docs/configuration/pun-toml#extensions) is off.
 
 ## Laravel
 
@@ -30,7 +30,7 @@ These lint rules come from [Mago](https://github.com/carthage-software/mago). Tu
 | `pest/prefer-specific-expectations` | `->toBe(true)` → `->toBeTrue()`, and the same for `false` and `null` |
 | `pest/prefer-dedicated-expectation` (risky) | `expect(is_array($x))->toBeTrue()` → `expect($x)->toBeArray()` |
 | `pest/prefer-simpler-expectation` | `expect($a > $b)->toBeTrue()` → `expect($a)->toBeGreaterThan($b)` |
-| `pest/no-only` (risky) | removes `->only()` from tests |
+| `pest/no-only` (risky) | Removes `->only()` from tests |
 
 ## Redundant code and modern PHP
 
@@ -39,10 +39,10 @@ These lint rules come from [Mago](https://github.com/carthage-software/mago). Tu
 | `complexity/no-redundant-isset` | `isset($a, $a['b'])` → `isset($a['b'])` |
 | `complexity/no-redundant-literal-return` | `if ($x === null) { return null; } return $x;` → `return $x;` |
 | `complexity/no-redundant-nullsafe` | `$user?->name ?? 'Guest'` → `$user->name ?? 'Guest'` |
-| `dead-code/no-self-assignment` | deletes `$a = $a;` |
+| `dead-code/no-self-assignment` | Deletes `$a = $a;` |
 | `arrays/prefer-array-spread` (risky) | `array_merge($a, [1], $b)` → `[...$a, 1, ...$b]` |
 | `performance/prefer-explode-over-preg-split` | `preg_split('/, /', $s)` → `explode(', ', $s)` |
 | `php-8.1/prefer-first-class-callable` (risky) | `fn ($x) => $this->m($x)` → `$this->m(...)` |
-| `security/add-sensitive-parameter` | adds `#[\SensitiveParameter]` to `$password`, `$token`, `$secret` and API-key parameters |
+| `security/add-sensitive-parameter` | Adds `#[\SensitiveParameter]` to `$password`, `$token`, `$secret`, and API-key parameters |
 
 The [Mago mapping](/docs/migrate/from/mago) lists upstream names and Pun equivalents.

@@ -3,14 +3,14 @@ title: pun check
 description: Format, lint, and analyse in one run. Apply format and lint fixes with --fix.
 ---
 
-`pun check` reports findings without editing files. `--fix` applies formatting and lint fixes, except rules with `fix = "off"`. Analysis never edits files.
+`pun check` runs format, lint, and analyse in one pass. It reports findings without editing files. `--fix` applies format and lint fixes, except for rules with `fix = "off"`. Analysis never edits files.
 
 ```bash
 pun check
 pun check --fix
 ```
 
-A migrated Pint config needs `pun check --fix`, not `pun format`, because Pint's risky and code-deleting fixers are lint rules.
+To apply a migrated Pint config, run `pun check --fix`, not `pun format`. Pint's risky and code-deleting fixers are lint rules.
 
 ## Options
 
@@ -52,3 +52,5 @@ $ pun check
 | 0 | No remaining errors or format changes |
 | 1 | Format changes, lint errors, analysis errors, or a warning limit exceeded |
 | 2 | Pun could not run |
+
+To run `pun check` on every push, see the [CI guide](/docs/guides/ci).

@@ -27,7 +27,7 @@ A workspace holds several packages in one repository. They share one `composer.l
 
 3. Run `pun install`.
 
-Pun requires every member at the root and symlinks each one into `vendor/` as a path package. A member requires another member like any package, at `*` or any constraint. Put the root's own requirements and repositories in the root `composer.json`. The root needs neither a `composer.json` nor requirements of its own.
+Pun requires every member at the root and symlinks each one into `vendor/` as a path package. A member requires another member like any package, at `*` or any other constraint. Put the root's own requirements and repositories in the root `composer.json`. The root needs no `composer.json` and no requirements of its own.
 
 - `*` and `?` in a glob match within one directory name.
 - Pun skips directories without a `composer.json`. A glob that matches nothing, such as `apps/*` before `apps/` exists, adds no member.
@@ -45,7 +45,7 @@ pun require -p acme/billing guzzlehttp/guzzle
 pun remove -p acme/billing guzzlehttp/guzzle
 ```
 
-If a request doesn't resolve, the `composer.json` and the lock stay unchanged.
+If a request doesn't resolve, `composer.json` and the lock stay unchanged.
 
 ## Limits
 

@@ -12,11 +12,11 @@ pun update --dry-run
 
 `pun update` resolves `composer.json` to the newest allowed versions, writes `composer.lock`, and runs [`pun install`](/docs/commands/install). The lock matches the one `composer update` writes.
 
-With package names or `vendor/*` patterns, only those packages can change. Without `composer.json`, `pun update` exits 2.
+With package names or `vendor/*` patterns, only those packages can change. Without a `composer.json`, `pun update` exits 2.
 
 ## What gets resolved
 
-Pun reads Packagist and the `repositories` in `composer.json` and Composer's global `config.json`. It supports `composer`, `package`, and `path` repositories. Any other type fails the update.
+Pun reads Packagist, and the `repositories` in `composer.json` and in Composer's global `config.json`. It supports `composer`, `package`, and `path` repositories. Any other repository type fails the update.
 
 The platform is the PHP on `PATH` and its extensions. `config.platform` overrides it. Stability settings, aliases, `replace`, `provide`, and `conflict` work as in Composer.
 
@@ -36,11 +36,13 @@ If the requirements clash, Pun lists the conflicts, writes nothing, and exits 2.
 
 `pun update` also takes every [`pun install`](/docs/commands/install#options) option. `--ignore-platform-req` also applies while resolving.
 
-Pun runs `pre-update-cmd` and `post-update-cmd` instead of the install scripts. [Plugins](/docs/commands/install#scripts-and-plugins) get the same events.
+Pun runs the `pre-update-cmd` and `post-update-cmd` scripts instead of `pre-install-cmd` and `post-install-cmd`. [Plugins](/docs/commands/install#scripts-and-plugins) get the same events.
 
 ## Exit codes
 
 | Code | When |
 | --- | --- |
 | 0 | Resolved and installed, or nothing to change |
-| 2 | Unresolvable requirements, a failed repository, or a failed install |
+| 2 | No `composer.json`, unresolvable requirements, a failed repository, or a failed install |
+
+To add or remove a package, use [`pun require`](/docs/commands/require) or [`pun remove`](/docs/commands/remove).

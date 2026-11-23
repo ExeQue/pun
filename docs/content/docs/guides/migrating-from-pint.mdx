@@ -1,9 +1,9 @@
 ---
 title: Migrating from Pint
-description: Convert your Pint config, compare the results, and update scripts.
+description: Convert your Pint config, compare the results, and update your scripts and CI.
 ---
 
-Start from a clean Git working tree. Keep Pint installed until you have compared the results.
+This guide switches a project from Pint to Pun. Start from a clean Git working tree. Keep Pint installed until you have compared the results.
 
 <Steps>
   <Step title="Convert the config">
@@ -26,7 +26,7 @@ pun check
 git diff
 ```
 
-Investigate any difference before you switch. `pun check` can also report lint and analysis findings that Pint does not check.
+`vendor/bin/pint --test` and the format part of `pun check` should both pass. Investigate any difference before you switch. `pun check` can also report lint and analysis findings that Pint does not check.
 
   </Step>
   <Step title="Update scripts and CI">
@@ -49,4 +49,4 @@ In CI, replace `vendor/bin/pint --test` with `pun check`. See the [CI guide](/do
 
 Layout rules become format rules. Risky and code-deleting rules become lint rules, so `pun format` alone does not apply your full Pint config. The [Pint mapping](/docs/migrate/from/pint) lists every fixer and its Pun rule.
 
-Migration keeps `pint.json` and the Pint dependency. To roll back, restore your scripts and CI commands, and review any rewritten ignore comments.
+Migration keeps `pint.json` and the Pint dependency. To roll back, restore your scripts and CI commands, and review any rewritten ignore comments. When you no longer need Pint, remove it with `pun remove laravel/pint` and delete `pint.json`.

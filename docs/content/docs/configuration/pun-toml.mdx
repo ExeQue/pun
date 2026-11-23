@@ -1,9 +1,11 @@
 ---
 title: pun.toml
-description: Paths, exclusions, presets, rule levels, and options.
+description: Reference for pun.toml, Pun's config file, with paths, exclusions, extensions, presets, rule levels, and options.
 ---
 
-[`pun init`](/docs/commands/init) creates `pun.toml`, and [`pun migrate`](/docs/commands/migrate) converts existing configs. Every section is optional. Dependencies stay in [`composer.json`](#dependencies).
+`pun.toml` in the project root holds Pun's settings. [`pun init`](/docs/commands/init) creates it, and [`pun migrate`](/docs/commands/migrate) converts existing configs into it. Every section is optional. Dependencies stay in [`composer.json`](#dependencies).
+
+This example uses most keys:
 
 ```toml pun.toml
 [php]
@@ -55,19 +57,19 @@ exclude = ["tests/**"]
 
 | Key | Meaning |
 | --- | --- |
-| `[php] version` | Target PHP version as `major.minor`. Default: the lowest version `require.php` in `composer.json` allows, otherwise 8.4. Without this key, `pun analyse` uses `config.platform.php`, otherwise 8.5 |
-| `[files] paths` | Paths to check when the command line gives none. A path outside the project, directly or through a symlink, is a config error |
+| `[php] version` | The target PHP version, as `major.minor`. Default: the lowest version that `require.php` in `composer.json` allows, otherwise 8.4. Without this key, `pun analyse` uses `config.platform.php`, otherwise 8.5 |
+| `[files] paths` | The paths to check when the command line gives none. A path outside the project, directly or through a symlink, is a config error |
 | `[files] exclude` | Exclusions for every command, added to each command's own `exclude` |
 
 A `require.php` that allows PHP below 8.4 is a config error. Pun never checks `vendor/` or dot folders such as `.git`.
 
-An entry with `*`, `?`, `[`, or `{` is a glob from the project root, and `*` also matches `/`. For example, `storage/**` skips `storage`, not `app/storage`.
+An entry with `*`, `?`, `[`, or `{` is a glob from the project root. In these globs, `*` also matches `/`. For example, `storage/**` skips `storage`, not `app/storage`.
 
-A plain entry is a path from the project root, except in format, which matches a folder of that name at any depth, as Pint does. With `exclude = ["tmp"]`, format skips `tmp/` and `app/tmp/`, while lint and analyse skip only `tmp/`. To skip a folder at any depth in every command, write `**/tmp`. [`pun list-files --command <command>`](/docs/commands/list-files) shows the files each command selects.
+A plain entry is a path from the project root. Format is the exception: as in Pint, it matches a folder of that name at any depth. With `exclude = ["tmp"]`, format skips `tmp/` and `app/tmp/`, while lint and analyse skip only `tmp/`. To skip a folder at any depth in every command, write `**/tmp`. [`pun list-files --command <command>`](/docs/commands/list-files) shows the files each command selects.
 
 ## [extensions]
 
-Extensions add the rules and analysis for a framework or test tool. Each one is off until `[extensions]` turns it on, so `pun.toml` alone shows what runs. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) turn on each extension whose package [`composer.lock`](#dependencies) locks.
+Extensions add the rules and analysis for a framework or test tool. Each one is off until `[extensions]` turns it on, so `pun.toml` alone shows what runs. A locked package never turns an extension on by itself. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) turn on each extension whose package [`composer.lock`](#dependencies) locks.
 
 | Extension | Package `pun migrate` looks for | What it turns on |
 | --- | --- | --- |
@@ -80,9 +82,11 @@ Extensions add the rules and analysis for a framework or test tool. Each one is 
 | `"on"` | On for every command |
 | `"off"`, or left out | Off |
 
-An extension that is on brings its lint rules whatever `[lint] sets` lists. Its opinionated rules and its upgrade groups, such as `laravel-12`, stay opt-in: name them in `[lint.rules]` or `[lint.groups]`. To turn part of an extension off, set its group to `"off"` in `[lint.groups]` or `[analyse.rules]`, or a single rule to `"off"`. A rule you name in `[lint.rules]` runs even when its extension is off.
+An extension that is on brings the lint rules of its group that belong to any lint set, whatever `[lint] sets` lists. Its rules in no set, such as `laravel/no-controller-middleware`, stay opt-in. Name them in `[lint.rules]` or `[lint.groups]`. To turn part of an extension off, set its group to `"off"` in `[lint.groups]` or `[analyse.rules]`, or set a single rule to `"off"`.
 
-Format rules don't depend on extensions: Blade formatting is `"laravel/blade" = true` in `[format.rules]`, which `pun migrate` writes only when `pint.json` turns it on. An unknown extension name is a config error. [`pun extension list`](/docs/commands/extension) shows which extensions are on, and why.
+A rule that you name in `[lint.rules]` runs even when its extension is off. Upgrade groups such as `laravel-12` are the exception: they need the extension, and you must name them.
+
+Format rules don't depend on extensions. Blade formatting is `"laravel/blade" = true` in `[format.rules]`, which `pun migrate` writes only when `pint.json` turns it on. An unknown extension name is a config error. [`pun extension list`](/docs/commands/extension) shows which extensions are on, and why.
 
 ## [format]
 
@@ -90,7 +94,7 @@ Format rules don't depend on extensions: Blade formatting is `"laravel/blade" = 
 | --- | --- |
 | `preset` | `laravel` (default), `psr12`, or `empty` |
 | `exclude` | Added to `[files] exclude` for format only |
-| `not-name`, `not-path` | File names and paths to skip, as in Pint. PHP regular expressions work. An invalid regex is a run error |
+| `not-name`, `not-path` | File names and paths to skip, as in Pint. PHP regular expressions work. An invalid regular expression is a run error |
 | `rules` | `true`, `false`, a table of options, or the value of the rule's only option |
 
 Format always indents with four spaces and writes `\n` line endings. Neither has a setting. Risky and code-deleting fixers are [lint rules](/docs/commands/lint).
@@ -103,7 +107,7 @@ Format always indents with four spaces and writes `\n` line endings. Neither has
 | `exclude` | Added to `[files] exclude` for lint only |
 | `groups` | `"error"`, `"warn"`, or `"off"` for every rule in a group |
 | `rules` | `"error"`, `"warn"`, or `"off"` (not `true` or `false`), or a table with `level`, `fix = "off"`, and the rule's options. `level` defaults to `"error"` |
-| `[[lint.overrides]]` | `files` (globs) and `rules`: rule levels for matching files |
+| `[[lint.overrides]]` | `files` (globs) and `rules`, which set rule levels for matching files |
 
 Later settings win, in this order:
 
@@ -115,7 +119,7 @@ Later settings win, in this order:
 
 Warnings don't fail the run unless you set a warning limit. `--fix` skips rules with `fix = "off"`.
 
-Laravel, Pest, and PHPUnit rules come from [`[extensions]`](#extensions), not from sets. PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` turn on only when you name them.
+Laravel, Pest, and PHPUnit rules come from [`[extensions]`](#extensions), not from sets. PHP upgrade rules, such as the `php-8.5` group, run only when `[php] version` is that version or later. Groups such as `laravel-12` turn on only when you name them.
 
 ## [analyse]
 
@@ -125,10 +129,10 @@ Laravel, Pest, and PHPUnit rules come from [`[extensions]`](#extensions), not fr
 | `paths` | Paths to analyse, instead of `[files] paths` |
 | `exclude` | Added to `[files] exclude` for analyse only |
 | `baseline` | The baseline file. A path outside the project is a config error |
-| `stubs` | Stub files whose PHPDoc refines vendor symbols, as PHPStan's `stubFiles` |
+| `stubs` | Stub files whose PHPDoc refines vendor symbols, as in PHPStan's `stubFiles` |
 | `bleeding-edge` | `true` infers types as PHPStan's `bleedingEdge.neon` does, except sealed and unsealed array shapes. Default `false` |
-| `rules` | `"on"`, `"off"`, or a table of options per rule. `"on"` or `"off"` per group |
-| `[[analyse.ignore]]` | Errors to ignore, as PHPStan's `ignoreErrors` |
+| `rules` | `"on"`, `"off"`, or a table of options for each rule, and `"on"` or `"off"` for each group |
+| `[[analyse.ignore]]` | Errors to ignore, as in PHPStan's `ignoreErrors` |
 
 Every analyse finding is an error.
 
@@ -142,9 +146,9 @@ Each `[[analyse.ignore]]` entry takes these keys. An error is ignored when it ma
 | `raw-message` | The exact message |
 | `paths` | Paths or fnmatch patterns from the project root |
 | `count` | The number of matches, with one path |
-| `report-unmatched` | `false` doesn't report the entry when it matches nothing, as PHPStan's `reportUnmatched`. Default `true` |
+| `report-unmatched` | With `false`, Pun doesn't report the entry when it matches nothing, as in PHPStan's `reportUnmatched`. Default `true` |
 
-An entry that matches nothing, or a `count` that is wrong, is reported as an error. With `report-unmatched = false`, only a `count` that is exceeded is.
+Pun reports an entry that matches nothing, or a `count` that is wrong, as an error. With `report-unmatched = false`, Pun reports only a `count` that is exceeded.
 
 ```toml pun.toml
 [[analyse.ignore]]
@@ -168,8 +172,9 @@ Dependencies live in `composer.json` and `composer.lock`, so Pun and Composer ca
 
 - [`pun install`](/docs/commands/install), [`update`](/docs/commands/update), [`require`](/docs/commands/require), and [`remove`](/docs/commands/remove) read `composer.json` and write `composer.lock`. `require` and `remove` also edit `composer.json`.
 - Commands that load the config, such as `format`, `lint`, `analyse`, and `check`, read `require.php`, `config.platform.php`, and the locked Laravel, Pest, and PHPUnit versions from the project root.
+- Pun has no lock file of its own.
 
-A composer.json section in `pun.toml`, such as `[require]`, `[autoload]`, or `[scripts]`, is a config error (exit 2). Put its keys in `composer.json`, and `[package]` keys at its root.
+A `composer.json` section in `pun.toml`, such as `[require]`, `[autoload]`, or `[scripts]`, is a config error (exit 2). Put its keys in `composer.json`. Put `[package]` keys at the root of `composer.json`.
 
 ## Rule names
 
@@ -179,13 +184,13 @@ Config accepts only Pun IDs. A wrong name is an error that gives the Pun ID. `pu
 
 ## Rule options
 
-Option names and most values are kebab-case: PHP-CS-Fixer's `on_multiline = "ensure_fully_multiline"` is `on-multiline = "ensure-fully-multiline"`. PHP keywords such as `require_once` keep their spelling. Each [rule page](/docs/rules) lists the rule's options beside their PHP-CS-Fixer names.
+Option names and most values are kebab-case. For example, PHP-CS-Fixer's `on_multiline = "ensure_fully_multiline"` is `on-multiline = "ensure-fully-multiline"`. PHP keywords such as `require_once` keep their spelling. Each [rule page](/docs/rules) lists the rule's options beside their PHP-CS-Fixer names.
 
 TOML has no `null`. Where PHP-CS-Fixer uses `null` to leave something alone, write `"ignore"`: `"control-flow/yoda" = { less-and-greater = "ignore" }`. `types/union-spacing` uses `space-multiple-catch = "same-as-space"`. For `order` in `imports/ordered` and `validator` in `comments/header`, leave the option out.
 
 A rule with one option that isn't a boolean or a table takes the value directly: `"arrays/syntax" = "long"` means `"arrays/syntax" = { syntax = "long" }`.
 
-An unknown option or value is an error that lists what the rule accepts. A renamed PHP-CS-Fixer option gets its Pun name.
+An unknown option or value is an error that lists what the rule accepts. For a renamed PHP-CS-Fixer option, the error gives the Pun name.
 
 ```text
 pun.toml: `imports/ordered` has no option `sort-algorithm`: use `sort`
@@ -196,7 +201,7 @@ Lint rules take their options beside `level` and `fix`: `"phpunit/require-method
 
 ### Rules from Mago
 
-Lint rules from Mago's linter use Mago's option names and defaults: `"complexity/no-excessive-cyclomatic" = { threshold = 20, method-threshold = 10 }`.
+Lint rules from Mago's linter use Mago's option names and defaults. For example: `"complexity/no-excessive-cyclomatic" = { threshold = 20, method-threshold = 10 }`.
 
 - Pun ignores a Mago `level` on the rule or on a `functions`, `extensions`, or `types` entry. The level comes from `pun.toml`.
 - `style/require-naming-convention` replaces Mago's nine `*-name` rules. It takes one table per Mago rule, such as `method-name = { enabled = true, camel = false }`. The method, property, and variable checks are off until enabled.
@@ -204,7 +209,7 @@ Lint rules from Mago's linter use Mago's option names and defaults: `"complexity
 
 ### Refactor rules
 
-`refactor/*` rules do nothing until configured. They take the Rector rule's configuration:
+`refactor/*` rules do nothing until you configure them. They take the Rector rule's configuration:
 
 - A map keeps its keys: `"refactor/rename-function" = { view = "Laravel\\Templating\\render" }`.
 - A list of objects goes under `items`, with kebab-case properties: `"refactor/remove-function-argument" = { items = [{ function = "ldap_first_attribute", argument-position = 2 }] }`.
@@ -213,11 +218,11 @@ An invalid name, such as `"1f"` as a function name, is a config error. `refactor
 
 ## Removed keys
 
-Keys from earlier versions, such as a top-level `preset`, `[format] paths`, `[analyse] level`, `fix = "apply"`, or `"info"`, are config errors. Each error says what to write instead.
+Keys from earlier versions, such as a top-level `preset`, `[format] paths`, `[analyse] level`, `fix = "apply"`, or the `"info"` level, are config errors. Each error says what to write instead.
 
 ## Without pun.toml
 
-Commands that load config stop with:
+Commands that load the config stop with exit code 2 and this message:
 
 ```text
 No pun.toml found. Run `pun migrate`, or `pun init` for a new project.
@@ -229,14 +234,15 @@ To run without a file, pass `--preset <name>` (`laravel`, `psr12`, or `empty`) o
 
 | Variable | Effect |
 | --- | --- |
-| `NO_COLOR` | Turns off colour when `--color` is `auto` |
+| `NO_COLOR` | Turns off color when `--color` is `auto` |
 | `COLUMNS` | Output width when Pun cannot read the terminal's |
-| `CI` | `pun init` takes the defaults without asking |
+| `CI` | Makes `pun init` take the defaults without asking |
 | `GITHUB_ACTIONS=true` | Adds GitHub annotations after human output |
 | `PUN_AGENT`, `PAO_FORCE`, `PAO_DISABLE` | Turn [agent output](/docs/guides/coding-agents) on or off |
 | `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS` | Accepts an ignore comment that names a rule the run doesn't use |
 | `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.4. Unsupported: results on older syntax are unchecked |
-| `PUN_PROFILE` | Prints per-stage timings on stderr |
+| `PUN_PROFILE` | Prints the time of each stage on stderr |
+| `PUN_NO_CACHE=1` | Turns off the [result cache](/docs/commands/format#cache), like `--no-cache` |
 | `PUN_CACHE_DIR` | Cache for the [result cache](/docs/commands/format#cache), Blade's Prettier workers, [`pun x`](/docs/commands/x#manage-installs) installs, and the [package store](/docs/commands/install#package-store) |
 | `PUN_LINK_MODE` | How [`pun install`](/docs/commands/install#package-store) links packages from the store: `hardlink` (default), `clone`, or `copy` |
 | `PUN_REQUIRE_ATTESTATION=1` | [`pun self-update`](/docs/commands/self-update) fails when it cannot check the build attestation |

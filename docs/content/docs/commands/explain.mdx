@@ -3,13 +3,30 @@ title: pun explain
 description: Look up a rule by Pun ID or upstream name.
 ---
 
+`pun explain` prints what a rule does, which presets or sets turn it on, how safe its fix is, and its upstream names.
+
 ```bash
 pun explain lint/style/no-alias-function
 pun explain style/no-alias-function
 pun explain no_alias_functions
 ```
 
-The command prefix is optional when the name matches one rule. `pun explain` accepts upstream names, but `pun.toml` doesn't. For an upstream or old name, Pun prints the current Pun ID first. An unknown or unsupported name exits 2 with a reason.
+You can leave out the command prefix when the name matches one rule. `pun explain` accepts upstream names, but `pun.toml` doesn't. For an upstream or old name, Pun prints the current Pun ID first. An unknown or unsupported name exits 2 with a reason.
+
+```text
+$ pun explain no_alias_functions
+`no_alias_functions` is `lint/style/no-alias-function` in Pun.
+
+lint/style/no-alias-function
+Master functions shall be used instead of aliases.
+
+group     style: One consistent way to write the same thing
+sets      coding-style
+fix       unsafe
+upstream  no_alias_functions (php-cs-fixer)
+          no-alias-function (mago-linter)
+docs      https://pun.laravel.cloud/docs/rules/lint/style/no-alias-function
+```
 
 ## Output fields
 
@@ -17,11 +34,11 @@ The command prefix is optional when the name matches one rule. `pun explain` acc
 | --- | --- |
 | Rule ID and summary | Pun name and description |
 | `group` | Group name and scope |
-| `presets`, `sets`, or `preset` | Selections that enable the rule |
+| `presets`, `sets`, or `preset` | The selections that turn the rule on, or `none (opt-in by name or group)` |
 | `intent` | `correctness` or `suspicious`, when recorded |
 | `fix` | `safe`, `unsafe`, `mixed` (safe only where types prove it), or `none` (report-only) |
-| `fixed by` | Lint rule that can fix an analyse finding |
-| `upstream` | Equivalent upstream names and tools |
+| `fixed by` | The lint rule that can fix an analyse finding |
+| `upstream` | The equivalent upstream names and their tools |
 | `docs` | The rule's page on this site |
 
 The [rule reference](/docs/rules) also lists each rule's options.

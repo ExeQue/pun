@@ -1,9 +1,9 @@
 ---
 title: Introduction
-description: Pun is one fast binary for your PHP toolchain, compatible with Pint, Rector, PHPStan, and Composer.
+description: Pun is one Rust binary that formats, lints, and analyses PHP 8.4+ projects and installs their Composer packages.
 ---
 
-Pun is one fast binary, written in Rust, for your PHP workflow. Each command gives the same answers as the tool it replaces: Pint and PHP-CS-Fixer, Rector, PHPStan and Larastan, or Composer. You can switch one command at a time.
+Pun is one binary, written in Rust, for your PHP toolchain. Each command gives the same answers as the tool it replaces: Pint and PHP-CS-Fixer, Rector, PHPStan and Larastan, or Composer. You can switch one command at a time.
 
 Pun supports projects that target PHP 8.4 or later.
 
@@ -12,16 +12,19 @@ Pun supports projects that target PHP 8.4 or later.
 | Command | What it does |
 | --- | --- |
 | [`pun format`](/docs/commands/format) | Fixes layout, casing, and spelling, as Pint and PHP-CS-Fixer do |
-| [`pun lint`](/docs/commands/lint) | Reports code issues and fixes them with `--fix`, as Rector, Mago, and PHP-CS-Fixer's risky fixers do |
+| [`pun lint`](/docs/commands/lint) | Reports code problems and fixes them with `--fix`, as Rector, Mago, and PHP-CS-Fixer's risky fixers do |
 | [`pun analyse`](/docs/commands/analyse) | Reports type errors without editing files, as PHPStan and Larastan do |
 | [`pun check`](/docs/commands/check) | Runs format, lint, and analyse in one pass |
 | [`pun migrate`](/docs/commands/migrate) | Converts your Pint, PHP-CS-Fixer, Rector, and PHPStan configs to `pun.toml` |
-| [`pun init`](/docs/commands/init) | Creates `pun.toml` for a new project |
-| [`pun install`](/docs/commands/install) | Installs the locked dependencies into `vendor/`, with the same files Composer writes |
+| [`pun init`](/docs/commands/init) | Creates `pun.toml` for a project without those configs |
+| [`pun install`](/docs/commands/install) | Installs the locked dependencies into `vendor/`, with the files Composer writes |
 | [`pun update`](/docs/commands/update) | Resolves the dependencies again and writes the lock Composer writes |
 | [`pun require`](/docs/commands/require), [`pun remove`](/docs/commands/remove) | Adds or removes packages, then updates and installs |
+| [`pun composer dump-autoload`](/docs/commands/composer) | Writes the autoloader again |
 | [`pun x`](/docs/commands/x) (`punx`) | Runs a command from a Composer package without adding it to the project |
 | [`pun self-update`](/docs/commands/self-update) | Replaces `pun` with the latest release |
+
+To inspect a project, use [`pun config`](/docs/commands/config), [`pun list-files`](/docs/commands/list-files), [`pun extension list`](/docs/commands/extension), and [`pun explain`](/docs/commands/explain).
 
 ## Status
 
@@ -29,7 +32,7 @@ Pun supports projects that target PHP 8.4 or later.
 - **Lint** and **analyse** cover part of Rector, PHPStan, and Larastan. The [rule reference](/docs/rules) marks missing rules as Planned.
 - **The package manager** reads `composer`, `package`, and `path` repositories, and runs the Composer plugins that `allow-plugins` allows. It does not support `vcs` repositories.
 
-PHP checks need no PHP runtime. Blade formatting needs Node.js (or Bun) and Prettier. Some config migrations need PHP and the original tool.
+Format, lint, and analyse need no PHP runtime. Blade formatting needs Node.js (or Bun) and Prettier. Some config migrations need PHP and the original tool.
 
 ## Get started
 
@@ -38,7 +41,7 @@ PHP checks need no PHP runtime. Blade formatting needs Node.js (or Bun) and Pret
 <Steps>
   <Step title="Create pun.toml">
 
-If you have a Pint, PHP-CS-Fixer, Rector, or PHPStan config, start from a clean Git working tree, because migration can rewrite ignore comments in PHP files. Preview the migration, then run it:
+If you have a Pint, PHP-CS-Fixer, Rector, or PHPStan config, start from a clean Git working tree. Migration can rewrite ignore comments in PHP files. Preview the migration, then run it:
 
 ```bash
 pun migrate --dry-run
@@ -80,10 +83,10 @@ Analysis never edits files. Lint rules with `fix = "off"` only report.
 ```bash
 pun check --dirty
 pun check --staged
-pun format --diff=main
+pun check --diff=main
 ```
 
-`--dirty` selects uncommitted changes, `--staged` selects files with staged changes, and `--diff=main` selects files changed since you branched from `main`.
+`--dirty` selects files with uncommitted changes. `--staged` selects files with staged changes. `--diff=main` selects files changed since you branched from `main`.
 
   </Step>
 </Steps>
@@ -105,4 +108,4 @@ Recorded comparisons with each upstream tool.
 
 ## Credits
 
-Pun builds on [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan), [Rector](https://github.com/rectorphp/rector), and [Composer](https://github.com/composer/composer). Special thanks to Mago's maintainers: Pun uses Mago's parser and analysis libraries directly. Thank you all for sharing your work.
+Pun builds on [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan), [Rector](https://github.com/rectorphp/rector), and [Composer](https://github.com/composer/composer). Pun uses Mago's parser and analysis libraries directly. Thank you to everyone behind these projects for sharing your work.
