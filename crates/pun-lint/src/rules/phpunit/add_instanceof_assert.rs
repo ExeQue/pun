@@ -12,6 +12,7 @@ use mago_syntax::cst::{
 use super::is_in_test_class;
 use crate::rules::support::statement_edits::{
     List, assign, block_list, body_list, expression, first_comment, holder_list, line_indent,
+    variable_name,
 };
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
@@ -125,14 +126,27 @@ fn run(
         dynamic_assign_classes(ctx, statement, &mut widened);
     }
     let mut edits = Vec::new();
+    // Variables an assert has narrowed until they are assigned again. Rector relies on PHPStan here: after
+    // `assertInstanceOf()` the variable is not nullable, so a later assignment of the same name collected above does
+    // not match it. `expect($x)->toBeInstanceOf()` narrows nothing, and without this the rule would insert an
+    // `assertInstanceOf()` after every one (laravel-framework's ValidationPasswordRuleTest reassigns `$rule`).
+    let mut narrowed: Vec<&[u8]> = Vec::new();
     for (i, statement) in list.stmts.iter().enumerate() {
         if let Some(name) = asserted_variable(statement, static_calls) {
             if let Some(index) = match_by_name(&collection, name) {
                 collection.remove(index);
             }
+            narrowed.push(name);
             continue;
         }
         let mut found = matched(statement, &collection, &dynamic[i]);
+        found.retain(|&index| !narrowed.contains(&collection[index].0.as_slice()));
+        if let Some(name) = expression(statement)
+            .and_then(assign)
+            .and_then(|a| variable_name(a.lhs))
+        {
+            narrowed.retain(|n| *n != name);
+        }
         if found.is_empty() {
             continue;
         }

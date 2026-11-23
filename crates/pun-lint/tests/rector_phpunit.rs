@@ -56,6 +56,10 @@
 //! `->and($x)` as its subject). Rector runs each
 //! rule once and would insert another; Pun fixes until nothing changes, and the two rules would never settle.
 //!
+//! AddInstanceofAssertForNullableArgumentRector/Pun/expect_reassigned: a variable assigned twice, each value checked by
+//! `expect($x)->toBeInstanceOf(...)`. Rector gets the second call's argument as non-nullable from PHPStan's narrowing;
+//! Pun skips a variable that an assert or expectation has covered until it is assigned again.
+//!
 //! Pun/missing11 (`NamedArgumentForDataProviderRector`): a data provider whose arrays have empty items, which
 //! php-parser does not parse; Pun leaves it alone.
 
