@@ -5,6 +5,7 @@ pub(crate) mod names;
 mod add_array_return;
 mod add_bool_return;
 mod add_bool_return_from_const;
+mod add_bool_return_from_mixed;
 mod add_closure_never_return;
 mod add_closure_return;
 mod add_closure_void_return;
@@ -74,11 +75,13 @@ mod implicit_array_observer;
 mod native;
 mod never;
 pub(crate) mod no_nullsafe_on_non_null;
+mod no_phpstan_phpdoc_tag;
 mod param;
 mod prefer_explicit_null_instanceof;
 mod prefer_generic_collection_phpdoc;
 mod prefer_identical_same_type;
 mod prefer_instanceof;
+mod prefer_literal_bool_phpdoc;
 mod prefer_specific_return_type;
 pub(crate) mod property_type;
 pub(crate) mod rector_type;
@@ -112,6 +115,7 @@ rules! {
         add_scalar_return => AddStringReturnFromScalar,
         add_scalar_return => AddNumericReturnFromScalar,
         add_bool_return => AddBoolReturn,
+        add_bool_return_from_mixed => AddBoolReturnFromMixed,
         add_native_scalar_return => AddStringReturn,
         add_native_scalar_return => AddNumericReturn,
         add_return_type_from_ternary => AddReturnTypeFromTernary,
@@ -127,6 +131,8 @@ rules! {
         add_return_type_from_typed_call => AddReturnTypeFromTypedCall,
         add_magic_method_types => AddMagicMethodTypes,
         prefer_specific_return_type => PreferSpecificReturnType,
+        prefer_literal_bool_phpdoc => PreferLiteralBoolPhpdoc,
+        no_phpstan_phpdoc_tag => NoPhpstanPhpdocTag,
         add_union_return => AddUnionReturn,
         add_closure_never_return => AddClosureNeverReturn,
         add_closure_return => AddClosureReturn,

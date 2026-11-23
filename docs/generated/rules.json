@@ -10356,7 +10356,7 @@
         "ConstructorReadonlyAssignToDefaultRector",
         "Rector\\Php86\\Rector\\Class_\\ConstructorReadonlyAssignToDefaultRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/phpdoc/add-missing-param",
@@ -15405,7 +15405,7 @@
         "BoolReturnTypeFromBooleanConstAndStrictReturnsRector",
         "Rector\\TypeDeclaration\\Rector\\ClassMethod\\BoolReturnTypeFromBooleanConstAndStrictReturnsRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/types/add-closure-never-return",
@@ -16685,7 +16685,7 @@
         "MergePhpstanDocTagIntoNativeRector",
         "Rector\\TypeDeclarationDocblocks\\Rector\\Property\\MergePhpstanDocTagIntoNativeRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/types/prefer-explicit-null-instanceof",
@@ -16785,7 +16785,7 @@
         "NarrowBoolDocblockReturnTypeRector",
         "Rector\\TypeDeclaration\\Rector\\ClassMethod\\NarrowBoolDocblockReturnTypeRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/types/prefer-narrow-param-type",

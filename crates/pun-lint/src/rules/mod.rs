@@ -174,6 +174,7 @@ rules! {
         php_8_5::prefer_ord_first_byte => PreferOrdFirstByte,
         php_8_5::prefer_array_first_last => PreferArrayFirstLast,
         php_8_6::prefer_clamp => PreferClamp,
+        php_8_6::prefer_readonly_property_default => PreferReadonlyPropertyDefault,
         php_8_4::prefer_array_all => PreferArrayAll::default(),
         php_8_4::prefer_array_any => PreferArrayAny::default(),
         php_8_4::prefer_array_find => PreferArrayFind::default(),

@@ -123,7 +123,7 @@ impl PhpDocInfo {
         }
     }
 
-    fn typed(&self, name: &str) -> impl Iterator<Item = &TypedValue> {
+    pub(crate) fn typed(&self, name: &str) -> impl Iterator<Item = &TypedValue> {
         self.children
             .iter()
             .filter_map(move |c| c.typed().filter(|(n, _)| *n == name).map(|(_, v)| v))

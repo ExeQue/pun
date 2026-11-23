@@ -67,7 +67,7 @@ impl Rule for AddBoolReturn {
     }
 }
 
-fn is_bool_expr(expr: &Expression<'_>) -> bool {
+pub(super) fn is_bool_expr(expr: &Expression<'_>) -> bool {
     match expr {
         Expression::UnaryPrefix(p) => matches!(
             p.operator,

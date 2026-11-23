@@ -11,6 +11,7 @@ mod problem;
 mod problem_ignore;
 mod rector;
 mod rector_a;
+mod rector_core_b;
 mod rector_dead;
 mod rector_inject;
 mod rector_laravel;

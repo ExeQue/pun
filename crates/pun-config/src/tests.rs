@@ -346,26 +346,25 @@ fn lint_sets() {
     );
     let types = "[lint]\nsets = [\"types\"]\n";
     let l = lint(&[("pun.toml", types)]);
-    assert_eq!((l.rules.len(), l.ecosystems.len()), (68, 0));
+    assert_eq!((l.rules.len(), l.ecosystems.len()), (71, 0));
     assert!(!ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
-    assert!(!ids(&l.rules).contains(&"lint/types/no-phpstan-phpdoc-tag"));
     // A locked laravel/framework alone turns nothing on: only pun.toml does.
     let l = lint(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]);
-    assert_eq!((l.rules.len(), l.ecosystems.len()), (68, 0));
+    assert_eq!((l.rules.len(), l.ecosystems.len()), (71, 0));
     // On, the extension brings its rules from every set (4 types, 36 code-quality, 1 coding-style), not only `types`;
     // its rules in no set, such as no-controller-middleware, stay opt-in.
     let laravel = format!("[extensions]\nlaravel = \"on\"\n{types}");
     let l = lint(&[("pun.toml", &laravel), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!(
         (l.rules.len(), l.ecosystems),
-        (68 + 41, vec![&crate::extensions::LARAVEL])
+        (71 + 41, vec![&crate::extensions::LARAVEL])
     );
     assert!(ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
     assert!(ids(&l.rules).contains(&"lint/laravel/no-app-array-access"));
     assert!(!ids(&l.rules).contains(&"lint/laravel/no-controller-middleware"));
     let off = format!("{laravel}[lint.groups]\nlaravel = \"off\"\n");
     let l = lint(&[("pun.toml", &off), ("composer.lock", LARAVEL_LOCK)]);
-    assert_eq!((l.rules.len(), l.ecosystems.len()), (68, 0));
+    assert_eq!((l.rules.len(), l.ecosystems.len()), (71, 0));
     let modernize = "[lint]\nsets = [\"modernize\"]\n";
     let l = lint(&[(
         "pun.toml",
@@ -392,7 +391,7 @@ fn lint_sets() {
     assert!(ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.1/prefer-first-class-callable"));
     let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\", \"types\"]\n")]);
-    assert_eq!(l.rules.len(), 70);
+    assert_eq!(l.rules.len(), 73);
 }
 
 #[test]
@@ -636,13 +635,13 @@ fn extensions() {
     let types = "[lint]\nsets = [\"types\"]\n";
     let with = |switch: &str| format!("{types}[extensions]\nlaravel = \"{switch}\"\n");
     let c = load_(&[("pun.toml", &with("off")), ("composer.lock", LARAVEL_LOCK)]).unwrap();
-    assert_eq!((c.lint.rules.len(), c.lint.ecosystems.len()), (68, 0));
+    assert_eq!((c.lint.rules.len(), c.lint.ecosystems.len()), (71, 0));
     assert!(c.extensions.is_empty() && c.analyse.ecosystems.is_empty() && !c.analyse.larastan);
     assert_eq!(c.show()["extensions"]["laravel"], "off");
     let c = load_(&[("pun.toml", &with("on"))]).unwrap();
     assert_eq!(
         (c.lint.rules.len(), &c.extensions),
-        (68 + 41, &vec![&crate::extensions::LARAVEL])
+        (71 + 41, &vec![&crate::extensions::LARAVEL])
     );
     assert!(c.analyse.larastan && c.analyse.ecosystems == [&crate::extensions::LARAVEL]);
     let shown = c.show();

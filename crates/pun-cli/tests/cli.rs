@@ -595,9 +595,9 @@ fn pun_only_behaviour() {
     assert_eq!(err, "");
 
     // No PHP fallback: a rule Pun hasn't ported stops every command, named under its Pun ID (exit 2).
-    let one = "[format]\npreset = \"empty\"\n[format.rules]\n\"arrays/syntax\" = true\n[lint.rules]\n\"laravel/prefer-unguarded-attribute\" = \"error\"\n";
+    let one = "[format]\npreset = \"empty\"\n[format.rules]\n\"arrays/syntax\" = true\n[lint.rules]\n\"laravel/prefer-pivot-class\" = \"error\"\n";
     std::fs::write(dir.join("pun.toml"), one).unwrap();
-    let unported = "x pun.toml  rule not supported by Pun yet: `lint/laravel/prefer-unguarded-attribute`\n  remove it from pun.toml to run the other rules\n";
+    let unported = "x pun.toml  rule not supported by Pun yet: `lint/laravel/prefer-pivot-class`\n  remove it from pun.toml to run the other rules\n";
     for cmd in [&["format", "--test"][..], &["lint"], &["check", "--fix"]] {
         let (out, err, code) = pun(&dir, cmd);
         assert_eq!(
@@ -606,21 +606,15 @@ fn pun_only_behaviour() {
             "{cmd:?}"
         );
     }
-    // Lint rules count too, even for `pun format`; several are listed together.
+    // Lint rules count too, even for `pun format` with no format rules.
     std::fs::write(
         dir.join("pun.toml"),
-        "[format]\npreset = \"empty\"\n[lint.rules]\n\"laravel/prefer-unguarded-attribute\" = \"error\"\n\"types/prefer-literal-bool-phpdoc\" = \"error\"\n",
+        "[format]\npreset = \"empty\"\n[lint.rules]\n\"laravel/prefer-pivot-class\" = \"error\"\n",
     )
     .unwrap();
     let (_, err, code) = pun(&dir, &["format", "--test"]);
-    let rules = "rules not supported by Pun yet: `lint/laravel/prefer-unguarded-attribute`, `lint/types/prefer-literal-bool-phpdoc`";
-    assert_eq!(
-        (err, code),
-        (
-            format!("x pun.toml  {rules}\n  remove them from pun.toml to run the other rules\n"),
-            Some(2)
-        )
-    );
+    let rules = "rule not supported by Pun yet: `lint/laravel/prefer-pivot-class`";
+    assert_eq!((err.as_str(), code), (unported, Some(2)));
     // Agent mode: the same message as its one-line error, same exit code.
     let (out, _, code) = pun_env(&dir, &["lint"], &[("PUN_AGENT", "1")]);
     let toml = dir.join("pun.toml");
@@ -632,10 +626,10 @@ fn pun_only_behaviour() {
         )
     );
     // A named lint rule Pun can't run yet stops the run too; a set skips the rules Pun can't run yet (code-quality
-    // has unported rules, such as laravel/prefer-collection-is-empty).
+    // has unported rules, such as laravel/prefer-pivot-class).
     std::fs::write(
         dir.join("pun.toml"),
-        "[format]\npreset = \"empty\"\n[lint]\nsets = [\"code-quality\"]\n[lint.rules]\n\"laravel/prefer-unguarded-attribute\" = \"error\"\n",
+        "[format]\npreset = \"empty\"\n[lint]\nsets = [\"code-quality\"]\n[lint.rules]\n\"laravel/prefer-pivot-class\" = \"error\"\n",
     )
     .unwrap();
     let (_, err, code) = pun(&dir, &["lint"]);

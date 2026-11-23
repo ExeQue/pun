@@ -6635,7 +6635,7 @@
         "rules": [
           "lint/types/add-bool-return-type-from-mixed-returns"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -7037,7 +7037,7 @@
         "rules": [
           "lint/php-8.6/prefer-readonly-property-default"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -7835,7 +7835,7 @@
         "rules": [
           "lint/types/no-phpstan-phpdoc-tag"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -7955,7 +7955,7 @@
         "rules": [
           "lint/types/prefer-literal-bool-phpdoc"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
