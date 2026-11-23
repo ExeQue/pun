@@ -50,6 +50,10 @@
 //! `.oracle/rector-bin` does not give (it has no PHPUnit extension for PHPStan), so Oracle/ holds only closures whose
 //! type does not depend on the narrowing.
 //!
+//! AddInstanceofAssertForNullableInstanceRector/Pun/expect_instanceof: `expect($x)->toBeInstanceOf(...)`, which
+//! `lint/pest/prefer-expect` makes of the `assertInstanceOf()` this rule inserts, counts as that assert. Rector runs each
+//! rule once and would insert another; Pun fixes until nothing changes, and the two rules would never settle.
+//!
 //! Pun/missing11 (`NamedArgumentForDataProviderRector`): a data provider whose arrays have empty items, which
 //! php-parser does not parse; Pun leaves it alone.
 
