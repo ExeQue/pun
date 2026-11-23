@@ -1192,7 +1192,7 @@ check-function-name-case = true
         &scratch("cli", "config-none"),
         &["config", "--preset=empty"],
     );
-    assert!(out.starts_with("[php]\nversion = \"8.4\"\n"), "{out}");
+    assert!(out.starts_with("[php]\nversion = \"8.3\"\n"), "{out}");
     assert_eq!(code, Some(0));
 }
 
