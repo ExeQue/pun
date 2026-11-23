@@ -171,6 +171,7 @@ mod string_casing;
 mod string_guarantees;
 mod strlen;
 mod stub_native_types;
+mod template_argument_marker_bounds;
 mod terminated_statement_scopes;
 mod trait_constant_initializers;
 mod try_certainty;

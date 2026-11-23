@@ -1,0 +1,40 @@
+{
+  "level": 10,
+  "errors": [
+    {
+      "line": 47,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Coll<string, string>"
+    },
+    {
+      "line": 59,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Coll<lowercase-string, string>"
+    },
+    {
+      "line": 72,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Coll<string, string>"
+    },
+    {
+      "line": 74,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: non-empty-list<string>"
+    },
+    {
+      "line": 75,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Coll<string, string>"
+    },
+    {
+      "line": 86,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Coll<int|lowercase-string, string>"
+    },
+    {
+      "line": 87,
+      "identifier": "phpstan.dumpType",
+      "message": "Dumped type: App\\Coll<int|lowercase-string, string>"
+    }
+  ]
+}

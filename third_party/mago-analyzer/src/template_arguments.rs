@@ -750,6 +750,10 @@ impl Observed {
         let (Some(parameter_atomic), Some(argument_atomic)) = (parameter.types.first(), argument.types.first()) else {
             return false;
         };
+        if let Some(m) = as_marker(argument_atomic) {
+            // a marker answers getObjectClassReflections(), isIterable() and its iterable types with its delegate
+            return self.observe_lower_bound(codebase, parameter, &m.delegate);
+        }
         if let TAtomic::Object(TObject::Named(parameter_object)) = parameter_atomic {
             let Some(parameter_class) = codebase.get_class_like(parameter_object.name.as_bytes()) else {
                 return false;

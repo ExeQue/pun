@@ -4202,6 +4202,15 @@ TemplateConstantIntegerType inherit IntegerType::toInteger(), which returns `$th
 longer reports `return.type` (dev-null `FathomAnalyticsProvider::count()`,
 `crates/pun-analyse/tests/int_cast_templates.rs`).
 
+## A marker argument in observeLowerBound()
+
+`template_arguments.rs` `observe_lower_bound()` matches an argument that is a marker by its delegate, as
+UnresolvedTemplateArgumentType answers getObjectClassReflections(), isIterable() and getIterableValueType() with
+its delegate. A `list<string>` read out of one `mapWithKeys()` result and passed to `only()` of another left the
+latter's `lowercase-string` keys unbounded, so they stayed `lowercase-string` and `only()` reported
+`argument.type`; PHPStan widens them to `string` (dev-null `backfill_commit_mentions.php`,
+`crates/pun-analyse/tests/template_argument_marker_bounds.rs`).
+
 ## Mago 1.61.0 changes rejected for PHPStan parity
 
 - `plugin/libraries/stdlib/closure/`: upstream's `ClosureFromCallableProvider` (1.59.0) is not registered, and its
