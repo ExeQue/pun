@@ -19,6 +19,7 @@ mod functions;
 mod laravel;
 mod operators;
 mod pest;
+mod php_7_1;
 mod php_7_2;
 mod php_7_3;
 mod php_7_4;
@@ -159,6 +160,7 @@ rules! {
         complexity::no_sole_value_sprintf => NoSoleValueSprintf,
         complexity::no_compact => NoCompact,
         complexity::require_is_a_allow_string => RequireIsAAllowString,
+        php_7_1::prefer_is_iterable => PreferIsIterable,
         php_7_2::no_constant_define_name => NoConstantDefineName,
         php_7_3::no_case_insensitive_define => NoCaseInsensitiveDefine,
         php_7_3::no_unescaped_regex_dash => NoUnescapedRegexDash,

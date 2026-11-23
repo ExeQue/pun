@@ -69,9 +69,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "ListToArrayDestruct",
+        "ListToArrayDestructRector",
+        "Rector\\Php71\\Rector\\List_\\ListToArrayDestructRector",
         "list_syntax"
       ],
       "ported": true
@@ -9917,6 +9921,26 @@
         "EnsureTypeChecksFirst",
         "EnsureTypeChecksFirstRector",
         "Pest\\Rector\\Rules\\EnsureTypeChecksFirstRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.1/prefer-is-iterable",
+      "command": "lint",
+      "group": "php-7.1",
+      "summary": "Changes is_array + Traversable check to is_iterable",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "IsIterable",
+        "IsIterableRector",
+        "Rector\\Php71\\Rector\\BooleanOr\\IsIterableRector"
       ],
       "ported": true
     },

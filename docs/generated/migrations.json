@@ -819,7 +819,7 @@
         "rules": [
           "format/arrays/list-syntax"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/arrays/list-syntax\"].",
+        "note": "Merged with ListToArrayDestruct. Options: renamed for TOML: [options.\"format/arrays/list-syntax\"].",
         "unsupported": false
       },
       {
@@ -3805,7 +3805,7 @@
         "rules": [
           "format/arrays/list-syntax"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/arrays/list-syntax\"].",
+        "note": "Merged with ListToArrayDestruct. Options: renamed for TOML: [options.\"format/arrays/list-syntax\"].",
         "unsupported": false
       },
       {
@@ -7700,9 +7700,11 @@
         "name": "IsIterable",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/is-iterable-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.1/prefer-is-iterable"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "IssetOnPropertyObjectToPropertyExists",
@@ -7778,9 +7780,11 @@
         "name": "ListToArrayDestruct",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/list-to-array-destruct-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "format/arrays/list-syntax"
+        ],
+        "note": "Merged with list_syntax.",
+        "unsupported": false
       },
       {
         "name": "LocallyCalledStaticMethodToNonStatic",

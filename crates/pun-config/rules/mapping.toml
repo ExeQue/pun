@@ -77,6 +77,7 @@ laravel = "Laravel (ecosystem: on when composer.lock has laravel/framework)"
 pest = "Pest (ecosystem: on when composer.lock has pestphp/pest)"
 phpunit = "PHPUnit (ecosystem: on when composer.lock has phpunit/phpunit)"
 laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or does better"
+"php-7.1" = "Upgrade to PHP 7.1: code a newer PHP removes, deprecates or does better"
 "php-7.2" = "Upgrade to PHP 7.2: code a newer PHP removes, deprecates or does better"
 "php-7.3" = "Upgrade to PHP 7.3: code a newer PHP removes, deprecates or does better"
 "php-7.4" = "Upgrade to PHP 7.4: code a newer PHP removes, deprecates or does better"
@@ -255,6 +256,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "whitespace/statement-indentation" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "Each statement must be indented." }
 
 [rules.lint]
+"php-7.1/prefer-is-iterable" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Changes is_array + Traversable check to is_iterable" }
 "php-7.2/no-constant-define-name" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Make first argument of define() string" }
 "php-7.3/no-case-insensitive-define" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Change case insensitive constant definition to sensitive one" }
 "php-7.3/no-unescaped-regex-dash" = { fix = "unsafe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Unsafe: as in Rector, it rewrites any single- or double-quoted string whose text looks like a character class with an unescaped `-` next to `\\w`, `\\s` or `\\d`, not only strings passed to a `preg_*` function, so a string that is not a pattern changes value.", summary = "Escape - in some cases" }
@@ -2390,7 +2392,7 @@ InlineIsAInstanceOf = { class = "Rector\\CodeQuality\\Rector\\FuncCall\\InlineIs
 InnerFunctionToPrivateMethod = { class = "Rector\\CodeQuality\\Rector\\Class_\\InnerFunctionToPrivateMethodRector", unsupported = "deprecated upstream (main)", status = "decided" }
 IsAWithStringWithThirdArgument = { class = "Rector\\CodeQuality\\Rector\\FuncCall\\IsAWithStringWithThirdArgumentRector", pun = "lint/complexity/require-is-a-allow-string", sets = ["code-quality"], options = "none", status = "decided" }
 IsCountable = { class = "Rector\\Php73\\Rector\\BooleanOr\\IsCountableRector", pun = "lint/php-7.3/prefer-is-countable", sets = ["php-polyfills", "php73"], options = "none", status = "decided" }
-IsIterable = { class = "Rector\\Php71\\Rector\\BooleanOr\\IsIterableRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php71"], status = "decided" }
+IsIterable = { class = "Rector\\Php71\\Rector\\BooleanOr\\IsIterableRector", pun = "lint/php-7.1/prefer-is-iterable", sets = ["php71"], options = "none", status = "decided" }
 IssetOnPropertyObjectToPropertyExists = { class = "Rector\\CodeQuality\\Rector\\Isset_\\IssetOnPropertyObjectToPropertyExistsRector", pun = "lint/complexity/prefer-property-exists", sets = ["code-quality"], options = "none", status = "decided" }
 JoinStringConcat = { class = "Rector\\CodeQuality\\Rector\\Concat\\JoinStringConcatRector", unsupported = "deprecated upstream (2.6.1, 2.7.0, main)", status = "decided" }
 JsonThrowOnError = { class = "Rector\\Php73\\Rector\\FuncCall\\JsonThrowOnErrorRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
@@ -2399,7 +2401,7 @@ KnownMagicClassMethodType = { class = "Rector\\TypeDeclaration\\Rector\\ClassMet
 ListEach = { class = "Rector\\Php72\\Rector\\Assign\\ListEachRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php72"], status = "decided" }
 ListSplitString = { class = "Rector\\Php70\\Rector\\Assign\\ListSplitStringRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php70"], status = "decided" }
 ListSwapArrayOrder = { class = "Rector\\Php70\\Rector\\Assign\\ListSwapArrayOrderRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
-ListToArrayDestruct = { class = "Rector\\Php71\\Rector\\List_\\ListToArrayDestructRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php71"], status = "decided" }
+ListToArrayDestruct = { class = "Rector\\Php71\\Rector\\List_\\ListToArrayDestructRector", pun = "format/arrays/list-syntax", sets = ["php71"], options = "none", status = "decided" }
 LocallyCalledStaticMethodToNonStatic = { class = "Rector\\CodeQuality\\Rector\\ClassMethod\\LocallyCalledStaticMethodToNonStaticRector", pun = "lint/complexity/prefer-instance-method", sets = ["code-quality"], options = "none", status = "decided" }
 LogicalToBoolean = { class = "Rector\\CodeQuality\\Rector\\LogicalAnd\\LogicalToBooleanRector", pun = "lint/operators/no-and-or-keywords", sets = ["code-quality"], options = "none", status = "decided" }
 LongArrayToShortArray = { class = "Rector\\Php54\\Rector\\Array_\\LongArrayToShortArrayRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php54"], status = "decided" }
