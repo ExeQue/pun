@@ -131,6 +131,7 @@ Laravel, Pest, and PHPUnit rules come from [`[extensions]`](#extensions), not fr
 | `baseline` | The baseline file. A path outside the project is a config error |
 | `stubs` | Stub files whose PHPDoc refines vendor symbols, as in PHPStan's `stubFiles` |
 | `bleeding-edge` | `true` infers types as PHPStan's `bleedingEdge.neon` does, except sealed and unsealed array shapes. Default `false` |
+| `union-types`, `nullables`, `explicit-mixed`, `implicit-mixed` | `true` or `false` turns one type switch on or off: PHPStan's level 7, 8, 9, or 10 check. Default: on in the presets that cover that level (`strict` for the first two, `max` for all four) |
 | `rules` | `"on"`, `"off"`, or a table of options for each rule, and `"on"` or `"off"` for each group |
 | `[[analyse.ignore]]` | Errors to ignore, as in PHPStan's `ignoreErrors` |
 

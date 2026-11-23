@@ -141,7 +141,8 @@ impl std::fmt::Display for AnalysePreset {
     }
 }
 
-const SWITCHES: [(AnalysePreset, &str); 4] = [
+/// The type switches in `[analyse]`, each with the preset that turns it on.
+pub(crate) const SWITCHES: [(AnalysePreset, &str); 4] = [
     (AnalysePreset::Strict, "union-types"),
     (AnalysePreset::Strict, "nullables"),
     (AnalysePreset::Max, "explicit-mixed"),
@@ -342,6 +343,13 @@ pub(crate) struct AnalyseToml {
     rules: toml::Table,
     #[serde(default, rename = "bleeding-edge")]
     bleeding_edge: bool,
+    #[serde(rename = "union-types")]
+    union_types: Option<bool>,
+    nullables: Option<bool>,
+    #[serde(rename = "explicit-mixed")]
+    explicit_mixed: Option<bool>,
+    #[serde(rename = "implicit-mixed")]
+    implicit_mixed: Option<bool>,
     level: Option<toml::Value>,
 }
 
@@ -739,8 +747,14 @@ pub(crate) fn analyse(
     }
     Ok(Analyse {
         switches: (SWITCHES.iter())
-            .filter(|(p, _)| *p <= preset)
-            .map(|(_, s)| *s)
+            .zip([
+                t.union_types,
+                t.nullables,
+                t.explicit_mixed,
+                t.implicit_mixed,
+            ])
+            .filter(|((p, _), on)| on.unwrap_or(*p <= preset))
+            .map(|((_, s), _)| *s)
             .collect(),
         preset,
         paths: t.paths.unwrap_or_else(|| files.paths.clone()),

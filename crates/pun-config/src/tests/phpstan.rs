@@ -427,6 +427,33 @@ fn takes_phar_bleeding_edge() {
     assert!(p.unsupported.is_empty(), "{:?}", p.unsupported);
 }
 
+/// PHPStan's config.level7.neon to config.level10.neon turn on checkUnionTypes, checkNullables, checkExplicitMixed
+/// and checkImplicitMixed: a migrated level keeps the switches of its own level, not those of its preset's top level.
+#[test]
+fn migrates_the_type_switches_of_the_level() {
+    for level in 0..=10u8 {
+        let d = project(&format!("parameters:\n    level: {level}\n"), &[]);
+        let p = from_phpstan(&d, &d.join("phpstan.neon")).unwrap();
+        let mut parts = Parts::default();
+        compose(&d, &mut parts, &p).unwrap();
+        let text = parts.render();
+        let a = crate::from_toml(&d, &text).unwrap().analyse;
+        let want: Vec<&str> = [
+            ("union-types", 7),
+            ("nullables", 8),
+            ("explicit-mixed", 9),
+            ("implicit-mixed", 10),
+        ]
+        .into_iter()
+        .filter(|(_, l)| level >= *l)
+        .map(|(s, _)| s)
+        .collect();
+        assert_eq!(a.switches, want, "{text}");
+        assert_eq!(a.level(), level, "{text}");
+        std::fs::remove_dir_all(d).unwrap();
+    }
+}
+
 #[test]
 #[expect(
     clippy::too_many_lines,

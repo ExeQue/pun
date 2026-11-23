@@ -22,7 +22,8 @@ const STRICT_RULES_PARAMETERS: [(&str, bool); 12] = [
     ("checkStrictPrintfPlaceholderTypes", true),
 ];
 
-const SWITCH_LEVELS: [(&str, u8); 4] = [
+/// The PHPStan level at which each `[analyse]` type switch is on.
+pub(crate) const SWITCH_LEVELS: [(&str, u8); 4] = [
     ("union-types", 7),
     ("nullables", 8),
     ("explicit-mixed", 9),

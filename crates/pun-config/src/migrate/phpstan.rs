@@ -1,5 +1,6 @@
 use super::Parts;
 use super::rector::resolve;
+use crate::phpstan_parameters::SWITCH_LEVELS;
 use crate::{AnalysePreset, mapping, rules};
 use anyhow::Result;
 use pun_phpstan::config::{Options, ProjectFiles, resolve_with};
@@ -601,6 +602,13 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
         parts.php = format!("version = \"{v}\"\n");
     }
     writeln!(parts.analyse, "preset = \"{preset}\"").unwrap();
+    // the preset's type switches follow its highest level: a level below that turns the higher ones off
+    for (on_in, switch) in crate::schema::SWITCHES {
+        let on = (SWITCH_LEVELS.iter()).any(|(s, l)| *s == switch && phpstan.level >= *l);
+        if on != (on_in <= preset) {
+            writeln!(parts.analyse, "{switch} = {on}").unwrap();
+        }
+    }
     let list = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
     if !phpstan.paths.is_empty() {
         writeln!(parts.analyse, "paths = {}", list(&phpstan.paths)).unwrap();
