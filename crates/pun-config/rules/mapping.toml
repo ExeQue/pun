@@ -632,9 +632,9 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "phpunit/add-return-type-from-mock-object" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Add known property and return MockObject types" }
 "phpunit/add-stub-intersection-type" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Add a Stub intersection @var docblock with the stubbed class to a native Stub property" }
 "phpunit/add-test-void-return" = { fix = "unsafe", sets = ["types"], ported = true, status = "decided", summary = "Add void to PHPUnit test methods" }
-"phpunit/add-will-return-callback-false-fallback" = { fix = "unsafe", sets = ["code-quality"], ported = false, status = "decided", summary = "Add a \"return false\" fallback to a willReturnCallback() closure that only returns booleans, but can fall through without a return" }
+"phpunit/add-will-return-callback-false-fallback" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Add a \"return false\" fallback to a willReturnCallback() closure that only returns booleans, but can fall through without a return" }
 "phpunit/add-will-return-callback-param-type" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Decorate callbacks and arrow functions in willReturnCallback() with known param/return types based on reflection method" }
-"phpunit/no-any-matcher" = { fix = "safe", ported = false, status = "decided", summary = "Change deprecated `$this->any()` matcher assign to direct `new AnyInvokedCount()`" }
+"phpunit/no-any-matcher" = { fix = "safe", ported = true, status = "decided", summary = "Change deprecated `$this->any()` matcher assign to direct `new AnyInvokedCount()`" }
 "phpunit/no-assert-contains-only" = { fix = "safe", ported = true, status = "decided", summary = "Replaces `Assert::assertContainsOnly()` calls with type-specific `Assert::assertContainsOnly*()` calls" }
 "phpunit/no-assert-internal-type" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Replace assertInternalType() with the dedicated assertIs*() assertion." }
 "phpunit/no-assert-is-type" = { fix = "safe", ported = true, status = "decided", summary = "Replaces `Assert::isType()` calls with type-specific `Assert::is*()` calls" }

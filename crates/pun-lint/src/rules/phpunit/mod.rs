@@ -11,8 +11,10 @@ mod add_param_type_depends;
 mod add_return_type_from_mock_object;
 mod add_stub_intersection_type;
 mod add_test_void_return;
+mod add_will_return_callback_false_fallback;
 mod add_will_return_callback_param_type;
 pub(crate) mod annotations;
+mod no_any_matcher;
 mod no_assert_contains_only;
 mod no_assert_is_type;
 mod no_assert_same_type_mismatch;
@@ -191,6 +193,8 @@ rules! {
         prefer_will_return_callback => PreferWillReturnCallback::default(),
         add_instanceof_assert => AddInstanceofAssert,
         add_instanceof_assert => AddInstanceofAssertForArgument,
+        no_any_matcher => NoAnyMatcher,
+        add_will_return_callback_false_fallback => AddWillReturnCallbackFalseFallback,
         super::types::doctrine_repository => AddPropertyTypeContainerGet,
         super::types::add_property_type_create_mock => AddPropertyTypeCreateMock,
         super::types::add_property_type_setup => AddPropertyTypeSetup,

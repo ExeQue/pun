@@ -11011,7 +11011,7 @@
         "WillReturnCallbackFallbackToReturnFalse",
         "WillReturnCallbackFallbackToReturnFalseRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/phpunit/add-will-return-callback-param-type",
@@ -11051,7 +11051,7 @@
         "AnyMatcherToNewAnyInvokedCountRector",
         "Rector\\PHPUnit\\PHPUnit120\\Rector\\Assign\\AnyMatcherToNewAnyInvokedCountRector"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "lint/phpunit/no-assert-contains-only",

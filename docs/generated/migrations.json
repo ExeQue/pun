@@ -12767,7 +12767,7 @@
         "rules": [
           "lint/phpunit/no-any-matcher"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {
@@ -13671,7 +13671,7 @@
         "rules": [
           "lint/phpunit/add-will-return-callback-false-fallback"
         ],
-        "note": "Same. Planned: not ported yet.",
+        "note": "Same.",
         "unsupported": false
       },
       {

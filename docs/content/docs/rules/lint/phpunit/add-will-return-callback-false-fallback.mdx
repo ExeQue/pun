@@ -7,11 +7,20 @@ pagination: false
 
 <RuleId id="lint/phpunit/add-will-return-callback-false-fallback" />
 
-On when the [`phpunit` extension](/docs/configuration/pun-toml#extensions) is on. Unsafe fix: it can change behavior. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the [`phpunit` extension](/docs/configuration/pun-toml#extensions) is on. Unsafe fix: it can change behavior.
 
 ## What it does
 
 Add a "return false" fallback to a willReturnCallback() closure that only returns booleans, but can fall through without a return
+
+## Configuration
+
+```toml title="pun.toml"
+[lint.rules]
+"phpunit/add-will-return-callback-false-fallback" = "error"
+```
+
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
 ## Replaces
 

@@ -738,3 +738,16 @@ fn add_instanceof_assert_for_nullable_argument() {
         "AddInstanceofAssertForNullableArgumentRector",
     );
 }
+
+#[test]
+fn any_matcher_to_new_any_invoked_count() {
+    check(NoAnyMatcher, "AnyMatcherToNewAnyInvokedCountRector");
+}
+
+#[test]
+fn will_return_callback_fallback_to_return_false() {
+    check(
+        AddWillReturnCallbackFalseFallback,
+        "WillReturnCallbackFallbackToReturnFalseRector",
+    );
+}

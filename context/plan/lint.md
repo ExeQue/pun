@@ -31,7 +31,7 @@ A file goes through two engines in one run (crates/pun-cli/src/run.rs):
    so `pun check --fix` still writes Pint's bytes. These report a file at its first changed line, not one problem per
    change (Build 3).
 
-All but 13 lint rules run natively; the 13 left are the rules Rector 2.8.4 and rector-laravel 2.7.3 added (PLAN.md §0
+All but 11 lint rules run natively; the 11 left are the rules rector-laravel 2.7.3 added (PLAN.md §0
 has the counts). Type-aware rules still read no expression types from analyse (Build 8).
 
 ## 3. The config
@@ -112,7 +112,7 @@ Steps 1, 2, 4, 5, 6 and 9 are done, and `pun check --fix` equals Pint. Left: ste
 7. **Rules in usage order,** each passing Rector's own fixtures: Pinkary's rector.php, then dead-code and modernize,
    then code-quality, types, early-return, privatization, naming, coding-style, then rector-laravel, the PHP 8.4+ and
    Laravel 12+ upgrade groups, Pest, PHPUnit and the rules in no set.
-   *Done when* every lint rule is native (the 1.0 bar). Left: the 13 rules of the newer Rector releases.
+   *Done when* every lint rule is native (the 1.0 bar). Left: the 11 rules of the newer Rector releases.
 8. **Type-aware rules** query analyse's index (analyse.md Build 3) instead of PHPStan. Until then the rules that need
    types either wait or read them from the syntax (Decisions).
    *Done when* pun-lint rules can read expression types, class subtyping and resolved constant values.
