@@ -100,7 +100,7 @@ impl Printer<'_> {
         self.n(id).parent.is_some_and(|p| self.is_script_like(p)) && (raw.contains('\n') || raw.contains('\r'))
     }
 
-    fn normalize_multiline_echo_indent_text(&self, id: Id, value: &str) -> String {
+    pub(crate) fn normalize_multiline_echo_indent_text(&self, id: Id, value: &str) -> String {
         if !value.contains('\n') && !value.contains('\r') {
             return value.to_owned();
         }

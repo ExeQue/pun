@@ -3,6 +3,7 @@
 mod directive;
 mod embed;
 mod oxc;
+mod raw_content;
 mod srcset;
 mod tag;
 mod text;
@@ -27,6 +28,7 @@ pub(crate) struct Printer<'a> {
     pub(crate) ignored: RefCell<HashMap<Id, HashSet<Id>>>,
     pub(crate) unpaired_index: OnceCell<HashMap<String, Vec<usize>>>,
     pub(crate) embeds: RefCell<HashMap<Id, Doc>>,
+    pub(crate) inline_intent_delegated: bool,
 }
 
 /// What goes between two printed siblings (`printBetweenLine`), kept symbolic because the
@@ -67,6 +69,7 @@ impl<'a> Printer<'a> {
             ignored: RefCell::default(),
             unpaired_index: OnceCell::new(),
             embeds: RefCell::default(),
+            inline_intent_delegated: false,
         }
     }
 
@@ -651,10 +654,17 @@ fn flatten_inline_intent_children(doc: &Doc) -> Doc {
 
 /// Formats a Blade template the way Prettier with prettier-plugin-blade does under Pint's options.
 pub(crate) fn format(text: &str) -> String {
+    format_with(text, utils::PRINT_WIDTH, false)
+}
+
+/// `inline_intent_delegated` is the plugin's `__bladeInlineIntentDelegated`: an inline-intent
+/// element formatted on its own, wider.
+pub(crate) fn format_with(text: &str, print_width: usize, inline_intent_delegated: bool) -> String {
     let text = utils::normalize_line_endings_to_lf(text);
     let mut ast = crate::ast::parse(&text);
     ast.preprocess();
-    let printer = Printer::new(&ast);
+    let mut printer = Printer::new(&ast);
+    printer.inline_intent_delegated = inline_intent_delegated;
     let doc = printer.print_root();
-    crate::doc::print_doc_to_string(&doc, &crate::doc::PrintOptions { print_width: utils::PRINT_WIDTH, tab_width: utils::TAB_WIDTH })
+    crate::doc::print_doc_to_string(&doc, &crate::doc::PrintOptions { print_width, tab_width: utils::TAB_WIDTH })
 }

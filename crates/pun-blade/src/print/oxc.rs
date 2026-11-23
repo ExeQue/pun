@@ -83,6 +83,200 @@ pub(crate) fn js_to_doc(ids: &Ids, text: &str, kind: JsKind) -> Option<Doc> {
     None
 }
 
+/// A `<script>`/`<style>` body's language: Prettier's parser name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Lang {
+    Babel { module: bool },
+    TypeScript,
+    Json,
+    Css,
+    Scss,
+    Less,
+    Markdown,
+}
+
+impl Lang {
+    pub(crate) fn from_parser(parser: &str, module: bool) -> Option<Self> {
+        Some(match parser {
+            "babel" | "flow" => Lang::Babel { module },
+            "typescript" | "babel-ts" => Lang::TypeScript,
+            "json" => Lang::Json,
+            "css" => Lang::Css,
+            "scss" => Lang::Scss,
+            "less" => Lang::Less,
+            "markdown" => Lang::Markdown,
+            _ => return None,
+        })
+    }
+
+    pub(crate) fn is_style(self) -> bool {
+        matches!(self, Lang::Css | Lang::Scss | Lang::Less)
+    }
+}
+
+fn css_options(variant: oxc_formatter_css::CssVariant) -> Option<CssFormatOptions> {
+    Some(CssFormatOptions {
+        indent_width: IndentWidth::try_from(UNIT).ok()?,
+        line_width: LineWidth::try_from(WIDTH).ok()?,
+        single_quote: oxc_formatter_css::SingleQuote::from(true),
+        variant,
+        ..CssFormatOptions::default()
+    })
+}
+
+fn script_options() -> Option<JsFormatOptions> {
+    Some(JsFormatOptions {
+        indent_width: IndentWidth::try_from(UNIT).ok()?,
+        line_width: LineWidth::try_from(WIDTH).ok()?,
+        quote_style: QuoteStyle::Single,
+        ..JsFormatOptions::default()
+    })
+}
+
+fn json_options() -> Option<oxc_formatter_json::JsonFormatOptions> {
+    Some(oxc_formatter_json::JsonFormatOptions {
+        indent_width: IndentWidth::try_from(UNIT).ok()?,
+        line_width: LineWidth::try_from(WIDTH).ok()?,
+        ..oxc_formatter_json::JsonFormatOptions::default()
+    })
+}
+
+fn markdown_options() -> Option<oxc_formatter_markdown::MarkdownFormatOptions> {
+    Some(oxc_formatter_markdown::MarkdownFormatOptions {
+        indent_width: IndentWidth::try_from(UNIT).ok()?,
+        line_width: LineWidth::try_from(WIDTH).ok()?,
+        single_quote: oxc_formatter_markdown::SingleQuote::from(true),
+        ..oxc_formatter_markdown::MarkdownFormatOptions::default()
+    })
+}
+
+fn css_variant(lang: Lang) -> oxc_formatter_css::CssVariant {
+    match lang {
+        Lang::Scss => oxc_formatter_css::CssVariant::Scss,
+        Lang::Less => oxc_formatter_css::CssVariant::Less,
+        _ => oxc_formatter_css::CssVariant::Css,
+    }
+}
+
+fn js_types(lang: Lang) -> &'static [SourceType] {
+    const MODULE: &[SourceType] = &[SourceType::mjs().with_jsx(true), SourceType::mjs()];
+    const SCRIPT: &[SourceType] = &[SourceType::script().with_jsx(true), SourceType::script()];
+    const TS: &[SourceType] = &[SourceType::ts(), SourceType::tsx()];
+    match lang {
+        Lang::Babel { module: true } => MODULE,
+        Lang::TypeScript => TS,
+        _ => SCRIPT,
+    }
+}
+
+/// `textToDoc` for a `<script>`/`<style>` body: `None` when it does not parse.
+pub(crate) fn body_to_doc(ids: &Ids, text: &str, lang: Lang) -> Option<Doc> {
+    let (masked, restore) = if lang.is_style() { mask_at_rule_echoes(text) } else { (text.to_owned(), Vec::new()) };
+    let text = masked.as_str();
+    let allocator = Allocator::default();
+    let session = FormatSession::new(&allocator, InputKind::Fragment);
+    let ir = match lang {
+        Lang::Babel { .. } | Lang::TypeScript => {
+            let root = JsRoot::Program { semicolons: ProgramSemicolons::AsOptions, layout: ProgramLayout::Bare };
+            js_types(lang).iter().find_map(|&ty| {
+                oxc_formatter::format_to_ir(&session, text, ty, script_options()?, root, JsEmbeddedIn::default()).ok()
+            })?
+        }
+        Lang::Json => oxc_formatter_json::format_to_ir(&session, text, json_options()?).ok()?,
+        Lang::Markdown => oxc_formatter_markdown::format_to_ir(&session, text, markdown_options()?, false).ok()?,
+        Lang::Css | Lang::Scss | Lang::Less => {
+            oxc_formatter_css::format_to_ir(&session, text, css_options(css_variant(lang))?, None).ok()?
+        }
+    };
+    let mut converter = Converter::new(ids);
+    // A body starts on a line of its own.
+    converter.last = LastLine::Hard;
+    converter.restore = restore;
+    Some(text_to_doc(converter.convert(&ir.ir)))
+}
+
+/// `prettier.format` for a body: `None` when it does not parse. Ends in a line break.
+pub(crate) fn format_body(text: &str, lang: Lang) -> Option<String> {
+    let (masked, restore) = if lang.is_style() { mask_at_rule_echoes(text) } else { (text.to_owned(), Vec::new()) };
+    let text = masked.as_str();
+    let allocator = Allocator::default();
+    let code = match lang {
+        Lang::Babel { .. } | Lang::TypeScript => js_types(lang).iter().find_map(|&ty| {
+            let formatted = oxc_formatter::format(&allocator, text, ty, script_options()?).ok()?;
+            Some(formatted.print().ok()?.into_code())
+        })?,
+        Lang::Json => oxc_formatter_json::format(&allocator, text, json_options()?).ok()?.print().ok()?.into_code(),
+        Lang::Markdown => {
+            oxc_formatter_markdown::format(&allocator, text, markdown_options()?).ok()?.print().ok()?.into_code()
+        }
+        Lang::Css | Lang::Scss | Lang::Less => {
+            oxc_formatter_css::format(&allocator, text, css_options(css_variant(lang))?).ok()?.print().ok()?.into_code()
+        }
+    };
+    Some(unmask(&code, &restore))
+}
+
+/// oxc's CSS formatter leaves an at-rule's params as written when they hold a Blade echo
+/// (`@media (min-width:{{ $bp }}px)`), where postcss reads the echo as a word: each echo in
+/// params is masked with a word as wide.
+fn mask_at_rule_echoes(text: &str) -> (String, Vec<(String, String)>) {
+    let b = text.as_bytes();
+    let mut out = String::with_capacity(text.len());
+    let mut restore = Vec::new();
+    let mut i = 0;
+    let mut last = 0;
+    let mut in_prelude = false;
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'*') => {
+                i = text[i + 2..].find("*/").map_or(b.len(), |p| i + 2 + p + 2);
+                continue;
+            }
+            q @ (b'\'' | b'"') => {
+                let mut j = i + 1;
+                while j < b.len() && b[j] != q && b[j] != b'\n' {
+                    j += if b[j] == b'\\' { 2 } else { 1 };
+                }
+                i = j + 1;
+                continue;
+            }
+            b'@' if b.get(i + 1).is_some_and(|c| c.is_ascii_alphabetic() || *c == b'-') => in_prelude = true,
+            b'{' if in_prelude && (text[i..].starts_with("{{") || text[i..].starts_with("{!!")) => {
+                let close = if text[i..].starts_with("{!!") { "!!}" } else { "}}" };
+                if let Some(p) = text[i + 2..].find(close) {
+                    let end = i + 2 + p + close.len();
+                    let original = &text[i..end];
+                    let mut marker = format!("_p{}_", restore.len());
+                    let width = original.chars().count();
+                    while marker.len() + 1 < width {
+                        marker.push('_');
+                    }
+                    marker.push('q');
+                    out.push_str(&text[last..i]);
+                    out.push_str(&marker);
+                    restore.push((marker, original.to_owned()));
+                    i = end;
+                    last = end;
+                    continue;
+                }
+            }
+            b'{' | b';' | b'}' => in_prelude = false,
+            _ => {}
+        }
+        i += 1;
+    }
+    out.push_str(&text[last.min(text.len())..]);
+    (out, restore)
+}
+
+fn unmask(text: &str, restore: &[(String, String)]) -> String {
+    let mut out = text.to_owned();
+    for (marker, original) in restore {
+        out = out.replacen(marker.as_str(), original, 1);
+    }
+    out
+}
+
 /// `textToDoc` for CSS: `None` when it does not parse.
 pub(crate) fn css_to_doc(ids: &Ids, text: &str, style_attribute: bool) -> Option<Doc> {
     let options = CssFormatOptions {
@@ -132,11 +326,12 @@ struct Converter<'i> {
     groups: HashMap<oxc_formatter_core::GroupId, GroupId>,
     last: LastLine,
     space: bool,
+    restore: Vec<(String, String)>,
 }
 
 impl<'i> Converter<'i> {
     fn new(ids: &'i Ids) -> Self {
-        Self { ids, groups: HashMap::new(), last: LastLine::None, space: false }
+        Self { ids, groups: HashMap::new(), last: LastLine::None, space: false, restore: Vec::new() }
     }
 
     fn id(&mut self, id: Option<oxc_formatter_core::GroupId>) -> Option<GroupId> {
@@ -174,7 +369,8 @@ impl<'i> Converter<'i> {
                 FormatElement::Text { text, .. } => {
                     self.last = LastLine::None;
                     self.space = false;
-                    Self::push(stack, Doc::from(&**text));
+                    let doc = if self.restore.is_empty() { Doc::from(&**text) } else { Doc::from(unmask(text, &self.restore)) };
+                    Self::push(stack, doc);
                 }
                 FormatElement::Line(mode) => {
                     for doc in self.line(*mode) {

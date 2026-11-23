@@ -37,6 +37,8 @@ oxc_allocator = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf
 oxc_formatter = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 oxc_formatter_core = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 oxc_formatter_css = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+oxc_formatter_json = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+oxc_formatter_markdown = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 oxc_span = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 
 # Env-only: the default `process-tree` feature (sysinfo) adds ~12 ms per start and finds agents up the process tree.

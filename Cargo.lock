@@ -1576,6 +1576,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "oxc-markdown-parser"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13691b88414d375b51238d171794143303f676ced5a600f8f64e6f7fa4271ba3"
+dependencies = [
+ "oxc_allocator",
+]
+
+[[package]]
 name = "oxc_allocator"
 version = "0.160.0"
 source = "git+https://github.com/oxc-project/oxc?rev=846e62abbbf7c646844a4b8729210dbe2317f5c7#846e62abbbf7c646844a4b8729210dbe2317f5c7"
@@ -1714,6 +1723,37 @@ dependencies = [
  "oxc_span",
  "phf",
  "smallvec",
+]
+
+[[package]]
+name = "oxc_formatter_json"
+version = "0.80.0"
+source = "git+https://github.com/oxc-project/oxc?rev=846e62abbbf7c646844a4b8729210dbe2317f5c7#846e62abbbf7c646844a4b8729210dbe2317f5c7"
+dependencies = [
+ "oxc_allocator",
+ "oxc_ast",
+ "oxc_diagnostics",
+ "oxc_formatter_core",
+ "oxc_formatter_tests",
+ "oxc_parser",
+ "oxc_span",
+ "oxc_str",
+ "oxc_syntax",
+ "zmij_ecma",
+]
+
+[[package]]
+name = "oxc_formatter_markdown"
+version = "0.80.0"
+source = "git+https://github.com/oxc-project/oxc?rev=846e62abbbf7c646844a4b8729210dbe2317f5c7#846e62abbbf7c646844a4b8729210dbe2317f5c7"
+dependencies = [
+ "cow-utils",
+ "oxc-markdown-parser",
+ "oxc_allocator",
+ "oxc_diagnostics",
+ "oxc_formatter_core",
+ "oxc_formatter_tests",
+ "oxc_span",
 ]
 
 [[package]]
@@ -2073,6 +2113,8 @@ dependencies = [
  "oxc_formatter",
  "oxc_formatter_core",
  "oxc_formatter_css",
+ "oxc_formatter_json",
+ "oxc_formatter_markdown",
  "oxc_span",
 ]
 

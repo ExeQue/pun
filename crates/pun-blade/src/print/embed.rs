@@ -9,6 +9,10 @@ use crate::doc::{Doc, concat, group, if_break, indent, join, line, map_doc, soft
 use crate::frontend::is_frontend_event_style_at_name;
 use crate::tree::{NodeKind, js_trim};
 
+/// `max(160, printWidth * 2)` and `max(200, printWidth * 8)`.
+const INLINE_INTENT_MIN_LENGTH: usize = 240;
+const INLINE_INTENT_SUBFORMAT_WIDTH: usize = 960;
+
 #[derive(Clone, Copy)]
 enum AlpineKind {
     Expression,
@@ -199,8 +203,52 @@ impl Printer<'_> {
     fn embed(&self, id: Id) -> Option<Doc> {
         match self.kind(id) {
             NodeKind::Attribute | NodeKind::JsxAttribute => self.embed_attribute(id),
+            NodeKind::Element => self.embed_element(id),
+            NodeKind::Text => self.embed_script_text(id),
             _ => None,
         }
+    }
+
+    /// `handleElementEmbed`
+    fn embed_element(&self, id: Id) -> Option<Doc> {
+        if self.should_use_inline_intent_element_embed(id) {
+            let delegated = super::format_with(self.full_text(id), INLINE_INTENT_SUBFORMAT_WIDTH, true);
+            let trimmed = delegated.strip_suffix('\n').unwrap_or(&delegated);
+            return Some(concat(super::utils::replace_eol(trimmed, &crate::doc::hardline())));
+        }
+        if !self.is_script_like(id) {
+            return None;
+        }
+        if self.should_use_unparsed_raw_content_embedding(id) {
+            return Some(self.embed_unparsed_raw_content_element(id));
+        }
+        if self.should_use_mixed_raw_content_embedding(id) {
+            return Some(self.embed_mixed_raw_content_element(id).unwrap_or_else(|| Doc::from(self.full_text(id))));
+        }
+        let n = self.n(id);
+        if self.infer_element_parser(id).is_some()
+            && n.tag_name == "style"
+            && n.children.iter().any(|&c| self.kind(c) != NodeKind::Text)
+        {
+            if n.children.iter().any(|&c| self.is_blade_construct_child(c, RawContext::Style)) {
+                return None;
+            }
+            return self.embed_style_element_children(id);
+        }
+        None
+    }
+
+    /// `shouldUseInlineIntentElementEmbed`
+    fn should_use_inline_intent_element_embed(&self, id: Id) -> bool {
+        let n = self.n(id);
+        if !n.has_closing_tag || self.inline_intent_delegated || !matches!(n.tag_name.as_str(), "p" | "svg") {
+            return false;
+        }
+        if !super::utils::preserve_inline_intent_element(&n.tag_name, &n.namespace) {
+            return false;
+        }
+        let source = crate::tree::js_trim_end(self.full_text(id));
+        source.encode_utf16().count() >= INLINE_INTENT_MIN_LENGTH && !source.contains('\n') && !source.contains('\r')
     }
 
     fn has_blade_value_syntax(&self, id: Id) -> bool {
