@@ -1090,7 +1090,17 @@ fn handle_variadic_array_element<'arena, A>(
                     &mut ComparisonResult::new(),
                 );
 
-            if is_string_key {
+            // InitializerExprTypeResolver::getArrayType: an unpacked key that may be a string keeps its key, so
+            // the literal is a list only when the keys are never strings
+            if !union_comparator::is_contained_by(
+                context.codebase,
+                &key_type,
+                &get_int(),
+                false,
+                false,
+                false,
+                &mut ComparisonResult::new(),
+            ) {
                 array_creation_info.is_list = false;
             }
 

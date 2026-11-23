@@ -4167,6 +4167,14 @@ keeps the pre-merge behaviour.
   `get_intersection_types_mut()` cannot clear, so the bare array kept it and the function recursed until the stack
   overflowed (Symfony `src`, laravel-framework `src`). The bare Keyed or List array now also drops `callable`.
 
+## Unpacked keys that may be strings
+
+`expression/array.rs` `handle_variadic_array_element()` makes an array literal a non-list when an unpacked
+iterable's key type is not only integers. Upstream kept the list when the key was not certainly a string, so
+`[...$array]` with a plain `array` (keys `array-key`) was `list<mixed>`. PHPStan 2.3.5's
+`InitializerExprTypeResolver::getArrayType()` keeps the keys when `getIterableKeyType()->isString()` is not `no`
+(`crates/pun-analyse/tests/unpacked_keys.rs`).
+
 ## Mago 1.61.0 changes rejected for PHPStan parity
 
 - `plugin/libraries/stdlib/closure/`: upstream's `ClosureFromCallableProvider` (1.59.0) is not registered, and its

@@ -1,0 +1,15 @@
+{
+ "level": 5,
+ "errors": [
+  {
+   "line": 28,
+   "identifier": "return.type",
+   "message": "Method App\\Schema::intKeys() should return array<string, int> but returns list<int>."
+  },
+  {
+   "line": 37,
+   "identifier": "return.type",
+   "message": "Method App\\Schema::stringKeys() should return list<int> but returns array<string, int>."
+  }
+ ]
+}
