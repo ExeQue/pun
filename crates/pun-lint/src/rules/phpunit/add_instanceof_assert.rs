@@ -5,7 +5,7 @@ use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
-    Call, ClassLikeMemberSelector, Expression, ForeachBody, MethodBody, Node, NodeKind, Statement,
+    Access, Call, ClassLikeMemberSelector, Expression, ForeachBody, MethodBody, Node, NodeKind, Statement,
     Variable,
 };
 
@@ -154,23 +154,27 @@ fn asserted_variable<'a>(statement: &'a Statement<'a>, static_calls: bool) -> Op
         return None;
     };
     // `expect($x)->toBeInstanceOf(...)` is what `lint/pest/prefer-expect` (Pest's ConvertAssertToExpectRector) makes of
-    // the assert this rule inserts, and `lint/pest/prefer-chained-expect` may chain it into the next expectation
-    // (`...->and($x->name())->toBe(...)`). Rector runs each rule once; Pun fixes until nothing changes, and without this
-    // the rules would add and convert the assert forever ("fixes did not settle", laravel-framework's tests/Routing).
+    // the assert this rule inserts, and `lint/pest/prefer-chained-expect` may chain it with the expectations around it
+    // (`expect($x)->not->toBeNull()->toBeInstanceOf(...)->and($x->name())->toBe(...)`). Rector runs each rule once;
+    // Pun fixes until nothing changes, and without this the rules would add and convert the assert forever ("fixes
+    // did not settle", laravel-framework's tests/Routing).
     let mut link = e.expression;
-    while let Expression::Call(Call::Method(call)) = link {
-        if let ClassLikeMemberSelector::Identifier(name) = &call.method
-            && name.value.eq_ignore_ascii_case(b"toBeInstanceOf")
-            && let Expression::Call(Call::Function(expect)) = unparenthesize(call.object)
-            && crate::rules::support::expressions::named(expect, "expect")
-            && let Some(Expression::Variable(Variable::Direct(v))) =
-                (expect.argument_list.arguments)
-                    .first()
-                    .map(mago_syntax::cst::Argument::value)
-        {
-            return Some(&v.name[1..]);
+    loop {
+        match link {
+            Expression::Call(Call::Method(call)) => {
+                if let ClassLikeMemberSelector::Identifier(name) = &call.method
+                    && name.value.eq_ignore_ascii_case(b"toBeInstanceOf")
+                    && !is_selector(unparenthesize(call.object), b"not")
+                    && let Some(Expression::Variable(Variable::Direct(v))) =
+                        expectation_subject(call.object)
+                {
+                    return Some(&v.name[1..]);
+                }
+                link = unparenthesize(call.object);
+            }
+            Expression::Access(Access::Property(fetch)) => link = unparenthesize(fetch.object),
+            _ => break,
         }
-        link = unparenthesize(call.object);
     }
     let (method, arguments) = match e.expression {
         Expression::Call(Call::Method(call)) => (&call.method, &call.argument_list),
@@ -193,6 +197,38 @@ fn asserted_variable<'a>(statement: &'a Statement<'a>, static_calls: bool) -> Op
         Some(Expression::Variable(Variable::Direct(v))) => Some(&v.name[1..]),
         _ => None,
     }
+}
+
+/// The value an expectation checks: the argument of the nearest `expect(...)` or `->and(...)` below it in the chain.
+fn expectation_subject<'a>(mut object: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
+    loop {
+        match unparenthesize(object) {
+            Expression::Call(Call::Function(expect))
+                if crate::rules::support::expressions::named(expect, "expect") =>
+            {
+                return (expect.argument_list.arguments)
+                    .first()
+                    .map(mago_syntax::cst::Argument::value);
+            }
+            Expression::Call(Call::Method(call)) => {
+                if let ClassLikeMemberSelector::Identifier(name) = &call.method
+                    && name.value.eq_ignore_ascii_case(b"and")
+                {
+                    return (call.argument_list.arguments)
+                        .first()
+                        .map(mago_syntax::cst::Argument::value);
+                }
+                object = call.object;
+            }
+            Expression::Access(Access::Property(fetch)) => object = fetch.object,
+            _ => return None,
+        }
+    }
+}
+
+fn is_selector(expression: &Expression<'_>, wanted: &[u8]) -> bool {
+    matches!(expression, Expression::Access(Access::Property(fetch))
+        if matches!(&fetch.property, ClassLikeMemberSelector::Identifier(name) if name.value == wanted))
 }
 
 fn dynamic_assign_classes(ctx: &Context<'_>, statement: &Statement<'_>, out: &mut Vec<String>) {
