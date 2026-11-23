@@ -61,7 +61,7 @@ def main() -> None:
         assert set(docs.format_config(data, preset)) == expected
     basic = output[docs.CONTENT / "rules/presets/analyse-basic.mdx"]
     strict = output[docs.CONTENT / "rules/presets/analyse-strict.mdx"]
-    assert "levels 0–1" in basic and "levels 6–8" in strict
+    assert "levels 0 and 1" in basic and "levels 6 to 8" in strict
     assert "union-types = true" in strict and "explicit-mixed = true" not in strict
     assert "explicit-mixed = true" in output[docs.CONTENT / "rules/presets/analyse-max.mdx"]
     tables = json.loads(output[docs.GENERATED / "migrations.json"])["tools"]
