@@ -348,7 +348,7 @@ fn mask_at_rule_echoes(text: &str) -> (String, Vec<(String, String)>) {
                 .get(i + 1)
                 .is_some_and(|c| c.is_ascii_alphabetic() || *c == b'-') =>
             {
-                in_prelude = true
+                in_prelude = true;
             }
             b'{' if in_prelude && (text[i..].starts_with("{{") || text[i..].starts_with("{!!")) => {
                 let close = if text[i..].starts_with("{!!") {

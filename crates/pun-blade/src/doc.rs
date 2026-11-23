@@ -1157,10 +1157,10 @@ pub(crate) fn print_doc_to_string(doc: &Doc, options: &PrintOptions) -> String {
                 };
                 match group_mode {
                     Some(Mode::Break) if !brk.is_empty_str() => {
-                        commands.push(cmd(&ind, mode, (**brk).clone()))
+                        commands.push(cmd(&ind, mode, (**brk).clone()));
                     }
                     Some(Mode::Flat) if !flat.is_empty_str() => {
-                        commands.push(cmd(&ind, mode, (**flat).clone()))
+                        commands.push(cmd(&ind, mode, (**flat).clone()));
                     }
                     _ => {}
                 }
@@ -1177,10 +1177,10 @@ pub(crate) fn print_doc_to_string(doc: &Doc, options: &PrintOptions) -> String {
                 let c = (**contents).clone();
                 match group_mode {
                     Some(Mode::Break) => {
-                        commands.push(cmd(&ind, mode, if *negate { c } else { indent(c) }))
+                        commands.push(cmd(&ind, mode, if *negate { c } else { indent(c) }));
                     }
                     Some(Mode::Flat) => {
-                        commands.push(cmd(&ind, mode, if *negate { indent(c) } else { c }))
+                        commands.push(cmd(&ind, mode, if *negate { indent(c) } else { c }));
                     }
                     None => {}
                 }
