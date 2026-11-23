@@ -715,6 +715,64 @@ fn pint_box(message: &str) -> String {
     format!("\n{blank}\n  {message}  \n{blank}\n\n")
 }
 
+/// A config error is a run error: under `--format` or `-q` it is Pint's error box on stdout, else Pun's message on
+/// stderr; exit 2 either way.
+#[test]
+fn config_errors_box_under_format_and_quiet() {
+    let dir = scratch("cli", "config-box");
+    reset(&dir, &files());
+    migrate(&dir);
+    let wide = [("COLUMNS", "300")];
+    let root = dir.display();
+    let missing = format!("can't read {root}/missing.toml: No such file or directory (os error 2)");
+    // Pun has no symfony preset (Pint does), so it is an unknown one
+    let symfony = "Preset not found.";
+    for (args, message) in [
+        (
+            &["format", "--config=missing.toml", "--test", "--format=json"][..],
+            missing.as_str(),
+        ),
+        (&["lint", "--config=missing.toml", "-q"], &missing),
+        (
+            &["format", "--preset=symfony", "--test", "--format=json"],
+            symfony,
+        ),
+        (
+            &["check", "--preset=symfony", "--format=checkstyle"],
+            symfony,
+        ),
+        (
+            &["format", "--preset=nope", "--test", "-q"],
+            "Preset not found.",
+        ),
+    ] {
+        assert_eq!(
+            pun_env(&dir, args, &wide),
+            (pint_box(message), String::new(), Some(2)),
+            "{args:?}"
+        );
+    }
+    std::fs::write(
+        dir.join("pun.toml"),
+        "[format]\npreset = \"empty\"\n[format.rules]\n\"nope/x\" = true\n",
+    )
+    .unwrap();
+    let unknown = format!("{root}/pun.toml: `nope/x` is not a format rule");
+    assert_eq!(
+        pun_env(&dir, &["format", "--test", "--format=json"], &wide),
+        (pint_box(&unknown), String::new(), Some(2))
+    );
+    assert_eq!(
+        pun_env(&dir, &["format", "--test"], &wide),
+        (String::new(), format!("x {unknown}\n"), Some(2))
+    );
+    std::fs::write(dir.join("pun.toml"), "x = [\n").unwrap();
+    let (out, err, code) = pun_env(&dir, &["format", "--test", "--format=json"], &wide);
+    assert_eq!((err.as_str(), code), ("", Some(2)));
+    let first = format!("\n  invalid {root}/pun.toml: TOML parse error at line 1, column 6");
+    assert!(out.starts_with('\n') && out.contains(&first), "{out:?}");
+}
+
 /// The flags dropped before the first beta (Pint's `--bail`, `--cache-file` and `--ansi`/`--no-ansi`, Pun's
 /// `--stdin` and `--since`) are clap's unknown arguments on every command that takes `pun format`'s flags, and
 /// `--max-processes` takes only a positive number.

@@ -639,6 +639,18 @@ fn abort_box_like_pint() {
     let t = tree();
     cx.same_abort(&t, &["--format=nope"], PLAIN, "");
     cx.same_abort(&t, &["--format=nope", "--ansi", "--test"], PLAIN, "");
+    for args in [
+        &["--preset=nope", "--test", "--format=json"][..],
+        &["--preset=nope", "--test", "-q"],
+    ] {
+        cx.same_abort(&t, args, PLAIN, "");
+    }
+    cx.same_abort(
+        &t,
+        &["--preset=nope", "--test"],
+        PLAIN,
+        "✖ Preset not found.\n",
+    );
     cx.same_abort(
         &t,
         &["--format=a-format-name-long-enough-to-wrap-in-a-narrow-terminal"],

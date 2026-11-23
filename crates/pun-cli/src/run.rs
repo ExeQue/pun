@@ -79,9 +79,12 @@ fn configure(cfg: &Config, rule: &mut dyn pun_lint::Rule) -> Result<()> {
     result.map_err(|e| config_error(anyhow::anyhow!("pun.toml: `{id}` {e}")))
 }
 
+/// A config error: Pun's message on stderr, or, with `--format` or `-q`, Pint's error box on stdout.
 #[expect(clippy::needless_pass_by_value, reason = "a `map_err` callback")]
 fn config_error(e: anyhow::Error) -> anyhow::Error {
-    Abort::plain(format!("{e:#}"), None).into()
+    let mut abort = Abort::plain(format!("{e:#}"), None);
+    abort.pint = true;
+    abort.into()
 }
 
 struct Pipelines {
@@ -1167,7 +1170,9 @@ fn unported_error(a: &FormatArgs, cfg: &Config, names: &[String]) -> Abort {
         line: None,
         message: what.clone(),
     };
-    Abort::pun(format!("{}: {what}", file.display()), error)
+    let mut abort = Abort::pun(format!("{}: {what}", file.display()), error);
+    abort.pint = true;
+    abort
 }
 
 fn explain(cfg: &Config, p: &Pipeline) {

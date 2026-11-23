@@ -208,7 +208,7 @@ pub(crate) fn fail(e: anyhow::Error, f: &Failure) -> Exit {
         print!("{}", crate::agent::error(&abort.to_string()));
     } else if f.github_format {
         print!("{}", github::run_error(&abort.message));
-    } else if f.machine && abort.pint {
+    } else if f.machine && f.pint && abort.pint {
         print!(
             "{}{}",
             abort.before,

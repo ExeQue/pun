@@ -103,7 +103,8 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **No compatibility-only flags** (Pushpak, 2026-11-23, before the first beta). `pun format`, `lint` and `check` drop
   `--bail`, `--cache-file`, `--ansi`/`--no-ansi` (`--color` covers them), `--format=txt|xml`, `--stdin` (`-` as the
   path), `--since` and `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS`; each flag is now clap's unknown argument
-  (exit 2). `--max-processes` takes only a positive number (plan/format.md §6).
+  (exit 2). `--max-processes` takes only a positive number. `--staged` outside git is a run error, as `--dirty` is,
+  and a config error prints Pint's error box under `--format` or `-q`, as every run error does (plan/format.md §6).
 
 ### Config and rules (plan/config.md, plan/rules.md)
 
