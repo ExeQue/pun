@@ -5,8 +5,8 @@ use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
-    Access, Call, ClassLikeMemberSelector, Expression, ForeachBody, MethodBody, Node, NodeKind, Statement,
-    Variable,
+    Access, Call, ClassLikeMemberSelector, Expression, ForeachBody, MethodBody, Node, NodeKind,
+    Statement, Variable,
 };
 
 use super::is_in_test_class;
