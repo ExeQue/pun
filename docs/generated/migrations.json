@@ -2381,7 +2381,7 @@
         "rules": [
           "lint/style/prefer-pow-operator"
         ],
-        "note": "Same.",
+        "note": "Merged with PowToExp.",
         "unsupported": false
       },
       {
@@ -5367,7 +5367,7 @@
         "rules": [
           "lint/style/prefer-pow-operator"
         ],
-        "note": "Same.",
+        "note": "Merged with PowToExp.",
         "unsupported": false
       },
       {
@@ -8300,9 +8300,11 @@
         "name": "PowToExp",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/pow-to-exp-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/prefer-pow-operator"
+        ],
+        "note": "Merged with pow_to_exponentiation.",
+        "unsupported": false
       },
       {
         "name": "PregReplaceEModifier",

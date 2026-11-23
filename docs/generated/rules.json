@@ -15301,9 +15301,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "PowToExp",
+        "PowToExpRector",
+        "Rector\\Php56\\Rector\\FuncCall\\PowToExpRector",
         "pow_to_exponentiation"
       ],
       "ported": true
