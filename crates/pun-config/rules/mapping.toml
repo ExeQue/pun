@@ -77,6 +77,7 @@ laravel = "Laravel (ecosystem: on when composer.lock has laravel/framework)"
 pest = "Pest (ecosystem: on when composer.lock has pestphp/pest)"
 phpunit = "PHPUnit (ecosystem: on when composer.lock has phpunit/phpunit)"
 laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or does better"
+"php-5.3" = "Upgrade to PHP 5.3: code a newer PHP removes, deprecates or does better"
 "php-5.5" = "Upgrade to PHP 5.5: code a newer PHP removes, deprecates or does better"
 "php-7.0" = "Upgrade to PHP 7.0: code a newer PHP removes, deprecates or does better"
 "php-7.1" = "Upgrade to PHP 7.1: code a newer PHP removes, deprecates or does better"
@@ -258,6 +259,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "whitespace/statement-indentation" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "Each statement must be indented." }
 
 [rules.lint]
+"php-5.3/no-http-vars" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Leaves the variables of a function that has a parameter of one of these names alone, where Rector renames the parameter too, which PHP rejects, and then writes nothing to the file.", summary = "Rename old $HTTP_* variable names to new replacements" }
 "php-5.5/no-class-magic-constant" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Leaves a `__CLASS__` outside any class alone, where Rector writes `self::class`, which PHP rejects there.", summary = "Change `__CLASS__` to `self::class`" }
 "php-5.5/prefer-self-over-get-called-class" = { fix = "unsafe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Unsafe: as in Rector, it also rewrites a call in a closure or arrow function of a class that is not `final`, where `get_called_class()` named the late static binding class and `self::class` names the declaring class.", summary = "Change `get_called_class()` to `self::class` on final class" }
 "php-5.5/prefer-static-over-get-called-class" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Change `get_called_class()` to `static::class` on non-final class" }
@@ -848,7 +850,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "style/prefer-compound-assignment" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", merged = ["php-cs-fixer:long_to_shorthand_operator", "rector:CombinedAssign"], replaces = ["lint/operators/prefer-shorthand-operator"], summary = "Shorthand notation for operators should be used if possible." }
 "style/prefer-create-from-timestamp" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "Suggests `DateTimeImmutable::createFromTimestamp()` when a Unix timestamp is converted" }
 "style/prefer-date-time-immutable" = { fix = "unsafe", intent = "suspicious", ported = true, status = "decided", summary = "Class `DateTimeImmutable` should be used instead of `DateTime`." }
-"style/prefer-dir-constant" = { fix = "unsafe", sets = ["modernize"], ported = true, status = "decided", summary = "Replaces `dirname(__FILE__)` expression with equivalent `__DIR__` constant." }
+"style/prefer-dir-constant" = { fix = "unsafe", sets = ["modernize"], ported = true, status = "decided", merged = ["php-cs-fixer:dir_constant", "rector:DirNameFileConstantToDirConstant"], summary = "Replaces `dirname(__FILE__)` expression with equivalent `__DIR__` constant." }
 "style/prefer-dirname-levels" = { fix = "unsafe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", merged = ["php-cs-fixer:combine_nested_dirname", "rector:MultiDirname"], summary = "Replace nested dirname() calls with one call and a `$levels` argument." }
 "style/prefer-early-continue" = { fix = "safe", sets = ["early-return"], ported = true, origin = "mago", status = "decided", summary = "Continue early instead of nesting the loop body in an if." }
 "style/prefer-early-return" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Return early instead of nesting the rest of the function in an if or else." }
@@ -864,7 +866,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "style/prefer-random-int" = { fix = "unsafe", sets = ["modernize"], ported = true, status = "decided", summary = "Replaces `rand`, `srand`, `getrandmax` functions calls with their `mt_*` analogs or `random_int`." }
 "style/prefer-readonly-keyword" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts readonly comment on classes to the readonly keyword." }
 "style/prefer-self-reference" = { fix = "unsafe", ported = true, status = "decided", summary = "Inside class or interface element `self` should be preferred to the class name itself." }
-"style/prefer-short-ternary" = { fix = "unsafe", ported = true, status = "decided", summary = "Use the Elvis operator `?:` where possible." }
+"style/prefer-short-ternary" = { fix = "unsafe", ported = true, status = "decided", merged = ["php-cs-fixer:ternary_to_elvis_operator", "rector:TernaryToElvis"], note = "Rector's TernaryToElvisRector drops the parentheses around the condition (`($a - $b) ? $a - $b : $c` becomes `$a - $b ?: $c`); PHP-CS-Fixer's `ternary_to_elvis_operator`, which this rule runs, keeps them.", summary = "Use the Elvis operator `?:` where possible." }
 "style/prefer-spread" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Replace `call_user_func_array()` with variadic" }
 "style/prefer-static-private-method" = { fix = "unsafe", ported = true, status = "decided", summary = "Converts private methods to `static` where possible." }
 "style/prefer-str-contains" = { fix = "unsafe", sets = ["modernize"], ported = true, status = "decided", merged = ["php-cs-fixer:modernize_strpos", "rector:StrContains"], note = "Rector's StrContainsRector also rewrites `strstr()` comparisons, loose `!= false` comparisons and a `strpos()` with a zero offset; PHP-CS-Fixer's `modernize_strpos`, which this rule runs, only rewrites strict comparisons of `strpos()` and `stripos()` without an offset.", summary = "Replace `strpos()` and `stripos()` calls with `str_starts_with()` or `str_contains()` if possible." }
@@ -2338,7 +2340,7 @@ DateTimeInstanceToCarbon = { class = "Rector\\Carbon\\Rector\\New_\\DateTimeInst
 DateTimeMethodCallToCarbon = { class = "Rector\\Carbon\\Rector\\MethodCall\\DateTimeMethodCallToCarbonRector", unsupported = "only in sets outside the eight prepared sets: datetime-to-carbon", sets = ["datetime-to-carbon"], status = "decided" }
 DeclareStrictTypes = { class = "Rector\\TypeDeclaration\\Rector\\StmtsAwareInterface\\DeclareStrictTypesRector", unsupported = "deprecated upstream (main)", status = "decided" }
 DeprecatedAnnotationToDeprecatedAttribute = { class = "Rector\\Php84\\Rector\\Class_\\DeprecatedAnnotationToDeprecatedAttributeRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
-DirNameFileConstantToDirConstant = { class = "Rector\\Php53\\Rector\\FuncCall\\DirNameFileConstantToDirConstantRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php53"], status = "decided" }
+DirNameFileConstantToDirConstant = { class = "Rector\\Php53\\Rector\\FuncCall\\DirNameFileConstantToDirConstantRector", pun = "lint/style/prefer-dir-constant", sets = ["php53"], options = "none", status = "decided" }
 DirnameDirConcatStringToDirectStringPath = { class = "Rector\\CodeQuality\\Rector\\Concat\\DirnameDirConcatStringToDirectStringPathRector", pun = "lint/complexity/no-dirname-dir-concat", sets = ["code-quality"], options = "none", status = "decided" }
 DisallowedEmptyRuleFixer = { class = "Rector\\Strict\\Rector\\Empty_\\DisallowedEmptyRuleFixerRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
 DocblockGetterReturnArrayFromPropertyDocblockVar = { class = "Rector\\TypeDeclarationDocblocks\\Rector\\ClassMethod\\DocblockGetterReturnArrayFromPropertyDocblockVarRector", pun = "lint/types/add-getter-return-phpdoc", sets = ["type-declaration-docblocks"], options = "none", status = "decided" }
@@ -2359,7 +2361,7 @@ ExplicitAttributeNamedArgs = { class = "Rector\\CodeQuality\\Rector\\Attribute\\
 ExplicitBoolCompare = { class = "Rector\\CodeQuality\\Rector\\If_\\ExplicitBoolCompareRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
 ExplicitNullableObjectInstance = { class = "Rector\\CodeQuality\\Rector\\If_\\ExplicitNullableObjectInstanceRector", pun = "lint/types/prefer-explicit-null-instanceof", sets = ["code-quality"], options = "none", status = "decided" }
 ExplicitNullableParamType = { class = "Rector\\Php84\\Rector\\Param\\ExplicitNullableParamTypeRector", pun = "format/types/nullable-for-null-default", sets = ["php84"], options = "none", status = "decided" }
-ExplicitPublicClassMethod = { class = "Rector\\Visibility\\Rector\\ClassMethod\\ExplicitPublicClassMethodRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php53"], status = "decided" }
+ExplicitPublicClassMethod = { class = "Rector\\Visibility\\Rector\\ClassMethod\\ExplicitPublicClassMethodRector", pun = "format/classes/modifier-keywords", sets = ["php53"], options = "none", status = "decided" }
 ExplicitReturnNull = { class = "Rector\\CodeQuality\\Rector\\ClassMethod\\ExplicitReturnNullRector", pun = "lint/complexity/require-consistent-return", sets = ["code-quality"], options = "none", status = "decided" }
 ExportToReflectionFunction = { class = "Rector\\Php74\\Rector\\StaticCall\\ExportToReflectionFunctionRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php74"], status = "decided" }
 FilesystemIteratorSkipDots = { class = "Rector\\Php82\\Rector\\New_\\FilesystemIteratorSkipDotsRector", pun = "lint/php-8.2/add-skip-dots-flag", sets = ["php82"], options = "none", status = "decided" }
@@ -2593,7 +2595,7 @@ ReplaceArgumentDefaultValue = { class = "Rector\\Arguments\\Rector\\ClassMethod\
 ReplaceBlockToItsStmts = { class = "Rector\\DeadCode\\Rector\\Block\\ReplaceBlockToItsStmtsRector", pun = "format/control-flow/no-unneeded-braces", sets = ["dead-code"], options = "none", status = "decided" }
 ReplaceConstantBooleanNot = { class = "Rector\\CodeQuality\\Rector\\BooleanNot\\ReplaceConstantBooleanNotRector", pun = "lint/complexity/no-negated-boolean-literal", sets = ["code-quality"], options = "none", status = "decided" }
 ReplaceEachAssignmentWithKeyCurrent = { class = "Rector\\Php72\\Rector\\Assign\\ReplaceEachAssignmentWithKeyCurrentRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php72"], status = "decided" }
-ReplaceHttpServerVarsByServer = { class = "Rector\\Php53\\Rector\\Variable\\ReplaceHttpServerVarsByServerRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php53"], status = "decided" }
+ReplaceHttpServerVarsByServer = { class = "Rector\\Php53\\Rector\\Variable\\ReplaceHttpServerVarsByServerRector", pun = "lint/php-5.3/no-http-vars", sets = ["php53"], options = "none", status = "decided" }
 ReplaceMultipleBooleanNot = { class = "Rector\\CodeQuality\\Rector\\BooleanNot\\ReplaceMultipleBooleanNotRector", pun = "format/casts/no-short-bool", sets = ["code-quality"], options = "none", status = "decided" }
 RestoreDefaultNullToNullableTypeProperty = { class = "Rector\\Php74\\Rector\\Property\\RestoreDefaultNullToNullableTypePropertyRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php74"], status = "decided" }
 RestoreIncludePathToIniRestore = { class = "Rector\\Php74\\Rector\\FuncCall\\RestoreIncludePathToIniRestoreRector", pun = "lint/php-7.4/no-restore-include-path", sets = ["php74"], options = "none", status = "decided" }
@@ -2693,7 +2695,7 @@ TernaryEmptyArrayArrayDimFetchToCoalesce = { class = "Rector\\CodeQuality\\Recto
 TernaryFalseExpressionToIf = { class = "Rector\\CodeQuality\\Rector\\Expression\\TernaryFalseExpressionToIfRector", unsupported = "deprecated upstream (main)", status = "decided" }
 TernaryImplodeToImplode = { class = "Rector\\CodeQuality\\Rector\\Ternary\\TernaryImplodeToImplodeRector", pun = "lint/dead-code/no-implode-ternary", sets = ["code-quality"], options = "none", status = "decided" }
 TernaryToBooleanOrFalseToBooleanAnd = { class = "Rector\\DeadCode\\Rector\\Ternary\\TernaryToBooleanOrFalseToBooleanAndRector", pun = "lint/dead-code/no-false-ternary", sets = ["dead-code"], options = "none", status = "decided" }
-TernaryToElvis = { class = "Rector\\Php53\\Rector\\Ternary\\TernaryToElvisRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php53"], status = "decided" }
+TernaryToElvis = { class = "Rector\\Php53\\Rector\\Ternary\\TernaryToElvisRector", pun = "lint/style/prefer-short-ternary", sets = ["php53"], options = "none", status = "decided" }
 TernaryToNullCoalescing = { class = "Rector\\Php70\\Rector\\Ternary\\TernaryToNullCoalescingRector", pun = "lint/operators/prefer-coalesce", sets = ["php70"], options = "none", status = "decided" }
 TernaryToNullsafeCoalesce = { class = "Rector\\Php80\\Rector\\Ternary\\TernaryToNullsafeCoalesceRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php80"], status = "decided" }
 TernaryToSpaceship = { class = "Rector\\Php70\\Rector\\Ternary\\TernaryToSpaceshipRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php70"], status = "decided" }

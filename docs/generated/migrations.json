@@ -391,7 +391,7 @@
         "rules": [
           "lint/style/prefer-dir-constant"
         ],
-        "note": "Same.",
+        "note": "Merged with DirNameFileConstantToDirConstant.",
         "unsupported": false
       },
       {
@@ -959,7 +959,7 @@
         "rules": [
           "format/classes/modifier-keywords"
         ],
-        "note": "Merged with VarToPublicProperty. Options: renamed for TOML: [options.\"format/classes/modifier-keywords\"].",
+        "note": "Merged with ExplicitPublicClassMethod, VarToPublicProperty. Options: renamed for TOML: [options.\"format/classes/modifier-keywords\"].",
         "unsupported": false
       },
       {
@@ -2837,7 +2837,7 @@
         "rules": [
           "lint/style/prefer-short-ternary"
         ],
-        "note": "Same.",
+        "note": "Merged with TernaryToElvis.",
         "unsupported": false
       },
       {
@@ -3377,7 +3377,7 @@
         "rules": [
           "lint/style/prefer-dir-constant"
         ],
-        "note": "Same.",
+        "note": "Merged with DirNameFileConstantToDirConstant.",
         "unsupported": false
       },
       {
@@ -3945,7 +3945,7 @@
         "rules": [
           "format/classes/modifier-keywords"
         ],
-        "note": "Merged with VarToPublicProperty. Options: renamed for TOML: [options.\"format/classes/modifier-keywords\"].",
+        "note": "Merged with ExplicitPublicClassMethod, VarToPublicProperty. Options: renamed for TOML: [options.\"format/classes/modifier-keywords\"].",
         "unsupported": false
       },
       {
@@ -5823,7 +5823,7 @@
         "rules": [
           "lint/style/prefer-short-ternary"
         ],
-        "note": "Same.",
+        "note": "Merged with TernaryToElvis.",
         "unsupported": false
       },
       {
@@ -7142,9 +7142,11 @@
         "name": "DirNameFileConstantToDirConstant",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/dir-name-file-constant-to-dir-constant-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/prefer-dir-constant"
+        ],
+        "note": "Merged with dir_constant.",
+        "unsupported": false
       },
       {
         "name": "DirnameDirConcatStringToDirectStringPath",
@@ -7330,9 +7332,11 @@
         "name": "ExplicitPublicClassMethod",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/explicit-public-class-method-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "format/classes/modifier-keywords"
+        ],
+        "note": "Merged with modifier_keywords, VarToPublicProperty.",
+        "unsupported": false
       },
       {
         "name": "ExplicitReturnNull",
@@ -9516,9 +9520,11 @@
         "name": "ReplaceHttpServerVarsByServer",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/replace-http-server-vars-by-server-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-5.3/no-http-vars"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReplaceMultipleBooleanNot",
@@ -10444,9 +10450,11 @@
         "name": "TernaryToElvis",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-elvis-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/prefer-short-ternary"
+        ],
+        "note": "Merged with ternary_to_elvis_operator.",
+        "unsupported": false
       },
       {
         "name": "TernaryToNullCoalescing",
@@ -10685,7 +10693,7 @@
         "rules": [
           "format/classes/modifier-keywords"
         ],
-        "note": "Merged with modifier_keywords.",
+        "note": "Merged with modifier_keywords, ExplicitPublicClassMethod.",
         "unsupported": false
       },
       {

@@ -651,7 +651,10 @@
         "rector"
       ],
       "upstream": [
+        "ExplicitPublicClassMethod",
+        "ExplicitPublicClassMethodRector",
         "Rector\\Php52\\Rector\\Property\\VarToPublicPropertyRector",
+        "Rector\\Visibility\\Rector\\ClassMethod\\ExplicitPublicClassMethodRector",
         "VarToPublicProperty",
         "VarToPublicPropertyRector",
         "modifier_keywords"
@@ -9936,6 +9939,26 @@
       "ported": true
     },
     {
+      "id": "lint/php-5.3/no-http-vars",
+      "command": "lint",
+      "group": "php-5.3",
+      "summary": "Rename old $HTTP_* variable names to new replacements",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php53\\Rector\\Variable\\ReplaceHttpServerVarsByServerRector",
+        "ReplaceHttpServerVarsByServer",
+        "ReplaceHttpServerVarsByServerRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-5.5/no-class-magic-constant",
       "command": "lint",
       "group": "php-5.5",
@@ -15154,9 +15177,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "DirNameFileConstantToDirConstant",
+        "DirNameFileConstantToDirConstantRector",
+        "Rector\\Php53\\Rector\\FuncCall\\DirNameFileConstantToDirConstantRector",
         "dir_constant"
       ],
       "ported": true
@@ -15467,9 +15494,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\Php53\\Rector\\Ternary\\TernaryToElvisRector",
+        "TernaryToElvis",
+        "TernaryToElvisRector",
         "ternary_to_elvis_operator"
       ],
       "ported": true
