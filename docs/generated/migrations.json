@@ -2817,7 +2817,7 @@
         "rules": [
           "lint/control-flow/no-switch-continue"
         ],
-        "note": "Merged with switch-continue-to-break.",
+        "note": "Merged with ContinueToBreakInSwitch, switch-continue-to-break.",
         "unsupported": false
       },
       {
@@ -5803,7 +5803,7 @@
         "rules": [
           "lint/control-flow/no-switch-continue"
         ],
-        "note": "Merged with switch-continue-to-break.",
+        "note": "Merged with ContinueToBreakInSwitch, switch-continue-to-break.",
         "unsupported": false
       },
       {
@@ -7060,9 +7060,11 @@
         "name": "ContinueToBreakInSwitch",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/continue-to-break-in-switch-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/control-flow/no-switch-continue"
+        ],
+        "note": "Merged with switch_continue_to_break, switch-continue-to-break.",
+        "unsupported": false
       },
       {
         "name": "ConvertStaticToSelf",
@@ -27955,7 +27957,7 @@
         "rules": [
           "lint/control-flow/no-switch-continue"
         ],
-        "note": "Merged with switch_continue_to_break. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
+        "note": "Merged with switch_continue_to_break, ContinueToBreakInSwitch. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
         "unsupported": false
       },
       {

@@ -4861,9 +4861,13 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "ContinueToBreakInSwitch",
+        "ContinueToBreakInSwitchRector",
+        "Rector\\Php52\\Rector\\Switch_\\ContinueToBreakInSwitchRector",
         "switch-continue-to-break",
         "switch_continue_to_break"
       ],
