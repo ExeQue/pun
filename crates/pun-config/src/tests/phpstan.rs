@@ -416,6 +416,29 @@ fn carries_report_unmatched() {
     );
 }
 
+/// PHPStan 2.3.5 with `reportUnmatchedIgnoredErrors: false` reports no `ignore.unmatchedLine` for a
+/// `// @phpstan-ignore-line` on a line without an error; with the default it does.
+#[test]
+fn migrates_report_unmatched_ignored_errors() {
+    for (global, want) in [
+        ("", true),
+        ("    reportUnmatchedIgnoredErrors: false\n", false),
+    ] {
+        let d = project(&format!("parameters:\n    level: 0\n{global}"), &[]);
+        let p = from_phpstan(&d, &d.join("phpstan.neon")).unwrap();
+        let mut parts = Parts::default();
+        compose(&d, &mut parts, &p).unwrap();
+        let text = parts.render();
+        let a = crate::from_toml(&d, &text).unwrap().analyse;
+        assert_eq!(a.report_unmatched, want, "{text}");
+        assert_eq!(
+            a.parameters(&d).get_str("reportUnmatchedIgnoredErrors"),
+            Some(&pun_phpstan::Value::Bool(want))
+        );
+        std::fs::remove_dir_all(d).unwrap();
+    }
+}
+
 #[test]
 fn takes_phar_bleeding_edge() {
     let d = project(

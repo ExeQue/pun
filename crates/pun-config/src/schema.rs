@@ -273,6 +273,9 @@ pub struct Analyse {
     pub larastan: bool,
     pub rules: Vec<AnalyseRule>,
     pub bleeding_edge: bool,
+    /// PHPStan's `reportUnmatchedIgnoredErrors`: `false` reports no unmatched ignore comment and makes
+    /// `report-unmatched = false` the default of each `[[analyse.ignore]]` entry.
+    pub report_unmatched: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -350,6 +353,8 @@ pub(crate) struct AnalyseToml {
     explicit_mixed: Option<bool>,
     #[serde(rename = "implicit-mixed")]
     implicit_mixed: Option<bool>,
+    #[serde(rename = "report-unmatched")]
+    report_unmatched: Option<bool>,
     level: Option<toml::Value>,
 }
 
@@ -771,5 +776,6 @@ pub(crate) fn analyse(
             .map(|(id, options)| AnalyseRule { id, options })
             .collect(),
         bleeding_edge: t.bleeding_edge,
+        report_unmatched: t.report_unmatched.unwrap_or(true),
     })
 }

@@ -622,6 +622,9 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
     if phpstan.bleeding_edge {
         writeln!(parts.analyse, "bleeding-edge = true").unwrap();
     }
+    if (phpstan.parameters).get_str("reportUnmatchedIgnoredErrors") == Some(&Value::Bool(false)) {
+        writeln!(parts.analyse, "report-unmatched = false").unwrap();
+    }
     let cfg = resolve(root, &parts.render())?;
     let on: BTreeSet<&str> = cfg.analyse.rules.iter().map(|r| r.id.as_str()).collect();
     let (run, mapped) = wanted(phpstan);

@@ -229,7 +229,7 @@ fn project(
     let pun_toml = cfg.pun_toml();
     let analyse_excluded: pun_phpstan::ignore::Excluded =
         std::sync::Arc::new(move |f: &str| excluded.is_excluded(Path::new(f)));
-    let mut ignore_errors = IgnoredErrors::new(&ignores, true)
+    let mut ignore_errors = IgnoredErrors::new(&ignores, cfg.analyse.report_unmatched)
         .with_rules(rule_of_identifier)
         .with_analysed_paths(&analysed_paths, &from_config, Some(analyse_excluded));
     if let Some(file) = pun_toml {

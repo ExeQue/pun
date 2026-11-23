@@ -1032,6 +1032,36 @@ fn composer_autoloaded_classes_are_symbols() {
     );
 }
 
+/// `[analyse] report-unmatched = false` is PHPStan's `reportUnmatchedIgnoredErrors: false`: PHPStan 2.3.5 reports
+/// neither the unused `@phpstan-ignore-line` nor the entry that matches nothing with it, and both without it.
+#[test]
+fn report_unmatched_false_reports_no_unmatched_ignores() {
+    let toml = "[analyse]\npreset = \"basic\"\npaths = [\"src\"]\n{global}\n[[analyse.ignore]]\nmessage = \"#^Nothing matches this$#\"\n";
+    for (global, want) in [("", Some(1)), ("report-unmatched = false\n", Some(0))] {
+        let toml = toml.replace("{global}", global);
+        let d = project(
+            "analyse",
+            &format!("report-unmatched-{}", want.unwrap()),
+            &[
+                ("pun.toml", toml.as_str()),
+                (
+                    "src/a.php",
+                    "<?php\n\nfunction f(int $a): int\n{\n    return $a; // @phpstan-ignore-line\n}\n",
+                ),
+            ],
+        );
+        let (out, code) = run(&d, &[PUN, "analyse"], &["--error-format=raw"]);
+        assert_eq!(code, want, "{out}");
+        let reported = [
+            "No error to ignore is reported on line 5.",
+            "#^Nothing matches this$#",
+        ];
+        for message in reported {
+            assert_eq!(out.contains(message), want == Some(1), "{out}");
+        }
+    }
+}
+
 /// `-q` prints nothing and keeps the exit code, as PHPStan 2.3.6's `analyse -q` (no output with the table and json
 /// formats, under `CLAUDECODE=1`, and with `--generate-baseline`, which exits 0). `--memory-limit`, which PHPStan
 /// scripts pass, is accepted and changes nothing.

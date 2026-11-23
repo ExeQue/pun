@@ -90,7 +90,10 @@ impl Analyse {
             Key::from("checkClassCaseSensitivity"),
             Value::Bool(level >= 2),
         );
-        p.set(Key::from("reportUnmatchedIgnoredErrors"), Value::Bool(true));
+        p.set(
+            Key::from("reportUnmatchedIgnoredErrors"),
+            Value::Bool(self.report_unmatched),
+        );
         let stubs = self.stubs.iter().map(|s| Value::str(absolute(root, s)));
         p.set(Key::from("stubFiles"), Value::Array(Array::list(stubs)));
         let ignores = self.ignore.iter().map(|i| Value::Array(ignore(root, i)));

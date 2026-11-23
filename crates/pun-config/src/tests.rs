@@ -524,6 +524,7 @@ fn analyse() {
             larastan: false,
             rules: a.rules.clone(),
             bleeding_edge: false,
+            report_unmatched: true,
         }
     );
     assert_eq!(a.rules.len(), 151 + 106 + 75 - 11);
