@@ -596,35 +596,41 @@ pub struct Analysed {
     pub unsupported: Vec<(String, String)>,
 }
 
+/// The `[analyse]` keys of the migrated config before its rules: the preset, the type switches of the level, the
+/// paths, the stubs, bleeding edge and `reportUnmatchedIgnoredErrors`.
+fn analyse_keys(analyse: &mut String, phpstan: &Phpstan, preset: AnalysePreset) {
+    writeln!(analyse, "preset = \"{preset}\"").unwrap();
+    // the preset's type switches follow its highest level: a level below that turns the higher ones off
+    for (on_in, switch) in crate::schema::SWITCHES {
+        let on = (SWITCH_LEVELS.iter()).any(|(s, l)| *s == switch && phpstan.level >= *l);
+        if on != (on_in <= preset) {
+            writeln!(analyse, "{switch} = {on}").unwrap();
+        }
+    }
+    let list = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
+    if !phpstan.paths.is_empty() {
+        writeln!(analyse, "paths = {}", list(&phpstan.paths)).unwrap();
+    }
+    if !phpstan.exclude.is_empty() {
+        writeln!(analyse, "exclude = {}", list(&phpstan.exclude)).unwrap();
+    }
+    if !phpstan.stubs.is_empty() {
+        writeln!(analyse, "stubs = {}", list(&phpstan.stubs)).unwrap();
+    }
+    if phpstan.bleeding_edge {
+        writeln!(analyse, "bleeding-edge = true").unwrap();
+    }
+    if (phpstan.parameters).get_str("reportUnmatchedIgnoredErrors") == Some(&Value::Bool(false)) {
+        writeln!(analyse, "report-unmatched = false").unwrap();
+    }
+}
+
 pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Analysed> {
     let preset = AnalysePreset::of_level(phpstan.level as usize);
     if let Some(v) = &phpstan.php_version {
         parts.php = format!("version = \"{v}\"\n");
     }
-    writeln!(parts.analyse, "preset = \"{preset}\"").unwrap();
-    // the preset's type switches follow its highest level: a level below that turns the higher ones off
-    for (on_in, switch) in crate::schema::SWITCHES {
-        let on = (SWITCH_LEVELS.iter()).any(|(s, l)| *s == switch && phpstan.level >= *l);
-        if on != (on_in <= preset) {
-            writeln!(parts.analyse, "{switch} = {on}").unwrap();
-        }
-    }
-    let list = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
-    if !phpstan.paths.is_empty() {
-        writeln!(parts.analyse, "paths = {}", list(&phpstan.paths)).unwrap();
-    }
-    if !phpstan.exclude.is_empty() {
-        writeln!(parts.analyse, "exclude = {}", list(&phpstan.exclude)).unwrap();
-    }
-    if !phpstan.stubs.is_empty() {
-        writeln!(parts.analyse, "stubs = {}", list(&phpstan.stubs)).unwrap();
-    }
-    if phpstan.bleeding_edge {
-        writeln!(parts.analyse, "bleeding-edge = true").unwrap();
-    }
-    if (phpstan.parameters).get_str("reportUnmatchedIgnoredErrors") == Some(&Value::Bool(false)) {
-        writeln!(parts.analyse, "report-unmatched = false").unwrap();
-    }
+    analyse_keys(&mut parts.analyse, phpstan, preset);
     let cfg = resolve(root, &parts.render())?;
     let on: BTreeSet<&str> = cfg.analyse.rules.iter().map(|r| r.id.as_str()).collect();
     let (run, mapped) = wanted(phpstan);
