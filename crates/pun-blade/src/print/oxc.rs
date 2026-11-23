@@ -159,8 +159,14 @@ fn css_variant(lang: Lang) -> oxc_formatter_css::CssVariant {
 }
 
 fn js_types(lang: Lang) -> &'static [SourceType] {
+    // Babel parses with `allowImportExportEverywhere`, so a script may hold `import`.
     const MODULE: &[SourceType] = &[SourceType::mjs().with_jsx(true), SourceType::mjs()];
-    const SCRIPT: &[SourceType] = &[SourceType::script().with_jsx(true), SourceType::script()];
+    const SCRIPT: &[SourceType] = &[
+        SourceType::script().with_jsx(true),
+        SourceType::script(),
+        SourceType::mjs().with_jsx(true),
+        SourceType::mjs(),
+    ];
     const TS: &[SourceType] = &[SourceType::ts(), SourceType::tsx()];
     match lang {
         Lang::Babel { module: true } => MODULE,
@@ -192,6 +198,22 @@ pub(crate) fn body_to_doc(ids: &Ids, text: &str, lang: Lang) -> Option<Doc> {
     // A body starts on a line of its own.
     converter.last = LastLine::Hard;
     converter.restore = restore;
+    Some(text_to_doc(converter.convert(&ir.ir)))
+}
+
+/// `textToDoc` for YAML front matter: `None` when it does not parse.
+pub(crate) fn yaml_to_doc(ids: &Ids, text: &str) -> Option<Doc> {
+    let options = oxc_formatter_yaml::YamlFormatOptions {
+        indent_width: IndentWidth::try_from(UNIT).ok()?,
+        line_width: LineWidth::try_from(WIDTH).ok()?,
+        single_quote: oxc_formatter_yaml::SingleQuote::from(true),
+        ..oxc_formatter_yaml::YamlFormatOptions::default()
+    };
+    let allocator = Allocator::default();
+    let session = FormatSession::new(&allocator, InputKind::Fragment);
+    let ir = oxc_formatter_yaml::format_to_ir(&session, text, options).ok()?;
+    let mut converter = Converter::new(ids);
+    converter.last = LastLine::Hard;
     Some(text_to_doc(converter.convert(&ir.ir)))
 }
 

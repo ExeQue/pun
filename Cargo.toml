@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-exclude = ["third_party/mago-analyzer", "third_party/mago-codex", "third_party/mago-syntax", "third_party/mago-phpdoc-syntax"]
+exclude = ["third_party/oxc_formatter_css", "third_party/mago-analyzer", "third_party/mago-codex", "third_party/mago-syntax", "third_party/mago-phpdoc-syntax"]
 
 [patch.crates-io]
 mago-analyzer = { path = "third_party/mago-analyzer" }
@@ -36,8 +36,10 @@ pun-tokens = { path = "crates/pun-tokens", package = "punphp-tokens" }
 oxc_allocator = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 oxc_formatter = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 oxc_formatter_core = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
-oxc_formatter_css = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+# Vendored with Prettier-parity patches (third_party/oxc_formatter_css/PATCHES.md).
+oxc_formatter_css = { path = "third_party/oxc_formatter_css" }
 oxc_formatter_json = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
+oxc_formatter_yaml = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 oxc_formatter_markdown = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 oxc_span = { git = "https://github.com/oxc-project/oxc", rev = "846e62abbbf7c646844a4b8729210dbe2317f5c7" }
 

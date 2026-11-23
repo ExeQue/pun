@@ -1338,8 +1338,10 @@ impl Printer<'_> {
             .is_some_and(|n| EXPRESSION_DIRECTIVES.contains(&n.as_str()) || (n == "php" && self.has_directive_args_token(id)))
     }
 
+    /// `isKnownBladeDirective`: `getDirective(name) !== undefined`, and `getDirective` answers
+    /// `null` for an unknown name, so any directive name counts.
     fn is_known_blade_directive(&self, id: Id) -> bool {
-        self.directive_name_of(id).is_some_and(|n| self.ast.directives.get(&n).is_some())
+        self.directive_name_of(id).is_some()
     }
 
     fn placeholder_kind(&self, id: Id) -> Slot {

@@ -205,8 +205,28 @@ impl Printer<'_> {
             NodeKind::Attribute | NodeKind::JsxAttribute => self.embed_attribute(id),
             NodeKind::Element => self.embed_element(id),
             NodeKind::Text => self.embed_script_text(id),
+            NodeKind::FrontMatter => self.embed_front_matter(),
             _ => None,
         }
+    }
+
+    /// Prettier's front matter `print`: YAML is formatted, other languages print as written.
+    fn embed_front_matter(&self) -> Option<Doc> {
+        let fm = self.ast.front_matter.as_ref()?;
+        if fm.language != "yaml" {
+            return None;
+        }
+        let value = js_trim(&fm.value);
+        let doc = if value.is_empty() { Doc::default() } else { oxc::yaml_to_doc(&self.ids, value)? };
+        let has_doc = !value.is_empty();
+        Some(crate::doc::mark_as_root(concat(vec![
+            Doc::from(fm.start_delimiter.as_str()),
+            Doc::from(fm.explicit_language.clone().unwrap_or_default()),
+            crate::doc::hardline(),
+            doc,
+            if has_doc { crate::doc::hardline() } else { Doc::default() },
+            Doc::from(fm.end_delimiter.as_str()),
+        ])))
     }
 
     /// `handleElementEmbed`
