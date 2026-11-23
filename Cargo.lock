@@ -1555,6 +1555,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "punphp-blade"
+version = "0.2.7"
+
+[[package]]
 name = "punphp-config"
 version = "0.3.0"
 dependencies = [
