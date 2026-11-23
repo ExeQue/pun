@@ -287,10 +287,12 @@ pub fn installed_json(packages: &[Installed], vendor: &str, dev_mode: bool) -> S
             let version = m.get("version").and_then(Value::as_str).unwrap_or_default();
             let normalized = normalize(version).unwrap_or_else(|_| version.to_string());
             m.insert("version_normalized".into(), Value::String(normalized));
-            if m.contains_key("dist") {
-                m.insert("installation-source".into(), "dist".into());
-            } else if m.contains_key("source") {
-                m.insert("installation-source".into(), "source".into());
+            // Composer downloads no metapackage, so it never records where one was installed from.
+            let downloaded = m.get("type").and_then(Value::as_str) != Some("metapackage");
+            if let Some(source) = ["dist", "source"].into_iter().find(|k| m.contains_key(*k))
+                && downloaded
+            {
+                m.insert("installation-source".into(), source.into());
             }
             let path = p
                 .path
@@ -710,6 +712,15 @@ mod tests {
         assert_eq!(parsed["packages"][1]["install-path"], "../acme/lib");
         assert_eq!(parsed["packages"][2]["install-path"], Value::Null);
         assert_eq!(parsed["packages"][0]["installation-source"], "source");
+        // As Composer 2.11.2 writes roave/security-advisories, which is locked with a dist and a source.
+        let meta = [installed(
+            json!({"name": "roave/security-advisories", "version": "dev-latest", "type": "metapackage",
+            "dist": {"type": "zip", "url": "u", "reference": "abc", "shasum": ""}, "source": {"type": "git", "url": "g", "reference": "abc"}}),
+            None,
+            false,
+        )];
+        let parsed: Value = serde_json::from_str(&installed_json(&meta, "/p/vendor", false)).unwrap();
+        assert_eq!(parsed["packages"][0].get("installation-source"), None);
         let root = Root {
             name: "acme/app".into(),
             pretty_version: "1.0.0+no-version-set".into(),
