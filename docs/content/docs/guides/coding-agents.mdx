@@ -3,7 +3,7 @@ title: Coding agents
 description: Compact output for coding agents, how to override it, and machine reports.
 ---
 
-When a coding agent runs Pun, Pun prints compact plain text instead of its usual output. `pun check` prints a summary line, then one line per finding, with paths relative to the project:
+When a coding agent runs Pun, the output is short plain text: one summary line, then one line per problem.
 
 ```
 pun check: fail, 1 error, 2 files with fixes (412 checked, 0.21s)
@@ -12,30 +12,47 @@ app/B.php lint/style/no-alias-function [fix:unsafe] Master functions shall be us
 app/D.php:2 syntax-error Parse error: syntax error, unexpected token ";" on line 2.
 ```
 
-The output has no color, progress indicator, or boxes. A clean run prints only the summary. Lists stop after 20 items. `-v` shows every item and the available diffs. The exit codes are the same as in human output.
+- No color, progress bar or boxes.
+- Paths are relative to the project.
+- A clean run prints only the summary.
+- Lists stop at 20 items. `-v` shows all items and diffs.
+- Exit codes are the same as normal output.
+- `pun config` and `pun list-files` print their summary on stderr, so stdout stays plain TOML or one path per line.
 
-`pun config` and `pun list-files` print their summary on stderr, so stdout stays plain TOML or one path per line.
+## Detection
 
-## Detection and overrides
+Pun detects agents such as Claude Code, Cursor and Codex from the environment variables they set.
 
-Pun detects agents, such as Claude Code, Cursor, and Codex, from the environment variables they set. A missing terminal does not turn agent mode on. `CURSOR_AGENT` turns it on, but `CURSOR_TRACE_ID` alone does not.
+- A missing terminal does not turn agent mode on.
+- `CURSOR_AGENT` turns it on. `CURSOR_TRACE_ID` alone does not.
 
-Overrides apply in this order, highest priority first:
+## Overrides
+
+Highest priority first:
 
 | Override | Effect |
 | --- | --- |
-| `--agent` or `--no-agent` | Turns agent output on or off for this run |
-| `PUN_AGENT=1` or `PUN_AGENT=0` | The same, from the environment |
-| `PAO_DISABLE=1` or `PAO_FORCE=1` | Turns agent mode off or on. If both are set, `PAO_DISABLE` wins |
+| `--agent` / `--no-agent` | Agent output on or off for this run |
+| `PUN_AGENT=1` / `PUN_AGENT=0` | Same, from the environment |
+| `PAO_FORCE=1` / `PAO_DISABLE=1` | Agent mode on or off. `PAO_DISABLE` wins if both are set |
 
-## Explicit reports
+## Machine reports
 
-An explicit `--format` overrides agent output. For `format`, `lint`, and `check`, `--format=json` prints PHP-CS-Fixer's JSON report, and `--format=agent` prints Pint's JSON agent report. Neither one is Pun's plain-text agent output.
+`--format` replaces agent output. For `format`, `lint` and `check`:
+
+- `--format=json` prints PHP-CS-Fixer's JSON report.
+- `--format=agent` prints Pint's JSON agent report.
+
+Neither is the plain-text agent output above.
 
 ## Laravel Boost
 
-The `punphp/pun` Composer package ships a [Laravel Boost](https://github.com/laravel/boost) guideline and a `pun-development` skill. They tell the agent to run `pun check --fix --dirty` after it changes PHP files, and to use Pun's package commands instead of Composer's. `php artisan boost:install` offers them when `composer.lock` lists `punphp/pun` as a direct dependency.
+The `punphp/pun` package ships a [Laravel Boost](https://github.com/laravel/boost) guideline and a `pun-development` skill.
 
-## Markdown docs
+- They have the agent run `pun check --fix --dirty` after it edits PHP files.
+- They have it use Pun's package commands instead of Composer's.
+- `php artisan boost:install` offers them when `composer.lock` lists `punphp/pun` as a direct dependency.
 
-To get any docs page as Markdown, append `.md` to its URL. [`/llms.txt`](/llms.txt) lists the documentation pages.
+## Docs as Markdown
+
+Add `.md` to any docs URL to get the page as Markdown. [`/llms.txt`](/llms.txt) lists all pages.

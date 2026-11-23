@@ -3,11 +3,11 @@ title: Workspaces
 description: Keep several packages in one repository with one lock and one vendor/.
 ---
 
-A workspace holds several packages in one repository. They share one `composer.lock` and one `vendor/` at the repository root.
+A workspace is several packages in one repository. They share one `composer.lock` and one `vendor/` at the root.
 
 ## Create a workspace
 
-1. In the root `pun.toml`, list the member directories, or globs that match them:
+1. In the root `pun.toml`, list the member directories or globs:
 
    ```toml pun.toml
    [workspace]
@@ -27,18 +27,25 @@ A workspace holds several packages in one repository. They share one `composer.l
 
 3. Run `pun install`.
 
-Pun requires every member at the root and symlinks each one into `vendor/` as a path package. A member requires another member like any package, at `*` or any other constraint. Put the root's own requirements and repositories in the root `composer.json`. The root needs no `composer.json` and no requirements of its own.
+## How it works
+
+- Pun requires every member at the root and symlinks it into `vendor/` as a path package.
+- A member requires another member like any package, with `*` or any constraint.
+- The root's own requirements and repositories go in the root `composer.json`. The root doesn't need one.
+
+## Member rules
 
 - `*` and `?` in a glob match within one directory name.
-- Pun skips directories without a `composer.json`. A glob that matches nothing, such as `apps/*` before `apps/` exists, adds no member.
-- A member without `name` is an error.
-- Two members can't have the same name.
+- Directories without a `composer.json` are skipped.
+- A glob that matches nothing, such as `apps/*` before `apps/` exists, adds no member.
+- A member without a `name` is an error.
+- Two members can't share a name.
 
 ## Work in a member
 
-`pun install`, `pun update`, `pun require`, and `pun remove` find the workspace from the current directory, so they work in any member. They read and write the root's `composer.lock` and `vendor/`.
+`pun install`, `pun update`, `pun require` and `pun remove` find the workspace from the current directory. They always read and write the root `composer.lock` and `vendor/`.
 
-`pun require` and `pun remove` edit the `composer.json` of the member you run them in, or the root's at the root. To edit another member, name it with `-p`:
+`pun require` and `pun remove` edit the `composer.json` of the member you are in, or the root's at the root. Use `-p` for another member:
 
 ```bash
 pun require -p acme/billing guzzlehttp/guzzle
@@ -49,4 +56,4 @@ If a request doesn't resolve, `composer.json` and the lock stay unchanged.
 
 ## Limits
 
-- `pun install` doesn't notice when a member's requirements change outside `pun require` and `pun remove`. Run `pun update <member>` after you edit a member's `composer.json` by hand.
+- `pun install` doesn't notice a member's requirements changing outside `pun require` and `pun remove`. After you edit a member's `composer.json` by hand, run `pun update <member>`.
