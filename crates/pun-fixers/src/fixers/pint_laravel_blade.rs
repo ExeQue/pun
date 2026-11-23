@@ -23,11 +23,14 @@ use std::path::Path;
 
 struct LaravelBladeFixer {
     preset: String,
+    /// `[format] blade = "native"`: the Rust port of prettier-plugin-blade instead of Prettier on Node.
+    native: bool,
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(LaravelBladeFixer {
         preset: "laravel".into(),
+        native: false,
     })
 }
 
@@ -44,6 +47,16 @@ impl Fixer for LaravelBladeFixer {
     fn set_preset(&mut self, preset: &str) {
         self.preset = preset.into();
     }
+    fn configure(&mut self, options: &serde_json::Value) -> Result<()> {
+        match options {
+            serde_json::Value::Null => self.native = false,
+            o if o.get("engine").and_then(serde_json::Value::as_str) == Some("native") => {
+                self.native = true;
+            }
+            _ => anyhow::bail!("[{}] Is not configurable.", self.name()),
+        }
+        Ok(())
+    }
     fn fix(&self, file: &Path, tokens: &mut Tokens) {
         let path = std::fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
         let path_str = path.to_string_lossy().into_owned();
@@ -54,7 +67,8 @@ impl Fixer for LaravelBladeFixer {
         if is_ignored(&path_str) {
             return;
         }
-        let content = format(&path_str, &content, &self.preset).unwrap_or_else(|e| panic!("{e}"));
+        let content = format(&path_str, &content, &self.preset, self.native)
+            .unwrap_or_else(|e| panic!("{e}"));
         if content.is_empty() {
             for index in 0..tokens.count() {
                 tokens.clear_at(index);
@@ -75,14 +89,19 @@ fn is_ignored(path: &str) -> bool {
         || path.contains("resources/views/mail/")
 }
 
-fn format(path: &str, content: &[u8], preset: &str) -> Result<Vec<u8>> {
+fn format(path: &str, content: &[u8], preset: &str, native: bool) -> Result<Vec<u8>> {
     let mut spacing = escaped_directive_spacing::EscapedDirectiveSpacing::default();
     spacing.pre_format(content);
     let mut masker = embedded_blade_masker::EmbeddedBladeMasker::default();
     let masked = masker.pre_format(content).map_err(anyhow::Error::msg)?;
     let mut alpine = alpine_mask_patterns::AlpineMaskPatterns::default();
     let masked = alpine.pre_format(&masked).map_err(anyhow::Error::msg)?;
-    let formatted = crate::prettier::format(path, &masked)?;
+    let formatted = if native {
+        let text = std::str::from_utf8(&masked).map_err(|_| anyhow::anyhow!("{path}: not UTF-8"))?;
+        pun_blade::format(text).into_bytes()
+    } else {
+        crate::prettier::format(path, &masked)?
+    };
     let formatted = spacing.post_format(&formatted).map_err(anyhow::Error::msg)?;
     let formatted = strip_sensitive_leading_blank_lines::post_format(&formatted);
     let formatted = not_operator_spacing::post_format(&formatted);

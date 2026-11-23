@@ -1982,3 +1982,34 @@ fn cache_dir_follows_pun_cache_dir_then_the_platform() {
     assert_eq!(cache_dir_in(home, false), Some("/h/.cache/pun".into()));
     assert_eq!(cache_dir_in(env(&[("XDG_CACHE_HOME", "/x")]), false), None);
 }
+
+#[test]
+fn native_blade_engine() {
+    let toml = |blade: &str| {
+        let text =
+            format!("[format]\nblade = \"{blade}\"\n[format.rules]\n\"laravel/blade\" = true\n");
+        dir(&[
+            ("composer.json", r#"{"require":{"php":"^8.4"}}"#),
+            ("pun.toml", &text),
+        ])
+    };
+    let options = |c: &Config| {
+        (c.rules.iter())
+            .find(|r| r.name == "Pint/laravel_blade")
+            .unwrap()
+            .options
+            .clone()
+    };
+    let c = load(&toml("native"), &Options::default()).unwrap();
+    assert!(c.blade);
+    assert_eq!(options(&c), json!({"engine": "native"}));
+    let c = load(&toml("prettier"), &Options::default()).unwrap();
+    assert_eq!(options(&c), Value::Null);
+    let e = load(&toml("node"), &Options::default())
+        .unwrap_err()
+        .to_string();
+    assert!(
+        e.contains("[format] blade = \"node\": expected `prettier` or `native`"),
+        "{e}"
+    );
+}

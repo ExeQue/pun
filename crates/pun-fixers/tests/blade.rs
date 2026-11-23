@@ -19,6 +19,10 @@ fn node_modules(crate_dir: &Path) -> Option<PathBuf> {
 }
 
 fn pipeline() -> pun_format::Pipeline {
+    pun_format::Pipeline::new(&pipeline_rules(), &pun_fixers::all).unwrap()
+}
+
+fn pipeline_rules() -> Vec<pun_config::Rule> {
     let (_, json) = pun_config::PRESETS
         .iter()
         .find(|(n, _)| *n == "laravel")
@@ -42,7 +46,7 @@ fn pipeline() -> pun_format::Pipeline {
         name: "Pint/laravel_blade".into(),
         options: serde_json::Value::Null,
     });
-    pun_format::Pipeline::new(&rules, &pun_fixers::all).unwrap()
+    rules
 }
 
 fn files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -169,6 +173,61 @@ fn oracle_blade_fixtures() {
     std::env::set_current_dir(root).unwrap();
     std::fs::remove_dir_all(&project).unwrap();
     std::fs::remove_dir_all(&bare).unwrap();
+    assert!(
+        fail.is_empty(),
+        "{} of {} failed:\n{}",
+        fail.len(),
+        all.len() * 2,
+        fail.join("\n")
+    );
+}
+
+/// The golden files outside tests/blade/tailwind whose expected output sorts Tailwind classes.
+const SORTS_CLASSES: &[&str] = &[
+    "attributes/single-collapse",
+    "html/li-in-li",
+    "html/li-in-template",
+    "kitchen-sink/dashboard",
+    "kitchen-sink/everything",
+    "kitchen-sink/teams",
+];
+
+/// `[format] blade = "native"` against the same golden files, without Node. Tailwind class sorting is not ported,
+/// so the fixtures that sort classes are left out.
+#[test]
+fn native_blade_fixtures() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut rules = pipeline_rules();
+    for r in rules.iter_mut().filter(|r| r.name == "Pint/laravel_blade") {
+        r.options = serde_json::json!({ "engine": "native" });
+    }
+    let pipeline = pun_format::Pipeline::new(&rules, &pun_fixers::all).unwrap();
+    let mut all = Vec::new();
+    files(&root.join("tests/blade"), &mut all);
+    let blade = root.join("tests/blade");
+    all.retain(|f| {
+        let rel = f.strip_prefix(&blade).unwrap().to_string_lossy();
+        let name = rel.strip_suffix(".blade.php").unwrap();
+        !rel.starts_with("tailwind/") && !SORTS_CLASSES.contains(&name)
+    });
+    all.sort();
+    let mut fail = Vec::new();
+    for input in &all {
+        let rel = input.strip_prefix(root).unwrap();
+        let code = std::fs::read(input).unwrap();
+        let expected = std::fs::read(format!("{}.expected", input.display())).unwrap();
+        for (what, from) in [("input", &code), ("expected changed", &expected)] {
+            let got = run(&pipeline, rel, from);
+            if got != expected {
+                fail.push(format!(
+                    "{} ({what})\n{}",
+                    rel.display(),
+                    String::from_utf8_lossy(&got)
+                ));
+            }
+        }
+    }
+    assert!(!all.is_empty());
     assert!(
         fail.is_empty(),
         "{} of {} failed:\n{}",

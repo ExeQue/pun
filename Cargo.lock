@@ -2172,6 +2172,7 @@ dependencies = [
  "memchr",
  "pcre2",
  "pcre2-sys",
+ "punphp-blade",
  "punphp-config",
  "punphp-format",
  "punphp-tokens",

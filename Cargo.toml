@@ -23,6 +23,7 @@ rust-version = "1.100"
 
 [workspace.dependencies]
 pun-analyse = { path = "crates/pun-analyse", package = "punphp-analyse" }
+pun-blade = { path = "crates/pun-blade", package = "punphp-blade" }
 pun-config = { path = "crates/pun-config", package = "punphp-config" }
 pun-extension = { path = "crates/pun-extension", package = "punphp-extension" }
 pun-fixers = { path = "crates/pun-fixers", package = "punphp-fixers" }

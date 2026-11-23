@@ -131,6 +131,8 @@ struct PunPhp {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 struct PunFormat {
     preset: Option<String>,
+    /// `"prettier"` (the default) or `"native"`, the opt-in Rust Blade formatter.
+    blade: Option<String>,
     paths: Option<toml::Value>,
     #[serde(default)]
     exclude: Vec<String>,
@@ -261,6 +263,11 @@ fn parse(
         }
         _ => {}
     }
+    let native_blade = match f.blade.as_deref() {
+        None | Some("prettier") => false,
+        Some("native") => true,
+        Some(b) => bail!("{at}: [format] blade = \"{b}\": expected `prettier` or `native`"),
+    };
     let explicit = php.version.is_some();
     let php = match php.version {
         Some(v) => v.parse::<PhpVersion>().map_err(|_| {
@@ -320,8 +327,13 @@ fn parse(
         rules.insert(fixer.into(), v);
     }
     rules.retain(|name, _| !rule_of(name).is_some_and(|id| id.starts_with("lint/")));
-    let rules = enabled(rules);
+    let mut rules = enabled(rules);
     let blade = rules.iter().any(|r| r.name == "Pint/laravel_blade");
+    if native_blade {
+        for r in rules.iter_mut().filter(|r| r.name == "Pint/laravel_blade") {
+            r.options = serde_json::json!({ "engine": "native" });
+        }
+    }
 
     Ok(Config {
         root: root.to_path_buf(),

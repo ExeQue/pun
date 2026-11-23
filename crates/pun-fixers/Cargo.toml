@@ -16,6 +16,7 @@ pcre2-sys.workspace = true
 pun-tokens.workspace = true
 pun-format.workspace = true
 pun-config.workspace = true
+pun-blade.workspace = true
 
 [dev-dependencies]
 pcre2.workspace = true
