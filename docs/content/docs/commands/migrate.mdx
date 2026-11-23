@@ -48,7 +48,7 @@ Without a Pint or PHP-CS-Fixer config, Pun writes a starter format config from t
 Migration resolves Pint's `extend`, `--config`, and `--preset`. It reads `.php-cs-fixer.php` through PHP-CS-Fixer, with system PHP. Pun looks for PHP-CS-Fixer in `vendor/`, then in a tool directory (`tools/`, `tools/<name>/` or `vendor-bin/<name>/`), then for Phive's `tools/php-cs-fixer` and a `php-cs-fixer` on `PATH`, such as a global install or the PHAR.
 
 - Layout rules go to `[format.rules]`. Risky and code-deleting fixers go to `[lint.rules]` at `"error"`.
-- Finder paths and `exclude` go to `[files]`, so lint and analyse skip those folders too. `notName` and `notPath` become format exclusions. [Two exclusion details](/docs/configuration/pint-json) differ from Pint.
+- Finder paths and `exclude` go to `[files]`, so lint and analyse skip those folders too. `notPath` becomes a format exclusion. Migration reports `notName` and leaves it out. [Two exclusion details](/docs/configuration/pint-json) differ from Pint.
 - `per` and rule sets such as `@PER-CS` expand to explicit rules over `preset = "empty"`. Pun does not support Pint's `symfony` preset, so migration stops with an error.
 - Options are renamed to [Pun names and values](/docs/configuration/pun-toml#rule-options).
 - A deprecated PHP-CS-Fixer rule that only runs a newer one, such as `curly_braces_position` or `new_with_braces`, becomes that rule with the same options. If the config also turns on the newer rule with options that one rule can't hold, migration reports the old name and skips it.

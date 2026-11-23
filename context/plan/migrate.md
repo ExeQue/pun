@@ -30,8 +30,8 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
 ```
 - **pint.json and .php-cs-fixer.php:** the preset, then a delta of rules with TOML option names. `per` expands into
   explicit rules; a `symfony` preset stops migrate with an error. Risky and code-deleting rules go to `[lint.rules]`
-  at `error`. Custom fixer classes are named as unsupported. The Finder (paths, exclude, notName, notPath) moves to
-  `[format]`.
+  at `error`. Custom fixer classes are named as unsupported. The Finder (paths, exclude, notPath) moves to
+  `[format]`; `notName` is named as unsupported.
 - **rector.php:** paths and skip, prepared sets to `[lint] sets` one to one, single rules to `[lint.rules]`, PHP and
   Laravel level sets to the upgrade groups, all at `error`. Symfony, Doctrine and downgrade sets are named as
   unsupported.
@@ -78,7 +78,7 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
   time. A rule without one (no Pun ID, deprecated, not ported, or an option TOML can't hold) is named and left out. A
   preset rule Pun can't run is written as `false`, so the migrated pun.toml always runs. Migrate then exits 0.
 - **The `.php-cs-fixer.php` Finder** is read in the same `php -r` run. `in()` folders become `[files] paths`
-  (relative to the project, the root itself left out). `exclude()` (without the default `vendor`), `notName()` and
-  `notPath()` become `[format]` keys, as for pint.json. Any other Finder call, a `name()` other than `*.php`, or a
+  (relative to the project, the root itself left out). `exclude()` (without the default `vendor`) and
+  `notPath()` become `[format]` keys, as for pint.json; `notName()` is named as unsupported. Any other Finder call, a `name()` other than `*.php`, or a
   Finder that is not a Symfony Finder is named as `Finder <call>: no pun.toml key for it`. An empty Finder list is left
   out of pun.toml.

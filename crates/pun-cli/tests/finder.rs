@@ -175,47 +175,13 @@ fn finder_matches_pint() {
 
     let root = tree(
         COMMON,
-        &json(
-            r##","exclude":["skip","src/Sub/Deep/"],"notName":["*Test.php","{a,b}.php","/^ax\\.php$/i","notme.php"],"notPath":["#^app/with#","build"]"##,
-        ),
+        &json(r##","exclude":["skip","src/Sub/Deep/"],"notPath":["#^app/with#","build"]"##),
     );
     check(&root, None, &[]);
     check(&root, None, &["app/build/B.php"]);
-    let root = tree(
-        COMMON,
-        &json(r#","notName":"[ab].php","notPath":"/^SRC/i","exclude":"app""#),
-    );
+    let root = tree(COMMON, &json(r#","notPath":"/^SRC/i","exclude":"app""#));
     check(&root, None, &[]);
     let root = tree(COMMON, &json(r#","notPath":["/a/b/"]"#));
-    check(&root, None, &[]);
-
-    let files = [
-        "g/ax.php",
-        "g/bx.php",
-        "g/cx.php",
-        "g/x.php",
-        "g/xx.php",
-        "g/a{b.php",
-        "g/a*.php",
-        "g/a\\b.php",
-        "g/.x.php",
-        "g/T.php",
-        "g/ZTest.php",
-        "g/a.php",
-        "g/ä.php",
-        "g/Mm.php",
-        "g/ab",
-        "g/p.php",
-        "g/q.php",
-        "g/r.php",
-        "g/s.php",
-    ];
-    let root = tree(
-        &files,
-        &json(
-            r#","notName":["?x.php","**/xx.php","a\\{b.php","a\\*.php","a\\\\b.php","[b]x.php","(^cx\\.php$)","<^ZTest\\.php$>","{^t\\.php$}i","[^Mm\\.php$]","/^a . php$/x","/^ä/u","/^p.php$/s","/^q.php$/m","/^r.php$/U","~s.php~","ab","g/**"]"#,
-        ),
-    );
     check(&root, None, &[]);
 
     let root = tree(COMMON, &json(r#","in":["src","app"],"exclude":["Deep"]"#));
@@ -244,11 +210,11 @@ fn finder_matches_pint() {
 
     let root = tree(
         &["app/Café.php", "app/Cafe.php", "app/né/X.php", "app/ü.php"],
-        &json(r#","notName":["*é.php","?.php"],"notPath":["né"]"#),
+        &json(r#","notPath":["né"]"#),
     );
     check(&root, None, &[]);
 
-    let root = tree(COMMON, &json(r#","notName":["*.php"]"#));
+    let root = tree(COMMON, &json(r#","exclude":["src"]"#));
     std::fs::write(root.join("other.json"), json(r#","exclude":["app"]"#)).unwrap();
     check(&root, Some("other.json"), &[]);
 }
@@ -261,7 +227,7 @@ fn stdin_exclusion_matches_pint() {
     let root = tree(
         &[],
         &json(
-            r#","exclude":["legacy","app/Old"],"notName":["*Stub.php","{x,y}.php"],"notPath":["gen/*","s/?.php","t/[!x]*.php","u/[a-c].php","v/\\*.php","w/[\\].php","y/[\\]]*.php"]"#,
+            r#","exclude":["legacy","app/Old"],"notPath":["gen/*","s/?.php","t/[!x]*.php","u/[a-c].php","v/\\*.php","w/[\\].php","y/[\\]]*.php"]"#,
         ),
     );
     let cfg = load(&root, None).unwrap();

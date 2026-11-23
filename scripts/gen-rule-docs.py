@@ -373,7 +373,8 @@ def translation(tool: str) -> str:
 | `rules` | `[format.rules]` for layout, and `[lint.rules]` at `\"error\"` for code edits |
 | Rule options | Pun option names and values, on each rule page |
 | `in`, `exclude` | `[files] paths`, `[files] exclude` |
-| `notName`, `notPath` | `[format] not-name`, `[format] not-path` |
+| `notPath` | `[format] not-path` |
+| `notName` | Not supported: `pun migrate` reports it and leaves it out |
 | `@php-cs-fixer-ignore` | `@pun-ignore-file` with the full format rule ID |
 """,
         "php-cs-fixer": """Run `pun migrate --from php-cs-fixer`. It reads `.php-cs-fixer.php` or `.php-cs-fixer.dist.php` through PHP-CS-Fixer, so it needs system PHP.
@@ -384,7 +385,8 @@ def translation(tool: str) -> str:
 | `setRiskyAllowed(true)` | Enabled risky fixers become lint rules at `\"error\"` |
 | Configured options | Pun names and values, on each rule page |
 | Finder `in()`, `exclude()` | `[files] paths`, `[files] exclude` |
-| Finder `notName()`, `notPath()` | `[format] not-name`, `[format] not-path` |
+| Finder `notPath()` | `[format] not-path` |
+| Finder `notName()` | Not supported: `pun migrate` reports it and leaves it out |
 | Custom fixer classes | Reported and skipped |
 """,
         "rector": """Run `pun migrate --from rector` after `composer install`. It reads `rector.php` through the project's Rector, so it needs system PHP.

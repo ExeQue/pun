@@ -73,7 +73,7 @@ fn wait_for(what: &str, buf: &Mutex<String>, cond: impl Fn(&str) -> bool) {
     reason = "one test walks every case of the behaviour it checks"
 )]
 fn watch_reformats_like_pint() {
-    const CFG: &str = r#"{"preset":"laravel","notName":["Skip.php"]}"#;
+    const CFG: &str = r#"{"preset":"laravel","notPath":["app/Skip.php"]}"#;
     if oracle().is_none() {
         return;
     }

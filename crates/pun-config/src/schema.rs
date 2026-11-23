@@ -459,10 +459,6 @@ fn level(path: &Path, key: &str, s: &str) -> Result<Option<Level>> {
         "off" => None,
         "warn" => Some(Level::Warn),
         "error" => Some(Level::Error),
-        "info" => bail!(
-            "{}: `{key}` = \"info\": the `info` level was removed; use \"warn\"",
-            path.display()
-        ),
         _ => bail!(
             "{}: `{key}` = \"{s}\": expected \"error\", \"warn\" or \"off\"",
             path.display()
@@ -490,24 +486,10 @@ fn setting(path: &Path, name: &str, v: toml::Value) -> Result<LintSetting> {
                     shown(&v)
                 ),
             };
-            if t.contains_key("severity") {
-                bail!(
-                    "{}: `{name}`: `severity` was removed; use `level` (\"error\", \"warn\" or \"off\")",
-                    path.display()
-                );
-            }
             let fix = match t.remove("fix") {
                 None => true,
                 Some(f) => match f.as_str() {
                     Some("off") => false,
-                    Some("apply") => bail!(
-                        "{}: `{name}`: fix = \"apply\" was removed; `--fix` applies the fix of every enabled rule, so leave `fix` out",
-                        path.display()
-                    ),
-                    Some("safe-only") => bail!(
-                        "{}: `{name}`: fix = \"safe-only\" was removed; `--fix` applies every fix, and fix = \"off\" keeps a rule report-only",
-                        path.display()
-                    ),
                     _ => bail!(
                         "{}: `{name}`: fix = {}: the only value is \"off\"",
                         path.display(),

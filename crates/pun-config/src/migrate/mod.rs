@@ -112,15 +112,16 @@ pub fn from_pint(path: &Path, preset: Option<&str>, runs: Runs) -> Result<Migrat
             bail!("[{name}] {what} Other values are not allowed.{null}");
         }
     }
-    let (paths, finder) = finder(&pint);
+    let (paths, finder, not_name) = finder(&pint);
     let off = disabled(pint.get("rules").and_then(Value::as_object));
+    let unsupported = (not_name.then(|| "notName: no pun.toml key for it".to_string())).into_iter();
     write(
         preset,
         rule_set(rules)?,
         &off,
         &paths,
         &finder,
-        vec![],
+        unsupported.collect(),
         runs,
     )
 }
@@ -130,15 +131,16 @@ pub fn from_rules(
     finder_of: &Map<String, Value>,
     runs: Runs,
 ) -> Result<Migration> {
-    let (paths, finder) = finder(finder_of);
-    let unsupported = (finder_of
-        .get("unsupported")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten())
-    .filter_map(Value::as_str)
-    .map(|s| format!("Finder {s}: no pun.toml key for it"))
-    .collect();
+    let (paths, finder, not_name) = finder(finder_of);
+    let unsupported = (not_name.then_some("notName()").into_iter())
+        .chain(
+            (finder_of.get("unsupported").and_then(Value::as_array))
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str),
+        )
+        .map(|s| format!("Finder {s}: no pun.toml key for it"))
+        .collect();
     let off = disabled(Some(&rules));
     write(
         "empty",
@@ -159,12 +161,17 @@ fn disabled(rules: Option<&Map<String, Value>>) -> Vec<String> {
         .collect()
 }
 
-fn finder(config: &Map<String, Value>) -> (String, String) {
+/// `[files]` and `[format]`'s finder keys, and whether the config sets `notName`, which pun.toml has no key for.
+fn finder(config: &Map<String, Value>) -> (String, String, bool) {
     let (mut paths, mut finder) = (String::new(), String::new());
+    let not_name = match config.get("notName") {
+        Some(Value::String(_)) => true,
+        Some(Value::Array(a)) => !a.is_empty(),
+        _ => false,
+    };
     for (json, key) in [
         ("in", "paths"),
         ("exclude", "exclude"),
-        ("notName", "not-name"),
         ("notPath", "not-path"),
     ] {
         let list: Vec<&str> = match config.get(json) {
@@ -179,7 +186,7 @@ fn finder(config: &Map<String, Value>) -> (String, String) {
         };
         writeln!(out, "{key} = {}", toml::Value::try_from(list).unwrap()).unwrap();
     }
-    (paths, finder)
+    (paths, finder, not_name)
 }
 
 fn read_pint_json(path: &Path) -> Result<Map<String, Value>> {

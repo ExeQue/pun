@@ -55,7 +55,7 @@ plugin: every golden file outside tests/blade/tailwind (except six that sort cla
 
 ## 3. The config
 
-The schema is config.md §3: `[format] preset` (`laravel`, `psr12`, `empty`), `not-name` / `not-path`, and
+The schema is config.md §3: `[format] preset` (`laravel`, `psr12`, `empty`), `not-path`, and
 `[format.rules]` as a delta to the preset, with `group/name` keys (§8) and TOML-native options (Decisions, "Option
 names"). `pun migrate` translates PHP-CS-Fixer's options. Format rules have no levels: a diff is a diff. They can only
 be ignored per file, with `// @pun-ignore-file format/<group>/<name>` before the first statement (rules.md §4).

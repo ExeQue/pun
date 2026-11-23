@@ -71,7 +71,6 @@ pub struct Rule {
 pub struct Finder {
     pub in_dirs: Vec<String>,
     pub exclude: Vec<String>,
-    pub not_name: Vec<String>,
     pub not_path: Vec<String>,
 }
 
@@ -118,7 +117,6 @@ struct PunToml {
     analyse: schema::AnalyseToml,
     #[serde(default)]
     extensions: toml::Table,
-    preset: Option<toml::Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -133,11 +131,8 @@ struct PunFormat {
     preset: Option<String>,
     /// `"prettier"` (the default) or `"native"`, the opt-in Rust Blade formatter.
     blade: Option<String>,
-    paths: Option<toml::Value>,
     #[serde(default)]
     exclude: Vec<String>,
-    #[serde(default)]
-    not_name: Vec<String>,
     #[serde(default)]
     not_path: Vec<String>,
     #[serde(default)]
@@ -209,10 +204,20 @@ fn inside(root: &Path, path: &str) -> bool {
     real.starts_with(root)
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "long; to be split (code audit: functions over 100 lines)"
-)]
+/// Checks `[format] preset` and `blade`, and says whether `blade = "native"` picks the Rust Blade formatter.
+fn blade_and_preset(at: &impl std::fmt::Display, f: &PunFormat) -> Result<bool> {
+    if let Some(p) = f.preset.as_deref()
+        && FormatPreset::parse(p).is_none()
+    {
+        bail!("{at}: [format] preset = \"{p}\": expected `laravel`, `psr12` or `empty`")
+    }
+    Ok(match f.blade.as_deref() {
+        None | Some("prettier") => false,
+        Some("native") => true,
+        Some(b) => bail!("{at}: [format] blade = \"{b}\": expected `prettier` or `native`"),
+    })
+}
+
 fn parse(
     root: &Path,
     path: &Path,
@@ -240,34 +245,9 @@ fn parse(
         lint,
         analyse,
         extensions,
-        preset: tier,
     } = toml;
     let at = path.display();
-    if let Some(tier) = tier {
-        bail!(
-            "{at}: the top-level `preset = {tier}` was removed: use `[lint] sets` for lint rules, `[analyse] preset` for analyse and `[format] preset` for format"
-        );
-    }
-    if f.paths.is_some() {
-        bail!("{at}: [format] paths moved to [files] paths, which every command shares");
-    }
-    match f.preset.as_deref() {
-        Some("per") => bail!(
-            "{at}: [format] preset = \"per\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)"
-        ),
-        Some("symfony") => bail!(
-            "{at}: [format] preset = \"symfony\" was removed: Pun supports the laravel, psr12 and empty presets"
-        ),
-        Some(p) if FormatPreset::parse(p).is_none() => {
-            bail!("{at}: [format] preset = \"{p}\": expected `laravel`, `psr12` or `empty`")
-        }
-        _ => {}
-    }
-    let native_blade = match f.blade.as_deref() {
-        None | Some("prettier") => false,
-        Some("native") => true,
-        Some(b) => bail!("{at}: [format] blade = \"{b}\": expected `prettier` or `native`"),
-    };
+    let native_blade = blade_and_preset(&at, &f)?;
     let explicit = php.version.is_some();
     let php = match php.version {
         Some(v) => v.parse::<PhpVersion>().map_err(|_| {
@@ -304,16 +284,6 @@ fn parse(
     if let Some(b) = analyse.baseline.as_deref().filter(escapes) {
         bail!("{at}: [analyse] baseline: \"{b}\" is outside the project");
     }
-
-    match opts.preset.as_deref() {
-        Some("per") => bail!(
-            "--preset per was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset per` expands it)"
-        ),
-        Some("symfony") => {
-            bail!("--preset symfony was removed: Pun supports the laravel, psr12 and empty presets")
-        }
-        _ => {}
-    }
     let preset = opts.preset.clone().or(f.preset);
     let preset = match preset.as_deref() {
         None => FormatPreset::Laravel,
@@ -344,7 +314,6 @@ fn parse(
         finder: Finder {
             in_dirs: files.paths.clone(),
             exclude: [&files.exclude[..], &f.exclude[..]].concat(),
-            not_name: f.not_name,
             not_path: f.not_path,
         },
         blade,
@@ -589,7 +558,6 @@ impl Config {
             format: ShownFormat {
                 preset: &self.preset,
                 exclude: &f.exclude,
-                not_name: &f.not_name,
                 not_path: &f.not_path,
                 rules: format,
             },
@@ -637,7 +605,6 @@ struct ShownPhp {
 struct ShownFormat<'a> {
     preset: &'a FormatPreset,
     exclude: &'a [String],
-    not_name: &'a [String],
     not_path: &'a [String],
     rules: Map<String, Value>,
 }

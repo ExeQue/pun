@@ -100,7 +100,6 @@ exclude = ["build"]
 [format]
 preset = "laravel"
 exclude = ["a"]
-not-name = ["n.php"]
 not-path = ["p"]
 [format.rules]
 "operators/concat-spacing" = { spacing = "one" }
@@ -215,16 +214,10 @@ not-path = ["p"]
         }
     );
     assert_eq!(
-        (
-            c.finder.in_dirs,
-            c.finder.exclude,
-            c.finder.not_name,
-            c.finder.not_path
-        ),
+        (c.finder.in_dirs, c.finder.exclude, c.finder.not_path),
         (
             vec!["src".into(), "tests".into()],
             vec!["build".into(), "a".into()],
-            vec!["n.php".into()],
             vec!["p".into()]
         )
     );
@@ -761,7 +754,7 @@ fn show() {
     assert_eq!(
         v["format"],
         json!({
-            "preset": "empty", "exclude": ["build", "gen"], "not-name": [], "not-path": [],
+            "preset": "empty", "exclude": ["build", "gen"], "not-path": [],
             "rules": {"operators/concat-spacing": "one", "strings/single-quote": true},
         })
     );
@@ -795,30 +788,7 @@ fn show() {
 }
 
 #[test]
-fn removed_presets() {
-    for (p, flag, toml) in [
-        (
-            "per",
-            "--preset per was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset per` expands it)",
-            "[format] preset = \"per\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)",
-        ),
-        (
-            "symfony",
-            "--preset symfony was removed: Pun supports the laravel, psr12 and empty presets",
-            "[format] preset = \"symfony\" was removed: Pun supports the laravel, psr12 and empty presets",
-        ),
-    ] {
-        let none = dir(&[]);
-        assert_eq!(err(&none, preset(p)), flag);
-        let d = dir(&[("pun.toml", "[format]\npreset = \"psr12\"\n")]);
-        assert_eq!(err(&d, preset(p)), flag);
-        let d = dir(&[("pun.toml", &format!("[format]\npreset = \"{p}\"\n"))]);
-        assert_eq!(
-            err(&d, Options::default()),
-            format!("{}: {toml}", d.join("pun.toml").display())
-        );
-    }
-    assert_eq!(err(&dir(&[]), preset("nope")), "Preset not found.");
+fn presets() {
     for p in crate::FormatPreset::ALL {
         assert_eq!(load(&dir(&[]), &preset(&p)).unwrap().preset, p);
     }
@@ -1005,44 +975,8 @@ fn pun_toml_errors() {
     };
     for (toml, msg) in [
         (
-            "preset = \"recommended\"\n",
-            "the top-level `preset = \"recommended\"` was removed: use `[lint] sets` for lint rules, `[analyse] preset` for analyse and `[format] preset` for format",
-        ),
-        (
-            "[format]\npaths = [\"app\"]\n",
-            "[format] paths moved to [files] paths, which every command shares",
-        ),
-        (
             "[workspace]\nmembers = []\n\n[require-dev]\n\"pestphp/pest\" = \"^4.0\"\n",
             "[require-dev] belongs in composer.json: Pun reads the dependencies from composer.json and composer.lock, and pun.toml holds only Pun's own settings",
-        ),
-        (
-            "[format]\npreset = \"per\"\n",
-            "[format] preset = \"per\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)",
-        ),
-        (
-            "[format]\npreset = \"symfony\"\n",
-            "[format] preset = \"symfony\" was removed: Pun supports the laravel, psr12 and empty presets",
-        ),
-        (
-            "[lint.rules]\n\"style/require-final-class\" = { fix = \"apply\" }\n",
-            "`style/require-final-class`: fix = \"apply\" was removed; `--fix` applies the fix of every enabled rule, so leave `fix` out",
-        ),
-        (
-            "[lint.rules]\n\"style/require-final-class\" = { fix = \"safe-only\" }\n",
-            "`style/require-final-class`: fix = \"safe-only\" was removed; `--fix` applies every fix, and fix = \"off\" keeps a rule report-only",
-        ),
-        (
-            "[lint.rules]\n\"style/require-final-class\" = \"info\"\n",
-            "`style/require-final-class` = \"info\": the `info` level was removed; use \"warn\"",
-        ),
-        (
-            "[lint.groups]\nstyle = \"info\"\n",
-            "`style` = \"info\": the `info` level was removed; use \"warn\"",
-        ),
-        (
-            "[lint.rules]\n\"style/require-final-class\" = { severity = \"warn\" }\n",
-            "`style/require-final-class`: `severity` was removed; use `level` (\"error\", \"warn\" or \"off\")",
         ),
         (
             "[lint.rules]\n\"style/require-final-class\" = true\n",
@@ -1154,6 +1088,9 @@ fn pun_toml_errors() {
     }
     assert!(e("[format]\nexlude = [\"typo\"]\n").contains("unknown field `exlude`"));
     assert!(e("[lint]\nset = []\n").contains("unknown field `set`"));
+    assert!(e("preset = \"recommended\"\n").contains("unknown field `preset`"));
+    assert!(e("[format]\npaths = [\"app\"]\n").contains("unknown field `paths`"));
+    assert!(e("[format]\nnot-name = [\"*.inc\"]\n").contains("unknown field `not-name`"));
     assert!(e("[[lint.overrides]]\nrules = {}\n").contains("missing field `files`"));
     for (table, name, id) in [
         ("format", "format.array-syntax", "format/arrays/syntax"),
@@ -1595,9 +1532,15 @@ not-path = ["y"]
             &|_| true,
         )
         .unwrap();
-        assert_eq!(m.unsupported, ["Finder depth(): no pun.toml key for it"]);
+        assert_eq!(
+            m.unsupported,
+            [
+                "Finder notName(): no pun.toml key for it",
+                "Finder depth(): no pun.toml key for it"
+            ]
+        );
         assert!(
-            m.toml.starts_with("[files]\npaths = [\"src\", \"/elsewhere\"]\n\n[format]\npreset = \"empty\"\nnot-name = [\"*.inc\"]\nnot-path = [\"x/y.php\"]\n\n[format.rules]\n"),
+            m.toml.starts_with("[files]\npaths = [\"src\", \"/elsewhere\"]\n\n[format]\npreset = \"empty\"\nnot-path = [\"x/y.php\"]\n\n[format.rules]\n"),
             "{}",
             m.toml
         );
@@ -1702,8 +1645,9 @@ not-path = ["y"]
         let m = from_pint(&d.join("custom.json"), None, &|_| true).unwrap();
         assert_eq!(
             m.toml,
-            "[files]\npaths = [\"src\"]\nexclude = [\"x\", \"b\"]\n\n[format]\npreset = \"empty\"\nnot-name = [\"n\", \"m\"]\n\n[format.rules]\n\"strings/single-quote\" = true\n\"operators/concat-spacing\" = \"one\"\n"
+            "[files]\npaths = [\"src\"]\nexclude = [\"x\", \"b\"]\n\n[format]\npreset = \"empty\"\n\n[format.rules]\n\"strings/single-quote\" = true\n\"operators/concat-spacing\" = \"one\"\n"
         );
+        assert_eq!(m.unsupported, ["notName: no pun.toml key for it"]);
     }
 }
 

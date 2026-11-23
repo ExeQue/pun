@@ -114,7 +114,7 @@ impl Finder {
         for p in &cfg.finder.not_path {
             f.not_paths.push(path_regex(p)?);
         }
-        f.not_name(cfg.finder.not_name.iter().map(String::as_str))
+        Ok(f)
     }
 
     fn exclude<'a>(mut self, dirs: impl IntoIterator<Item = &'a str>) -> Self {
@@ -151,11 +151,7 @@ impl Finder {
 
     fn not_name<'a>(mut self, globs: impl IntoIterator<Item = &'a str>) -> Result<Self> {
         for g in globs {
-            self.not_names.push(if is_regex(g) {
-                php_regex(g)?
-            } else {
-                php_regex(&glob_to_regex(g))?
-            });
+            self.not_names.push(php_regex(&glob_to_regex(g))?);
         }
         Ok(self)
     }
@@ -469,8 +465,6 @@ pub fn is_path_excluded(cfg: &Config, file: &Path) -> bool {
     };
     not_name
         .iter()
-        .copied()
-        .chain(cfg.finder.not_name.iter().map(String::as_str))
         .any(|p| fnmatch(p.as_bytes(), name.as_bytes()))
         || PINT_EXCLUDE
             .iter()

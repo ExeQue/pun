@@ -22,7 +22,6 @@ pest = "on"
 [format]
 preset = "laravel"
 exclude = ["app/Generated"]
-not-name = ["*.blade.php"]
 not-path = ["app/Legacy.php"]
 
 [format.rules]
@@ -95,7 +94,7 @@ Format rules don't depend on extensions. Blade formatting is `"laravel/blade" = 
 | `preset` | `laravel` (default), `psr12`, or `empty` |
 | `blade` | How `laravel/blade` formats Blade files: `prettier` (default) runs Prettier and prettier-plugin-blade in Node, as Pint does. `native` uses Pun's built-in formatter, which needs no Node and no `node_modules`. It gives the same output, except that it doesn't sort Tailwind classes |
 | `exclude` | Added to `[files] exclude` for format only |
-| `not-name`, `not-path` | File names and paths to skip, as in Pint. PHP regular expressions work. An invalid regular expression is a run error |
+| `not-path` | Paths to skip, as in Pint's `notPath`. PHP regular expressions work. An invalid regular expression is a run error |
 | `rules` | `true`, `false`, a table of options, or the value of the rule's only option |
 
 Format always indents with four spaces and writes `\n` line endings. Neither has a setting. Risky and code-deleting fixers are [lint rules](/docs/commands/lint).
@@ -218,10 +217,6 @@ Lint rules from Mago's linter use Mago's option names and defaults. For example:
 - A list of objects goes under `items`, with kebab-case properties: `"refactor/remove-function-argument" = { items = [{ function = "ldap_first_attribute", argument-position = 2 }] }`.
 
 An invalid name, such as `"1f"` as a function name, is a config error. `refactor/rename-class` also takes `import-names` (default off), `import-short-classes` (default on), and `remove-unused-imports` (default off).
-
-## Removed keys
-
-Keys from earlier versions, such as a top-level `preset`, `[format] paths`, `[analyse] level`, `fix = "apply"`, or the `"info"` level, are config errors. Each error says what to write instead.
 
 ## Without pun.toml
 

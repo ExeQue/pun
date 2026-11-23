@@ -327,7 +327,7 @@ fn max_processes_matches_pint() {
 fn config_flags_match_pint() {
     let Some(cx) = Cx::new() else { return };
     let cfg = r#"mkdir -p cfg; printf '{"preset":"psr12","exclude":["sub"]}' > cfg/other.json
-printf '{"preset":"empty","rules":{"array_syntax":true},"notName":["Keep.php"]}' > pint.json"#;
+printf '{"preset":"empty","rules":{"array_syntax":true},"notPath":["app/Keep.php"]}' > pint.json"#;
     for (sub, args) in [
         ("", &["--test"][..]),
         ("", &["--no-config", "--test"]),
@@ -441,7 +441,7 @@ fn output_to_file_matches_pint() {
 #[test]
 fn stdin_matches_pint() {
     let Some(cx) = Cx::new() else { return };
-    let cfg = r#"printf '{"preset":"empty","rules":{"array_syntax":true},"notName":["Keep.php"]}' > pint.json"#;
+    let cfg = r#"printf '{"preset":"empty","rules":{"array_syntax":true},"notPath":["app/Keep.php"]}' > pint.json"#;
     for input in [
         &b"<?php\n$a = array(1,2);   \n"[..],
         b"<?php\nfunction (\n",

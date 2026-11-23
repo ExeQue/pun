@@ -37,8 +37,7 @@ laravel = "on"
 [format]
 preset = "laravel"                    # laravel | psr12 | empty
 exclude = ["app/Generated/**"]        # added to [files] exclude, for format only
-not-name = ["*.blade.php"]            # Pint's notName and notPath, under TOML names
-not-path = ["app/Legacy.php"]
+not-path = ["app/Legacy.php"]         # Pint's notPath (no notName: PLAN.md §2, 2026-11-23)
 
 [format.rules]                        # only what differs from the preset
 "imports/ordered" = { sort = "alphabetical" }
@@ -131,7 +130,7 @@ pun list-files [--command format|lint|analyse] [-0] [paths...]
 ```
 
 - Without `--command`: the `[files]` set (paths minus the shared excludes). With `--command analyse`: that command's
-  set, with its own `exclude` applied. `--command format` also applies Pint's finder rules (not-name, not-path,
+  set, with its own `exclude` applied. `--command format` also applies Pint's finder rules (not-path,
   `.blade.php` only with the Blade rule on).
 - `-0` / `--zero-terminate` ends each name with a NUL byte for `xargs -0`.
 - Paths are relative to the project root and sorted. Files analyse only reads for symbols (`vendor/`) are not listed.
@@ -206,7 +205,7 @@ The assistant's calls where the plan is silent:
   means a glob, not a literal folder name.
 - The `[files]` set (no `--command`, `lint`, `analyse`): `*.php` files (`.blade.php` included), no `vendor` folder at
   any depth, no dot files or VCS folders, symlinked folders not followed. Pint's own skips (`storage`, `build`,
-  `node_modules`, `bootstrap/cache`, IDE helpers, Blade without the rule, not-name, not-path) apply to format only.
+  `node_modules`, `bootstrap/cache`, IDE helpers, Blade without the rule, not-path) apply to format only.
 - Path arguments replace `[files] paths` (and `[analyse] paths`). Outside format a pun.toml exclude also drops an
   explicitly named file. Format keeps Pint's rules: an explicit file bypasses every filter, and with `in` set the
   arguments replace the whole finder.
@@ -217,7 +216,7 @@ The assistant's calls where the plan is silent:
 
 **`pun config`** (Build 8).
 - It prints pun.toml's own sections and keys: `[php] version`, `[files]`, `[extensions]` (every built-in extension,
-  `"on"` or `"off"`), `[format]` (preset, exclude, not-name, not-path, rules), `[lint]` (sets, exclude, rules,
+  `"on"` or `"off"`), `[format]` (preset, exclude, not-path, rules), `[lint]` (sets, exclude, rules,
   `[[lint.overrides]]`) and `[analyse]` (preset, paths, exclude, baseline, rules).
 - Rules are keyed `<group>/<name>` under their command's table, as `pun migrate` writes them; a rule with no Pun ID
   keeps its upstream name. Groups and sets are expanded into the rules they turn on, so `[lint.groups]` is not printed.
