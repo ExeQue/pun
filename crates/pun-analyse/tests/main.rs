@@ -150,6 +150,7 @@ mod renamed_named_argument;
 mod repeated_assertion_expressions;
 mod requested_method_names;
 mod required_receivers;
+mod return_tag_descriptions;
 mod rules;
 mod scope_joins;
 mod sentinel_delivery_edges;

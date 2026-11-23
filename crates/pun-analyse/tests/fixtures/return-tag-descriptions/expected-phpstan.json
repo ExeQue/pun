@@ -1,0 +1,47 @@
+{
+ "level": 6,
+ "errors": [
+  {
+   "line": 20,
+   "identifier": "return.type",
+   "message": "Method App\\Builder::count() should return int but returns string.",
+   "tip": null
+  },
+  {
+   "line": 28,
+   "identifier": "return.type",
+   "message": "Method App\\Builder::name() should return string|null but returns int.",
+   "tip": null
+  },
+  {
+   "line": 32,
+   "identifier": "phpDoc.parseError",
+   "message": "PHPDoc tag @return has invalid value (int|): Unexpected token \"\\n     \", expected type at offset 23 on line 2",
+   "tip": null
+  },
+  {
+   "line": 34,
+   "identifier": "missingType.return",
+   "message": "Method App\\Builder::dangling() has no return type specified.",
+   "tip": null
+  },
+  {
+   "line": 40,
+   "identifier": "phpDoc.parseError",
+   "message": "PHPDoc tag @return has invalid value (array<int>description): Unexpected token \"description\", expected TOKEN_HORIZONTAL_WS at offset 29 on line 2",
+   "tip": null
+  },
+  {
+   "line": 42,
+   "identifier": "missingType.return",
+   "message": "Method App\\Builder::glued() has no return type specified.",
+   "tip": null
+  },
+  {
+   "line": 53,
+   "identifier": "return.type",
+   "message": "Function App\\save() should return bool but returns string.",
+   "tip": null
+  }
+ ]
+}

@@ -350,8 +350,12 @@ impl Doc {
                     closure_this.push((rank, (tag.clone(), name, node)));
                 }
             } else if let Some(rank) = order(&RETURN_TAGS, tag) {
+                // phpdoc-parser's parseOptionalDescription(limitStartToken): the description after the type
+                // starts after whitespace and not with `|` or `&`
                 if let Ok((node, offset)) = phpdoc::parse_prefix(value)
-                    && value.get(offset).is_none_or(u8::is_ascii_whitespace)
+                    && value.get(offset).is_none_or(|b| {
+                        !matches!(b, b'|' | b'&') && value[offset - 1].is_ascii_whitespace()
+                    })
                 {
                     returns.push((rank, (tag.clone(), node)));
                 }
