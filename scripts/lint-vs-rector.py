@@ -53,7 +53,7 @@ def pairs_of_pun(out: str) -> set[tuple[str, str]]:
 def compare(name: str, pun: str, env: dict) -> bool:
     work = bench.setup(name)
     classes = bench.ported_rector_rules()
-    bench.write_configs("lint", name, work, classes)
+    bench.write_configs("lint", name, work, classes, pun, env)
     mapping = tomllib.loads((ROOT / "crates/pun-config/rules/mapping.toml").read_text())
     pun_id = {e["class"]: e["pun"] for t, rules in mapping["upstream"].items() if "rector" in t
               for e in rules.values() if isinstance(e, dict) and "class" in e and "pun" in e}
