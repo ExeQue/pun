@@ -6,7 +6,7 @@ open questions. Finished work is not listed; `git log` has it.
 ## 0. Resume here
 
 One lead agent works on `main` and spawns subagents for independent slices in worktrees (AGENTS.md "How work runs").
-The latest release is v0.2.7.
+The latest release is v0.3.1.
 
 - **Counts** (mapping.toml `ported = true`): format 164 of 164, lint 663 of 680, analyse 364 of 370. Pending: lint 17
   (the rules Rector 2.8.4 and rector-laravel 2.7.3 added, §3 Foundations), analyse 6 (`classes/invalid-new`,
@@ -150,9 +150,11 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   PHP-CS-Fixer) rule and every analyse rule to one non-deprecated PHPStan, Larastan, strict-rules or deprecation-rules
   rule, checked against the pinned tools and their websites. A rule upstream deprecates, or registers wrongly, is
   not supported.
-- **Rector scope for now** (2026-10-17): only the rules in the eight sets (dead-code, modernize, code-quality, types,
-  early-return, privatization, naming, coding-style) plus the rector-laravel, PHPUnit and Pest sets. Rules in no set
-  are left out for now.
+- **All of Rector but its deprecated rules** (Pushpak, 2026-11-23; replaces "Rector scope for now" of 2026-10-17):
+  every rule of Rector 2.8.4, rector-laravel, rector-phpunit, rector-symfony, rector-doctrine, rector-downgrade-php
+  and the Pest plugin is ported, except the ones upstream deprecates and Rector's post-processors (not rules). Rules
+  outside the eight sets join the groups their upstream set names; Symfony and Doctrine rules run only when
+  `[extensions]` turns that ecosystem on, and the downgrade rules only when you name their group (they undo modernize).
 - **All lint rules are 1.0** (2026-10-26): the PHPUnit and Pest lint rules and the lint rules in no set are part of the
   1.0 bar. mapping.toml has no `later` flag.
 - **Analyse without Pest or PHPUnit support for 1.0** (2026-10-18): test files are analysed like any other PHP code,
@@ -168,8 +170,9 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Analyse rule options are checked** (Pushpak, 2026-11-23): a rule's options are the kebab-case PHPStan parameters
   it reads (`[phpstan-parameters]`); another key, or a value that is not a bool (a list of strings for Larastan's
   path and method lists), is a config error.
-- **No upgrades below the floor** (2026-10-17): Rector's php-5.3 to php-8.3 upgrade sets and Laravel upgrade sets
-  before 12 are not supported; php-8.4/8.5 and laravel-12/13 are. Pun targets PHP 8.4+ projects.
+- **Upgrades below the floor too** (Pushpak, 2026-11-23; replaces "No upgrades below the floor" of 2026-10-17):
+  Rector's php-5.3 to php-8.3 upgrade rules and the Laravel, PHPUnit and package upgrade rules below the current
+  majors are ported. Code on PHP 8.4 can still be written the old way, which they modernize.
 
 ### Engines
 
