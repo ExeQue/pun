@@ -489,7 +489,9 @@ impl Check<'_> {
         failed: &[(usize, usize)],
         problems: &[Problem],
     ) -> Problem {
-        let key = |p: usize, line: &str| format!("{}-{}//{line}", self.arena[p].name, self.arena[p].version);
+        let key = |p: usize, line: &str| {
+            format!("{}-{}//{line}", self.arena[p].name, self.arena[p].version)
+        };
         let mut names: Vec<(&str, Vec<&str>)> = vec![];
         for &q in providers {
             let q = &self.arena[q];

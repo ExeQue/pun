@@ -51,8 +51,8 @@ fn reports_what_composer_reports() {
     // two such packages; Z, that one before a conflict; AA, one of two conflicts; AB, one of two failed requirements;
     // AC, one level of a chain.
     let cases = [
-        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "W", "X", "Y",
-        "Z", "AA", "AB", "AC",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "W",
+        "X", "Y", "Z", "AA", "AB", "AC",
     ];
     for case in cases {
         assert_eq!(

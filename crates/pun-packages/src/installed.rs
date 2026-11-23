@@ -719,7 +719,8 @@ mod tests {
             None,
             false,
         )];
-        let parsed: Value = serde_json::from_str(&installed_json(&meta, "/p/vendor", false)).unwrap();
+        let parsed: Value =
+            serde_json::from_str(&installed_json(&meta, "/p/vendor", false)).unwrap();
         assert_eq!(parsed["packages"][0].get("installation-source"), None);
         let root = Root {
             name: "acme/app".into(),
