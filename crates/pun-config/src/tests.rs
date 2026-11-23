@@ -1753,7 +1753,7 @@ fn analyse_parameters() {
     for g in &groups {
         let _ = writeln!(toml, "{g} = \"off\"");
     }
-    toml.push_str("\"undefined/constant\" = \"on\"\n\"types/by-ref-foreach-on-expression\" = \"on\"\n\"classes/uninitialized-property\" = { additional-constructors = [\"A::init\"] }\n\"undefined/property\" = { check-dynamic-properties = true }\n\"deprecated/constant\" = \"on\"\n");
+    toml.push_str("\"undefined/constant\" = \"on\"\n\"types/by-ref-foreach-on-expression\" = \"on\"\n\"classes/uninitialized-property\" = { additional-constructors = [\"A::init\"] }\n\"undefined/property\" = \"on\"\n\"undefined/function\" = { check-function-name-case = true }\n\"laravel/missing-translation\" = { translation-directories = [\"lang\"] }\n\"deprecated/constant\" = \"on\"\n");
     let d = dir(&[("pun.toml", &toml)]);
     let a = load(&d, &Options::default()).unwrap().analyse;
     assert_eq!(a.level(), 1);
@@ -1768,8 +1768,9 @@ fn analyse_parameters() {
         get("stubFiles"),
         Some(list(&[&format!("{root}/stubs/a.stub")]))
     );
-    assert_eq!(get("additionalConstructors"), Some(list(&["A::init"])));
-    assert_eq!(get("checkDynamicProperties"), Some(V::Bool(true)));
+    assert_eq!(get("translationDirectories"), Some(list(&["lang"])));
+    assert_eq!(get("checkFunctionNameCase"), Some(V::Bool(true)));
+    assert_eq!(get("additionalConstructors"), None);
     assert_eq!(get("deprecationRulesInstalled"), Some(V::Bool(true)));
     let toggles = get("featureToggles").unwrap();
     let toggle = |k: &str| toggles.as_array().unwrap().get_str(k).cloned();

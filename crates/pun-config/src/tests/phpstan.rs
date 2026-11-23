@@ -170,6 +170,8 @@ fn reads_level_paths_ignores_and_includes() {
             "build/custom.neon",
             "foo/bar",
             "phpstan/phpstan-mockery",
+            "parameter additionalConstructors",
+            "parameter checkBenevolentUnionTypes",
             "parameter checkMissingTypehints",
             "parameter universalObjectCratesClasses",
             "ignoreErrors no.suchIdentifier",
@@ -186,16 +188,6 @@ fn reads_level_paths_ignores_and_includes() {
         p.changed,
         [
             (
-                "additionalConstructors".to_string(),
-                pun_phpstan::Value::Array(pun_phpstan::Array::list([pun_phpstan::Value::Str(
-                    "App\\Bag::setUp".into()
-                )]))
-            ),
-            (
-                "checkBenevolentUnionTypes".to_string(),
-                pun_phpstan::Value::Bool(true)
-            ),
-            (
                 "checkFunctionNameCase".to_string(),
                 pun_phpstan::Value::Bool(true)
             ),
@@ -208,6 +200,10 @@ fn reads_level_paths_ignores_and_includes() {
     assert_eq!(
         why("parameter checkMissingTypehints"),
         "the level sets it; Pun's analyse presets decide it"
+    );
+    assert_eq!(
+        why("parameter additionalConstructors"),
+        "no pun.toml setting for this parameter yet"
     );
     assert_eq!(
         why("parameter universalObjectCratesClasses"),
@@ -231,13 +227,12 @@ fn reads_level_paths_ignores_and_includes() {
     let text = parts.render();
     for line in [
         "\"undefined/function\" = { check-function-name-case = true }",
-        "\"undefined/method\" = { check-benevolent-union-types = true, check-function-name-case = true }",
-        "\"classes/uninitialized-property\" = { additional-constructors = ['App\\Bag::setUp'] }",
+        "\"undefined/method\" = { check-function-name-case = true }",
         "\"types/throws-not-covariant\" = \"off\"",
     ] {
         assert!(text.contains(&format!("\n{line}\n")), "{line}\n{text}");
     }
-    assert_eq!(done.options, 3);
+    assert_eq!(done.options, 1);
     let cfg = crate::from_toml(&d, &text).unwrap();
     assert!(cfg.analyse.bleeding_edge);
     let function = cfg

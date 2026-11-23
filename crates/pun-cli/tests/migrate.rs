@@ -791,7 +791,7 @@ fn phpstan_baseline_extensions_options_and_ignores() {
     let Some(strict) = oracle("phpstan/vendor/phpstan/phpstan-strict-rules") else {
         return;
     };
-    let neon = "includes:\n    - phpstan-baseline.neon\n    - vendor/phpstan/phpstan-strict-rules/rules.neon\nparameters:\n    level: 9\n    paths:\n        - src\n    additionalConstructors:\n        - App\\Foo::init\n    ignoreErrors:\n        - '#Call to an undefined method#'\n";
+    let neon = "includes:\n    - phpstan-baseline.neon\n    - vendor/phpstan/phpstan-strict-rules/rules.neon\nparameters:\n    level: 9\n    paths:\n        - src\n    additionalConstructors:\n        - App\\Foo::init\n    treatPhpDocTypesAsCertain: false\n    ignoreErrors:\n        - '#Call to an undefined method#'\n";
     let d = project(
         "phpstan-extras",
         &[
@@ -818,7 +818,7 @@ fn phpstan_baseline_extensions_options_and_ignores() {
         "{out}"
     );
     assert!(
-        out.contains("\n ! Not migrated\n   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\n     format/functions/backtick-to-shell-exec\n"),
+        out.contains("\n ! Not migrated\n   no pun.toml setting for this parameter yet\n     parameter additionalConstructors\n   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\n     format/functions/backtick-to-shell-exec\n"),
         "{out}"
     );
     assert!(
@@ -828,8 +828,8 @@ fn phpstan_baseline_extensions_options_and_ignores() {
     let toml = read(&d, "pun.toml");
     assert!(
         toml.contains(
-            "\"types/readonly-property-write\" = { additional-constructors = ['App\\Foo::init'] }\n"
-        ),
+            "\"control-flow/unhandled-match\" = { treat-php-doc-types-as-certain = false }\n"
+        ) && !toml.contains("additional-constructors"),
         "{toml}"
     );
     assert!(
