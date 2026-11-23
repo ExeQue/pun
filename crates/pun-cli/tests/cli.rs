@@ -766,6 +766,50 @@ fn migrates_php_cs_fixer_config_past_stdout_notices() {
     assert_eq!(std::fs::read_to_string(dir.join("pun.toml")).unwrap(), toml);
 }
 
+/// Projects that keep PHP-CS-Fixer out of their own vendor/ (Composer, Monolog: a global install; nikic/php-parser:
+/// tools/composer.json; Guzzle: bamarni's vendor-bin/) migrate as with it in vendor/: through the tool directory's
+/// autoloader, or the `php-cs-fixer` on PATH (here the oracle's source bin, whose autoloader sits next to it).
+#[test]
+fn migrates_php_cs_fixer_config_without_it_in_vendor() {
+    let Some(oracle) = oracle() else { return };
+    let dir = scratch("cli", "pcf-tool");
+    let tree = php_cs_fixer_tree(&oracle);
+    let tree: Vec<(&str, &str)> = tree.iter().map(|(a, b)| (*a, b.as_str())).collect();
+    reset(&dir, &tree);
+    assert_eq!(pun(&dir, &["migrate"]).2, Some(0));
+    let want = std::fs::read_to_string(dir.join("pun.toml")).unwrap();
+    for tool in ["tools", "vendor-bin/php-cs-fixer"] {
+        let moved: Vec<(String, &str)> = (tree.iter())
+            .map(|(f, c)| match f.strip_prefix("vendor/") {
+                Some(rest) => (format!("{tool}/vendor/{rest}"), *c),
+                None => ((*f).to_string(), *c),
+            })
+            .collect();
+        let moved: Vec<(&str, &str)> = moved.iter().map(|(f, c)| (f.as_str(), *c)).collect();
+        reset(&dir, &moved);
+        let (_, err, code) = pun(&dir, &["migrate"]);
+        assert_eq!((err.as_str(), code), ("", Some(0)), "{tool}");
+        assert_eq!(
+            std::fs::read_to_string(dir.join("pun.toml")).unwrap(),
+            want,
+            "{tool}"
+        );
+    }
+    let no_vendor: Vec<(&str, &str)> = (tree.iter().copied())
+        .filter(|(f, _)| !f.starts_with("vendor/"))
+        .collect();
+    reset(&dir, &no_vendor);
+    let bin_dir = oracle.ancestors().nth(3).unwrap().join("php-cs-fixer");
+    let path = format!(
+        "{}:{}",
+        bin_dir.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let (_, err, code) = pun_env(&dir, &["migrate"], &[("PATH", path.as_str())]);
+    assert_eq!((err.as_str(), code), ("", Some(0)));
+    assert_eq!(std::fs::read_to_string(dir.join("pun.toml")).unwrap(), want);
+}
+
 #[test]
 fn migrates_php_cs_fixer_config() {
     let Some(oracle) = oracle() else { return };
@@ -793,7 +837,7 @@ fn migrates_php_cs_fixer_config() {
     assert_eq!(
         (err.as_str(), code),
         (
-            "x can't read .php-cs-fixer.php with PHP-CS-Fixer: no vendor/friendsofphp/php-cs-fixer: run `composer install` first\n",
+            "x can't read .php-cs-fixer.php with PHP-CS-Fixer: no PHP-CS-Fixer in vendor/, tools/ or vendor-bin/, and no `php-cs-fixer` on PATH: install it with `composer require --dev friendsofphp/php-cs-fixer`\n",
             Some(2)
         )
     );
@@ -829,7 +873,7 @@ fn migrates_php_cs_fixer_config() {
     std::fs::write(dir.join("legacy/L.php"), "<?php\n$b = sizeof([]);\n").unwrap();
     std::fs::write(
         dir.join(".php-cs-fixer.php"),
-        "<?php\nreturn (new PhpCsFixer\\Config())->setRiskyAllowed(true)->setRules(['single_quote' => true, 'no_alias_functions' => true])\n    ->setFinder(PhpCsFixer\\Finder::create()->in(__DIR__)->exclude('legacy')->notName('*.inc')->depth('< 3')->ignoreVCSIgnored(true));\n",
+        "<?php\nreturn (new PhpCsFixer\\Config())->setRiskyAllowed(true)->setRules(['single_quote' => true, 'no_alias_functions' => true])\n    ->setFinder(PhpCsFixer\\Finder::create()->in(__DIR__)->name('*.php')->exclude('legacy')->notName('*.inc')->depth('< 3')->ignoreVCSIgnored(true));\n",
     )
     .unwrap();
     let (out, err, code) = pun(&dir, &["migrate"]);

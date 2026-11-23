@@ -717,7 +717,7 @@ fn outside(root: &Path, files: &[PathBuf], paths: &[String]) -> Vec<String> {
 /// A rector.php as Rector resolves it, read through the project's own Rector (the config is PHP code). Like
 /// [`php_cs_fixer_config`], migrate is the only place Pun runs PHP.
 fn rector_config(root: &Path, config: &Path) -> Result<migrate::RectorConfig> {
-    read_php(root, config, include_str!("rector_config.php"))
+    read_php(root, config, include_str!("rector_config.php"), &[])
         .with_context(|| format!("can't read {} with Rector", rel(root, config)))
 }
 
@@ -1209,21 +1209,57 @@ type Object = serde_json::Map<String, serde_json::Value>;
 /// may register custom fixers). Migrate is the only place Pun runs PHP, and only to read the old config.
 fn php_cs_fixer_config(root: &Path, config: &Path) -> Result<(Object, Object)> {
     let read = || -> Result<(Object, Object)> {
-        if !root.join("vendor/friendsofphp/php-cs-fixer").is_dir() {
-            bail!("no vendor/friendsofphp/php-cs-fixer: run `composer install` first");
-        }
-        let mut v: Object = read_php(root, config, include_str!("php_cs_fixer_rules.php"))?;
+        let Some(fixer) = php_cs_fixer(root) else {
+            bail!(
+                "no PHP-CS-Fixer in vendor/, tools/ or vendor-bin/, and no `php-cs-fixer` on PATH: install it with `composer require --dev friendsofphp/php-cs-fixer`"
+            );
+        };
+        let script = include_str!("php_cs_fixer_rules.php");
+        let mut v: Object = read_php(root, config, script, &[fixer])?;
         let mut take = |k: &str| serde_json::from_value(v.remove(k).unwrap_or_default());
         Ok((take("rules")?, take("finder")?))
     };
     read().with_context(|| format!("can't read {} with PHP-CS-Fixer", rel(root, config)))
 }
 
+/// The PHP-CS-Fixer that reads the config, where projects install it: the autoloader of the project's `vendor/`, of
+/// a tool directory (`tools/`, `tools/<name>/`, bamarni's `vendor-bin/<name>/`), or else Phive's `tools/php-cs-fixer`
+/// or the `php-cs-fixer` on PATH (a PHAR or Composer's bin; the helper finds its autoloader as its bin does).
+fn php_cs_fixer(root: &Path) -> Option<PathBuf> {
+    let subdirs = |dir: &str| -> Vec<PathBuf> {
+        let mut found: Vec<PathBuf> = (std::fs::read_dir(root.join(dir)).into_iter().flatten())
+            .filter_map(|e| Some(e.ok()?.path().join("vendor")))
+            .collect();
+        found.sort();
+        found
+    };
+    let vendors = [root.join("vendor"), root.join("tools/vendor")]
+        .into_iter()
+        .chain(subdirs("tools"))
+        .chain(subdirs("vendor-bin"));
+    let mut vendors = vendors.filter(|v| v.join("friendsofphp/php-cs-fixer").is_dir());
+    let on_path = || {
+        let path = std::env::var_os("PATH")?;
+        std::env::split_paths(&path)
+            .map(|d| d.join("php-cs-fixer"))
+            .find(|f| f.is_file())
+    };
+    (vendors.next().map(|v| v.join("autoload.php")))
+        .or_else(|| Some(root.join("tools/php-cs-fixer")).filter(|f| f.is_file()))
+        .or_else(on_path)
+}
+
 /// What the PHP helpers print before their JSON or error message; anything before it (a tool's warning) is not theirs.
 const MARKER: &[u8] = b"\0pun-migrate\0";
 
-/// Runs `script` on `config` with the project's autoloader and reads the JSON it prints after [`MARKER`].
-fn read_php<T: serde::de::DeserializeOwned>(root: &Path, config: &Path, script: &str) -> Result<T> {
+/// Runs `script` on `config` with the project's autoloader (and `extra` arguments) and reads the JSON it prints after
+/// [`MARKER`].
+fn read_php<T: serde::de::DeserializeOwned>(
+    root: &Path,
+    config: &Path,
+    script: &str,
+    extra: &[PathBuf],
+) -> Result<T> {
     let out = std::process::Command::new("php")
         .args([
             "-d",
@@ -1238,6 +1274,7 @@ fn read_php<T: serde::de::DeserializeOwned>(root: &Path, config: &Path, script: 
         ])
         .arg(root.join("vendor/autoload.php"))
         .arg(config)
+        .args(extra)
         .current_dir(root)
         .output()
         .context("it needs `php` on PATH")?;
