@@ -8576,9 +8576,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\Php70\\Rector\\Ternary\\TernaryToNullCoalescingRector",
+        "TernaryToNullCoalescing",
+        "TernaryToNullCoalescingRector",
         "ternary_to_null_coalescing"
       ],
       "ported": true
@@ -9921,6 +9925,66 @@
         "EnsureTypeChecksFirst",
         "EnsureTypeChecksFirstRector",
         "Pest\\Rector\\Rules\\EnsureTypeChecksFirstRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/no-call-user-method",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Changes call_user_method()/call_user_method_array() to call_user_func()/call_user_func_array()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "CallUserMethod",
+        "CallUserMethodRector",
+        "Rector\\Php70\\Rector\\FuncCall\\CallUserMethodRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-random-int",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Changes rand, srand, and getrandmax to newer alternatives",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "RandomFunction",
+        "RandomFunctionRector",
+        "Rector\\Php70\\Rector\\FuncCall\\RandomFunctionRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-time",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Renames mktime() without arguments to time()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php70\\Rector\\FuncCall\\RenameMktimeWithoutArgsToTimeRector",
+        "RenameMktimeWithoutArgsToTime",
+        "RenameMktimeWithoutArgsToTimeRector"
       ],
       "ported": true
     },
@@ -14361,9 +14425,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "EregToPregMatch",
+        "EregToPregMatchRector",
+        "Rector\\Php70\\Rector\\FuncCall\\EregToPregMatchRector",
         "ereg_to_preg"
       ],
       "ported": true
@@ -14578,9 +14646,13 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Php4Constructor",
+        "Php4ConstructorRector",
+        "Rector\\Php70\\Rector\\ClassMethod\\Php4ConstructorRector",
         "no-legacy-constructor",
         "no_php4_constructor"
       ],
@@ -15034,9 +15106,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "MultiDirname",
+        "MultiDirnameRector",
+        "Rector\\Php70\\Rector\\FuncCall\\MultiDirnameRector",
         "combine_nested_dirname"
       ],
       "ported": true

@@ -255,7 +255,7 @@
         "rules": [
           "lint/style/prefer-dirname-levels"
         ],
-        "note": "Same.",
+        "note": "Merged with MultiDirname.",
         "unsupported": false
       },
       {
@@ -483,7 +483,7 @@
         "rules": [
           "lint/style/no-ereg"
         ],
-        "note": "Same.",
+        "note": "Merged with EregToPregMatch.",
         "unsupported": false
       },
       {
@@ -1283,7 +1283,7 @@
         "rules": [
           "lint/style/no-php4-constructor"
         ],
-        "note": "Merged with no-legacy-constructor.",
+        "note": "Merged with Php4Constructor, no-legacy-constructor.",
         "unsupported": false
       },
       {
@@ -2847,7 +2847,7 @@
         "rules": [
           "lint/operators/prefer-coalesce"
         ],
-        "note": "Same.",
+        "note": "Merged with TernaryToNullCoalescing.",
         "unsupported": false
       },
       {
@@ -3241,7 +3241,7 @@
         "rules": [
           "lint/style/prefer-dirname-levels"
         ],
-        "note": "Same.",
+        "note": "Merged with MultiDirname.",
         "unsupported": false
       },
       {
@@ -3469,7 +3469,7 @@
         "rules": [
           "lint/style/no-ereg"
         ],
-        "note": "Same.",
+        "note": "Merged with EregToPregMatch.",
         "unsupported": false
       },
       {
@@ -4269,7 +4269,7 @@
         "rules": [
           "lint/style/no-php4-constructor"
         ],
-        "note": "Merged with no-legacy-constructor.",
+        "note": "Merged with Php4Constructor, no-legacy-constructor.",
         "unsupported": false
       },
       {
@@ -5833,7 +5833,7 @@
         "rules": [
           "lint/operators/prefer-coalesce"
         ],
-        "note": "Same.",
+        "note": "Merged with TernaryToNullCoalescing.",
         "unsupported": false
       },
       {
@@ -6675,7 +6675,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/break-not-in-loop-or-switch-to-return-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not compile on PHP 8.4 (`break` outside a loop or `switch` is a fatal error since PHP 7.0)",
         "unsupported": true
       },
       {
@@ -6710,9 +6710,11 @@
         "name": "CallUserMethod",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/call-user-method-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/no-call-user-method"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "CatchExceptionNameMatchingType",
@@ -7241,7 +7243,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/empty-list-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not compile on PHP 8.4 (an empty `list()` is a fatal error since PHP 7.0)",
         "unsupported": true
       },
       {
@@ -7272,9 +7274,11 @@
         "name": "EregToPregMatch",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ereg-to-preg-match-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/no-ereg"
+        ],
+        "note": "Merged with ereg_to_preg.",
+        "unsupported": false
       },
       {
         "name": "ExceptionHandlerTypehint",
@@ -7916,9 +7920,11 @@
         "name": "MultiDirname",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/multi-dirname-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/prefer-dirname-levels"
+        ],
+        "note": "Merged with combine_nested_dirname.",
+        "unsupported": false
       },
       {
         "name": "MultiExceptionCatch",
@@ -8276,9 +8282,11 @@
         "name": "Php4Constructor",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/php4-constructor-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/style/no-php4-constructor"
+        ],
+        "note": "Merged with no_php4_constructor, no-legacy-constructor.",
+        "unsupported": false
       },
       {
         "name": "PostIncDecToPreIncDec",
@@ -8386,9 +8394,11 @@
         "name": "RandomFunction",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/random-function-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-random-int"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReadOnlyAnonymousClass",
@@ -8443,7 +8453,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/reduce-multiple-default-switch-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not compile on PHP 8.4 (a `switch` with several `default` cases is a fatal error since PHP 7.0)",
         "unsupported": true
       },
       {
@@ -9374,9 +9384,11 @@
         "name": "RenameMktimeWithoutArgsToTime",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/rename-mktime-without-args-to-time-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-time"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RenameParamToMatchType",
@@ -10428,9 +10440,11 @@
         "name": "TernaryToNullCoalescing",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-null-coalescing-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/operators/prefer-coalesce"
+        ],
+        "note": "Merged with ternary_to_null_coalescing.",
+        "unsupported": false
       },
       {
         "name": "TernaryToNullsafeCoalesce",
@@ -26941,7 +26955,7 @@
         "rules": [
           "lint/style/no-php4-constructor"
         ],
-        "note": "Merged with no_php4_constructor. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
+        "note": "Merged with no_php4_constructor, Php4Constructor. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
         "unsupported": false
       },
       {
