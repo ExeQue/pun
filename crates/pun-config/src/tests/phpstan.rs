@@ -56,6 +56,13 @@ parameters:
         implicitThrows: false
     stubFiles:
         - stubs/Foo.stub
+    scanFiles:
+        - stubs/debugbar.php
+        - vendor/foo/bar/scanned.php
+    scanDirectories:
+        - app/Legacy
+    bootstrapFiles:
+        - tests/bootstrap.php
     ignoreErrors:
         - '#^Call to an undefined method#'
         -
@@ -156,6 +163,9 @@ fn reads_level_paths_ignores_and_includes() {
     assert_eq!(p.paths, ["app", "tests"]);
     assert_eq!(p.exclude, ["app/Legacy", "/tmp"]);
     assert_eq!(p.stubs, ["stubs/Foo.stub"]);
+    // the scanned and bootstrap files outside vendor (an extension's come with the extension)
+    assert_eq!(p.scan, ["stubs/debugbar.php", "app/Legacy"]);
+    assert_eq!(p.bootstrap, ["tests/bootstrap.php"]);
     assert_eq!(p.baselines, ["phpstan-baseline.neon"]);
     assert_eq!(
         p.extensions.iter().collect::<Vec<_>>(),
@@ -251,7 +261,7 @@ fn reads_level_paths_ignores_and_includes() {
             "[[lint.overrides]]\nfiles = [\"app/Legacy\", \"/tmp\"]\nrules = { \"complexity/no-redundant-nullsafe\" = \"off\", "
         ) && parts.render().starts_with("[php]\nversion = \"8.4\"\n\n")
             && parts.render().contains(
-            "\n\n[analyse]\npreset = \"recommended\"\npaths = [\"app\", \"tests\"]\nexclude = [\"app/Legacy\", \"/tmp\"]\nstubs = [\"stubs/Foo.stub\"]\nbleeding-edge = true\n"
+            "\n\n[analyse]\npreset = \"recommended\"\npaths = [\"app\", \"tests\"]\nexclude = [\"app/Legacy\", \"/tmp\"]\nstubs = [\"stubs/Foo.stub\"]\nscan = [\"stubs/debugbar.php\", \"app/Legacy\"]\nbootstrap = [\"tests/bootstrap.php\"]\nbleeding-edge = true\n"
         ),
         "{}",
         parts.render()

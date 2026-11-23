@@ -17,6 +17,9 @@ pub struct Phpstan {
     pub paths: Vec<String>,
     pub exclude: Vec<String>,
     pub stubs: Vec<String>,
+    /// `scanFiles` and `scanDirectories`, as `[analyse] scan`.
+    pub scan: Vec<String>,
+    pub bootstrap: Vec<String>,
     pub ignores: Vec<String>,
     pub baselines: Vec<String>,
     pub unsupported: Vec<(String, String)>,
@@ -229,10 +232,17 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
                 .push((format!("parameter {name}"), why.into()));
         }
     }
-    out.stubs = (strings(p.get_str("stubFiles")).iter())
-        .filter(|s| !s.starts_with("phar://") && !s.contains("/vendor/"))
-        .map(|s| relative(root, s))
-        .collect();
+    // the project's own files: an extension's (in vendor or the phar) come back with the extension
+    let own = |names: &[&str]| -> Vec<String> {
+        (names.iter())
+            .flat_map(|n| strings(p.get_str(n)))
+            .filter(|s| !s.starts_with("phar://") && !s.contains("/vendor/"))
+            .map(|s| relative(root, &s))
+            .collect()
+    };
+    out.stubs = own(&["stubFiles"]);
+    out.scan = own(&["scanFiles", "scanDirectories"]);
+    out.bootstrap = own(&["bootstrapFiles"]);
     out.parameters = p.clone();
     let ignore = (p.get_str("ignoreErrors").and_then(Value::as_array))
         .cloned()
@@ -597,7 +607,7 @@ pub struct Analysed {
 }
 
 /// The `[analyse]` keys of the migrated config before its rules: the preset, the type switches of the level, the
-/// paths, the stubs, bleeding edge and `reportUnmatchedIgnoredErrors`.
+/// paths, the stubs, scanned and bootstrap files, bleeding edge and `reportUnmatchedIgnoredErrors`.
 fn analyse_keys(analyse: &mut String, phpstan: &Phpstan, preset: AnalysePreset) {
     writeln!(analyse, "preset = \"{preset}\"").unwrap();
     // the preset's type switches follow its highest level: a level below that turns the higher ones off
@@ -614,8 +624,14 @@ fn analyse_keys(analyse: &mut String, phpstan: &Phpstan, preset: AnalysePreset) 
     if !phpstan.exclude.is_empty() {
         writeln!(analyse, "exclude = {}", list(&phpstan.exclude)).unwrap();
     }
-    if !phpstan.stubs.is_empty() {
-        writeln!(analyse, "stubs = {}", list(&phpstan.stubs)).unwrap();
+    for (key, paths) in [
+        ("stubs", &phpstan.stubs),
+        ("scan", &phpstan.scan),
+        ("bootstrap", &phpstan.bootstrap),
+    ] {
+        if !paths.is_empty() {
+            writeln!(analyse, "{key} = {}", list(paths)).unwrap();
+        }
     }
     if phpstan.bleeding_edge {
         writeln!(analyse, "bleeding-edge = true").unwrap();

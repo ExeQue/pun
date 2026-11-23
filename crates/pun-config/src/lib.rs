@@ -577,6 +577,8 @@ impl Config {
                 rules: analyse,
                 baseline: a.baseline.as_deref(),
                 stubs: &a.stubs,
+                scan: &a.scan,
+                bootstrap: &a.bootstrap,
                 ignore: &a.ignore,
             },
         };
@@ -636,6 +638,10 @@ struct ShownAnalyse<'a> {
     baseline: Option<&'a str>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     stubs: &'a [String],
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    scan: &'a [String],
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    bootstrap: &'a [String],
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     ignore: &'a [Ignore],
 }

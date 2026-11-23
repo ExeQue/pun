@@ -1080,3 +1080,52 @@ fn quiet_prints_nothing() {
     assert_eq!(((out, err), code), (none, Some(0)));
     assert!(d.join("pun-baseline.toml").exists());
 }
+
+#[test]
+fn scan_and_bootstrap_files_declare_symbols() {
+    // PHPStan 2.3.5 at level 1 (the basic preset's highest) reports these four errors without scanFiles,
+    // scanDirectories and bootstrapFiles, and none with them
+    const SOURCE: &str = "<?php\n\nnamespace App;\n\nclass Collector extends \\DebugBar\\DataCollector\\DataCollector\n{\n}\n\nfunction f(): void\n{\n    debug_helper();\n    echo LEGACY_FLAG;\n    new \\Legacy\\Old();\n}\n";
+    let files = |toml: &str| {
+        project(
+            "analyse",
+            if toml.contains("scan") {
+                "scan-on"
+            } else {
+                "scan-off"
+            },
+            &[
+                ("pun.toml", toml),
+                ("src/a.php", SOURCE),
+                (
+                    "stubs/debugbar.php",
+                    "<?php\n\nnamespace DebugBar\\DataCollector;\n\nabstract class DataCollector\n{\n}\n",
+                ),
+                (
+                    "legacy/Old.php",
+                    "<?php\n\nnamespace Legacy;\n\nclass Old\n{\n}\n",
+                ),
+                (
+                    "tests/bootstrap.php",
+                    "<?php\n\nfunction debug_helper(): void\n{\n}\n\ndefine('LEGACY_FLAG', 1);\n",
+                ),
+            ],
+        )
+    };
+    let d = files("[analyse]\npreset = \"basic\"\npaths = [\"src\"]\n");
+    let (out, _, code) = pun(&d, &["--format=raw"], &[]);
+    assert_eq!(
+        (out.replace(&format!("{}/", d.display()), "").as_str(), code),
+        (
+            "src/a.php:5:Class App\\Collector extends unknown class DebugBar\\DataCollector\\DataCollector.\nsrc/a.php:11:Function debug_helper not found.\nsrc/a.php:12:Constant LEGACY_FLAG not found.\nsrc/a.php:13:Instantiated class Legacy\\Old not found.\n",
+            Some(1)
+        )
+    );
+    let d = files(
+        "[analyse]\npreset = \"basic\"\npaths = [\"src\"]\nscan = [\"stubs/debugbar.php\", \"legacy\"]\nbootstrap = [\"tests/bootstrap.php\"]\n",
+    );
+    assert_eq!(
+        pun(&d, &["--format=raw"], &[]),
+        (String::new(), String::new(), Some(0))
+    );
+}

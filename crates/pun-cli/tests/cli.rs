@@ -1006,7 +1006,7 @@ statements = "off"
 strings = "off"
 types = "off"
 undefined = "off"
-"undefined/method" = { magic = true }
+"undefined/method" = { check-function-name-case = true }
 "#;
     std::fs::write(dir.join("pun.toml"), toml).unwrap();
     let want = r#"# Resolved from pun.toml.
@@ -1059,7 +1059,7 @@ ecosystems = []
 baseline = "pun-baseline.toml"
 
 [analyse.rules."undefined/method"]
-magic = true
+check-function-name-case = true
 "#;
     assert_eq!(
         pun(&dir, &["config"]),

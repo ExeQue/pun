@@ -504,6 +504,8 @@ fn analyse() {
             exclude: vec!["storage".into()],
             baseline: None,
             stubs: vec![],
+            scan: vec![],
+            bootstrap: vec![],
             ignore: vec![],
             switches: vec![],
             ecosystems: vec![],
@@ -560,7 +562,7 @@ exclude = ["tests/**"]
 baseline = "pun-baseline.toml"
 [analyse.rules]
 "types/missing-return-type" = "on"
-"analyse/undefined/method" = { magic = true }
+"analyse/undefined/method" = { check-function-name-case = true }
 "undefined/function" = "off"
 "types/argument-not-numeric" = "on"
 laravel = "on"
@@ -584,7 +586,7 @@ laravel = "on"
     };
     assert_eq!(
         rule("analyse/undefined/method"),
-        Some(json!({"magic": true}))
+        Some(json!({"check-function-name-case": true}))
     );
     assert_eq!(rule("analyse/types/missing-return-type"), Some(Value::Null));
     assert_eq!(rule("analyse/undefined/function"), None);
@@ -731,7 +733,7 @@ fn rule_metadata() {
 fn show() {
     let d = dir(&[(
         "pun.toml",
-        "[files]\npaths = [\"app\"]\nexclude = [\"build\"]\n[format]\npreset = \"empty\"\nexclude = [\"gen\"]\n[format.rules]\n\"operators/concat-spacing\" = { spacing = \"one\" }\n\"strings/single-quote\" = true\n[lint.rules]\n\"style/require-final-class\" = \"error\"\n\"style/no-alias-function\" = { level = \"warn\", fix = \"off\", sets = [\"@internal\"] }\n\"types/no-loose-comparison\" = { fix = \"off\" }\n[[lint.overrides]]\nfiles = [\"tests/**\"]\nrules = { \"style/require-final-class\" = \"off\", \"types/no-loose-comparison\" = \"warn\" }\n[analyse]\npreset = \"basic\"\n[analyse.rules]\n\"undefined/method\" = { magic = true }\n",
+        "[files]\npaths = [\"app\"]\nexclude = [\"build\"]\n[format]\npreset = \"empty\"\nexclude = [\"gen\"]\n[format.rules]\n\"operators/concat-spacing\" = { spacing = \"one\" }\n\"strings/single-quote\" = true\n[lint.rules]\n\"style/require-final-class\" = \"error\"\n\"style/no-alias-function\" = { level = \"warn\", fix = \"off\", sets = [\"@internal\"] }\n\"types/no-loose-comparison\" = { fix = \"off\" }\n[[lint.overrides]]\nfiles = [\"tests/**\"]\nrules = { \"style/require-final-class\" = \"off\", \"types/no-loose-comparison\" = \"warn\" }\n[analyse]\npreset = \"basic\"\n[analyse.rules]\n\"undefined/method\" = { check-function-name-case = true }\n",
     )]);
     let v = load(&d, &Options::default()).unwrap().show();
     assert_eq!(
@@ -767,21 +769,29 @@ fn show() {
     );
     assert_eq!(
         v["analyse"]["rules"]["undefined/method"],
-        json!({"magic": true})
+        json!({"check-function-name-case": true})
     );
     assert_eq!(v["analyse"]["rules"]["undefined/function"], "on");
     assert_eq!(v["analyse"]["preset"], "basic");
     assert!(v["analyse"].get("baseline").is_none());
     let d = dir(&[(
         "pun.toml",
-        "[analyse]\nbaseline = \"b.toml\"\nstubs = [\"stubs/A.stub\"]\n[[analyse.ignore]]\nrule = \"undefined/method\"\nmessage = \"#^Call#\"\ncount = 2\n",
+        "[analyse]\nbaseline = \"b.toml\"\nstubs = [\"stubs/A.stub\"]\nscan = [\"stubs\", \"helpers.php\"]\nbootstrap = [\"tests/bootstrap.php\"]\n[[analyse.ignore]]\nrule = \"undefined/method\"\nmessage = \"#^Call#\"\ncount = 2\n",
     )]);
     let a = &load(&d, &Options::default()).unwrap().show()["analyse"];
     assert_eq!(
-        (&a["baseline"], &a["stubs"], &a["ignore"]),
+        (
+            &a["baseline"],
+            &a["stubs"],
+            &a["scan"],
+            &a["bootstrap"],
+            &a["ignore"]
+        ),
         (
             &json!("b.toml"),
             &json!(["stubs/A.stub"]),
+            &json!(["stubs", "helpers.php"]),
+            &json!(["tests/bootstrap.php"]),
             &json!([{"rule": "analyse/undefined/method", "message": "#^Call#", "count": 2}])
         )
     );
@@ -1049,6 +1059,22 @@ fn pun_toml_errors() {
         (
             "[analyse.rules]\nlaravel = { magic = true }\n",
             "[analyse.rules] `laravel` is a group: it takes \"on\" or \"off\"",
+        ),
+        (
+            "[analyse.rules]\n\"undefined/import\" = { magic = true }\n",
+            "[analyse.rules] `undefined/import` has no option `magic`; its options are `check-function-name-case`, `check-internal-class-case-sensitivity`",
+        ),
+        (
+            "[analyse.rules]\n\"types/yield-outside-function\" = { maybe = true }\n",
+            "[analyse.rules] `types/yield-outside-function` has no options: it takes \"on\" or \"off\"",
+        ),
+        (
+            "[analyse.rules]\n\"undefined/import\" = { check-function-name-case = \"yes\" }\n",
+            "[analyse.rules] `undefined/import`: check-function-name-case = \"yes\": expected true or false",
+        ),
+        (
+            "[analyse.rules]\n\"laravel/no-env-outside-config\" = { config-directories = \"config\" }\n",
+            "[analyse.rules] `laravel/no-env-outside-config`: config-directories = \"config\": expected a list of strings",
         ),
         (
             "[format.rules]\n\"strings/single-quote\" = \"yes\"\n",
@@ -1691,14 +1717,15 @@ fn analyse_parameters() {
         .filter_map(|(id, _)| id.strip_prefix("analyse/")?.split('/').next())
         .collect();
     let mut toml = String::from(
-        "[analyse]\nstubs = [\"stubs/a.stub\"]\n\n[[analyse.ignore]]\nrule = \"undefined/constant\"\npaths = [\"app/A.php\"]\ncount = 2\n\n[[analyse.ignore]]\nidentifier = \"x.y\"\nmessage = \"#m#\"\n",
+        "[analyse]\nstubs = [\"stubs/a.stub\"]\nscan = [\"stubs\", \"helpers.php\"]\nbootstrap = [\"tests/bootstrap.php\"]\n\n[[analyse.ignore]]\nrule = \"undefined/constant\"\npaths = [\"app/A.php\"]\ncount = 2\n\n[[analyse.ignore]]\nidentifier = \"x.y\"\nmessage = \"#m#\"\n",
     );
     toml.push_str("\n[[analyse.ignore]]\nraw-message = \"r\"\npaths = [\"*/B.php\", \"app/../C.php\"]\nreport-unmatched = false\n\n[analyse.rules]\n");
     for g in &groups {
         let _ = writeln!(toml, "{g} = \"off\"");
     }
-    toml.push_str("\"undefined/constant\" = \"on\"\n\"types/by-ref-foreach-on-expression\" = \"on\"\n\"classes/uninitialized-property\" = { additional-constructors = [\"A::init\"] }\n\"undefined/property\" = \"on\"\n\"undefined/function\" = { check-function-name-case = true }\n\"laravel/missing-translation\" = { translation-directories = [\"lang\"] }\n\"deprecated/constant\" = \"on\"\n");
+    toml.push_str("\"undefined/constant\" = \"on\"\n\"types/by-ref-foreach-on-expression\" = \"on\"\n\"undefined/property\" = \"on\"\n\"undefined/function\" = { check-function-name-case = true }\n\"laravel/missing-translation\" = { translation-directories = [\"lang\"] }\n\"deprecated/constant\" = \"on\"\n");
     let d = dir(&[("pun.toml", &toml)]);
+    std::fs::create_dir(d.join("stubs")).unwrap();
     let a = load(&d, &Options::default()).unwrap().analyse;
     assert_eq!(a.level(), 1);
     let p = a.parameters(&d);
@@ -1712,9 +1739,21 @@ fn analyse_parameters() {
         get("stubFiles"),
         Some(list(&[&format!("{root}/stubs/a.stub")]))
     );
+    // a directory is a scanned directory, anything else a scanned file (which need not exist yet)
+    assert_eq!(
+        get("scanDirectories"),
+        Some(list(&[&format!("{root}/stubs")]))
+    );
+    assert_eq!(
+        get("scanFiles"),
+        Some(list(&[&format!("{root}/helpers.php")]))
+    );
+    assert_eq!(
+        get("bootstrapFiles"),
+        Some(list(&[&format!("{root}/tests/bootstrap.php")]))
+    );
     assert_eq!(get("translationDirectories"), Some(list(&["lang"])));
     assert_eq!(get("checkFunctionNameCase"), Some(V::Bool(true)));
-    assert_eq!(get("additionalConstructors"), None);
     assert_eq!(get("deprecationRulesInstalled"), Some(V::Bool(true)));
     let toggles = get("featureToggles").unwrap();
     let toggle = |k: &str| toggles.as_array().unwrap().get_str(k).cloned();

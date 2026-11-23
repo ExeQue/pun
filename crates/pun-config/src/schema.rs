@@ -267,6 +267,11 @@ pub struct Analyse {
     pub exclude: Vec<String>,
     pub baseline: Option<String>,
     pub stubs: Vec<String>,
+    /// Files and directories read for their symbols but not analysed: PHPStan's `scanFiles` and `scanDirectories`.
+    pub scan: Vec<String>,
+    /// PHPStan's `bootstrapFiles`. Pun does not run them: it reads their symbols, as `scan` does, and Larastan
+    /// their macros.
+    pub bootstrap: Vec<String>,
     pub ignore: Vec<Ignore>,
     pub switches: Vec<&'static str>,
     pub ecosystems: Vec<&'static ExtensionMeta>,
@@ -340,6 +345,10 @@ pub(crate) struct AnalyseToml {
     baseline: Option<String>,
     #[serde(default)]
     stubs: Vec<String>,
+    #[serde(default)]
+    scan: Vec<String>,
+    #[serde(default)]
+    bootstrap: Vec<String>,
     #[serde(default)]
     ignore: Vec<Ignore>,
     #[serde(default)]
@@ -689,7 +698,13 @@ pub(crate) fn analyse(
             }
             groups.insert(name, on.is_some());
         } else {
-            named.push((rule_id(path, "analyse", &name)?, on));
+            let id = rule_id(path, "analyse", &name)?;
+            if let Some(Value::Object(o)) = &on {
+                crate::phpstan_parameters::check_options(&id, o).map_err(|e| {
+                    anyhow::anyhow!("{}: [analyse.rules] `{name}`{e}", path.display())
+                })?;
+            }
+            named.push((id, on));
         }
     }
     let ecosystems = gates.ecosystems(|e| groups.get(e) == Some(&false));
@@ -748,6 +763,8 @@ pub(crate) fn analyse(
         exclude: [&files.exclude[..], &t.exclude[..]].concat(),
         baseline: t.baseline,
         stubs: t.stubs,
+        scan: t.scan,
+        bootstrap: t.bootstrap,
         ignore,
         larastan: ecosystems.contains(&&extensions::LARAVEL)
             && crate::phpstan_parameters::larastan_supports(

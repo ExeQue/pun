@@ -338,7 +338,10 @@ impl Project {
                 }
             }
         }
-        scanned.extend(strings(params, "scanFiles").into_iter().map(PathBuf::from));
+        // PHPStan runs the bootstrap files, so their symbols exist; Pun reads them like the scanned files
+        for name in ["scanFiles", "bootstrapFiles"] {
+            scanned.extend(strings(params, name).into_iter().map(PathBuf::from));
+        }
         for dir in strings(params, "scanDirectories") {
             scanned.extend(php_files(Path::new(dir), &extensions));
         }

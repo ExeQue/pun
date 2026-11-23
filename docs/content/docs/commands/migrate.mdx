@@ -74,7 +74,7 @@ See the [Rector mapping](/docs/migrate/from/rector).
 
 If an include is under `vendor/`, such as Larastan's `extension.neon`, run `composer install` first. If that include is missing, Pun skips `phpstan.neon` with a warning and migrates the rest. A missing include outside `vendor/` stops migration with exit code 2.
 
-The level becomes an analyse preset plus rule differences, so `pun analyse` runs the rules your level runs. With `--offer-preset` on a terminal, Pun then offers the closest preset alone, with the number of problems it adds and removes. Without the flag, Pun doesn't ask. Paths, exclusions, stubs, ignore entries, and supported extension settings carry over. `phpVersion` becomes `[php] version`. The range form uses `min`, because `[php] version` holds one version.
+The level becomes an analyse preset plus rule differences, so `pun analyse` runs the rules your level runs. With `--offer-preset` on a terminal, Pun then offers the closest preset alone, with the number of problems it adds and removes. Without the flag, Pun doesn't ask. Paths, exclusions, stubs, scanned and bootstrap files, ignore entries, and supported extension settings carry over. `phpVersion` becomes `[php] version`. The range form uses `min`, because `[php] version` holds one version.
 
 Migration reports and skips custom rules under `rules:`, services tagged `phpstan.rules.rule` or another `phpstan.*` tag, and your own included configs. Some PHPStan parameters have no Pun setting. See [analysis limitations](/docs/commands/analyse#configuration), the [PHPStan mapping](/docs/migrate/from/phpstan), and the [Larastan mapping](/docs/migrate/from/larastan).
 

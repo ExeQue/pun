@@ -59,6 +59,24 @@ impl Analyse {
         u8::try_from(rules.chain(switches).max().unwrap_or(0)).expect("PHPStan levels are 0 to 10")
     }
 
+    /// `stubFiles`, `scanFiles`, `scanDirectories` and `bootstrapFiles`, as absolute paths: a `scan` entry that is a
+    /// directory is a scanned directory, any other a scanned file.
+    fn file_parameters(&self, root: &Path, p: &mut Array) {
+        let (dirs, files): (Vec<_>, Vec<_>) = (self.scan.iter())
+            .map(|s| absolute(root, s))
+            .partition(|s| Path::new(s).is_dir());
+        let absolute = |paths: &[String]| paths.iter().map(|s| absolute(root, s)).collect();
+        for (name, paths) in [
+            ("stubFiles", absolute(&self.stubs)),
+            ("scanFiles", files),
+            ("scanDirectories", dirs),
+            ("bootstrapFiles", absolute(&self.bootstrap)),
+        ] {
+            let paths = paths.into_iter().map(Value::str);
+            p.set(Key::from(name), Value::Array(Array::list(paths)));
+        }
+    }
+
     pub fn parameters(&self, root: &Path) -> Array {
         self.parameters_with_lint(root, |_| false)
     }
@@ -94,8 +112,7 @@ impl Analyse {
             Key::from("reportUnmatchedIgnoredErrors"),
             Value::Bool(self.report_unmatched),
         );
-        let stubs = self.stubs.iter().map(|s| Value::str(absolute(root, s)));
-        p.set(Key::from("stubFiles"), Value::Array(Array::list(stubs)));
+        self.file_parameters(root, &mut p);
         let ignores = self.ignore.iter().map(|i| Value::Array(ignore(root, i)));
         p.set(
             Key::from("ignoreErrors"),
@@ -218,6 +235,56 @@ fn ignore(root: &Path, i: &crate::Ignore) -> Array {
         e.set(Key::from("reportUnmatched"), Value::Bool(r));
     }
     e
+}
+
+/// The parameters (Larastan's) that take a list of strings; every other one a rule option sets is a bool.
+const LIST_PARAMETERS: [&str; 7] = [
+    "configDirectories",
+    "viewDirectories",
+    "translationDirectories",
+    "databaseMigrationsPath",
+    "squashedMigrationsPath",
+    "noUnnecessaryCollectionCallOnly",
+    "noUnnecessaryCollectionCallExcept",
+];
+
+/// Checks the option table of analyse rule `id`: each key is the option of a PHPStan parameter the rule reads
+/// (`[phpstan-parameters]`), and its value is what the parameter takes. The error follows the rule's name.
+pub(crate) fn check_options(
+    id: &str,
+    t: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(), String> {
+    let options: Vec<(&str, &str)> = (mapping::section(&["phpstan-parameters"]).table().iter())
+        .filter(|(_, e)| {
+            (e.get("rules").and_then(toml::Value::as_array))
+                .is_some_and(|r| r.iter().any(|x| x.as_str() == Some(id)))
+        })
+        .filter_map(|(name, e)| Some((e.get("option")?.as_str()?, name.as_str())))
+        .collect();
+    for (k, v) in t {
+        let Some((_, name)) = options.iter().find(|(o, _)| o == k) else {
+            return Err(match &options[..] {
+                [] => " has no options: it takes \"on\" or \"off\"".to_string(),
+                o => format!(
+                    " has no option `{k}`; its options are {}",
+                    (o.iter().map(|(o, _)| format!("`{o}`")))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            });
+        };
+        let (ok, expected) = if LIST_PARAMETERS.contains(name) {
+            let strings =
+                (v.as_array()).is_some_and(|a| a.iter().all(serde_json::Value::is_string));
+            (strings, "a list of strings")
+        } else {
+            (v.is_boolean(), "true or false")
+        };
+        if !ok {
+            return Err(format!(": {k} = {v}: expected {expected}"));
+        }
+    }
+    Ok(())
 }
 
 fn json(v: &serde_json::Value) -> Value {

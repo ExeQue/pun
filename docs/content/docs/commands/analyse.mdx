@@ -23,7 +23,7 @@ paths = ["app", "tests"]
 
 The five [analyse presets](/docs/configuration/presets#analyse-presets) group PHPStan levels. A rule takes `"on"` or `"off"`. Pun analyses at the highest PHPStan level of the enabled core rules and the preset's type switches.
 
-`stubs`, `[[analyse.ignore]]`, and the rule options that `pun migrate` writes work like PHPStan's `stubFiles`, `ignoreErrors`, and parameters. An ignore entry or `@phpstan-ignore` comment that matches nothing is an error, unless the entry sets `report-unmatched = false` or `[analyse]` sets `report-unmatched = false`, as PHPStan's `reportUnmatchedIgnoredErrors` does. When you pass files on the command line, Pun doesn't report unmatched entries for other files or entries without a path.
+`stubs`, `scan`, `bootstrap`, `[[analyse.ignore]]`, and the rule options that `pun migrate` writes work like PHPStan's `stubFiles`, `scanFiles` and `scanDirectories`, `bootstrapFiles`, `ignoreErrors`, and parameters. An ignore entry or `@phpstan-ignore` comment that matches nothing is an error, unless the entry sets `report-unmatched = false` or `[analyse]` sets `report-unmatched = false`, as PHPStan's `reportUnmatchedIgnoredErrors` does. When you pass files on the command line, Pun doesn't report unmatched entries for other files or entries without a path.
 
 `pun.toml` can't override `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference`, or `checkThisOnly` on their own. `pun migrate` reports them as unsupported and keeps the level.
 

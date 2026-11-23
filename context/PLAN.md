@@ -158,6 +158,12 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Duplicate lint rules are merged** (2026-11-15, plan/rules.md §3): rules that duplicated another (usually a
   PHP-CS-Fixer fixer and its Rector port) are merged into one; the keeper's `merged` and `replaces` fields record the
   upstream names and old IDs, `pun migrate` maps every upstream name to the keeper, and old IDs error with the new one.
+- **Scanned and bootstrap files carry over** (Pushpak, 2026-11-23): `[analyse] scan` holds PHPStan's `scanFiles` and
+  `scanDirectories`, `[analyse] bootstrap` its `bootstrapFiles`, and `pun migrate` copies them (not the ones under
+  vendor/). Pun cannot run a bootstrap file, so it reads its symbols, as for a scanned file, and Larastan its macros.
+- **Analyse rule options are checked** (Pushpak, 2026-11-23): a rule's options are the kebab-case PHPStan parameters
+  it reads (`[phpstan-parameters]`); another key, or a value that is not a bool (a list of strings for Larastan's
+  path and method lists), is a config error.
 - **No upgrades below the floor** (2026-10-17): Rector's php-5.3 to php-8.3 upgrade sets and Laravel upgrade sets
   before 12 are not supported; php-8.4/8.5 and laravel-12/13 are. Pun targets PHP 8.4+ projects.
 
