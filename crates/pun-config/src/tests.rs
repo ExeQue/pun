@@ -1493,6 +1493,35 @@ not-path = ["y"]
         assert!(!m.toml.contains("require-final-class"));
     }
 
+    /// The phpunit extension brings `php_unit_method_casing`; Pint with it `false` leaves `test_foo_bar` alone, so
+    /// the migrated pun.toml turns it off. `final_class` belongs to no extension, so nothing brings it back.
+    #[test]
+    fn keeps_extension_rules_the_config_turns_off() {
+        let m = pint(r#"{"rules":{"php_unit_method_casing":false,"final_class":false}}"#);
+        assert!(
+            m.toml
+                .contains("\n\"phpunit/require-method-casing\" = \"off\"\n"),
+            "{}",
+            m.toml
+        );
+        assert!(!m.toml.contains("require-final-class"), "{}", m.toml);
+        let on = format!("[extensions]\nphpunit = \"on\"\n\n{}", m.toml);
+        let c = from_toml(&dir(&[]), &on).unwrap();
+        let fixers: Vec<_> = c.lint.rules.iter().filter_map(|l| l.fixer).collect();
+        assert!(!fixers.contains(&"php_unit_method_casing"), "{fixers:?}");
+        let c = from_toml(
+            &dir(&[]),
+            &format!("[extensions]\nphpunit = \"on\"\n\n{}", pint("{}").toml),
+        )
+        .unwrap();
+        assert!(
+            c.lint
+                .rules
+                .iter()
+                .any(|l| l.fixer == Some("php_unit_method_casing"))
+        );
+    }
+
     #[test]
     fn php_cs_fixer_rules() {
         let rules =

@@ -113,7 +113,16 @@ pub fn from_pint(path: &Path, preset: Option<&str>, runs: Runs) -> Result<Migrat
         }
     }
     let (paths, finder) = finder(&pint);
-    write(preset, rule_set(rules)?, &paths, &finder, vec![], runs)
+    let off = disabled(pint.get("rules").and_then(Value::as_object));
+    write(
+        preset,
+        rule_set(rules)?,
+        &off,
+        &paths,
+        &finder,
+        vec![],
+        runs,
+    )
 }
 
 pub fn from_rules(
@@ -130,14 +139,24 @@ pub fn from_rules(
     .filter_map(Value::as_str)
     .map(|s| format!("Finder {s}: no pun.toml key for it"))
     .collect();
+    let off = disabled(Some(&rules));
     write(
         "empty",
         rule_set(rules)?,
+        &off,
         &paths,
         &finder,
         unsupported,
         runs,
     )
+}
+
+/// The rules a config turns off itself (`"rule": false`), not through a set or preset.
+fn disabled(rules: Option<&Map<String, Value>>) -> Vec<String> {
+    (rules.into_iter().flatten())
+        .filter(|(name, v)| !name.starts_with('@') && **v == Value::Bool(false))
+        .map(|(name, _)| name.clone())
+        .collect()
 }
 
 fn finder(config: &Map<String, Value>) -> (String, String) {
@@ -235,6 +254,7 @@ fn replace_recursive(base: &mut Value, over: Value) {
 fn write(
     preset: &str,
     mut rules: Vec<Rule>,
+    off: &[String],
     paths: &str,
     finder: &str,
     mut unsupported: Vec<String>,
@@ -311,6 +331,17 @@ fn write(
         } else {
             writeln!(parts.format_rules, "\"{name}\" = {v}").unwrap();
             format_rules += 1;
+        }
+    }
+    // An extension brings every rule of its group (`phpunit/require-method-casing` for `php_unit_method_casing`), so
+    // one the config turns off stays off, as in Pint.
+    for name in off.iter().filter(|n| runs(n)) {
+        let Some(id) = rule_of(name).and_then(|id| id.strip_prefix("lint/")) else {
+            continue;
+        };
+        let owned = (id.split('/').next()).is_some_and(|g| crate::extensions::owner(g).is_some());
+        if owned && !parts.lint_rules.iter().any(|(k, _)| k == id) {
+            parts.lint_rules.push((id.to_string(), "\"off\"".into()));
         }
     }
     for b in &base {
