@@ -1,13 +1,22 @@
 //! Native Blade formatter: a Rust port of prettier-plugin-blade, used when `[format] blade = "native"`.
 
 mod ast;
+mod doc;
 mod directives;
 mod frontend;
 mod frontmatter;
+mod html_data;
 mod ignore;
 mod lexer;
+mod print;
 mod scan;
 mod tree;
+
+/// Formats a Blade template exactly like Prettier with prettier-plugin-blade under Pint's options
+/// (without Tailwind class sorting).
+pub fn format(text: &str) -> String {
+    print::format(text)
+}
 
 /// Debug dumps of the internal stages, compared against the JS plugin while porting.
 #[doc(hidden)]

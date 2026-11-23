@@ -571,7 +571,7 @@ fn is_likely_regex_start(source: &[u8], content_start: usize, slash: usize) -> b
 
 // malformed-tags.ts
 
-fn has_swallowed_tag_syntax(opening: &str) -> bool {
+pub(crate) fn has_swallowed_tag_syntax(opening: &str) -> bool {
     let Some(nl) = opening.find(['\r', '\n']) else {
         return false;
     };

@@ -157,6 +157,24 @@ pub(crate) fn collapse_js_whitespace(s: &str) -> String {
     out
 }
 
+/// `/\s+/g` → `" "` without trimming.
+pub(crate) fn collapse_js_whitespace_keep_ends(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_ws = false;
+    for c in s.chars() {
+        if crate::tree::is_js_whitespace(c) {
+            if !in_ws {
+                out.push(' ');
+            }
+            in_ws = true;
+        } else {
+            out.push(c);
+            in_ws = false;
+        }
+    }
+    out
+}
+
 /// `<!--([\s\S]*?)-->` value of a comment's raw text.
 fn comment_value(raw: &str) -> Option<&str> {
     raw.strip_prefix("<!--")?.strip_suffix("-->")
