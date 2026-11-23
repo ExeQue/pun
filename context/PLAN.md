@@ -158,7 +158,8 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 ### Engines
 
 - **Format:** PHP-CS-Fixer's token fixers on Pun's own lexer (not mago-syntax tokens; reference/tokens.md). Files run
-  in parallel, one worker per core. Blade stays on Node + Prettier until a native formatter exists (after 1.0). A Pun
+  in parallel, one worker per core. Blade defaults to Node + Prettier; the native formatter (crates/pun-blade) is opt-in with
+  `[format] blade = "native"`. A Pun
   reprinting preset (`preset = "pun"`) comes after 1.0.
 - **Lint:** rules return text edits on byte ranges found through Mago's syntax tree; format tidies the layout after.
   No php-parser printer. Parity is `format(pun lint --fix)` = `format(rector process)`. Mago's rules are normal lint
@@ -449,7 +450,7 @@ Left for 1.0: the rule docs content (below), name checks, signing and publishing
 | packages: workspace follow-ups (plan/packages.md §7.1): the stale-lock check counting members' requirements, `--workspace` for run-script, check, format, lint and analyse, and the validate checks for diverging constraints | todo |
 | packages: the rest of plan/packages.md step 7: the package, installer, pool and download events through the plugin host, custom installer paths (composer/installers), plugin commands, the allow-plugins prompt, and the extension-installer and phpcodesniffer-composer-installer ports | todo |
 | extensions (plan/extensions.md Migration): 5.4 (node callbacks and `finish` in `AnalyseExtension`) is next, then 6 (mapping fragments) with 7 (the `crates/pun-ext-*` crates) | doing |
-| later: LSP; run, test; native Blade | after 1.0 |
+| later: LSP; run, test; native Blade as the default | after 1.0 |
 | later: analyse 7, Pest and PHPUnit typing (analyse.md §9) | after 1.0 |
 | audit item 17 follow-up: take identifiers as &'static str (no format! in names.rs) and assert in tests/rules.rs that every reported identifier is listed in IDENTIFIERS | todo |
 | oracle: .oracle/phpstan's Composer project has symfony/polyfill-php85, so PHPStan run from it knows array_first() and friends at phpVersion 80400; take built-in-symbol expectations from the standalone phar outside a Composer project | todo |

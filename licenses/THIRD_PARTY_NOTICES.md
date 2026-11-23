@@ -118,6 +118,21 @@ Mago's `mago-prelude` crate, which is in the binary, embeds PHP stubs modified f
 is exported from the copy of those stubs in PHPStan: Copyright 2010-2023 JetBrains s.r.o., Apache License 2.0 (the
 text is in `THIRD_PARTY_LICENSES.md`).
 
+## Prettier, prettier-plugin-blade and oxc
+
+`crates/pun-blade`, the native Blade formatter, ports [prettier-plugin-blade](https://github.com/fortephp/chisel)
+3.3.3 and the parts of [Prettier](https://github.com/prettier/prettier) 3.10.1 it uses (the doc printer and the HTML
+printer). `third_party/oxc_formatter_css` is a copy of [oxc](https://github.com/oxc-project/oxc)'s
+`oxc_formatter_css` (oxfmt_v0.80.0) with Pun's patches (its `PATCHES.md` lists them and its `LICENSE` holds oxc's
+license). All three are under the MIT license:
+
+```text
+Prettier:              Copyright © James Long and contributors
+prettier-plugin-blade: Copyright (c) John Koster
+oxc:                   Copyright (c) 2024-present VoidZero Inc. & Contributors
+                       Copyright (c) 2023 Boshen
+```
+
 ## PCRE2
 
 The binary links [PCRE2](https://github.com/PCRE2Project/pcre2) 10.46 statically (the copy in the `pcre2-sys` crate),

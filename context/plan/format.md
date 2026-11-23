@@ -44,6 +44,15 @@ It needs Node or Bun, and Prettier is most of Pinkary's run time. The dependency
 formatting worker, and Pun stops an unused probe worker on early exits, non-Blade stdin and PHP-only selections.
 Workers stay parallel with Node's default memory settings: serializing them or fixing the semi-space size was slower.
 
+**Native Blade (opt-in, 2026-11-23).** `[format] blade = "native"` swaps the Prettier call for crates/pun-blade, a
+Rust port of prettier-plugin-blade 3.3 and the Prettier 3.10 parts it uses (doc printer, HTML printer, embeds). Pint's
+pre- and post-passes around it are unchanged. The default stays `prettier`. Embedded JS, CSS, JSON, YAML and Markdown
+go through oxc's formatters (oxfmt targets Prettier parity), converted from oxc's IR into Prettier docs. oxc's CSS
+formatter is vendored in third_party/oxc_formatter_css with Prettier-parity patches (PATCHES.md). Tailwind class
+sorting is not ported: native mode leaves class order as written. Parity, byte for byte against Prettier with the Blade
+plugin: every golden file outside tests/blade/tailwind (except six that sort classes), and 2,752 real templates from
+16 Laravel apps and packages. Known risk: oxc's own Prettier gaps; fix them in vendored copies as they show up.
+
 ## 3. The config
 
 The schema is config.md §3: `[format] preset` (`laravel`, `psr12`, `empty`), `not-name` / `not-path`, and
@@ -95,7 +104,7 @@ Speed and memory come first (decided).
    (PLAN.md §3).
 7. **Port every format rule.** Done: all 164 are native. Follow-ups are rows in PLAN.md §3.
 
-After 1.0: a native Blade formatter (Blade stays on Node and Prettier until then) and a Pun reprinting preset.
+After 1.0: native Blade as the default (it is opt-in now) and a Pun reprinting preset.
 
 ## 8. Grouped rule names (approved)
 
@@ -193,7 +202,8 @@ Answered 2026-10-17 (Pushpak):
   and migrate expands a pint.json that uses it. Pun has no `symfony` preset, and migrate stops on a pint.json that
   uses it.
 - **No pun.toml: stop**, with "Run `pun migrate`, or `pun init` for a new project".
-- **Blade stays on Node and Prettier** for now; native Blade after 1.0.
+- **Blade defaults to Node and Prettier.** Native Blade is opt-in with `[format] blade = "native"` (2026-11-23):
+  byte parity with Prettier except Tailwind class sorting, which is skipped. oxc's formatters for embedded code.
 - **No PHP fallback for unported rules.** Pun never runs PHP-CS-Fixer or Pint. `pun migrate` names each unsupported
   rule, skips it, and asks for a PR:
   ```

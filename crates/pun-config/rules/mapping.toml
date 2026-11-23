@@ -163,7 +163,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "imports/no-unneeded-alias" = { fix = "safe", presets = ["laravel"], ported = true, status = "decided", summary = "Imports should not be aliased as the same name." }
 "imports/ordered" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "Ordering `use` statements." }
 "imports/single-per-statement" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "There MUST be one use keyword per declaration." }
-"laravel/blade" = { fix = "safe", ported = true, status = "decided", summary = "Formats Blade templates (Pint 1.30, Prettier + prettier-plugin-blade)." }
+"laravel/blade" = { fix = "safe", ported = true, status = "decided", summary = "Formats Blade templates as Pint 1.30 does, with Prettier + prettier-plugin-blade, or natively without Node under `[format] blade = \"native\"`." }
 "operators/binary-spacing" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "Binary operators should be surrounded by space as configured." }
 "operators/concat-spacing" = { fix = "safe", presets = ["laravel"], ported = true, status = "decided", summary = "Concatenation should be spaced according to configuration." }
 "operators/increment-style" = { fix = "safe", presets = ["laravel"], ported = true, status = "decided", summary = "Pre- or post-increment and decrement operators should be used if possible." }

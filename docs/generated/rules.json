@@ -1593,7 +1593,7 @@
       "id": "format/laravel/blade",
       "command": "format",
       "group": "laravel",
-      "summary": "Formats Blade templates (Pint 1.30, Prettier + prettier-plugin-blade).",
+      "summary": "Formats Blade templates as Pint 1.30 does, with Prettier + prettier-plugin-blade, or natively without Node under [format] blade = \"native\".",
       "enabled": [],
       "fix": "safe",
       "ecosystem": "laravel",

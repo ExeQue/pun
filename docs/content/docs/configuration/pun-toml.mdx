@@ -93,6 +93,7 @@ Format rules don't depend on extensions. Blade formatting is `"laravel/blade" = 
 | Key | Meaning |
 | --- | --- |
 | `preset` | `laravel` (default), `psr12`, or `empty` |
+| `blade` | How `laravel/blade` formats Blade files: `prettier` (default) runs Prettier and prettier-plugin-blade in Node, as Pint does. `native` uses Pun's built-in formatter, which needs no Node and no `node_modules`. It gives the same output, except that it doesn't sort Tailwind classes |
 | `exclude` | Added to `[files] exclude` for format only |
 | `not-name`, `not-path` | File names and paths to skip, as in Pint. PHP regular expressions work. An invalid regular expression is a run error |
 | `rules` | `true`, `false`, a table of options, or the value of the rule's only option |
