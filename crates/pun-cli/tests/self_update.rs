@@ -220,12 +220,12 @@ fn fails_without_a_release() {
     assert!(err.contains("not a release version: vlatest"), "{err}");
     assert_eq!(code, Some(2));
 
-    // Neither the API nor the feed answers.
+    // Neither the API nor github.com answers.
     let server = serve(vec![]);
     let (err, code) = run(&pun, Some(&server), &empty, &[], &[]);
     assert!(
         err.contains(&format!(
-            "download failed: {server}/shipfastlabs/pun/releases.atom"
+            "download failed: {server}/shipfastlabs/pun/releases/latest"
         )),
         "{err}"
     );
@@ -270,21 +270,10 @@ fn finds_the_latest_release() {
         )
     );
 
-    // When the API's rate limit is used up: the releases feed, in the shape github.com serves it.
-    let head = r#"<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
-  <id>tag:github.com,2008:https://github.com/shipfastlabs/pun/releases</id>
-  <link type="text/html" rel="alternate" href="https://github.com/shipfastlabs/pun/releases"/>
-  <link type="application/atom+xml" rel="self" href="https://github.com/shipfastlabs/pun/releases.atom"/>
-  <title>Release notes from pun</title>
-"#;
-    let entry = r#"  <entry>
-    <id>tag:github.com,2008:Repository/1414552403/v99.1.0</id>
-    <link rel="alternate" type="text/html" href="https://github.com/shipfastlabs/pun/releases/tag/v99.1.0"/>
-    <title>v99.1.0</title>
-  </entry>
-"#;
-    let feed = |body: String| {
+    // When the API's rate limit is used up: github.com's releases/latest, which redirects to the newest published
+    // release. Its feed already lists v99.2.0, a tag whose release is still building; that one is not offered.
+    let feed = r#"<entry><link rel="alternate" href="https://github.com/shipfastlabs/pun/releases/tag/v99.2.0"/></entry>"#;
+    let redirect = |to: &str| -> Vec<(String, Vec<u8>)> {
         vec![
             (
                 format!("{api}/latest"),
@@ -292,11 +281,19 @@ fn finds_the_latest_release() {
             ),
             (
                 "/shipfastlabs/pun/releases.atom".into(),
-                response("200 OK", body.as_bytes()),
+                response("200 OK", feed.as_bytes()),
+            ),
+            (
+                "/shipfastlabs/pun/releases/latest".into(),
+                format!("HTTP/1.1 302 Found\r\nLocation: {to}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                    .into_bytes(),
             ),
         ]
     };
-    let (err, code) = check(feed(format!("{head}{entry}</feed>\n")), &["--check"]);
+    let (err, code) = check(
+        redirect("https://github.com/shipfastlabs/pun/releases/tag/v99.1.0"),
+        &["--check"],
+    );
     assert_eq!(
         (err.as_str(), code),
         (
@@ -305,8 +302,8 @@ fn finds_the_latest_release() {
             Some(0)
         )
     );
-    // A repository without releases: the release list is empty, and so is the feed.
-    let mut none = feed(format!("{head}</feed>\n"));
+    // A repository without releases: the release list is empty, and github.com redirects to the releases page.
+    let mut none = redirect("https://github.com/shipfastlabs/pun/releases");
     none.push((format!("{api}?per_page=1"), response("200 OK", b"[]")));
     let (err, code) = check(none, &[]);
     assert!(

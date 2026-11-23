@@ -115,7 +115,8 @@ fn valid_tag(tag: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
 }
 
-/// The latest stable release, else the newest pre-release; the releases feed when the API's rate limit is used up.
+/// The latest stable release, else the newest pre-release; github.com's latest release when the API's rate limit is
+/// used up.
 fn latest(agent: &ureq::Agent, web: &str, api: &str) -> Result<String> {
     let api = format!("{api}/repos/{REPO}/releases");
     for url in [format!("{api}/latest"), format!("{api}?per_page=1")] {
@@ -126,10 +127,14 @@ fn latest(agent: &ureq::Agent, web: &str, api: &str) -> Result<String> {
             return Ok(tag.to_string());
         }
     }
-    let feed =
-        String::from_utf8(get(agent, &format!("{web}/{REPO}/releases.atom"))?).unwrap_or_default();
-    (feed.split("/releases/tag/").nth(1))
-        .and_then(|rest| rest.split(['"', '<']).next())
+    // When the API's rate limit is used up: github.com's releases/latest, which has none, redirects to the newest
+    // published release (to /releases without one). The releases feed would also name a tag whose release is
+    // still building, with no archives to download yet.
+    let url = format!("{web}/{REPO}/releases/latest");
+    let res = (agent.get(&url).config().max_redirects(0).build().call())
+        .with_context(|| format!("download failed: {url}"))?;
+    (res.headers().get("location"))
+        .and_then(|l| l.to_str().ok()?.split("/releases/tag/").nth(1))
         .map(String::from)
         .context("could not find the latest release; name one: `pun self-update v0.1.0`")
 }
