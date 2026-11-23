@@ -223,7 +223,7 @@ pub(crate) struct FormatArgs {
         clippy::doc_markdown,
         reason = "this doc comment is the --help text, printed as written"
     )]
-    /// Colour the output: auto (on for a terminal, off when piped or with NO_COLOR), always or never.
+    /// Color the output: auto (on for a terminal, off when piped or with NO_COLOR), always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
     /// `--color=always` (Pint's spelling); also decorates the `--format` reports as Pint does.

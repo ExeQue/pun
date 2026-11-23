@@ -39,8 +39,8 @@ To report a security vulnerability, follow [our security policy](https://github.
 
 ## Credits
 
-Pun would not be possible without [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan), [Rector](https://github.com/rectorphp/rector) and [Composer](https://github.com/composer/composer). Pun uses Mago's parser and analysis libraries directly and ports behaviour, rules and test fixtures from these projects. Thank you to everyone behind them.
+Pun would not be possible without [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan), [Rector](https://github.com/rectorphp/rector) and [Composer](https://github.com/composer/composer). Pun uses Mago's parser and analysis libraries directly and ports behavior, rules and test fixtures from these projects. Thank you to everyone behind them.
 
 ## License
 
-Pun is open-sourced software licensed under the [MIT license](LICENSE). The licences of ported code are in [licenses/THIRD_PARTY_NOTICES.md](licenses/THIRD_PARTY_NOTICES.md), and those of the bundled Rust crates in [licenses/THIRD_PARTY_LICENSES.md](licenses/THIRD_PARTY_LICENSES.md).
+Pun is open-sourced software licensed under the [MIT license](LICENSE). The licenses of ported code are in [licenses/THIRD_PARTY_NOTICES.md](licenses/THIRD_PARTY_NOTICES.md), and those of the bundled Rust crates in [licenses/THIRD_PARTY_LICENSES.md](licenses/THIRD_PARTY_LICENSES.md).

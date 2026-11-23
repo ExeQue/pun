@@ -19,7 +19,7 @@ Off until you name it or its group. Safe fix.
 
 Add return type to closures narrowed by assertInstanceOf() inside PHPUnit test case classes
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-data-provider-allow-mock-objects" href="/docs/rules/lint/phpunit/add-data-provider-allow-mock-objects">
@@ -33,14 +33,14 @@ Off until you name it or its group. Safe fix.
 
 Add Iterator type on known PHPUnit data providers
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-depended-test-return-type" href="/docs/rules/lint/phpunit/add-depended-test-return-type">
 
 Add return type declaration to a test method that returns type
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-instanceof-assert" href="/docs/rules/lint/phpunit/add-instanceof-assert">
@@ -82,42 +82,42 @@ Off until you name it or its group. Safe fix.
 
 Add param type declaration based on @depends test method return type
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-container-get" href="/docs/rules/lint/phpunit/add-property-type-container-get">
 
 Add strict typed property to a private test case property based on its @var object type, when assigned via container fetch in setUp()
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-create-mock" href="/docs/rules/lint/phpunit/add-property-type-create-mock">
 
 Add "PHPUnit\Framework\MockObject\MockObject" typed property from assigned mock to clearly separate from real objects
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-setup" href="/docs/rules/lint/phpunit/add-property-type-setup">
 
 Add strict typed property based on setUp() strict typed assigns in TestCase
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-setup-docblock" href="/docs/rules/lint/phpunit/add-property-type-setup-docblock">
 
 Add property type in PHPUnit test from docblock, if defined in setUp() method
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-return-type-from-mock-object" href="/docs/rules/lint/phpunit/add-return-type-from-mock-object">
 
 Add known property and return MockObject types
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-stub-intersection-type" href="/docs/rules/lint/phpunit/add-stub-intersection-type">
@@ -131,21 +131,21 @@ On when the `phpunit` extension is on. Safe fix.
 
 Add void to PHPUnit test methods
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-will-return-callback-false-fallback" href="/docs/rules/lint/phpunit/add-will-return-callback-false-fallback">
 
 Add a "return false" fallback to a willReturnCallback() closure that only returns booleans, but can fall through without a return
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="add-will-return-callback-param-type" href="/docs/rules/lint/phpunit/add-will-return-callback-param-type">
 
 Decorate callbacks and arrow functions in willReturnCallback() with known param/return types based on reflection method
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-any-matcher" href="/docs/rules/lint/phpunit/no-any-matcher">
@@ -166,7 +166,7 @@ Off until you name it or its group. Safe fix.
 
 Replace assertInternalType() with the dedicated assertIs*() assertion.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-assert-is-type" href="/docs/rules/lint/phpunit/no-assert-is-type">
@@ -222,7 +222,7 @@ On when the `phpunit` extension is on. Safe fix.
 
 Replace @expectedException annotations with expectException() calls.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-expects-any" href="/docs/rules/lint/phpunit/no-expects-any">
@@ -355,14 +355,14 @@ On when the `phpunit` extension is on. Safe fix.
 
 Turns same bool and null comparisons to their method name alternatives in PHPUnit TestCase
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-assert-same" href="/docs/rules/lint/phpunit/prefer-assert-same">
 
 PHPUnit methods like `assertSame` should be used instead of `assertEquals`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-assert-string-contains" href="/docs/rules/lint/phpunit/prefer-assert-string-contains">
@@ -376,7 +376,7 @@ On when the `phpunit` extension is on. Safe fix.
 
 Change $this->assertSame(true, ...) to assertTrue()
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-attribute-over-annotation" href="/docs/rules/lint/phpunit/prefer-attribute-over-annotation">
@@ -411,7 +411,7 @@ Off until you name it or its group. Safe fix.
 
 Replace getMock*() with createMock().
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-create-stub" href="/docs/rules/lint/phpunit/prefer-create-stub">
@@ -460,7 +460,7 @@ Off until you name it or its group. Safe fix.
 
 Use dedicated PHPUnit assertions such as assertFileExists() instead of assertTrue(file_exists()).
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-depends-attribute" href="/docs/rules/lint/phpunit/prefer-depends-attribute">
@@ -474,7 +474,7 @@ Off until you name it or its group. Safe fix.
 
 Replace setExpectedException*() with expectException*().
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-inline-create-stub" href="/docs/rules/lint/phpunit/prefer-inline-create-stub">
@@ -509,7 +509,7 @@ Off until you name it or its group. Safe fix.
 
 PHPUnit classes MUST be used in namespaced version, e.g. `\PHPUnit\Framework\TestCase` instead of `\PHPUnit_Framework_TestCase`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-narrow-will-return-callback" href="/docs/rules/lint/phpunit/prefer-narrow-will-return-callback">
@@ -530,7 +530,7 @@ On when the `phpunit` extension is on. Safe fix.
 
 Rename deprecated PHPUnit assertions like `assertFileNotExists` to new methods like `assertFileDoesNotExist`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-property-assertions" href="/docs/rules/lint/phpunit/prefer-property-assertions">
@@ -551,7 +551,7 @@ Off until you name it or its group. Safe fix.
 
 Use willReturn() and similar instead of will($this->returnValue()).
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-simple-callback-assert" href="/docs/rules/lint/phpunit/prefer-simple-callback-assert">
@@ -579,21 +579,21 @@ On when the `phpunit` extension is on. Safe fix.
 
 PHPUnit assertion method calls like `->assertSame(true, $foo)` should be written with dedicated method like `->assertTrue($foo)`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-specific-true-false-assertion" href="/docs/rules/lint/phpunit/prefer-specific-true-false-assertion">
 
 Turns true/false comparisons to their method name alternatives in PHPUnit TestCase when possible
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-specific-will-method" href="/docs/rules/lint/phpunit/prefer-specific-will-method">
 
 Changes $mock->will() call to more specific method
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-standalone-asserts-over-callback" href="/docs/rules/lint/phpunit/prefer-standalone-asserts-over-callback">
@@ -621,7 +621,7 @@ On when the `phpunit` extension is on. Safe fix.
 
 Replace @test with prefixed function
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-test-with-attribute" href="/docs/rules/lint/phpunit/prefer-test-with-attribute">
@@ -635,7 +635,7 @@ Off until you name it or its group. Safe fix.
 
 Changes PHPUnit calls from self::assert*() to $this->assert*()
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-ticket-attribute" href="/docs/rules/lint/phpunit/prefer-ticket-attribute">
@@ -670,7 +670,7 @@ On when the `phpunit` extension is on. Safe fix.
 
 Calls to `PHPUnit\Framework\TestCase` static methods (like assertions) must all be of the same type, either `$this->`, `self::` or `static::`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-covers" href="/docs/rules/lint/phpunit/require-covers">
@@ -684,7 +684,7 @@ Off until you name it or its group. Safe fix.
 
 Data provider names must match the name of the test.
 
-Off until you name it or its group. Unsafe fix: it can change behaviour.
+Off until you name it or its group. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-data-provider-newlines" href="/docs/rules/lint/phpunit/require-data-provider-newlines">
@@ -726,7 +726,7 @@ Off until you name it or its group. Safe fix.
 
 The return type of PHPUnit data provider must be `iterable`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-method-casing" href="/docs/rules/lint/phpunit/require-method-casing">
@@ -747,7 +747,7 @@ On when the `phpunit` extension is on. Safe fix.
 
 Changes the visibility of the `setUp()` and `tearDown()` functions of PHPUnit to `protected`, to match the PHPUnit TestCase.
 
-Off until you name it or its group. Unsafe fix: it can change behaviour.
+Off until you name it or its group. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-size" href="/docs/rules/lint/phpunit/require-size">
@@ -761,7 +761,7 @@ Off until you name it or its group. Safe fix.
 
 Make PHPUnit data providers static.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-strict-types-in-tests" href="/docs/rules/lint/phpunit/require-strict-types-in-tests">
@@ -782,7 +782,7 @@ On when the `phpunit` extension is on. Safe fix.
 
 Mark tests consistently: a `test` prefix or a @test annotation.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behaviour.
+On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
 </CardGroup>

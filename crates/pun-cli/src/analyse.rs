@@ -44,7 +44,7 @@ pub(crate) struct AnalyseArgs {
     /// Print nothing; the exit code is the result.
     #[arg(short, long)]
     quiet: bool,
-    /// Colour the output: auto, always or never.
+    /// Color the output: auto, always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
     /// Accepted and ignored, so `phpstan analyse --memory-limit=2G` scripts run: Pun has no PHP memory limit.

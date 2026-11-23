@@ -1,4 +1,4 @@
-// Pun homepage behaviour: the install copy button and the pun check run.
+// Pun homepage behavior: the install copy button and the pun check run.
 // The page makes no speed figures or comparisons; it says Pun is fast in words only.
 
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;

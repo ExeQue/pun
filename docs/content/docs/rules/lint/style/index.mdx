@@ -12,28 +12,28 @@ One consistent way to write the same thing.
 
 Takes `@param` annotations of non-mixed types and adjusts accordingly the function signature.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-from-phpdoc" href="/docs/rules/lint/style/add-property-type-from-phpdoc">
 
 Takes `@var` annotation of non-mixed types and adjusts accordingly the property signature..
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-return-type-from-phpdoc" href="/docs/rules/lint/style/add-return-type-from-phpdoc">
 
 Takes `@return` annotation of non-mixed types and adjusts accordingly the function signature.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-alias-function" href="/docs/rules/lint/style/no-alias-function">
 
 Master functions shall be used instead of aliases.
 
-In the `coding-style` set. Unsafe fix: it can change behaviour.
+In the `coding-style` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-ambiguous-constant" href="/docs/rules/lint/style/no-ambiguous-constant">
@@ -61,7 +61,7 @@ In the `coding-style` set. Report only.
 
 Converts simple usages of `array_push($x, $y);` to `$x[] = $y;`.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour.
+In the `code-quality` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-assign-in-ternary-branch" href="/docs/rules/lint/style/no-assign-in-ternary-branch">
@@ -75,7 +75,7 @@ In the `code-quality` set. Safe fix.
 
 Call callables directly instead of through call_user_func().
 
-In the `code-quality` and `coding-style` sets. Unsafe fix: it can change behaviour.
+In the `code-quality` and `coding-style` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-dynamic-method-call" href="/docs/rules/lint/style/no-dynamic-method-call">
@@ -124,14 +124,14 @@ In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariabl
 
 Detects the use of the `empty()` construct.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Intent: suspicious. Upstream setting: `strictRules.disallowedEmpty`.
+In the `code-quality` set. Unsafe fix: it can change behavior. Intent: suspicious. Upstream setting: `strictRules.disallowedEmpty`.
 
 </Card>
 <Card title="no-ereg" href="/docs/rules/lint/style/no-ereg">
 
 Replace deprecated `ereg` regular expression functions with `preg`.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-escaped-quotes" href="/docs/rules/lint/style/no-escaped-quotes">
@@ -173,7 +173,7 @@ In the `coding-style` set. Report only.
 
 Replaces `is_null($var)` expression with `null === $var`.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-isset" href="/docs/rules/lint/style/no-isset">
@@ -215,14 +215,14 @@ In the `coding-style` set. Report only.
 
 Convert PHP4-style constructors to `__construct`.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-redundant-final" href="/docs/rules/lint/style/no-redundant-final">
 
 Removes `final` from methods where possible.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-redundant-final-const" href="/docs/rules/lint/style/no-redundant-final-const">
@@ -236,7 +236,7 @@ In the `dead-code` set. Safe fix.
 
 Yield from array must be unpacked to series of yields.
 
-In the `coding-style` set. Unsafe fix: it can change behaviour.
+In the `coding-style` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-short-ternary" href="/docs/rules/lint/style/no-short-ternary">
@@ -257,7 +257,7 @@ Not in any set. Report only.
 
 Replace __sleep()/__wakeup() with __serialize()/__unserialize().
 
-In the `modernize` set. Unsafe fix: it can change behaviour. Depends on `[php] version`.
+In the `modernize` set. Unsafe fix: it can change behavior. Depends on `[php] version`.
 
 </Card>
 <Card title="no-sprintf-concat" href="/docs/rules/lint/style/no-sprintf-concat">
@@ -278,14 +278,14 @@ In the `coding-style` set. Report only.
 
 There must be no `printf` calls with only the first argument.
 
-In the `coding-style` set. Unsafe fix: it can change behaviour.
+In the `coding-style` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-useless-sprintf" href="/docs/rules/lint/style/no-useless-sprintf">
 
 Remove sprintf() calls with only the format argument.
 
-In the `dead-code` set. Unsafe fix: it can change behaviour.
+In the `dead-code` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-variable-variable" href="/docs/rules/lint/style/no-variable-variable">
@@ -299,21 +299,21 @@ In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariabl
 
 Anonymous functions with return as the only statement must use arrow functions.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-cast-over-intval" href="/docs/rules/lint/style/prefer-cast-over-intval">
 
 Replaces `intval`, `floatval`, `doubleval`, `strval` and `boolval` function calls with according type casting operator.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-cast-over-settype" href="/docs/rules/lint/style/prefer-cast-over-settype">
 
 Cast shall be used, not `settype`.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour.
+In the `code-quality` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-catch-name-from-type" href="/docs/rules/lint/style/prefer-catch-name-from-type">
@@ -327,21 +327,21 @@ In the `coding-style` set. Safe fix.
 
 Use `Foo::class` instead of class-name strings.
 
-In the `modernize` and `coding-style` sets. Unsafe fix: it can change behaviour.
+In the `modernize` and `coding-style` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-class-keyword-on-object" href="/docs/rules/lint/style/prefer-class-keyword-on-object">
 
 Replace `get_class` calls on object variables with class keyword syntax.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-compound-assignment" href="/docs/rules/lint/style/prefer-compound-assignment">
 
 Shorthand notation for operators should be used if possible.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour.
+In the `code-quality` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-create-from-timestamp" href="/docs/rules/lint/style/prefer-create-from-timestamp">
@@ -355,21 +355,21 @@ Not in any set. Report only.
 
 Class `DateTimeImmutable` should be used instead of `DateTime`.
 
-Not in any set. Unsafe fix: it can change behaviour. Intent: suspicious.
+Not in any set. Unsafe fix: it can change behavior. Intent: suspicious.
 
 </Card>
 <Card title="prefer-dir-constant" href="/docs/rules/lint/style/prefer-dir-constant">
 
 Replaces `dirname(__FILE__)` expression with equivalent `__DIR__` constant.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-dirname-levels" href="/docs/rules/lint/style/prefer-dirname-levels">
 
 Replace nested dirname() calls with one call and a `$levels` argument.
 
-In the `modernize` set. Unsafe fix: it can change behaviour. Depends on `[php] version`.
+In the `modernize` set. Unsafe fix: it can change behavior. Depends on `[php] version`.
 
 </Card>
 <Card title="prefer-early-continue" href="/docs/rules/lint/style/prefer-early-continue">
@@ -397,14 +397,14 @@ In the `code-quality` set. Safe fix.
 
 Compare with `''` instead of strlen() === 0.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour.
+In the `code-quality` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-generic-array-phpdoc" href="/docs/rules/lint/style/prefer-generic-array-phpdoc">
 
 PHPDoc `array<T>` type must be used instead of `T[]`.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-instanceof-stringable" href="/docs/rules/lint/style/prefer-instanceof-stringable">
@@ -418,7 +418,7 @@ In the `coding-style` set. Report only.
 
 PHPDoc `list` type must be used instead of `array` without a key.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-php-version-id" href="/docs/rules/lint/style/prefer-php-version-id">
@@ -432,49 +432,49 @@ In the `coding-style` set. Safe fix.
 
 Comments with annotation should be docblock when used on structural elements.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-pow-operator" href="/docs/rules/lint/style/prefer-pow-operator">
 
 Converts `pow` to the `**` operator.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-property-over-local-getter" href="/docs/rules/lint/style/prefer-property-over-local-getter">
 
 Privatize getter of local property to property
 
-In the `privatization` set. Unsafe fix: it can change behaviour.
+In the `privatization` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-random-int" href="/docs/rules/lint/style/prefer-random-int">
 
 Replaces `rand`, `srand`, `getrandmax` functions calls with their `mt_*` analogs or `random_int`.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-readonly-keyword" href="/docs/rules/lint/style/prefer-readonly-keyword">
 
 Converts readonly comment on classes to the readonly keyword.
 
-In the `coding-style` set. Unsafe fix: it can change behaviour.
+In the `coding-style` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-self-reference" href="/docs/rules/lint/style/prefer-self-reference">
 
 Inside class or interface element `self` should be preferred to the class name itself.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-short-ternary" href="/docs/rules/lint/style/prefer-short-ternary">
 
 Use the Elvis operator `?:` where possible.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-spread" href="/docs/rules/lint/style/prefer-spread">
@@ -488,14 +488,14 @@ In the `coding-style` set. Safe fix.
 
 Converts private methods to `static` where possible.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-str-contains" href="/docs/rules/lint/style/prefer-str-contains">
 
 Replace `strpos()` and `stripos()` calls with `str_starts_with()` or `str_contains()` if possible.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-variadic-param" href="/docs/rules/lint/style/prefer-variadic-param">
@@ -523,49 +523,49 @@ In the `coding-style` set. Safe fix.
 
 The first argument of `DateTime::createFromFormat` method must start with `!`.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-final-class" href="/docs/rules/lint/style/require-final-class">
 
 All classes must be final, except abstract ones and Doctrine entities.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-final-internal-class" href="/docs/rules/lint/style/require-final-internal-class">
 
 Internal classes should be `final`.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-final-public-method" href="/docs/rules/lint/style/require-final-public-method">
 
 All `public` methods of `abstract` classes should be `final`.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-fopen-binary-flag" href="/docs/rules/lint/style/require-fopen-binary-flag">
 
 The flags in `fopen` calls must omit `t`, and `b` must be omitted or included consistently.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-fopen-flag-order" href="/docs/rules/lint/style/require-fopen-flag-order">
 
 Order the flags in `fopen` calls, `b` and `t` must be last.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-implode-separator" href="/docs/rules/lint/style/require-implode-separator">
 
 Function `implode` must be called with 2 arguments in the documented order.
 
-In the `modernize` set. Unsafe fix: it can change behaviour.
+In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-namespace" href="/docs/rules/lint/style/require-namespace">
@@ -586,7 +586,7 @@ Not in any set. Report only.
 
 Trait `use` statements must be sorted alphabetically.
 
-Not in any set. Unsafe fix: it can change behaviour.
+Not in any set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-parent-visibility" href="/docs/rules/lint/style/require-parent-visibility">

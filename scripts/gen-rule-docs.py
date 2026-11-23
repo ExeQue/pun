@@ -144,7 +144,7 @@ def badges(data: dict, rid: str, rule: dict, sources: list[dict], links: bool = 
             sentences.append(f"Needs the {extension}.")
     elif ecosystem and command == "analyse":
         sentences.append(f"Needs the {extension}.")
-    sentences.append({"safe": "Safe fix.", "unsafe": "Unsafe fix: it can change behaviour.",
+    sentences.append({"safe": "Safe fix.", "unsafe": "Unsafe fix: it can change behavior.",
                       "mixed": "Safe fix where types prove it, unsafe otherwise.", "none": "Report only."}[rule.get("fix", "none")])
     if rule.get("intent"):
         sentences.append(f"Intent: {rule['intent']}.")

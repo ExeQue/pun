@@ -2986,7 +2986,7 @@
       "id": "format/types/nullable-syntax",
       "command": "format",
       "group": "types",
-      "summary": "Nullable single type declaration should be standardised using configured syntax.",
+      "summary": "Nullable single type declaration should be standardized using configured syntax.",
       "enabled": [
         "format-laravel"
       ],
@@ -3305,7 +3305,7 @@
       "id": "lint/classes/no-null-property-default",
       "command": "lint",
       "group": "classes",
-      "summary": "Properties MUST not be explicitly initialised with null except when they have a type declaration (PHP 7.4).",
+      "summary": "Properties MUST not be explicitly initialized with null except when they have a type declaration (PHP 7.4).",
       "enabled": [
         "dead-code"
       ],
@@ -3613,7 +3613,7 @@
       "id": "lint/complexity/no-boolean-flag-parameter",
       "command": "lint",
       "group": "complexity",
-      "summary": "Flags function-like parameters that use a boolean type and drive the function's behaviour.",
+      "summary": "Flags function-like parameters that use a boolean type and drive the function's behavior.",
       "enabled": [],
       "fix": "none",
       "ecosystem": "core",
@@ -9933,7 +9933,7 @@
       "id": "lint/php-8.2/add-skip-dots-flag",
       "command": "lint",
       "group": "php-8.2",
-      "summary": "Prior PHP 8.2 FilesystemIterator::SKIP_DOTS was always set and could not be removed, therefore FilesystemIterator::SKIP_DOTS is added in order to keep this behaviour",
+      "summary": "Prior PHP 8.2 FilesystemIterator::SKIP_DOTS was always set and could not be removed, therefore FilesystemIterator::SKIP_DOTS is added in order to keep this behavior",
       "enabled": [
         "modernize"
       ],

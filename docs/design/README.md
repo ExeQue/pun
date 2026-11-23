@@ -10,7 +10,7 @@ The brand is **Sticker Pop**: cream paper, pastel fills, thick ink outlines, and
 
 Pun talks like a fast friend who never oversells.
 
-- **Say it is fast, plainly.** "Very, very fast" is the claim. Give format, lint and analyse the same weight. Use one pun or wink per page, and none in docs headings.
+- **Say it is fast, plainly.** No superlatives or "very". Give format, lint and analyse the same weight. Use one pun or wink per page, and none in docs headings.
 - **Keep it short.** Headlines have fewer than eight words. A lede is one sentence: "One Rust binary for format, lint, analyse and migrate."
 - **Use concrete nouns.** Name the tool that Pun replaces (Pint, PHP-CS-Fixer, Rector, PHPStan, Larastan), the file (`pint.json`, `pun.toml`), and the flag (`--test`). Do not write "blazing", "revolutionary", "seamless", or "supercharge".
 - **No speed figures.** Do not publish timings, multiples, or charts comparing Pun with other tools. Say it in words.
