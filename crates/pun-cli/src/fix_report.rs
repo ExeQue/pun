@@ -31,46 +31,6 @@ pub(crate) fn json(changes: &[Change], verbose: bool, decorated: bool) -> String
     if decorated { escape(&json) } else { json }
 }
 
-pub(crate) fn txt(
-    changes: &[Change],
-    verbose: bool,
-    dry_run: bool,
-    total: usize,
-    decorated: bool,
-) -> String {
-    let mut o = String::new();
-    for (n, c) in changes.iter().enumerate() {
-        let _ = write!(o, "{:4}) {}", n + 1, c.file);
-        if verbose {
-            let list = c.fixers.join(", ");
-            let _ = write!(
-                o,
-                "{}",
-                if decorated {
-                    format!(" (<comment>{list}</comment>)")
-                } else {
-                    format!(" ({list})")
-                }
-            );
-        }
-        if !c.diff.is_empty() {
-            let _ = write!(o, "\n{}\n", console_diff(c.diff, decorated));
-        }
-        o.push('\n');
-    }
-    let (verb, what) = if dry_run {
-        ("Found", "files that can be fixed")
-    } else {
-        ("Fixed", "files")
-    };
-    let _ = writeln!(
-        o,
-        "\n{verb} {} of {total} {what} in 0.000 seconds, 0.00 MB memory used",
-        changes.len(),
-    );
-    o
-}
-
 pub(crate) fn agent(changes: &[Change], errors: &[(&str, &str)], dry_run: bool) -> String {
     let result = if !errors.is_empty() {
         "fail"
@@ -93,44 +53,6 @@ pub(crate) fn agent(changes: &[Change], errors: &[(&str, &str)], dry_run: bool) 
             .collect();
     }
     php_json(&v)
-}
-
-fn console_diff(diff: &str, decorated: bool) -> String {
-    let mut lines = vec![];
-    let mut rest = diff;
-    while let Some(i) = rest.find(['\r', '\n', '\x0b', '\x0c', '\u{85}', '\u{2028}', '\u{2029}']) {
-        lines.push(&rest[..i]);
-        let sep = if rest[i..].starts_with("\r\n") {
-            2
-        } else {
-            rest[i..].chars().next().unwrap().len_utf8()
-        };
-        rest = &rest[i + sep..];
-    }
-    lines.push(rest);
-    let body: Vec<String> = lines
-        .iter()
-        .map(|l| {
-            if !decorated {
-                return l.to_string();
-            }
-            match l.as_bytes().first() {
-                Some(b'+') => format!("<fg=green>{}</fg=green>", escape(l)),
-                Some(b'-') => format!("<fg=red>{}</fg=red>", escape(l)),
-                Some(b'@') => format!("<fg=cyan>{}</fg=cyan>", escape(l)),
-                _ => escape(l),
-            }
-        })
-        .collect();
-    let (open, close) = if decorated {
-        ("<comment>", "</comment>")
-    } else {
-        ("", "")
-    };
-    format!(
-        "{open}      ---------- begin diff ----------{close}\n{}\n{open}      ----------- end diff -----------{close}",
-        body.join("\n")
-    )
 }
 
 pub(crate) fn php_json(v: &serde_json::Value) -> String {
@@ -302,30 +224,6 @@ pub(crate) fn junit(changes: &[Change], verbose: bool, decorated: bool) -> Strin
     }
     let mut root = el("testsuites", &[]);
     root.children.push(suite);
-    xml(&root, decorated)
-}
-
-pub(crate) fn xml_report(changes: &[Change], verbose: bool, decorated: bool) -> String {
-    let mut root = el("report", &[]);
-    root.children.push(el("about", &[("value", ABOUT)]));
-    let mut files = el("files", &[]);
-    for (i, c) in changes.iter().enumerate() {
-        let mut file = el("file", &[("id", &(i + 1).to_string()), ("name", c.file)]);
-        if verbose {
-            let mut applied = el("applied_fixers", &[]);
-            applied
-                .children
-                .extend(c.fixers.iter().map(|f| el("applied_fixer", &[("name", f)])));
-            file.children.push(applied);
-        }
-        if !c.diff.is_empty() {
-            let mut d = el("diff", &[]);
-            d.cdata = Some(c.diff.to_string());
-            file.children.push(d);
-        }
-        files.children.push(file);
-    }
-    root.children.push(files);
     xml(&root, decorated)
 }
 

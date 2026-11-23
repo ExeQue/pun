@@ -16,32 +16,28 @@ pun format app/Models
 | Flag | What it does |
 | --- | --- |
 | `--test` (`--check`) | Report files that need formatting without changing them. Exit 1 if any do. |
-| `--bail` | Like `--test`, but stop at the first file that needs formatting. |
 | `--repair` | Format the files, and exit 1 if any file changed. |
 | `--dirty` | Select only files with uncommitted changes. |
 | `--diff=<branch>` | Select only files changed since you branched from `<branch>`. |
 | `--config=<path>` | Use this `pun.toml`. |
 | `--preset=<name>` | Use `laravel`, `psr12`, or `empty` instead of `pun.toml`. For `per`, run `pun migrate --preset per`. |
 | `--no-config` | Use the `laravel` preset and no config file. |
-| `--format=<fmt>` | `json`, `txt`, `agent`, `checkstyle`, `junit`, `xml`, `gitlab`, or `github`. |
+| `--format=<fmt>` | `json`, `agent`, `checkstyle`, `junit`, `gitlab`, or `github`. |
 | `--output-to-file=<path>` | Also write a report to this file, in the format that `--output-format=<fmt>` names. |
 | `--stdin-filename=<path>` | The path of code read from stdin. Pass `-` as the path argument to read stdin. |
 | `-v` | Add unchanged files and diffs. |
 | `-q` | Print only Pint's stderr line for each changed file. With `--format` or under a coding agent, print nothing, as Pint does. |
-| `--max-processes=N` | Cap threads and Prettier workers. Default: one per core. An invalid or nonpositive value keeps the default. |
-| `--cache-file=<path>` | Keep the [result cache](#cache) in this file. |
+| `--max-processes=N` | Cap threads and Prettier workers. `N` is a positive number. Default: one per core. |
 
 ## Pun's own flags
 
 | Flag | What it does |
 | --- | --- |
 | `--staged` | Select only files with staged changes. Pun reads the working tree, not the index. |
-| `--since=<ref>` | Select only files changed since a commit, plus untracked files. |
 | `--watch` | Keep running and format files again as they change. |
-| `--stdin` | Read code from stdin. `--stdin-filename` gives it a path for exclusions. |
 | `--explain` | Print the fixers the run applies, in priority order, on stderr. |
 | `--no-cache` | Check every file. Don't read or write the [result cache](#cache). |
-| `--color=auto\|always\|never` | Color mode. `auto` respects `NO_COLOR`. `--ansi` and `--no-ansi` also work. |
+| `--color=auto\|always\|never` | Color mode. `auto` respects `NO_COLOR`. `always` and `never` also apply to the `--format` reports, as Pint's `--ansi` and `--no-ansi` do. |
 
 ## Cache
 
@@ -78,7 +74,7 @@ Formatted 2 files, 482 unchanged · 484 files in 0.21s
 | Code | When |
 | --- | --- |
 | 0 | No changes needed, or all changes applied |
-| 1 | A file needs formatting with `--test` or `--bail`, a file changed with `--repair`, or a syntax error |
+| 1 | A file needs formatting with `--test`, a file changed with `--repair`, or a syntax error |
 | 2 | Pun could not run: invalid config, unsupported rule, unreadable file, report error, or missing Blade dependency |
 
 Pun prints a run error and a hint on stderr. With `--format` or `-q`, it prints Pint's error box on stdout instead.

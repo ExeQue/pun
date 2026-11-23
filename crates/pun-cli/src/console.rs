@@ -1,3 +1,4 @@
+use crate::render::ColorChoice;
 use pcre2::bytes::Regex;
 use std::io::IsTerminal;
 use std::sync::LazyLock;
@@ -44,12 +45,13 @@ pub(crate) fn print_raw(text: &str) -> std::io::Result<()> {
     std::io::Write::write_all(&mut std::io::stdout().lock(), &raw(text))
 }
 
-pub(crate) fn decorated(fd: i32, ansi: bool, no_ansi: bool) -> bool {
-    if ansi {
-        return true;
-    }
-    if no_ansi {
-        return false;
+/// Whether Pint's Symfony console decorates `fd`: `--color=always` and `--color=never` set it, as Pint's `--ansi` and
+/// `--no-ansi` do; `auto` asks the stream.
+pub(crate) fn decorated(fd: i32, color: ColorChoice) -> bool {
+    match color {
+        ColorChoice::Always => return true,
+        ColorChoice::Never => return false,
+        ColorChoice::Auto => {}
     }
     let tty = if fd == 1 {
         std::io::stdout().is_terminal()

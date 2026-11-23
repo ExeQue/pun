@@ -23,7 +23,6 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<Exit> {
         diff: None,
         pun: crate::PunArgs {
             staged: false,
-            since: None,
             ..a.pun.clone()
         },
         ..a.clone()

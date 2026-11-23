@@ -1,6 +1,7 @@
 //! Output. Pun's own human output (format.md §9, output.md §1) against the plan's samples, derived by hand, with and
 //! without colour, piped and on a terminal. Byte-for-byte parity with the real Pint (`php .oracle/pint/builds/pint`)
-//! for what stays Pint's: exit codes, resulting files, every `--format` reporter (with `--ansi`), `-q`, abort boxes
+//! for what stays Pint's: exit codes, resulting files, every `--format` reporter (Pint's `--ansi`, which Pun spells
+//! `--color=always`), `-q`, abort boxes
 //! and the prettier pre-flight check. Each Pint case runs Pint, resets the tree, runs `pun migrate` and `pun format`
 //! in the same directory; human runs there compare the files each tool names (tests/common). The Pint cases are
 //! skipped without the oracle.
@@ -138,7 +139,14 @@ impl Cx {
         );
         reset(&self.dir, tree);
         migrate(&self.dir);
-        let got = run(&[pun, args].concat(), &self.dir, o);
+        let args: Vec<&str> = (args.iter())
+            .map(|a| match *a {
+                "--ansi" => "--color=always",
+                "--no-ansi" => "--color=never",
+                a => a,
+            })
+            .collect();
+        let got = run(&[pun, &args].concat(), &self.dir, o);
         (want, got)
     }
 
@@ -282,22 +290,13 @@ fn every_mode_like_pint() {
         &["--test", "-v"],
         &["-q"],
         &["--test", "-q"],
-        &["--bail", "-v"],
         &["--ansi", "--test", "-v"],
         &["--ansi", "-q", "--test"],
         &["--no-ansi", "--test", "-v"],
     ] {
         cx.same(&t, args, PLAIN);
     }
-    for format in [
-        "json",
-        "txt",
-        "agent",
-        "checkstyle",
-        "junit",
-        "xml",
-        "gitlab",
-    ] {
+    for format in ["json", "agent", "checkstyle", "junit", "gitlab"] {
         let f = format!("--format={format}");
         for extra in [
             &[][..],
@@ -319,7 +318,7 @@ fn every_mode_like_pint() {
     }
     cx.same(
         &t,
-        &["--test", "--format=txt", "-v"],
+        &["--test", "--format=junit", "-v"],
         Opts {
             env: &[("FORCE_COLOR", "1")],
             ..PLAIN
@@ -335,7 +334,7 @@ fn terminal_like_pint() {
         tty: Some(cols),
         ..PLAIN
     };
-    for args in [&["--format=txt", "--test", "-v"][..], &["-q", "--test"]] {
+    for args in [&["--format=junit", "--test", "-v"][..], &["-q", "--test"]] {
         cx.same(&t, args, tty(50));
     }
     let wide = "--format=a-format-name-long-enough-to-wrap-in-a-fifty-column-terminal";
@@ -566,7 +565,7 @@ fn colour_follows_the_terminal() {
     };
     for (args, o, want) in [
         (&["--test"][..], PLAIN, plain),
-        (&["--test", "--ansi"], PLAIN, painted.as_str()),
+        (&["--test", "--color=always"], PLAIN, painted.as_str()),
         (&["--test", "--color=always"], no_color, &painted),
         (&["--test"], tty, &painted),
         (
@@ -578,8 +577,6 @@ fn colour_follows_the_terminal() {
             plain,
         ),
         (&["--test", "--color=never"], tty, plain),
-        (&["--test", "--no-ansi"], tty, plain),
-        (&["--test", "--ansi", "--no-ansi"], PLAIN, &painted),
     ] {
         assert_eq!(
             sample(&t, &[&["format"][..], args].concat(), o),
@@ -632,20 +629,8 @@ fn ignore_annotations_like_pint() {
             ),
         ));
         cx.same_abort(&t, &["--test", "--format=json"], PLAIN, "");
-        cx.same_trace(&t, &["--test", "-v", "--ansi", "--format=txt"]);
+        cx.same_trace(&t, &["--test", "-v", "--ansi", "--format=junit"]);
     }
-    // PHP-CS-Fixer's escape hatch: rules the annotation names that aren't enabled are no longer an error.
-    let mut t = base.clone();
-    t.push((
-        "app/Zbad.php",
-        "<?php\n// @php-cs-fixer-ignore nope,array_syntax\n$a = array(\"x\");\n",
-    ));
-    let ignore = Opts {
-        env: &[("PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS", "1")],
-        ..PLAIN
-    };
-    let r = cx.same(&t, &["--test", "--format=json"], ignore);
-    assert_eq!(r.code, Some(1), "{r:?}");
 }
 
 #[test]
@@ -701,16 +686,14 @@ fn latin1_diffs_like_pint() {
             )
         }
     };
-    for f in ["--format=txt", "--format=junit", "--format=xml"] {
-        let args = ["--test", "-v", f, "a.php"];
-        let (want, got) = (side(false, &args), side(true, &args));
-        assert!(
-            want.stdout.contains("+$a = ['caf\\xe9'];"),
-            "{f}: {}",
-            want.stdout
-        );
-        assert_eq!(got, want, "{f}");
-    }
+    let args = ["--test", "-v", "--format=junit", "a.php"];
+    let (want, got) = (side(false, &args), side(true, &args));
+    assert!(
+        want.stdout.contains("+$a = ['caf\\xe9'];"),
+        "{}",
+        want.stdout
+    );
+    assert_eq!(got, want);
     let args = ["--test", "-v", "--format=json", "a.php"];
     let (mut want, got) = (side(false, &args), side(true, &args));
     assert_eq!((want.code, got.code), (Some(1), Some(2)));
@@ -725,7 +708,7 @@ fn latin1_diffs_like_pint() {
     let args = [
         "--test",
         "-v",
-        "--format=txt",
+        "--format=junit",
         "--output-to-file=r.json",
         "--output-format=json",
         "a.php",
@@ -767,7 +750,7 @@ fn error_messages_keep_the_source_bytes_like_pint() {
         }
     };
     for (args, bytes) in [
-        (&["--test", "--format=txt", "a.php"][..], "a\\xc3...\""),
+        (&["--test", "--format=json", "a.php"][..], "a\\xc3...\""),
         (&["--test", "-q", "b.php"], "caf\\xe9\""),
     ] {
         let (want, got) = (side(false, args), side(true, args));
@@ -825,7 +808,7 @@ fn error_boxes_like_pint() {
     }
     for args in [
         &["--format=nope", "-v"][..],
-        &["app/Missing.php", "-v", "--format=txt"],
+        &["app/Missing.php", "-v", "--format=checkstyle"],
         &["--test", "-v", "--format=json", "--output-to-file=app"],
     ] {
         cx.same_trace(&t, args);
@@ -840,7 +823,6 @@ fn error_boxes_like_pint() {
     for (mode, before, args) in [
         (0o000, &[][..], &["--test"][..]),
         (0o444, &[], &[]),
-        (0o000, &["--bail", "app/Clean.php"], &[]),
         (0o444, &["-v"], &[]),
     ] {
         fn json<'a>(cmd: &[&'a str]) -> Vec<&'a str> {
@@ -1130,7 +1112,7 @@ fn fixer_exception_like_pint() {
     );
     assert_eq!(got.code, Some(2));
     t.push(("app/Bad.php", "<?php\nfunction (\n"));
-    cx.same_exit(&CHECK_FIX, &t, &["--format=txt", "--test"], PLAIN, Some(2));
+    cx.same_exit(&CHECK_FIX, &t, &["--format=json", "--test"], PLAIN, Some(2));
 }
 
 #[test]
@@ -1327,7 +1309,7 @@ fn run_errors_exit_2() {
         "{out}"
     );
     assert_eq!((err.as_str(), code), ("", Some(2)));
-    let formats = "  use json, txt, agent, checkstyle, junit, xml, gitlab or github\n";
+    let formats = "  use json, agent, checkstyle, junit, gitlab or github\n";
     let (out, err, code) = pun(&[
         "format",
         "--test",

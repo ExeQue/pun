@@ -53,7 +53,7 @@ pun lint --max-warnings 10
 
 `-A`, `-W`, and `-D` apply after `pun.toml` and path overrides, in command-line order. The last match wins. A group selects only implemented rules. A Planned rule named directly is a configuration error.
 
-Lint also takes [`pun format`'s file-selection and output flags](/docs/commands/format#pints-flags), such as `--dirty`, `--diff`, `--staged`, `--format`, and `--stdin`.
+Lint also takes [`pun format`'s file-selection and output flags](/docs/commands/format#pints-flags), such as `--dirty`, `--diff`, `--staged`, `--format`, and `--stdin-filename`.
 
 `-q` prints nothing, as PHP-CS-Fixer's `fix -q` does. The exit code reports the result. `pun format -q` and `pun check -q` keep Pint's stderr line for each file.
 
@@ -61,7 +61,7 @@ Lint reuses each unchanged file's result from the last run, through the [result 
 
 ## Output
 
-`--concise` prints one line per problem. `--format` takes `json`, `txt`, `checkstyle`, `junit`, `xml`, `gitlab`, `github`, or `agent`. `--format=json` is PHP-CS-Fixer's JSON report.
+`--concise` prints one line per problem. `--format` takes `json`, `checkstyle`, `junit`, `gitlab`, `github`, or `agent`. `--format=json` is PHP-CS-Fixer's JSON report.
 
 ## Files
 

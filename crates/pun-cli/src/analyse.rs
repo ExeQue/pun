@@ -33,8 +33,8 @@ pub(crate) struct AnalyseArgs {
     )]
     generate_baseline: Option<Option<PathBuf>>,
     /// The number of threads (default: one per core).
-    #[arg(long, value_parser = crate::threads)]
-    max_processes: Option<usize>,
+    #[arg(long)]
+    max_processes: Option<std::num::NonZeroUsize>,
     /// Print each finding on one line.
     #[arg(long)]
     concise: bool,
@@ -53,7 +53,7 @@ pub(crate) struct AnalyseArgs {
 }
 
 impl AnalyseArgs {
-    pub(crate) fn max_processes(&self) -> Option<usize> {
+    pub(crate) fn max_processes(&self) -> Option<std::num::NonZeroUsize> {
         self.max_processes
     }
 

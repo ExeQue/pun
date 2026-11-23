@@ -347,7 +347,6 @@ fn git_selection_matches_pint() {
     for (sel, flag) in [
         (GitSelect::Dirty, "dirty"),
         (GitSelect::Diff("main".into()), "diff"),
-        (GitSelect::Since("main".into()), "since"),
     ] {
         let message = format!("The [--{flag}] option is only available when using Git.");
         assert_eq!(ours(&sel).unwrap_err(), message);
@@ -394,15 +393,4 @@ fn git_selection_matches_pint() {
     git(&root, &["add", "app/Clean.php"]);
     let staged = ours(&GitSelect::Staged).unwrap();
     assert_eq!(staged, (["app/Clean.php".to_string()].into(), 1));
-    let since: BTreeSet<String> = [
-        "app/Clean.php",
-        "app/Mod.php",
-        "app/New.php",
-        "app/Renamed.php",
-        "app/Staged.php",
-        "app/Untracked.php",
-    ]
-    .map(String::from)
-    .into();
-    assert_eq!(ours(&GitSelect::Since("main".into())).unwrap(), (since, 6));
 }

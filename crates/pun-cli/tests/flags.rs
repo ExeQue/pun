@@ -2,9 +2,9 @@
 //! script that builds a throwaway git repo; it runs twice (one copy per tool, so readdir order agrees) and both tools
 //! must print the same stdout/stderr (repo paths normalised; human runs: the same files named, tests/common), exit the
 //! same and leave the same files. Pun runs
-//! `pun migrate` on the config Pint reads (pint.json in the cwd, `--config`, `--preset`), then `pun format`. Pun-only
-//! flags (`--stdin`, `--staged`, `--since`) are compared with Pint run on the same content or the same explicit file
-//! list.
+//! `pun migrate` on the config Pint reads (pint.json in the cwd, `--config`, `--preset`), then `pun format`, with
+//! Pint's `--ansi` spelled `--color=always`. The Pun-only `--staged` is compared with Pint run on the same explicit
+//! file list.
 //! Skipped without the oracle.
 mod common;
 
@@ -147,7 +147,9 @@ impl Cx {
         if args.contains(&"--no-config") {
             return run(&pun, script, sub, args, stdin, None);
         }
-        let mut args: Vec<&str> = args.to_vec();
+        let mut args: Vec<&str> = (args.iter())
+            .map(|a| if *a == "--ansi" { "--color=always" } else { a })
+            .collect();
         if let Some(i) = args.iter().position(|a| *a == "--config") {
             let v = args.remove(i + 1);
             args[i] = Box::leak(format!("--config={v}").into_boxed_str());
@@ -209,16 +211,11 @@ impl Cx {
     }
 }
 
-fn listed(r: &Run) -> Vec<&str> {
-    let mut v: Vec<&str> = r
-        .stdout
-        .lines()
-        .filter_map(|l| {
-            l.trim_start()
-                .split_once(") ")
-                .filter(|(n, _)| n.parse::<u32>().is_ok())
-                .map(|x| x.1)
-        })
+/// The files a `--format=json` report names, sorted.
+fn listed(r: &Run) -> Vec<String> {
+    let report: serde_json::Value = serde_json::from_str(&r.stdout).unwrap();
+    let mut v: Vec<String> = (report["files"].as_array().unwrap().iter())
+        .map(|f| f["name"].as_str().unwrap().to_string())
         .collect();
     v.sort_unstable();
     v
@@ -227,7 +224,7 @@ fn listed(r: &Run) -> Vec<&str> {
 #[test]
 fn dirty_matches_pint() {
     let Some(cx) = Cx::new() else { return };
-    let r = cx.same(DIRTY, "", &["--dirty", "--test", "--format=txt"]);
+    let r = cx.same(DIRTY, "", &["--dirty", "--test", "--format=json"]);
     assert_eq!(
         listed(&r),
         [
@@ -242,7 +239,7 @@ fn dirty_matches_pint() {
     );
     cx.same(DIRTY, "", &["--dirty"]);
     cx.same(DIRTY, "", &["--dirty", "app/Clean.php"]);
-    let r = cx.same(DIRTY, "sub", &["--dirty", "--test", "--format=txt"]);
+    let r = cx.same(DIRTY, "sub", &["--dirty", "--test", "--format=json"]);
     assert_eq!(listed(&r), ["T.php", "inner/U.php"]);
     cx.same("", "", &["--dirty"]);
     let message = "The [--dirty] option is only available when using Git.";
@@ -258,7 +255,7 @@ fn dirty_matches_pint() {
 #[test]
 fn diff_matches_pint() {
     let Some(cx) = Cx::new() else { return };
-    let r = cx.same(DIVERGED, "", &["--diff=main", "--test", "--format=txt"]);
+    let r = cx.same(DIVERGED, "", &["--diff=main", "--test", "--format=json"]);
     assert_eq!(
         listed(&r),
         [
@@ -271,14 +268,14 @@ fn diff_matches_pint() {
         ]
     );
     cx.same(DIVERGED, "", &["--diff=main"]);
-    let r = cx.same(DIVERGED, "sub", &["--diff=main", "--test", "--format=txt"]);
+    let r = cx.same(DIVERGED, "sub", &["--diff=main", "--test", "--format=json"]);
     assert_eq!(listed(&r), ["Un tr.php", "Untr.php"]);
     let message = "The [--diff] option is only available when using Git.";
     cx.same_error(DIVERGED, &["--diff=nope", "--format=json"], message, "");
     cx.same(
         DIVERGED,
         "",
-        &["--diff=main", "--dirty", "--test", "--format=txt"],
+        &["--diff=main", "--dirty", "--test", "--format=json"],
     );
 }
 
@@ -293,7 +290,7 @@ fn git_selection_resolves_symlinks_like_pint() {
 }
 
 #[test]
-fn repair_and_bail_match_pint() {
+fn repair_matches_pint() {
     let Some(cx) = Cx::new() else { return };
     let broken = "printf '<?php\\nfunction (\\n' > app/Broken.php";
     for args in [
@@ -301,11 +298,6 @@ fn repair_and_bail_match_pint() {
         &["--repair", "app/Clean.php"],
         &["--repair", "--format=json"],
         &["--repair", "app/Broken.php"],
-        &["--bail"],
-        &["--bail", "-v"],
-        &["--bail", "--repair"],
-        &["--bail", "app/Clean.php"],
-        &["--bail", "app/Broken.php", "app/Mod.php"],
     ] {
         cx.same(broken, "", args);
     }
@@ -316,7 +308,6 @@ fn max_processes_matches_pint() {
     let Some(cx) = Cx::new() else { return };
     for args in [
         &["--max-processes=1", "--test"][..],
-        &["--max-processes=abc", "--test"],
         &["--max-processes=3", "--test"],
     ] {
         cx.same("", "", args);
@@ -373,7 +364,7 @@ fn output_to_file_matches_pint() {
         &["--test", "--output-to-file=r.json", "--output-format=json"][..],
         &["--output-to-file=r.json", "--output-format=json"],
         &["--test", "--output-to-file=r.txt"],
-        &["--test", "--output-to-file=r.txt", "--format=txt"],
+        &["--test", "--output-to-file=r.txt", "--format=junit"],
         &[
             "--test",
             "--output-to-file=r.xml",
@@ -391,7 +382,7 @@ fn output_to_file_matches_pint() {
     ] {
         cx.same("bad app/New.php", "", args);
     }
-    let formats = "use json, txt, agent, checkstyle, junit, xml, gitlab or github";
+    let formats = "use json, agent, checkstyle, junit, gitlab or github";
     for (args, message, pun) in [
         (
             &["--test", "--output-to-file=r.x", "--output-format=nope"][..],
@@ -448,16 +439,15 @@ fn stdin_matches_pint() {
         b"",
     ] {
         for (args, pint_args) in [
-            (&["--stdin"][..], &["-"][..]),
-            (&["--stdin", "--test"], &["-", "--test"]),
-            (&["--stdin", "--no-config"], &["-", "--no-config"]),
-            (&["-", "--bail"], &["-", "--bail"]),
+            (&["-"][..], &["-"][..]),
+            (&["-", "--test"], &["-", "--test"]),
+            (&["-", "--no-config"], &["-", "--no-config"]),
             (
                 &["--stdin-filename=app/X.php"],
                 &["--stdin-filename=app/X.php"],
             ),
             (
-                &["--stdin", "--stdin-filename=app/Keep.php"],
+                &["-", "--stdin-filename=app/Keep.php"],
                 &["-", "--stdin-filename=app/Keep.php"],
             ),
             (
@@ -485,39 +475,12 @@ fn stdin_matches_pint() {
 }
 
 #[test]
-fn staged_and_since_match_pint_on_the_same_files() {
+fn staged_matches_pint_on_the_same_files() {
     let Some(cx) = Cx::new() else { return };
-    let txt = ["--test", "--format=txt"];
-    for (flag, files) in [
-        ("--staged", &["app/Renamed.php", "sub/T.php"][..]),
-        (
-            "--since=main",
-            &[
-                "app/Keep.php",
-                "app/Mod.php",
-                "app/Renamed.php",
-                "sub/T.php",
-                "sub/inner/S.php",
-                "sub/Untr.php",
-                "sub/Un tr.php",
-            ],
-        ),
-    ] {
-        let got = cx.ours(DIVERGED, "", &[&txt[..], &[flag]].concat(), b"");
-        let want = cx.pint(DIVERGED, "", &[&txt[..], files].concat(), b"");
-        assert_eq!(
-            (listed(&got), got.code),
-            (listed(&want), want.code),
-            "{flag}"
-        );
-        assert_eq!(listed(&got).len(), files.len(), "{flag}");
-    }
-    let got = cx.ours(DIVERGED, "", &["--since=nope"], b"");
-    assert_eq!(
-        (common::strip_ansi(&got.stderr), got.code),
-        (
-            "x The [--since] option is only available when using Git.\n".into(),
-            Some(2)
-        )
-    );
+    let json = ["--test", "--format=json"];
+    let files = ["app/Renamed.php", "sub/T.php"];
+    let got = cx.ours(DIVERGED, "", &[&json[..], &["--staged"]].concat(), b"");
+    let want = cx.pint(DIVERGED, "", &[&json[..], &files].concat(), b"");
+    assert_eq!((listed(&got), got.code), (listed(&want), want.code));
+    assert_eq!(listed(&got), files);
 }

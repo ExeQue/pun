@@ -69,8 +69,7 @@ pub(crate) struct Ctx<'a> {
     pub(crate) dry_run: bool,
     pub(crate) remaining: &'a [FileResult],
     pub(crate) verbose: bool,
-    pub(crate) ansi: bool,
-    pub(crate) no_ansi: bool,
+    pub(crate) color: ColorChoice,
     pub(crate) look: Look,
     pub(crate) root: &'a Path,
     pub(crate) elapsed: Duration,
@@ -213,7 +212,7 @@ pub(crate) fn fail(e: anyhow::Error, f: &Failure) -> Exit {
         print!(
             "{}{}",
             abort.before,
-            pint_error::render(&abort.message, abort.thrown)
+            pint_error::render(&abort.message, abort.thrown, f.color)
         );
     } else {
         let root = std::env::current_dir().unwrap_or_default();
@@ -245,12 +244,12 @@ pub(crate) fn emit(
     to_file: Option<&Path>,
     file_format: Option<&str>,
 ) -> Result<()> {
-    let out_dec = console::decorated(1, ctx.ansi, ctx.no_ansi);
+    let out_dec = console::decorated(1, ctx.color);
     let unsupported = |e: anyhow::Error| {
-        let hint = "use json, txt, agent, checkstyle, junit, xml, gitlab or github";
+        let hint = "use json, agent, checkstyle, junit, gitlab or github";
         anyhow::Error::new(Abort::pint(e.to_string(), Some(hint.into())))
     };
-    let err_dec = console::decorated(2, ctx.ansi, ctx.no_ansi);
+    let err_dec = console::decorated(2, ctx.color);
     let mut out = String::new();
     let parsed = (format.map(str::parse::<ReportFormat>).transpose()).map_err(unsupported)?;
     if quiet {
@@ -876,11 +875,9 @@ fn issues(results: &[FileResult]) -> Vec<&FileResult> {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum ReportFormat {
     Json,
-    Txt,
     Agent,
     Checkstyle,
     Junit,
-    Xml,
     Gitlab,
     Github,
 }
@@ -891,11 +888,9 @@ impl std::str::FromStr for ReportFormat {
     fn from_str(s: &str) -> Result<Self> {
         Ok(match s {
             "json" => Self::Json,
-            "txt" => Self::Txt,
             "agent" => Self::Agent,
             "checkstyle" => Self::Checkstyle,
             "junit" => Self::Junit,
-            "xml" => Self::Xml,
             "gitlab" => Self::Gitlab,
             "github" => Self::Github,
             _ => bail!("Format [{s}] is not supported."),
@@ -938,9 +933,6 @@ fn reporter(
             return Err(abort.into());
         }
         ReportFormat::Json => fix_report::json(&changes, ctx.verbose, decorated),
-        ReportFormat::Txt => {
-            fix_report::txt(&changes, ctx.verbose, ctx.dry_run, ctx.total, decorated)
-        }
         ReportFormat::Agent => {
             let messages: Vec<String> = errors(results)
                 .map(|r| console::lossy(&r.message))
@@ -952,7 +944,6 @@ fn reporter(
         }
         ReportFormat::Checkstyle => fix_report::checkstyle(&changes, decorated),
         ReportFormat::Junit => fix_report::junit(&changes, ctx.verbose, decorated),
-        ReportFormat::Xml => fix_report::xml_report(&changes, ctx.verbose, decorated),
         ReportFormat::Gitlab => fix_report::gitlab(&changes, decorated),
         ReportFormat::Github => annotations(ctx, results),
     })

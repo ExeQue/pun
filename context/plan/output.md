@@ -5,7 +5,7 @@ Every command (format, lint, analyse, check, migrate, init) shares one human out
 Decisions with dates: ../PLAN.md §2. Build list: §4.
 
 **The contract.** Machine formats (`--format=...`) and exit codes match the upstream tool: Pint's
-`--format=json|txt|checkstyle|junit|xml|gitlab|github` for format, lint and check, PHPStan's `--error-format` formats
+`--format=json|agent|checkstyle|junit|gitlab|github` for format, lint and check, PHPStan's `--error-format` formats
 for analyse. The one exception: a run error (Pun couldn't run) exits 2 where Pint exits 1. The human output and the
 agent mode output are Pun's own. `scripts/cli-parity.sh` compares the machine output and exit codes with Pint.
 
@@ -179,8 +179,9 @@ The assistant's calls where the plan is silent:
   dropped before the report prints.
 
 **Flags** (Build 3).
-- `--color` is on `pun format`, `pun lint`, `pun analyse` and `pun check`. `--ansi` / `--no-ansi` are hidden aliases of
-  `--color=always|never` (`--ansi` wins when both are given), and they still decorate the machine reports as in Pint.
+- `--color` is on `pun format`, `pun lint`, `pun analyse` and `pun check`. `--color=always|never` also decorates the
+  machine reports or not, as Pint's `--ansi` / `--no-ansi` do; Pun has no `--ansi` / `--no-ansi` (Pushpak,
+  2026-11-23).
 - `-q` keeps Pint's stderr lines for `pun format` and `pun check` outside agent mode and without `--format`, as Pint
   does. `pun lint` and `pun analyse` print nothing under `-q` (as PHP-CS-Fixer and PHPStan), in agent mode too.
 - `pun format --watch` records every file's content after the first run, so late filesystem events for the run's own

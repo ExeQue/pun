@@ -364,7 +364,6 @@ pub enum GitSelect {
     Dirty,
     Diff(String),
     Staged,
-    Since(String),
 }
 
 pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
@@ -416,7 +415,6 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
             untracked,
         ]),
         GitSelect::Staged => lists(&[&diff(Some("--cached"))]),
-        GitSelect::Since(r) => lists(&[&diff(Some(r)), untracked]),
     };
     let names = match (names, sel) {
         (Some(names), _) => names,
@@ -424,9 +422,6 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
         (None, GitSelect::Dirty) => bail!("The [--dirty] option is only available when using Git."),
         (None, GitSelect::Diff(_)) => {
             bail!("The [--diff] option is only available when using Git.")
-        }
-        (None, GitSelect::Since(_)) => {
-            bail!("The [--since] option is only available when using Git.")
         }
     };
     let wanted: std::collections::HashSet<PathBuf> =

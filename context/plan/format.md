@@ -80,14 +80,16 @@ deprecated fixer or a custom fixer class.
 
 ## 6. The CLI
 
-`pun format` takes Pint's flags that change what it does (`--test`, `--bail`, `--repair`, `--dirty`,
-`--diff=<branch>`, `--config`, `--no-config`, `--preset`, `--format`, `--output-to-file`, `--output-format`,
-`--stdin-filename`, `--max-processes`, `--cache-file`, `-v`, `-q`, and `--ansi`/`--no-ansi` as hidden spellings of
-`--color`). It adds `--staged`, `--since=<ref>`, `--watch`, `--stdin`, `--explain`, `--color` and `--no-cache`. Pint's
-no-op flags (`-p`/`--parallel`, `-n`/`--no-interaction`) are gone, and so is `--blade`: Blade formatting is the
-`laravel/blade` rule in pun.toml (Pushpak, 2026-11-23). The human output is Pun's own (§9). Exit codes and
-the machine formats (`--format=json|txt|checkstyle|junit|xml|gitlab|github`) stay Pint-compatible. Under a coding
-agent it prints compact lines (output.md §3).
+`pun format` takes Pint's flags that change what it does (`--test`, `--repair`, `--dirty`, `--diff=<branch>`,
+`--config`, `--no-config`, `--preset`, `--format`, `--output-to-file`, `--output-format`, `--stdin-filename` with `-`
+as the path, `--max-processes` (a positive number), `-v` and `-q`). It adds `--staged`, `--watch`, `--explain`,
+`--color` and `--no-cache`. Pint's no-op flags (`-p`/`--parallel`, `-n`/`--no-interaction`) are gone, and so is
+`--blade`: Blade formatting is the `laravel/blade` rule in pun.toml (Pushpak, 2026-11-23). Also gone, as
+compatibility-only flags of no use (Pushpak, 2026-11-23): `--bail`, `--cache-file`, `--ansi`/`--no-ansi` (`--color`
+covers them, the machine reports included), the `txt` and `xml` formats, Pun's `--stdin` (`-`) and `--since`, and
+`PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS`. The human output is Pun's own (§9). Exit codes and the machine
+formats (`--format=json|agent|checkstyle|junit|gitlab|github`) stay Pint-compatible. Under a coding agent it prints
+compact lines (output.md §3).
 
 ## 7. Build
 
@@ -184,7 +186,7 @@ unchanged files and timings; rule IDs in a fixed column; one summary line that a
 nothing for unchanged files unless `-v`. Colour is automatic on a terminal and off when piped, with `NO_COLOR` and
 `--color=always|never`. Under a coding agent the compact agent format is unchanged.
 
-**What stays Pint-compatible:** exit codes, and the machine formats `--format=json|checkstyle|junit|gitlab|xml|txt`, so
+**What stays Pint-compatible:** exit codes, and the machine formats `--format=json|agent|checkstyle|junit|gitlab`, so
 CI integrations keep working.
 
 **Progress:** a single spinner line with a file counter, only on a terminal and only when the run takes over a
@@ -216,7 +218,7 @@ Answered 2026-10-17 (Pushpak):
   Pint-compatible; scripts/cli-parity.sh and tests/output.rs then cover only those.
 - **Speed and memory are a priority now.**
 - **Big runs stay parallel** (one worker per core).
-- **A result cache** reuses unchanged files' results (Pushpak, 2026-11-15); `--cache-file` and `--no-cache` control it.
+- **A result cache** reuses unchanged files' results (Pushpak, 2026-11-15); `--no-cache` turns it off.
 
 **Option names** (assistant's calls where "redesigned for TOML" is silent). The data is
 `[options."format/<group>/<name>"]` in crates/pun-config/rules/mapping.toml (141 options of 79 format rules, checked

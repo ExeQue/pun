@@ -42,6 +42,8 @@ git diff
 
 In CI, replace `vendor/bin/pint --test` with `pun check`. See the [CI guide](/docs/guides/ci).
 
+Pun doesn't take Pint's `--bail`, `--cache-file`, `--ansi`, and `--no-ansi` flags, or the `txt` and `xml` formats. Use `--test`, `--color=always` or `--color=never`, and one of the [other formats](/docs/commands/format#pints-flags).
+
   </Step>
 </Steps>
 

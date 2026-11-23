@@ -12,6 +12,7 @@
 # --tty      run both under `script` so stdout/stderr are a terminal (colours, stty width); output is merged.
 # --cols N   with --tty: no COLUMNS, the pty is N columns wide (exercises the `stty -a` width lookup).
 # --env      extra environment (both tools run under `env -i PATH HOME`, so agent detection stays off).
+# Pint's `--ansi` and `--no-ansi` reach Pun as `--color=always` and `--color=never`, Pun's spelling of them.
 # Exit 1 if any argument set differs. `-vvv`: Pint's PHAR prints a "Box Requirements Checker" block that is not
 # part of Pint; it is stripped before comparing.
 #
@@ -20,7 +21,7 @@
 # there, so for exactly those sets the script expects Pint 1 and Pun 2. Their machine-format stdout (Pint's box) is
 # still compared byte for byte.
 ABORTS=("--format=nope" "--test --format=json nope.php" "--test nope.php"
-  "--test --output-to-file=nodir/r.json --output-format=json" "--test --format=txt --output-to-file=nodir/r.txt")
+  "--test --output-to-file=nodir/r.json --output-format=json" "--test --format=junit --output-to-file=nodir/r.xml")
 set -u
 R=$(cd "$(dirname "$0")/.." && pwd)
 project="" tty=0 cols="" envs=(COLUMNS=80)
@@ -48,7 +49,7 @@ else
 fi
 # Pun's side: `pun migrate --from pint` on the same pint.json (rector.php and phpstan.neon are not Pint's), then `pun format` with the same arguments.
 # Pun's result cache lives in $W (each argument set runs on a fresh copy at the same path, so later sets read it).
-mkdir -p "$W/bin" && printf '#!/bin/sh\nexport PUN_CACHE_DIR="%s/cache"\n"%s" migrate --from pint >/dev/null 2>&1 || "%s" migrate >/dev/null 2>&1; exec "%s" format "$@"\n' "$W" "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" > "$W/bin/pint" && chmod +x "$W/bin/pint"
+mkdir -p "$W/bin" && printf '#!/bin/sh\nexport PUN_CACHE_DIR="%s/cache"\n"%s" migrate --from pint >/dev/null 2>&1 || "%s" migrate >/dev/null 2>&1\nfor a; do shift; case "$a" in --ansi) set -- "$@" --color=always ;; --no-ansi) set -- "$@" --color=never ;; *) set -- "$@" "$a" ;; esac; done\nexec "%s" format "$@"\n' "$W" "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" > "$W/bin/pint" && chmod +x "$W/bin/pint"
 P=$W/proj
 status=0
 run() { # name cmd...
@@ -65,9 +66,9 @@ run() { # name cmd...
   (cd "$P" && find . -path ./node_modules -prune -o -type f ! -name pun.toml -print0 | sort -z | xargs -0 md5sum) > "$out.files"
 }
 if [ $# -eq 0 ]; then
-  set -- "" "--test" "-v" "--test -v" "--repair" "--bail" \
-    "--format=json" "--test --format=json -v" "--test --format=txt -v" "--test --format=checkstyle" \
-    "--test --format=junit -v" "--test --format=xml -v" "--test --format=gitlab" "--test --format=agent" \
+  set -- "" "--test" "-v" "--test -v" "--repair" \
+    "--format=json" "--test --format=json -v" "--test --format=checkstyle" \
+    "--test --format=junit -v" "--test --format=gitlab" "--test --format=agent" \
     "--test --output-to-file=r.json --output-format=json" "${ABORTS[@]}"
 fi
 for args in "$@"; do

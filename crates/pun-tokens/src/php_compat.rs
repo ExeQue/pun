@@ -591,10 +591,6 @@ pub fn sprintf_g(value: f64, precision: usize) -> String {
     format!("{sign}{fixed}")
 }
 
-pub fn filter_var_bool(v: &str) -> bool {
-    ["1", "true", "on", "yes"].contains(&v.trim().to_ascii_lowercase().as_str())
-}
-
 pub fn intval(s: &str) -> i64 {
     let t = s.trim_start_matches([' ', '\t', '\n', '\r', '\x0b', '\x0c']);
     let b = t.as_bytes();
@@ -680,17 +676,6 @@ mod tests {
         ] {
             assert_eq!(intval(s), want, "intval({s:?})");
         }
-    }
-
-    #[test]
-    fn filter_var_bool_matches_php() {
-        assert!(
-            filter_var_bool(" Yes")
-                && filter_var_bool("on")
-                && filter_var_bool("1")
-                && filter_var_bool("TRUE")
-        );
-        assert!(!filter_var_bool("0") && !filter_var_bool("y") && !filter_var_bool(""));
     }
 
     #[test]

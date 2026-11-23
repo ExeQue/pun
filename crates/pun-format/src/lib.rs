@@ -216,7 +216,6 @@ pub struct Pipeline {
     fixers: Vec<Box<dyn Fixer>>,
     pub not_ported: Vec<String>,
     profile: Option<Mutex<BTreeMap<&'static str, (Duration, u64)>>>,
-    ignore_mismatched_rules: bool,
 }
 
 #[derive(Debug)]
@@ -281,7 +280,6 @@ impl Pipeline {
             fixers,
             not_ported,
             profile: None,
-            ignore_mismatched_rules: false,
         })
     }
 
@@ -289,10 +287,6 @@ impl Pipeline {
         for f in &mut self.fixers {
             f.set_preset(preset);
         }
-    }
-
-    pub fn ignore_mismatched_rules(&mut self, ignore: bool) {
-        self.ignore_mismatched_rules = ignore;
     }
 
     pub fn enable_profile(&mut self) {
@@ -376,9 +370,6 @@ impl Pipeline {
                 return Err(AnnotationError::UndefinedArrayKey.into());
             }
         };
-        if self.ignore_mismatched_rules {
-            return Ok(());
-        }
         let used = |n: &[u8]| {
             self.fixers.iter().any(|f| f.name().as_bytes() == n)
                 || self.not_ported.iter().any(|r| r.as_bytes() == n)
@@ -850,16 +841,6 @@ mod tests {
             kind(b"<?php\n// @php-cs-fixer-ignore nope\n"),
             AnnotationError::NotEnabled(_)
         ));
-        let mut q = Pipeline::new(&[rule("upper")], &factory).unwrap();
-        q.ignore_mismatched_rules(true);
-        q.check_annotations(Path::new("a.php"), b"<?php\n// @php-cs-fixer-ignore nope\n")
-            .unwrap();
-        assert_eq!(
-            q.check_annotations(Path::new("a.php"), b"<?php\n// @php-cs-fixer-ignore\tx\n")
-                .unwrap_err()
-                .to_string(),
-            "Undefined array key 1"
-        );
     }
 
     #[test]

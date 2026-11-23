@@ -164,14 +164,14 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     }
 
     let stdin_path = a.paths.first().is_some_and(|p| p.as_os_str() == "-");
-    if a.pun.stdin || stdin_path || a.stdin_filename.is_some() {
-        if !a.stdin_filename.as_ref().is_some_and(|f| is_blade(f)) || a.test || a.bail {
+    if stdin_path || a.stdin_filename.is_some() {
+        if !a.stdin_filename.as_ref().is_some_and(|f| is_blade(f)) || a.test {
             pun_fixers::prettier::stop();
         }
         return stdin(a, &cfg, &base);
     }
 
-    let dry_run = a.test || a.bail;
+    let dry_run = a.test;
     let selected = selected_files(a, &cfg)?;
     let (format_set, lint_set) = file_sets(a, &cfg, formats, lints, selected.as_ref())?;
     let mut files = format_set.clone();
@@ -216,11 +216,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         r
     };
 
-    let all = if a.bail {
-        process_until_fixed(&files, process)
-    } else {
-        process_in_parallel(&files, blade_on, process)
-    };
+    let all = process_in_parallel(&files, blade_on, process);
     drop(spinner);
     let processed: Vec<Processed> = all.into_iter().collect::<Result<_>>()?;
 
@@ -237,7 +233,6 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     let mut unmatched_baseline = 0;
     let mut total = files.len();
     if let Stage::Check { .. } = stage
-        && !a.bail
         && selected.as_ref().is_none_or(|s| !s.is_empty())
     {
         let paths = selected.as_deref().unwrap_or(&a.paths);
@@ -252,8 +247,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         dry_run,
         remaining: &remaining,
         verbose: a.verbose > 0,
-        ansi: a.ansi,
-        no_ansi: a.no_ansi,
+        color: a.color(),
         look,
         root: &root,
         elapsed: started.elapsed(),
@@ -289,19 +283,14 @@ fn ported_plan(a: &FormatArgs, cfg: &Config, lint: &LintOpts) -> Result<Plan> {
     Err(unported_error(a, cfg, &unported).into())
 }
 
-/// The files `--dirty`, `--diff`, `--staged` or `--since` selects from git, when one of them is given.
+/// The files `--dirty`, `--diff` or `--staged` selects from git, when one of them is given.
 fn selected_files(a: &FormatArgs, cfg: &Config) -> Result<Option<Vec<PathBuf>>> {
     let selection = if a.dirty {
         Some(crate::finder::GitSelect::Dirty)
     } else if let Some(b) = &a.diff {
         Some(crate::finder::GitSelect::Diff(b.clone()))
-    } else if a.pun.staged {
-        Some(crate::finder::GitSelect::Staged)
     } else {
-        a.pun
-            .since
-            .as_ref()
-            .map(|r| crate::finder::GitSelect::Since(r.clone()))
+        a.pun.staged.then_some(crate::finder::GitSelect::Staged)
     };
     Ok(match &selection {
         Some(sel) => Some(crate::finder::git_paths(cfg, sel)?),
@@ -380,17 +369,11 @@ fn open_cache(
     if a.pun.no_cache || set("PUN_NO_CACHE") || std::env::var_os("PUN_PROFILE").is_some() {
         return None;
     }
-    let file = match &a.cache_file {
-        Some(f) => cfg.root.join(f),
-        None => Cache::default_file(&cfg.root)?,
-    };
+    let file = Cache::default_file(&cfg.root)?;
     let exe = std::env::current_exe().ok()?;
     let mut key = cache::Key::default();
-    let flags = (a.test, a.bail, a.repair, &a.config, a.no_config, &a.preset);
-    let env = [
-        "PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS",
-        "PUN_IGNORE_PHP_CONSTRAINT",
-    ];
+    let flags = (a.test, a.repair, &a.config, a.no_config, &a.preset);
+    let env = ["PUN_IGNORE_PHP_CONSTRAINT"];
     (key.add("pun", env!("CARGO_PKG_VERSION")))
         .add("exe", cache::stat(&exe))
         .add("stage", format!("{stage:?}"))
@@ -510,23 +493,6 @@ fn autoloaded(root: &Path) -> Vec<PathBuf> {
             walk(&p, &mut out);
         } else {
             out.push(p);
-        }
-    }
-    out
-}
-
-/// `--bail`: the files in order, up to the first that needs fixing or fails.
-fn process_until_fixed(
-    files: &[PathBuf],
-    process: impl Fn(&PathBuf, std::io::Result<Vec<u8>>) -> Result<Processed>,
-) -> Vec<Result<Processed>> {
-    let mut out = Vec::new();
-    for f in files {
-        let r = process(f, std::fs::read(f));
-        let stop = (r.as_ref()).map_or(true, |r| r.result.status == Status::Fixed);
-        out.push(r);
-        if stop {
-            break;
         }
     }
     out
@@ -1177,10 +1143,6 @@ fn add_findings(results: &mut Vec<FileResult>, analysed: &crate::analyse::Analys
 fn pipeline(cfg: &Config) -> Result<Pipeline> {
     let mut p = Pipeline::new(&cfg.rules, &crate::extensions::fixers)?;
     p.set_preset(&cfg.preset);
-    p.ignore_mismatched_rules(
-        std::env::var("PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS")
-            .is_ok_and(|v| pun_tokens::php_compat::filter_var_bool(&v)),
-    );
     if std::env::var_os("PUN_PROFILE").is_some() {
         p.enable_profile();
     }
@@ -1234,7 +1196,7 @@ fn stdin(a: &FormatArgs, cfg: &Config, engine: &Pipeline) -> Result<Exit> {
         .stdin_filename
         .clone()
         .unwrap_or_else(|| "stdin.php".into());
-    let fixed = if a.test || a.bail {
+    let fixed = if a.test {
         None
     } else {
         fix_text(cfg, engine, &ctx, a.stdin_filename.is_some(), &code)?

@@ -196,7 +196,6 @@ fn unused_probe_stops_before_reading_stdin() {
         vec!["-"],
         vec!["--stdin-filename=a.php", "-"],
         vec!["--stdin-filename=a.blade.php", "--test", "-"],
-        vec!["--stdin-filename=a.blade.php", "--bail", "-"],
     ] {
         let Some(dir) = project("stdin") else { return };
         let mut running = start(&dir, &args);

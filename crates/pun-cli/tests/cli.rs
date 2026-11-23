@@ -175,15 +175,10 @@ fn matches_pint() {
         &["--test"],
         &["--test", "-v"],
         &["-v"],
-        &["--bail"],
-        &["--bail", "-v"],
         &["--repair"],
         &["--format=json"],
         &["--test", "--format=json"],
         &["--test", "--format=json", "-v"],
-        &["--format=txt"],
-        &["--test", "--format=txt"],
-        &["--test", "--format=txt", "-v"],
         &["--format=agent"],
         &["--test", "--format=agent"],
         &["-q"],
@@ -193,11 +188,11 @@ fn matches_pint() {
             "--output-to-file=report.json",
             "--output-format=json",
         ],
-        &["--format=txt", "--output-to-file=report.txt"],
+        &["--format=junit", "--output-to-file=report.xml"],
         &["app/Fix.php"],
         &["app/Clean.php"],
         &["app/Clean.php", "--format=agent"],
-        &["app/Clean.php", "--test", "--format=txt"],
+        &["app/Clean.php", "--test", "--format=json"],
         &["app", "--test", "--max-processes=2"],
         &["--test", "--preset=empty"],
     ] {
@@ -418,7 +413,7 @@ fn diffs_like_pint() {
         &dir,
         &tree,
         &[],
-        &["--test", "-v", "--format=txt"],
+        &["--test", "-v", "--format=json"],
         &[],
         b"",
     );
@@ -709,6 +704,73 @@ fn pun_only_behaviour() {
     assert_eq!(t["format"]["preset"].as_str(), Some("psr12"));
     let (_, err, code) = pun(&dir, &["config", "--preset=nope"]);
     assert_eq!((err.as_str(), code), ("x Preset not found.\n", Some(2)));
+}
+
+/// Pint's error box for a one-line message: Symfony's `renderThrowable` block, two spaces either side.
+fn pint_box(message: &str) -> String {
+    let blank = " ".repeat(message.chars().count() + 4);
+    format!("\n{blank}\n  {message}  \n{blank}\n\n")
+}
+
+/// The flags dropped before the first beta (Pint's `--bail`, `--cache-file` and `--ansi`/`--no-ansi`, Pun's
+/// `--stdin` and `--since`) are clap's unknown arguments on every command that takes `pun format`'s flags, and
+/// `--max-processes` takes only a positive number.
+#[test]
+fn removed_flags_are_unknown_arguments() {
+    let dir = scratch("cli", "removed");
+    reset(&dir, &files());
+    migrate(&dir);
+    for cmd in ["format", "lint", "check"] {
+        for flag in [
+            "--ansi",
+            "--no-ansi",
+            "--bail",
+            "--cache-file=c",
+            "--stdin",
+            "--since=main",
+        ] {
+            let (out, err, code) = pun(&dir, &[cmd, "--test", flag]);
+            let name = flag.split('=').next().unwrap();
+            assert!(
+                out.is_empty()
+                    && code == Some(2)
+                    && err.starts_with(&format!("error: unexpected argument '{name}' found")),
+                "{cmd} {flag}: {err}"
+            );
+        }
+        for n in ["0", "-1", "abc", "2abc"] {
+            let (out, err, code) = pun(&dir, &[cmd, "--test", &format!("--max-processes={n}")]);
+            assert!(
+                out.is_empty()
+                    && code == Some(2)
+                    && err.starts_with(&format!(
+                        "error: invalid value '{n}' for '--max-processes <MAX_PROCESSES>'"
+                    )),
+                "{cmd} {n}: {err}"
+            );
+        }
+    }
+    let formats = "  use json, agent, checkstyle, junit, gitlab or github\n";
+    for f in ["txt", "xml"] {
+        let unsupported = format!("Format [{f}] is not supported.");
+        assert_eq!(
+            pun(&dir, &["format", "--test", &format!("--format={f}")]),
+            (pint_box(&unsupported), String::new(), Some(2))
+        );
+        let (_, err, code) = pun(
+            &dir,
+            &[
+                "format",
+                "--test",
+                "--output-to-file=r",
+                &format!("--output-format={f}"),
+            ],
+        );
+        assert_eq!(
+            (err, code),
+            (format!("x {unsupported}\n{formats}"), Some(2))
+        );
+    }
 }
 
 /// The custom-fixer fixture, loading the real PHP-CS-Fixer (`.oracle/php-cs-fixer`) through its autoloader.

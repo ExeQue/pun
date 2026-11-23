@@ -1,4 +1,5 @@
 use crate::console::{self, escape};
+use crate::render::ColorChoice;
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
@@ -62,10 +63,9 @@ impl Thrown {
     }
 }
 
-pub(crate) fn render(message: &str, thrown: Thrown) -> String {
+pub(crate) fn render(message: &str, thrown: Thrown, color: ColorChoice) -> String {
     let args: Vec<String> = std::env::args().skip(1).take_while(|a| a != "--").collect();
-    let has = |flag: &str| args.iter().any(|a| a == flag);
-    let decorated = console::decorated(1, has("--ansi"), has("--no-ansi"));
+    let decorated = console::decorated(1, color);
     let opt = |long: &str, short: &str| {
         args.iter()
             .any(|a| a == long || a.starts_with(&format!("{long}=")) || a.starts_with(short))

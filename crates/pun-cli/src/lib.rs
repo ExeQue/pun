@@ -38,6 +38,7 @@ use anyhow::Result;
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use pun_config::Options;
 use run::{LintOpts, Stage};
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -289,9 +290,6 @@ pub(crate) struct FormatArgs {
     /// Test for code style errors without fixing them.
     #[arg(long, alias = "check")]
     test: bool,
-    /// Test for code style errors without fixing them and stop on first error.
-    #[arg(long)]
-    bail: bool,
     /// Fix code style errors but exit with status 1 if there were any changes made.
     #[arg(long)]
     repair: bool,
@@ -301,7 +299,7 @@ pub(crate) struct FormatArgs {
     /// Only fix files that have uncommitted changes.
     #[arg(long)]
     dirty: bool,
-    /// The output format that should be used (json, txt, agent, checkstyle, junit, xml, gitlab, github).
+    /// The output format that should be used (json, agent, checkstyle, junit, gitlab, github).
     #[arg(long)]
     format: Option<String>,
     /// Output the test results to a file at this path.
@@ -313,16 +311,9 @@ pub(crate) struct FormatArgs {
     /// File path context for stdin input.
     #[arg(long)]
     stdin_filename: Option<PathBuf>,
-    /// The path to the cache file (default: one per project in Pun's cache directory).
-    #[arg(long, value_name = "PATH")]
-    cache_file: Option<PathBuf>,
-    #[expect(
-        clippy::doc_markdown,
-        reason = "this doc comment is the --help text, printed as written"
-    )]
-    /// The number of threads (default: one per core). Read like Pint's intval(), so any value is accepted.
-    #[arg(long, value_parser = threads)]
-    max_processes: Option<usize>,
+    /// The number of threads (default: one per core).
+    #[arg(long)]
+    max_processes: Option<NonZeroUsize>,
     /// Print more detail: every finding under a coding agent, and the error class of a run error.
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
@@ -336,12 +327,6 @@ pub(crate) struct FormatArgs {
     /// Color the output: auto (on for a terminal, off when piped or with NO_COLOR), always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
-    /// `--color=always` (Pint's spelling); also decorates the `--format` reports as Pint does.
-    #[arg(long, hide = true)]
-    ansi: bool,
-    /// `--color=never` (Pint's spelling).
-    #[arg(long, hide = true)]
-    no_ansi: bool,
     #[command(flatten)]
     pun: PunArgs,
     /// `GITHUB_ACTIONS=true`, read once in `main`: human output gets GitHub annotations after it.
@@ -350,16 +335,8 @@ pub(crate) struct FormatArgs {
 }
 
 impl FormatArgs {
-    /// `--color`, or Pint's `--ansi` (which wins over `--no-ansi`, as in Symfony's configureIO).
     fn color(&self) -> render::ColorChoice {
-        use render::ColorChoice;
-        self.color.unwrap_or(if self.ansi {
-            ColorChoice::Always
-        } else if self.no_ansi {
-            ColorChoice::Never
-        } else {
-            ColorChoice::Auto
-        })
+        self.color.unwrap_or(render::ColorChoice::Auto)
     }
 
     /// How a failed run of `pun format`, `lint` or `check` shows its error.
@@ -386,17 +363,11 @@ pub(crate) struct PunArgs {
     /// Only fix files with staged changes (Pun).
     #[arg(long)]
     staged: bool,
-    /// Only fix files changed since the given commit, plus untracked files (Pun).
-    #[arg(long, value_name = "REF")]
-    since: Option<String>,
-    /// Read code from stdin (Pun); `--stdin-filename` gives it a path for exclusion rules.
-    #[arg(long)]
-    stdin: bool,
     /// Print the fixers the run applies, in priority order (to stderr).
     #[arg(long)]
     explain: bool,
     /// Keep running and re-format files as they change (Pun).
-    #[arg(long, conflicts_with_all = ["stdin", "stdin_filename"])]
+    #[arg(long, conflicts_with = "stdin_filename")]
     watch: bool,
     /// Check every file, without reading or writing the result cache (Pun; also `PUN_NO_CACHE=1`).
     #[arg(long)]
@@ -419,16 +390,6 @@ impl From<Exit> for ExitCode {
     fn from(exit: Exit) -> ExitCode {
         ExitCode::from(exit as u8)
     }
-}
-
-/// `--max-processes`, read like Pint's `intval()`: any value is accepted, and one that is not a positive number is 0,
-/// one thread per core.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "clap's `value_parser` takes a fallible function"
-)]
-pub(crate) fn threads(value: &str) -> Result<usize, std::convert::Infallible> {
-    Ok(usize::try_from(pun_tokens::php_compat::intval(value)).unwrap_or(0))
 }
 
 /// The stack of every thread that parses, lints or analyses: they recurse as deep as the syntax tree, and a long
@@ -495,7 +456,7 @@ fn run() -> ExitCode {
         _ => (None, other),
     };
     let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(threads.unwrap_or(0))
+        .num_threads(threads.map_or(0, NonZeroUsize::get))
         .stack_size(STACK)
         .build_global();
     let result = match cmd {

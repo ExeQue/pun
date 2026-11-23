@@ -98,9 +98,12 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   binary; a lint result that read the project's codebase also keys on a fingerprint of the project. A file a fix run
   wrote, a run error and a contained Mago panic are not kept. Keeping findings, not only clean files, means a warm run
   with no change never scans the project. One cache file per project under `<cache dir>/results/`; `--no-cache` or
-  `PUN_NO_CACHE=1` turns it off, and Pint's `--cache-file` picks the file. `pun analyse` (and check's analyse half)
-  has no cache yet.
+  `PUN_NO_CACHE=1` turns it off. `pun analyse` (and check's analyse half) has no cache yet.
 - **No LSP** until after 1.0's commands.
+- **No compatibility-only flags** (Pushpak, 2026-11-23, before the first beta). `pun format`, `lint` and `check` drop
+  `--bail`, `--cache-file`, `--ansi`/`--no-ansi` (`--color` covers them), `--format=txt|xml`, `--stdin` (`-` as the
+  path), `--since` and `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS`; each flag is now clap's unknown argument
+  (exit 2). `--max-processes` takes only a positive number (plan/format.md §6).
 
 ### Config and rules (plan/config.md, plan/rules.md)
 
