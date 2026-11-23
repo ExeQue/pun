@@ -28,33 +28,50 @@
     </div>
   </section>
 
-  <div class="ribbon" aria-label="ultrafast, format, lint, analyse, migrate, packages, one binary, one config, built in Rust, verified installs">
-    <div class="ribbon-track" aria-hidden="true">
-      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
-      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
-    </div>
-  </div>
+  <!-- COMMANDS: the strip under the hero. Pick a command to see what it prints; it steps through them on its own until you do. -->
+  <section class="cmds" data-cmds aria-labelledby="cmds-title">
+    <div class="wrap cmds-inner">
+      <div class="cmds-copy">
+        <h2 id="cmds-title">One binary. <span class="sticker">Every</span> command.</h2>
+        <p>Pick one to see what it prints. Real output from a small project, with timings left out.</p>
+        <div class="cmds-tabs" role="tablist" aria-label="Commands">
+          <button class="cmd-tab zap" type="button" role="tab" id="cmd-tab-format" aria-controls="cmd-format" aria-selected="true">format<i aria-hidden="true"></i></button>
+          <button class="cmd-tab gum" type="button" role="tab" id="cmd-tab-lint" aria-controls="cmd-lint" aria-selected="false" tabindex="-1">lint<i aria-hidden="true"></i></button>
+          <button class="cmd-tab lilac" type="button" role="tab" id="cmd-tab-analyse" aria-controls="cmd-analyse" aria-selected="false" tabindex="-1">analyse<i aria-hidden="true"></i></button>
+          <button class="cmd-tab mint" type="button" role="tab" id="cmd-tab-migrate" aria-controls="cmd-migrate" aria-selected="false" tabindex="-1">migrate<i aria-hidden="true"></i></button>
+          <button class="cmd-tab cream" type="button" role="tab" id="cmd-tab-install" aria-controls="cmd-install" aria-selected="false" tabindex="-1">install<i aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <div class="term cmds-term">
+        <div class="term-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>~/blog</span></div>
+        <div class="cmds-panels">
+<pre class="term-body on" role="tabpanel" id="cmd-format" aria-labelledby="cmd-tab-format" tabindex="0"><span class="cmdline"><span class="prompt">$</span> pun format</span><span class="step" style="--i:0"><span class="ok">✔</span> src/Post.php  <span class="rule">format/control-flow/braces</span>, <span class="rule">format/operators/binary-spacing</span>, <span class="sub">4 more</span></span><span class="step" style="--i:1">Formatted 1 file, 0 unchanged</span><span class="step diff" style="--i:2"><span class="sub">src/Post.php</span>
+<span class="bad">-    if($this-&gt;title=='') return 'Untitled';</span>
+<span class="ok">+    if ($this-&gt;title == '') {</span>
+<span class="ok">+        return 'Untitled';</span>
+<span class="ok">+    }</span></span></pre>
+<pre class="term-body" role="tabpanel" id="cmd-lint" aria-labelledby="cmd-tab-lint" tabindex="0" aria-hidden="true"><span class="cmdline"><span class="prompt">$</span> pun lint</span><span class="step" style="--i:0"><span class="bad">✖</span> src/Post.php  <span class="rule">lint/style/prefer-str-contains</span></span><span class="step total" style="--i:1"><span class="bad">✖</span> 1 error · 1 fixable (run pun lint --fix)</span><span class="step diff" style="--i:2"><span class="sub">pun lint --fix, src/Post.php</span>
+<span class="bad">-    return strpos($this-&gt;title, '[draft]') !== false;</span>
+<span class="ok">+    return str_contains($this-&gt;title, '[draft]');</span></span></pre>
+<pre class="term-body" role="tabpanel" id="cmd-analyse" aria-labelledby="cmd-tab-analyse" tabindex="0" aria-hidden="true"><span class="cmdline"><span class="prompt">$</span> pun analyse</span><span class="step" style="--i:0"><span class="bad">✖</span> <span class="rule">analyse/undefined/method</span>  Call to an undefined method App\Post::slugify().</span><span class="step sub" style="--i:1">   ╭─ <span class="path">src/Post.php:16:9</span>
+ 15│     {
+ 16│         return $this-&gt;slugify();
+   │         <span class="bad">━</span>
+   ╰─</span><span class="step total" style="--i:2"><span class="bad">✖</span> 1 error</span></pre>
+<pre class="term-body" role="tabpanel" id="cmd-migrate" aria-labelledby="cmd-tab-migrate" tabindex="0" aria-hidden="true"><span class="cmdline"><span class="prompt">$</span> pun migrate</span><span class="step" style="--i:0"><span class="ok">✔</span> pint.json  → [format] preset laravel, 1 rule changed, 15 rules → [lint]</span><span class="step" style="--i:1"><span class="ok">✔</span> Wrote pun.toml</span><span class="step diff" style="--i:2"><span class="sub">pun.toml</span>
+[format]
+preset = "laravel"
 
-  <!-- TOOLCHAIN: the everyday loop, install to fix -->
-  <section class="wrap sec">
-    <h2>One toolchain. <span class="sticker gum">Every</span> step.</h2>
-    <p class="sec-lede">Install your dependencies, check your code, fix what can be fixed. One binary covers the whole loop.</p>
-    <div class="trio">
-      <a class="job lilac" href="/docs/commands/install">
-        <div class="job-head"><h3>Install</h3><span class="tag">now</span></div>
-        <p>Resolve and install your project's packages from Packagist, with the same parallel speed as everything else.</p>
-        <code>$ pun install</code>
-      </a>
-      <a class="job zap" href="/docs/commands/check">
-        <div class="job-head"><h3>Check</h3><span class="tag">now</span></div>
-        <p>Format, lint and analyse the whole project in one pass, with one pun.toml.</p>
-        <code>$ pun check</code>
-      </a>
-      <a class="job mint" href="/docs/commands/check">
-        <div class="job-head"><h3>Fix</h3><span class="tag">now</span></div>
-        <p>Applies the lint fixes, formats, then analyses what is left for you to fix by hand.</p>
-        <code>$ pun check --fix</code>
-      </a>
+[format.rules]
+"operators/concat-spacing" = "one"</span></pre>
+<pre class="term-body" role="tabpanel" id="cmd-install" aria-labelledby="cmd-tab-install" tabindex="0" aria-hidden="true"><span class="cmdline"><span class="prompt">$</span> pun install</span><span class="step" style="--i:0">No composer.lock yet: resolving the dependencies to their latest versions</span><span class="step" style="--i:1">Lock changes:
+ <span class="ok">+</span> brick/math 1.0.0
+ <span class="ok">+</span> ramsey/collection 2.1.1
+ <span class="ok">+</span> ramsey/uuid 4.10.0</span><span class="step" style="--i:2">Installing 3 packages from composer.lock
+ <span class="ok">✔</span> packages: 3 installed (3 from the cache)
+ <span class="ok">✔</span> autoloader: 1 class</span></pre>
+        </div>
+      </div>
     </div>
   </section>
 
