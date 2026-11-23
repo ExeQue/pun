@@ -1,14 +1,13 @@
 # Plan: `pun init`
 
-Status: **walked through with Pushpak** (2026-10-17); answers in "Decisions". Build 1-3 and 5 are built
-(crates/pun-cli/src/init.rs, tests/init.rs); Build 4 is not built (analyse 1-2, which it waited for, has landed). The journey comes from
-Pushpak (lint.md §8). Decisions with dates: ../PLAN.md §2. Build list: §3.
+Status: Build 1-3 and 5 are built (crates/pun-cli/src/init.rs, tests/init.rs). Build 4 is not built; analyse.md
+Build 1-2, which it waited for, has landed. Decisions with dates: ../PLAN.md §2.
 
 ## 1. What it is
 
 `pun init` writes pun.toml for a project that has no Pint, PHP-CS-Fixer, Rector or PHPStan config yet. A project that
 has one runs `pun migrate` instead. Every other command stops without pun.toml and says "run `pun migrate`, or
-`pun init` for a new project" (decided).
+`pun init` for a new project".
 
 ## 2. The flow
 
@@ -36,56 +35,50 @@ $ pun init
   Add `pun check` to CI and your composer scripts.
 ```
 
-1. **Detect** from composer.json and composer.lock: the PHP
-   version, Laravel, Pest, PHPUnit and their versions.
-2. **Ask three questions** with the detected defaults: `laravel` style for a Laravel app (otherwise `psr12`),
-   dead-code + modernize, and `recommended`.
+1. **Detect** from composer.json and composer.lock: the PHP version, Laravel, Pest, PHPUnit and their versions.
+2. **Ask three questions** with the detected defaults.
 3. **Write pun.toml** with only the three choices.
 4. **Show what the settings find** with one `pun check` run, so the choice isn't blind.
 5. **Offer the next steps**: fix now and baseline the rest (interactive only). Composer scripts, CI and hooks are
    printed as commands, not written.
 
-Non-interactive (agents, CI, no terminal, `--yes`): the defaults, or flags `--style laravel --lint-sets dead-code,types
---analyse strict`. Nothing else is asked; next steps are printed, not run.
+Non-interactive (agents, CI, no terminal, `--yes`): the defaults, or the flags `--style laravel --lint-sets
+dead-code,types --analyse strict`. Nothing is asked; next steps are printed, not run.
 
 ## 3. Build
 
-After config.md Build 3 and 5 (the schema and composer.lock detection) and output.md Build 1:
-
-1. **Detection and the three questions** with their defaults: `laravel` for a Laravel app, else `psr12`; dead-code +
-   modernize; `recommended`. `empty` is not offered.
-2. **Old configs found:** offer `pun migrate` ("Found phpstan.neon. Migrate it instead? › yes").
-3. **Write pun.toml** with only the three choices. Refuse to overwrite an existing pun.toml.
-4. **One `pun check`** (after analyse.md Build 1-2; steps 1-3 and 5 land first) with the new settings, then offer `--fix` and a baseline (interactive only).
-5. **Non-interactive** (`--yes`, agents, CI, no terminal): defaults or `--style`, `--lint-sets`, `--analyse`; next
-   steps printed, not run.
-   *Done when* the flow in §2 is pinned by a test on a scratch Laravel project, interactive and not.
+1. Done.
+2. Done.
+3. Done.
+4. **One `pun check`** with the new settings after writing pun.toml, then offer `--fix` and a baseline (interactive
+   only).
+5. Done. *Done when* the flow in §2 is pinned by a test on a scratch Laravel project, interactive and not.
 
 ## Decisions
 
-Answered 2026-10-17 (Pushpak):
+From Pushpak:
 
+- **Defaults:** `laravel` style for a Laravel app, else `psr12`; dead-code + modernize; `recommended`.
 - **Old configs present → offer migrate** ("Found phpstan.neon. Migrate it instead? › yes"); yes runs `pun migrate`.
-- **pun.toml holds only the three choices**; presets carry the rules, `pun config` prints the resolved list.
-- **init runs one `pun check`** after writing pun.toml, then offers `--fix` and a baseline (interactive only).
-- **No workflow wiring in init** (too much code to maintain for now). init prints the commands; the user adds them.
-  Later: agent skills (a `pun-init` and a `pun-migrate` skill) do the composer, CI and hook wiring instead of Pun code.
-- **`empty` is hidden from init** (assistant default); it stays a valid `[format] preset`.
+- **pun.toml holds only the three choices.** Presets carry the rules; `pun config` prints the resolved list. init
+  refuses to overwrite an existing pun.toml.
+- **No workflow wiring in init** (too much code to maintain for now). init prints the commands. Later, `pun-init` and
+  `pun-migrate` agent skills do the composer, CI and hook wiring.
 
-Assistant's calls (2026-10-18, building 1-3 and 5; change them freely):
+Assistant's calls (change them freely):
 
+- **`empty` is not offered.** It stays a valid `[format] preset`.
 - **Old config without a terminal exits 2** and writes nothing: "Found pint.json: this project fits `pun migrate`,
-  which turns it into pun.toml. Nothing written." It is the same refusal as an existing pun.toml (init did not do what
-  was asked), so scripts and agents notice it. On a terminal, "no" to the migrate offer goes on with the questions.
-- **The header names major versions** ("Laravel 13, Pest 4", as §2 shows), a branch by its locked name (`dev-main`),
-  PHPUnit only without Pest (Pest runs on it), the PHP constraint as written, and the composer files actually read
-  ("(composer.json, composer.lock)").
-- **The answers print as dialoguer's default theme reports them** ("Code style: laravel"), the same lines without a
-  terminal, where nothing is asked.
-- **`CI`** (set, and not empty, `0` or `false`) counts as non-interactive, as §2 lists CI next to agents and no terminal.
+  which turns it into pun.toml. Nothing written." It is the same refusal as an existing pun.toml, so scripts and agents
+  notice it. On a terminal, "no" to the migrate offer goes on with the questions.
+- **The header names major versions** ("Laravel 13, Pest 4"), a branch by its locked name (`dev-main`), PHPUnit only
+  without Pest (Pest runs on it), the PHP constraint as written, and the composer files actually read.
+- **The answers print as dialoguer's default theme reports them** ("Code style: laravel"), with the same lines without
+  a terminal.
+- **`CI`** (set, and not empty, `0` or `false`) counts as non-interactive.
 - **Flags also set the terminal's defaults**: `pun init --style psr12` on a terminal starts the question on psr12.
 - **Flag errors keep schema.rs's wording** with the flag in place of the pun.toml location: "--lint-sets: `x` is not a
   lint set; the sets are …", "--analyse x: expected `basic`, …". `--lint-sets ""` means no sets.
-- **pun.toml starts with ``# Written by `pun init`.``**, as migrate's does; the three keys are all it holds.
-- **Agent mode** prints one `pun init: ok, pun.toml written, style …, lint sets …, analyse …` line and the next steps
+- **pun.toml starts with ``# Written by `pun init`.``**, as migrate's does.
+- **Agent mode** prints one `pun init: ok, pun.toml written, style …, lint sets …, analyse …` line, with the next steps
   as its item.

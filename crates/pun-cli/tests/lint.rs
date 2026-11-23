@@ -711,7 +711,7 @@ preset = "empty"
     std::fs::remove_dir_all(d).unwrap();
 }
 
-/// `pun check`'s grouped view (context/plan/output.md, "Built 2026-11-13"): a step line with its counts, then each
+/// `pun check`'s grouped view (context/plan/output.md, Build 5): a step line with its counts, then each
 /// problem as `path:line:col  rule` with the message under it. A file that needs formatting and one that doesn't
 /// parse share the format step, a lint warning is ⚠ (`!` in ASCII), and with --fix a fix the rule may not make shows
 /// under lint at the first line it changes, with the rule's summary.

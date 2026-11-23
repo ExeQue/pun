@@ -1,8 +1,8 @@
 # Plan: analyse (`pun analyse`)
 
-Status: **walked through with Pushpak** (2026-10-17); answers in "Decisions". This file is the plan for the analyser:
-how it works today, the decided design, and the build list (§6). Decisions with dates: ../PLAN.md §2. Shared
-schema: config.md; output: output.md.
+Status: **walked through with Pushpak**; answers in "Decisions". This file is the plan for the analyser: how it works
+today, the decided design, and the build list (§6). Decisions with dates: ../PLAN.md §2. Shared schema: config.md;
+output: output.md.
 
 ## 1. What it is
 
@@ -13,8 +13,8 @@ It replaces:
 
 | Upstream | What comes over |
 | --- | --- |
-| PHPStan core | every rule, natively (decided). The levels become presets (decided) |
-| Larastan | built in, nothing to install (decided): models, relations, facades, container, config |
+| PHPStan core | every rule, natively. The levels become presets |
+| Larastan | built in, nothing to install: models, relations, facades, container, config |
 | phpstan-strict-rules, phpstan-deprecation-rules | the type-aware rules; strict-rules' syntax-only bans are lint rules |
 
 The goal: on a project migrated from phpstan.neon, `pun analyse` reports the same problems as `phpstan analyse` (same
@@ -22,24 +22,23 @@ file, line and rule; messages may be reworded), so CI can switch.
 
 ## 2. How it works today
 
-- **pun-phpstan** ports PHPStan's own plumbing: the NEON parser, includes, parameters and schema validation,
-  `ignoreErrors`, `@phpstan-ignore` comments, PHPStan's type model and its `describe()` (so messages print types the
-  way PHPStan does), `accepts()`, and every built-in function and class exported from PHPStan's reflection into
-  `data/symbols.json`.
+- **pun-phpstan** holds PHPStan's plumbing: the NEON parser, includes, parameters and schema validation,
+  `ignoreErrors`, `@phpstan-ignore` comments, PHPStan's type model with its type descriptions (so messages print
+  types the way PHPStan does) and `accepts()`, and the built-in functions and classes in `data/symbols.json`.
 - **pun-analyse** runs the rules:
   1. It parses with Mago's parser and resolves names.
   2. It collects every symbol of the project and vendor into Mago's codex.
   3. It infers types with Mago's analyser (§7), with Larastan's knowledge as built-in providers and hooks
      (`src/larastan/`, `src/laravel/`).
-  4. It checks each file in parallel with the ported PHPStan rules, which read Mago's types converted to
-     pun-phpstan's (`rules/types/convert.rs`).
+  4. It checks each file in parallel. The rules read Mago's types converted to pun-phpstan's
+     (`rules/types/convert.rs`).
   5. It drops what ignores and the baseline cover.
 - **`pun analyse`** (crates/pun-cli/src/analyse.rs) reads `[analyse]` from pun.toml, selects rules by preset, prints
   Pun's output, PHPStan's machine formats and agent output, and writes Pun's baseline (`--generate-baseline`).
   `pun check` runs it after lint and format.
-- **Rules:** 362 of the 369 analyse rules are ported (PLAN.md §0), across levels 0 to max. Each keeps its known
-  differences from PHPStan in the test gap lists (`tests/fixtures/**/gaps*.txt`, `GAPS` constants). On the corpus at
-  level 0 the differences are pinkary 0, larastan 6, pest 5 and laravel-framework 0 (PLAN.md §3, Track C).
+- **Rules:** 362 of the 369 analyse rules are ported (PLAN.md §0), across levels 0 to max. Known differences from
+  PHPStan are in the test gap lists (`tests/fixtures/**/gaps*.txt`, `GAPS` constants). On the corpus at level 0 the
+  differences are pinkary 0, larastan 6, pest 5 and laravel-framework 0 (PLAN.md §3, Track C).
 
 ## 3. The config
 
@@ -62,21 +61,24 @@ baseline = "pun-baseline.toml"
 - **Laravel turns on by itself** when composer.lock has laravel/framework.
 - PHPStan's level 7 to 10 behaviour is four switches: `union-types`, `nullables`, `explicit-mixed`, `implicit-mixed`
   (config.md §5). The presets turn them on.
+- Read from the PHPStan config today, with no pun.toml key yet: `checkClassCaseSensitivity` (off at level 0, set by
+  the presets), `checkInternalClassCaseSensitivity`, `featureToggles.checkImportedClassNameCase` (on with bleeding
+  edge unless disabled), `featureToggles.internalTag`, and the `strictRules.*` switches (`allRules` expanded).
 
 ## 4. Rules: what exists
 
-There are 369 analyse rules in rules/mapping.toml: one per in-scope PHPStan `Rule` class (`[upstream.phpstan-classes]`,
-from crates/pun-config/rules/upstream/phpstan-*.json): 321 from PHPStan core, 26 strict-rules, 7 deprecation-rules and
-15 Larastan. A rule carries every identifier its class emits; each of the 688 identifiers of the family stays in the
-mapping as a `variant` pointing at one class's rule, so migrated ignores and baselines keep their narrow scope. Of the
-432 classes, 35 are lint or format rules (rules.md O4, and O5 since 2026-11-02) and 28 are unsupported (the
-`phpstanApi.*` checks, playground-only and stub-only classes, one Larastan class that does not exist).
+There are 369 analyse rules in rules/mapping.toml, one per in-scope PHPStan rule (`[upstream.phpstan-classes]`):
+321 from PHPStan core, 26 strict-rules, 7 deprecation-rules and 15 Larastan. A rule carries every identifier its
+upstream rule emits. Each of the 688 identifiers stays in the mapping as a `variant` of one rule, so migrated ignores
+and baselines keep their narrow scope. Of the 432 upstream rules, 35 are lint or format rules (rules.md O4 and O5) and
+28 are unsupported (PHPStan's own API checks, playground-only and stub-only rules, one Larastan rule that does not
+exist).
 
 | | Count |
 | --- | ---: |
 | Analyse rules | 369 |
 | By group: types / classes / dead-code / phpdoc / undefined / functions / laravel / operators / attributes / deprecated / other | 118 / 63 / 42 / 32 / 18 / 16 / 15 / 15 / 14 / 8 / 28 |
-| By preset (from the class's PHPStan level): basic / essential / recommended / strict / max | 150 / 106 / 75 / 35 / 3 |
+| By preset (from the rule's PHPStan level): basic / essential / recommended / strict / max | 150 / 106 / 75 / 35 / 3 |
 | PHPStan core identifiers by level: 0 / 1 / 2 / 3 / 4 / 5 / 6 / opt-in | 327 / 13 / 137 / 36 / 57 / 8 / 6 / 30 |
 | Ported | 362 |
 
@@ -97,94 +99,69 @@ The groups are the topic groups (config.md Build 1), so `undefined/method` and `
 
 ## 6. Build
 
-Done: config, ignores and baselines read and written in PHPStan's format; the built-in symbols; the type model and
-descriptions; parallel scanning; steps 0, 1, 2, 8 and 9. Steps 3 to 6 are in progress (362 of 369 rules ported;
-PLAN.md §3 Track C). The steps, after config.md Build 1-3:
+Steps 0, 1, 2, 8 and 9 are done. Steps 3 to 6 are in progress (PLAN.md §3 Track C has the open rows). The steps come
+after config.md Build 1-3.
 
-0. **Engine spike, alongside PLAN.md Step 1** (Pushpak, 2026-10-17): run mago-analyzer inside pun-analyse on Pinkary
-   and compare it with PHPStan, and write one Larastan provider (model attributes from migrations) through Mago's
-   plugin API without forking Mago.
-   *Done when* it shows which remaining level-0 rules Mago already covers, so step 3 writes no rule twice.
-   *Result* (2026-10-17): Mago covers 11 of the 116 remaining level-0 Pun rules, part
-   of 32, none of 73. The Larastan provider works through `register_expression_hook` with no fork. Mago's codes fire
-   far more widely than PHPStan's level-0 checks (421 issues on Pinkary, where PHPStan + Larastan report 0), so §7's
-   "report a Mago code under the Pun rule" needs Pushpak's look: the report proposes Pun checks that read Mago's types,
-   using a Mago issue directly only where it matches PHPStan.
-1. **Wire it up.** The `pun analyse` command, `[analyse]` from pun.toml, the five presets selecting rules, the output
-   (output.md: problem blocks, always errors), PHPStan's machine formats, agent output.
-   *Done when* `pun analyse` on Pinkary prints the level-0 errors with PHPStan's exit codes.
-2. **Pun's own baseline:** `pun analyse --generate-baseline` writes `pun-baseline.toml` (mago-reporting baseline,
-   loose by default); a run reads it and reports fixed entries.
-3. **Finish level 0** (after step 0). The remaining ~100 level-0 rules, an empty `tests/fixtures/rules/gaps.txt`, and corpus diffs at
-   0 (pinkary 1, larastan 6, pest 5, laravel-framework 15 today). The trait-method work is redone (3a: traits in
-   their class's context as NodeScopeResolver::processTraitUse() does, only for traits in analysed files); the
-   facade-alias work belongs to Larastan (step 6).
+0. **Engine spike.** Done. Mago's analyser runs inside pun-analyse, and the Larastan provider works through Mago's
+   hooks without a fork.
+1. **Wire it up.** Done: the `pun analyse` command, `[analyse]` from pun.toml, the five presets, the output
+   (output.md), PHPStan's machine formats and exit codes, agent output.
+2. **Pun's own baseline.** Done: `pun analyse --generate-baseline` writes `pun-baseline.toml` (mago-reporting's
+   baseline, loose by default); a run reads it and reports fixed entries.
+3. **Finish level 0.** *Done when* the level-0 gap list (`tests/fixtures/rules/gaps.txt`) is empty and the corpus
+   diffs are 0 (today pinkary 0, larastan 6, pest 5, laravel-framework 0). Traits are analysed in the context of
+   each class that uses them, only for traits in analysed files. Facade aliases belong to step 6.
 4. **Type inference on Mago's analyser** (§7): expression types, narrowing, PHPDoc generics, mapped to PHPStan's type
    descriptions. Everything from `essential` up depends on it.
 5. **Levels 1 to 10 as rules,** with the four switches, grouped into the presets basic, essential, recommended, strict,
    max. Then strict-rules and deprecation rules as plain rules.
    *Done when* each preset reports the same errors as its PHPStan level band on the corpus.
-6. **Larastan built in** (§8): the Laravel knowledge (models, casts, relations, builder, collections, facades,
-   container, helpers, macros), its 20 rules, then the seven improvements.
-7. **Pest built in** (§9), with the PHPUnit typing it needs. **After 1.0** (Pushpak, 2026-10-18): until then test
-   files are analysed as plain PHP; `[analyse] exclude` globs leave them out entirely.
-8. **No result cache yet**: every run checks every file. Pushpak's 2026-11-15 decision gives format, lint and check a
-   result cache (PLAN.md §1); analyse is not covered by it yet.
-9. **`pun migrate` for phpstan.neon** (migrate.md Build 5). Coverage back to 100% throughout.
+6. **Larastan built in** (§8): the Laravel knowledge, its rules, then the seven improvements.
+7. **Pest built in** (§9), with the PHPUnit typing it needs. **After 1.0**: until then test files are analysed as
+   plain PHP; `[analyse] exclude` globs leave them out entirely.
+8. **No result cache.** Done as decided: every run checks every file. Format, lint and check have a result cache
+   (PLAN.md §1); analyse does not.
+9. **`pun migrate` for phpstan.neon** (migrate.md Build 5). Done.
 
-## 7. How PHPStan and Mago analyse, and what Pun builds on (2026-10-17)
+## 7. What Pun builds on
 
-**PHPStan.**
-- `NodeScopeResolver` walks each file's syntax tree (nikic/php-parser) and carries a `Scope`, which holds the type of
-  every variable at that point.
-- `TypeSpecifier` narrows types after `if`, `instanceof`, `is_*` and assertions.
-- Rules are small classes that get a node plus the scope and return errors with an identifier. Levels just choose
-  which rules run and how strictly types are compared.
-- Extensions (dynamic return types, property and method reflection) are how Larastan teaches it Laravel's magic.
-- Baselines are a NEON list of (message, identifier, path, count).
+PHPStan walks each file's syntax tree with a scope that holds every variable's type, narrows after conditions and
+assertions, and runs small rules that return errors with an identifier. Levels choose which rules run and how
+strictly types compare. Larastan teaches it Laravel through extensions.
 
-**Mago's analyser** (mago-analyzer 1.57, about 106k lines of Rust, modelled on Psalm/Hakana):
-- It walks the same kind of tree with a block context holding variable types.
-- A reconciler with formula algebra does narrowing, as Psalm does. Generics and templates come from PHPDoc.
-- It reports issues by code.
-- A plugin system has providers (function, method and property return types, assertions, throws) and hooks (calls,
-  expressions, statements, declarations). It already ships library plugins for the stdlib, PSL and PSR container.
-- mago-reporting has a baseline: strict (exact lines) or loose (counts per file, code and message, the default), with
-  pruning of outdated entries.
+Mago's analyser walks the same kind of tree with a block context, narrows with a reconciler (as Psalm does), reads
+generics and templates from PHPDoc, and reports issues by code. Its plugins are providers (return, property and
+assertion types) and hooks (calls, expressions, statements, declarations), compiled into the binary.
+mago-reporting has a baseline: strict (exact lines) or loose (counts per file, code and message).
 
-**Pun's choice (assistant's call, delegated by Pushpak).** Build analyse on Mago's analyser, not a port of PHPStan's
-inference.
-- Pushpak relaxed the two things that needed a PHPStan port: messages can be reworded, and migrate doesn't carry
-  baselines over. What must hold is one Pun rule for every PHPStan rule, and that already holds in rules/mapping.toml
-  (every one of the 559 identifiers maps to a Pun rule, or is listed as dropped or unsupported with a reason).
-- Mago's inference, narrowing and generics exist today. A port of PHPStan's would be the largest single piece of
-  work in Pun.
-- **Rules** (Pushpak, 2026-10-18, replacing "report a matching Mago issue under the Pun rule"): every PHPStan rule is
-  a Pun check that reads Mago's inferred types, the same way the 54 level-0 rules read Mago's codex. Mago's issue codes
-  are broader than PHPStan's checks (forwarding them gave 226 false errors on Pinkary at level 0),
-  so a Mago issue is used directly only where the spike's table says `yes` with no extras.
-- **Laravel** (Larastan's knowledge) is a built-in Mago plugin in Pun. Providers give return and property types for
-  models, relations, facades, the container and config; hooks add the Laravel-specific checks.
+**Pun's choice: build analyse on Mago's analyser, not a port of PHPStan's inference.**
+- Messages may be reworded and migrate does not carry baselines over, so a PHPStan port is not needed. What must hold
+  is one Pun rule for every PHPStan rule, and rules/mapping.toml has that.
+- Mago's inference, narrowing and generics exist. A port of PHPStan's would be the largest single piece of work in Pun.
+- **Rules:** every PHPStan rule is a Pun check that reads Mago's inferred types. Mago's issue codes fire far more
+  widely than PHPStan's checks (hundreds of false errors on Pinkary at level 0), so a Mago issue is used directly
+  only where it matches PHPStan exactly.
+- **Laravel** (Larastan's knowledge) is a built-in Mago plugin. Providers give the types of models, relations,
+  facades, the container and config; hooks add the Laravel checks.
 - **Parity test:** PHPStan's own rule fixtures and the corpus, compared on file, line and Pun rule, not message text.
-  Differences go in gaps.txt, as today.
+  Differences go in the gap lists.
 - **Baseline:** `pun analyse --generate-baseline` writes pun-baseline.toml on mago-reporting's baseline, loose by
   default. `pun migrate` does not copy phpstan-baseline.neon; it tells the user to generate a new one.
-  `ignoreErrors` in phpstan.neon is config, not a baseline, so migrate still converts it to Pun rule IDs.
-- **Kept from pun-phpstan:** the NEON reader, includes and `ignoreErrors` handling (for migrate), and
-  `@phpstan-ignore` comment parsing (migrate rewrites those comments). Its PHPStan type model and `describe()` came
-  back for the messages and `accepts()` checks: the rules convert Mago's types into it (`rules/types/convert.rs`).
-- **Risk:** Mago infers differently from PHPStan in edge cases, so some PHPStan errors will be missing or extra. The
-  parity test measures this, and each gap gets fixed in a Pun check or a Mago plugin.
+  `ignoreErrors` in phpstan.neon is config, not a baseline, so migrate converts it to Pun rule IDs.
+- **Kept from pun-phpstan:** the NEON reader, includes and `ignoreErrors` (for migrate), `@phpstan-ignore` parsing
+  (migrate rewrites those comments), and PHPStan's type model for messages and `accepts()` checks.
+- **Risk:** Mago infers differently from PHPStan in edge cases. The parity test measures this, and each gap is fixed
+  in a Pun check or a Mago plugin.
 
-## 8. Larastan, built in (Pushpak: "support Larastan, and improve on it")
+## 8. Larastan, built in
 
-Larastan has two halves, and without the first one every Laravel app drowns in false "undefined method" and
-"undefined property" errors on its models. Pun builds both into the Laravel plugin (§7). It turns on by itself when
+Without Laravel knowledge every Laravel app drowns in false "undefined method" and "undefined property" errors on its
+models. Pun builds Larastan's knowledge and rules into the Laravel plugin (§7). It turns on by itself when
 composer.lock has laravel/framework.
 
 **1. Laravel knowledge: types PHPStan can't see.**
 
-| Area | What Pun must know (Larastan's extensions) | Where it comes from |
+| Area | What Pun must know | Where it comes from |
 | --- | --- | --- |
 | Model attributes | every column as a typed property; `$casts` / `casts()` (enums, dates, custom casts); accessors and mutators (`get…Attribute` and `Attribute::make`); `$appends` | migrations (`Schema::create` / `table`), or the schema dump in `database/schema/*.sql`, plus the model class |
 | Relations | relation properties (`$user->posts` is `Collection<Post>`), generic relation types (`HasMany<Post, User>`), `withCount` / `withSum` attributes | the relation methods' return types and bodies |
@@ -198,287 +175,80 @@ composer.lock has laravel/framework.
 
 None of this needs PHP to run: Pun reads the files.
 
-**2. Larastan's 20 rules.** Already mapped to Pun analyse rules (rules/mapping.toml): `undefined-relation`,
-`undefined-model-append`, `undefined-console-argument` and `-option`, `unexpected-dispatch-arguments`,
-`no-env-outside-config`, `redundant-collection-call`, `no-model-make`, `unused-view`, `missing-translation`,
-`octane-compatibility` and the rest.
+**2. Larastan's rules** are mapped to Pun analyse rules in rules/mapping.toml (`undefined-relation`,
+`no-env-outside-config`, `unused-view`, `octane-compatibility` and the rest).
 
-**3. Improvements over Larastan** (all seven ship in 1.0; things Pun can do because it reads the whole project quickly):
+**3. Improvements over Larastan** (all seven ship in 1.0):
 - **Typed config:** `config('services.stripe.key')` has the real type of that value, and a missing key is an error.
 - **Routes:** `route('posts.show')`, `to_route()` and `redirect()->route()` with a name that doesn't exist is an
   error, and so are missing route parameters.
-- **Views:** `view('emails.welcome')` with no such Blade file is an error. Larastan only reports views nobody uses.
+- **Views:** `view('emails.welcome')` with no such Blade file is an error.
 - **Translations:** `__('auth.failed')` and `trans()` keys checked against lang/, for every locale.
 - **Env:** `env('STRIPE_KEY')` keys checked against `.env.example`.
 - **Inertia:** `Inertia::render('Posts/Show')` with no such page component is an error.
-- **No stale model data:** Larastan needs ide-helper or a fresh schema dump to stay right. Pun re-reads migrations on
-  every run.
+- **No stale model data:** Pun re-reads migrations on every run, so it needs no ide-helper or fresh schema dump.
 
-**Testing:** Larastan's own test suite (its `tests/Type` and `tests/Rules` fixtures) becomes the parity test, as
-PHPStan's fixtures do for core. The corpus adds pinkary and larastan's own source.
+**Testing:** Larastan's own type and rule fixtures are the parity test, as PHPStan's fixtures are for core. The corpus
+adds pinkary and larastan's own source.
 
-## 9. Built-in support, not an extension system (2026-10-17)
+## 9. Built-in support, not an extension system
 
-**What Mago does.** Mago has no runtime extension system either. Its "plugins" are Rust modules compiled into the
-binary (stdlib, PSL, PSR container, flow-php), each turned on by name in its config. Pun follows the same model: support
-for a framework is Pun code inside the binary, turned on from composer.lock. A real extension system (third-party
-plugins) is planned for later, not now (Pushpak).
+Support for a framework is Pun code inside the binary, turned on from composer.lock, as Mago's plugins are. A
+third-party extension system is planned for later (extensions.md).
 
-**In the core for 1.0** (assistant's call within Pushpak's brief: "super Laravel support and Pest support", no
-bloat):
+**In the core for 1.0** (the brief: "super Laravel support and Pest support", no bloat):
 - **Laravel**, all of §8.
-- **Pest** (after 1.0, Pushpak 2026-10-18), as the official `pestphp/pest-plugin-phpstan` does: `$this` inside test closures is the test case,
-  `expect()` chains are typed, and `uses()` / `pest()->extend()` classes are known. Pest runs on PHPUnit, so the small
-  part of phpstan-phpunit that Pest needs comes with it: `createMock()` returning `MockObject&Foo`, and assertions
-  narrowing types. This also covers plain PHPUnit tests.
-- **Deprecation rules** (phpstan-deprecation-rules, 10 identifiers). These are rules, not type knowledge, and Mago's
-  codex already records `@deprecated`.
-- **strict-rules** stays as plain rules: 27 analyse identifiers and 16 that became lint rules. They add no type
-  knowledge, so they add no bloat.
+- **Pest** (after 1.0), as `pestphp/pest-plugin-phpstan` does: `$this` inside test closures is the test case,
+  `expect()` chains are typed, and `uses()` / `pest()->extend()` classes are known. The part of PHPUnit typing Pest
+  needs comes with it (`createMock()` returns `MockObject&Foo`, assertions narrow types), which also covers plain
+  PHPUnit tests.
+- **Deprecation rules** as plain rules; Mago's codex already records `@deprecated`.
+- **strict-rules** as plain rules (the syntax-only ones are lint rules). They add no type knowledge.
 
 **Later, as extensions:** Mockery, Carbon macros, Livewire, Filament and the like. `pun migrate` names each one as not
 supported yet. The same goes for a project's own PHP rules and type extensions. `stubFiles` keep working.
 
 ## Decisions
 
-From earlier rounds (2026-10-17, Pushpak):
+Pushpak's answers:
 - Every PHPStan core rule runs natively; Larastan is built in.
-- No levels. Named presets for new projects; migrate writes exact rules and offers the closest preset.
-- Laravel, Pest and PHPUnit turn on automatically from composer.lock.
-- Analyse never edits files; `pun check` runs it after lint and format.
-
-Answered 2026-10-17 (Pushpak):
-- **Engine: assistant's call.** The requirement is one-to-one rule compatibility, so that every PHPStan rule has a Pun
-  rule in the mapping. The choice: Mago's analyser (§7).
+- **Engine:** Mago's analyser (§7, delegated to the assistant). The requirement is one Pun rule for every PHPStan rule.
 - **Messages:** Pun may reword them.
 - **Baseline:** its own feature (`pun analyse --generate-baseline`). Migrate never copies a PHPStan baseline.
-- **Five presets, the top one called `max`** (Pushpak). Proposed bands, by the PHPStan levels each covers:
-  `basic` (0-1), `essential` (2-3: PHPDoc and return types), `recommended` (4-5: dead code and argument types; the
-  default), `strict` (6-8: missing types, union types and nulls), `max` (9-10: mixed, like PHPStan's `level: max`).
-  Each includes the one below. The rules' `tier` field in mapping.toml moves to these five names with the rename.
-- **Extensions:** no extension system now (later). Built in: Laravel (full, §8), Pest (with the PHPUnit part it
-  needs), deprecation rules and strict-rules as plain rules (§9). Everything else is named as unsupported.
-- **All seven Larastan improvements (§8.3) ship in 1.0.**
+- **No levels. Five presets**, each including the one below, by the PHPStan levels each covers: `basic` (0-1),
+  `essential` (2-3: PHPDoc and return types), `recommended` (4-5: dead code and argument types; the default),
+  `strict` (6-8: missing types, union types and nulls), `max` (9-10: mixed). Migrate writes exact rules and offers the
+  closest preset. The rules' `tier` field in mapping.toml uses these names.
+- Laravel, Pest and PHPUnit turn on automatically from composer.lock.
 - **Analyse has no `warn`.** A problem analyse reports is an error; it never edits, so there is nothing softer to say.
-  A rule is either on or off: `[analyse.rules] "types/missing-iterable-value-type" = "off"`, or `true` with options
-  in a table. `off` stays because PHPStan users already turn rules off (by level or `ignoreErrors`), and migrate needs
-  it to keep a project's current rule set.
-- **No result cache yet**: every run checks every file from scratch. Format, lint and check keep one since Pushpak's
-  2026-11-15 decision (PLAN.md §1), which reverses "no caches" of 2026-11-05.
-- **A project's own PHPStan PHP code:** named as unsupported by migrate; `stubFiles` keep working.
-- **Larastan's model knowledge** comes from migrations and the schema dump, read without running PHP (§8).
+  A rule is on or off (or a table of options). `off` stays because PHPStan users already turn rules off and migrate
+  needs it to keep a project's rule set.
+- Analyse never edits files; `pun check` runs it after lint and format.
+- **No result cache** for analyse; format, lint and check have one (PLAN.md §1).
+- **Extensions:** no extension system now. Built in: Laravel (§8), Pest with the PHPUnit part it needs (after 1.0),
+  deprecation rules and strict-rules (§9). A project's own PHPStan PHP code is named as unsupported by migrate.
+- **All seven Larastan improvements (§8.3) ship in 1.0.**
+- **Larastan's model knowledge** comes from migrations and the schema dump, read without running PHP.
 
-Assistant's calls in the engine spike (Build 0, 2026-10-17; the plan was silent):
-- The Larastan provider is one Mago `ExpressionHook` that retypes `$model->column` after Mago's `Model::__get()`.
-  Mago 1.57 has no property-type provider for magic properties. A declared property or an `@property` tag wins, as
-  PHPStan's own reflection comes before Larastan's extension.
-- Accessors (`get…Attribute()`, `Attribute` methods; Larastan's ModelAccessorExtension) stay out of the spike; those
-  attributes keep Mago's `mixed`, and the test names them.
-- Where Mago's analyser panics on a debug assertion, `run_mago()` skips that file, as `rules::infer` already does.
-- The coverage verdict counts a PHPStan error as found when a Mago issue of a code mapped to the same Pun rule is in
-  the same file within 10 lines, or a code reviewed by hand as the same check (`SAME_CHECK` in the Build 0 spike script, since removed).
-- tests/fixtures/rules/gaps.txt was out of date at 915534e (3 listed cases pass, 5 unlisted fail since 138dab1's
-  trait-context change). The spike updates the list so the suite is green, with the reason; fixing them is Build 3.
-  Analyse 3a fixed the 5 (assistant's calls, where the port stops short of PHPStan: `@method` tags count only for
-  `$this->` calls (CallMethodsRule), not static calls yet; `$this instanceof X` narrows `$this` to `never` only for
-  those calls; a trait alias's new visibility (`foo as protected`) is not applied to the walked method).
-
-Assistant's calls in analyse 3b (the first 13 level-0 declaration and keyword rules, 2026-10-18; the plan was silent):
-- DeclareStrictTypesRule prints a constant value by its resolved name (`\FOO`) and any other value as written, in
-  place of a port of php-parser's printer; the oracle agrees on ints, strings and constants.
-- `Keywords/DeclareStrictTypesRuleTest::testNested` is in gaps.txt: PHPStan's own level-0 run aborts that file with
-  an internal error (MissingReturnRule), so it reports none of its errors. Pun reports both declares, as the
-  RuleTestCase expects.
-- A `(void)` cast that starts an expression statement counts as first-level even when Mago parses it as the input of
-  `|>` (`(void) 5 |> f(...);`), since PHP's grammar has `(void) expr;` as a statement.
-- A trait method's alias in ConstructorReturnTypeRule comes from the class's alias map, not from the `use` block of
-  that trait alone.
-- BacktickRule also reports an empty pair of backticks, where PHPStan stops the file with an internal error.
-- Verify (2026-10-18): PHPStan runs no rule on statements after a terminating one (`return; echo __CLASS__;` reports
-  nothing), while Pun's walk checks dead code for every rule, these 13 included. That is an engine gap (unreachable
-  statements, later with never-returning calls from inference), not a bug in this batch; it shows only on dead code.
-
-Assistant's calls in analyse 3c (class-member declaration rules, 2026-10-18; the plan was silent):
-- An enum case's value is the constant Mago's codex infers for it (class constants and `X::Case->value` followed
-  through the codebase); float literals and `self::Case->value`, which the codex leaves untyped, are read from the
-  case's own expression. A value neither gives (an array, a float constant) reports nothing.
-- `PHP_VERSION_ID` narrowing for FinalPrivateMethodRule's `$scope->getPhpVersion()` is a scope guard: `<`, `<=`, `>`,
-  `>=` against an integer, intersected across nested conditions; an `||` keeps the hull of both ranges.
-- `property.readOnlyNotSupported` is not reported: below PHP 8.1 php-parser lexes `readonly` as a name, so PHPStan
-  reports a parse error and never reaches ReadOnlyPropertyRule's check.
-- `isImmutable()` reads a parent class's PHPDoc from its file (an analysed one's source, otherwise from disk).
-- php-parser's modifier errors (`abstract final` property) are not emulated: Mago parses them, so PropertyInClassRule
-  reports where PHPStan reports only `phpstan.parse` (2 fixture cases in gaps.txt).
-
-Assistant's calls in analyse 3d (syntax-only level-0 rules, 2026-10-18; the plan was silent):
-- `[...]` inside `list()` is an array literal, not a nested destructuring, as php-parser parses it (oracle: `list($a[], [$a[]])`
-  reports `assign.invalidExpr` and `offsetAccess.noDim`).
-- `break N` with an N that does not fit a PHP int counts as level 1, because php-parser parses it as a float (oracle-confirmed).
-- InvalidTypesInUnionRule prints built-in type names lowercased, as php-parser lowercases them (oracle: `int|VOID` gives `Type void`).
-- A promoted constructor property with an invalid type is reported twice (parameter and ClassPropertyNode), as PHPStan does.
-- To find by-reference callees, TypedExpressions also asks Mago for the type of method-call objects and static-call class
-  expressions, only when an argument is a `[]` fetch or a dim fetch on `$this`.
-
-Assistant's calls in analyse 3e (the attribute rules on AttributesCheck, and FunctionDefinitionCheck's `#[NoDiscard]`
-check, 2026-10-18; the plan was silent):
-- `#[Attribute]`'s flags are the type Mago's scan gives the constructor's first argument after ArgumentsNormalizer
-  (first positional, else `flags:`, else the first unknown named one), with class and global constants expanded
-  through the codebase; anything but one integer makes the class no attribute class, as PHPStan's
-  ConstantIntegerType check does. A built-in class Mago's prelude lacks counts as no attribute class.
-- The attribute name check (class.nameCase, class.prefixed) waits for ClassNameCheck's port: other level-0 rules emit
-  those identifiers too. attribute.deprecated waits for deprecation-rules (`deprecationRulesInstalled` is false).
-- constant.attributesRuleCannotRun is never reported: Pun behaves as PHPStan on a PHP 8.5 runtime.
-- `#[NoDiscard]` on a function or method reads the native return type, then (with none) the PHPDoc type Mago read;
-  constructors, `__destruct()`, `__unset()`, `__wakeup()`, `__clone()`, `__set()` and `__unserialize()` are void, as
-  in PhpMethodFromParserNodeReflection.
-
-Assistant's calls in analyse 3f (class-hierarchy declaration rules, hierarchy.rs, 2026-10-18; the plan was silent):
-- `isFinalByKeyword()` of a user class reads the `final` modifier from the declaration's source (after its attributes,
-  outside comments): Mago's FINAL flag also holds `@final`, even a comment between the attributes and the keyword,
-  which PHPStan does not read as the class's PHPDoc (oracle-confirmed). Without the source (PHPStan's API stub) the
-  flag is the keyword.
-- A method is abstract when declared `abstract` or in an interface (BetterReflection); Mago also flags a body-less
-  method, so the modifier is read from the source.
-- MissingMethodImplementationRule resolves each method name with `members::method()` (class, traits, parents, then
-  interfaces) instead of Mago's declaring ids, which also hold `@method` tags; a trait's abstract method is satisfied
-  by a parent's concrete one, and an interface's by a concrete method of any trait the class or a parent uses
-  (Mago's declaring ids let another trait's `@method` tag hide it: Carbon's `tomorrow()` on laravel-framework), as
-  in PHP. A class whose parent or interface is of the wrong kind (a class implementing an enum) is skipped: PHP
-  refuses that hierarchy and PHPStan reports no missing method. `isProvidedByBuiltinAncestor()` is not ported:
-  Mago's stubs give the built-in parents concrete methods, so no input reaches it.
-- `instanceof.trait` describes only `$this` (`$this(Class)`) and `mixed`; other expression types wait for analyse 4.
-- The ClassNameCheck part of the three ExistingClassIn* rules (`*.nameCase`, `class.prefixed`) is not ported (analyse 3i ported it).
-
-Assistant's calls in analyse 3i (ClassNameCheck once for every level-0 caller, class_names.rs, 2026-10-19; the plan
-was silent):
-- `checkClassCaseSensitivity` is a bool on `rules::Checks`, copied from `Project::check_class_case_sensitivity`
-  and read from the PHPStan config; level 0 defaults to false and the presets set it. The callers that pass it
-  upstream are FunctionDefinitionCheck (functions, methods, closures, arrow
-  functions, hooks, `@phpstan-self-out`), ExistingClassInInstanceOfRule, CaughtExceptionExistenceRule and
-  ExistingClassesInPropertiesRule; the rest call with `true`. tests/class_names.rs proves the flag against a
-  level-2 oracle run.
-- `checkInternalClassCaseSensitivity` defaults to false and is read from the PHPStan config. PHPStan reflects four core attribute classes from its own
-  stubs (stubs/runtime/Attribute84.php: Attribute, AllowDynamicProperties, ReturnTypeWillChange,
-  SensitiveParameter), so they are not built-in to it and their case is checked (`#[\ATTRIBUTE]` reports at level 0).
-  A probe of every class in data/symbols.json found no others.
-- `featureToggles.checkImportedClassNameCase` defaults to false; bleeding edge enables it unless explicitly
-  disabled. Written-name reconstruction applies only to matching single-part unqualified Name nodes and changes
-  lookup as well as comparison and diagnostic text. Qualified, relative, multipart and non-name nodes keep their
-  existing paths. Seven fresh PHPStan 2.3.1 configurations supply 205 exact diagnostics (2026-10-26).
-- UseAliasVisitor is a per-namespace map of explicit `use X as Y` aliases; a pair whose node is the written name
-  skips the case check when the name is one part written exactly as such an alias. Pairs on other nodes (a
-  parameter, a property, a `use` item) never skip, as their php-parser node carries no such attribute. The pinned
-  AttributesCheck supplies the attribute's Name, so attributes must retain explicit-alias suppression too; the
-  earlier claim that it supplies the attribute node was incorrect (actual PHPStan reproduction, 2026-10-25).
-- StaticMethodCallCheck's case and prefix errors are dropped where PHPStan returns none: a missing method on a class
-  with `__callStatic()` (reportMagicMethods is off at level 0), unless a guard or an `@method static` tag knows it.
-- AccessStaticPropertiesCheck and StaticMethodCallableRule have no call site in Pun yet (their rules are not
-  ported), so their ClassNameCheck calls wait for those rules.
-
-Assistant's calls in analyse 3h (class-constant, PHP-version and literal-array declaration rules, constants.rs,
-arrays.rs, 2026-10-19; the plan was silent):
-- OverridingConstantRule is ported at level 0: its native and PHPDoc type checks (`classConstant.nativeType`,
-  `classConstant.missingNativeType`, `classConstant.type`) run only with checkPhpDocMethodSignatures (level 3), so
-  those identifiers come from ConflictingTraitConstantsRule at level 0. `classConstant.value` is also emitted by
-  ValueAssignedToClassConstantRule (level 2); both are kept in IDENTIFIERS, as level 0 has no other source of them.
-- An interface's constants are final before PHP 8.1 (BetterReflection's `isFinal()`, oracle-confirmed); otherwise a
-  constant is final by keyword or `@final` (Mago's FINAL flag). The trait constants ConflictingTraitConstantsRule reads
-  use the same flag for `isFinal()`.
-- A trait constant's declaring class is the trait iterated (PHP's reflection copies a used trait's constants into the
-  using trait); a parent's constant taken from a trait is declared by the class using the trait (oracle-confirmed).
-- Native constant types are compared as PHPStan describes them, from the hint's source text through pun-phpstan's
-  type resolver (class names stay as written, `self` resolves to the class).
-- Constant values are compared only when the codex reduces both to a constant scalar; of duplicate declarations (a
-  PHP error) the codex keeps the first and PHP's reflection the last, so DuplicateTraitDeclarationRuleTest::testBug14250
-  stays in gaps.txt.
-- ReadOnlyClassRule is ported with this batch because it also emits `classConstant.nativeTypeNotSupported` (the
-  mapping.toml entry is right); below PHP 8.1 php-parser lexes `readonly` as a name, so only 8.1 reaches its check.
-- DuplicateKeysInLiteralArraysRule knows a key's value for literals, `true`/`false`/`null`, user global and class
-  constants (`self::`, `parent::`, named classes) and `X::class`; variables, calls, `static::X` and built-in constants
-  are unknown keys. A key is printed as written, with class names and qualified constant names fully qualified, as
-  php-parser's printer does after NameResolver (oracle-confirmed). DuplicateKeysInLiteralArraysRuleTest::testDuplicateKeys
-  stays in gaps.txt for its variable keys.
-- `new X(...)` is a Mago parse error; the recovered argument list (one unpacked error argument) is
-  InstantiationCallableRule's node, and the `new` is then not analysed, as in NodeScopeResolver.
-- PropertyAssignRefRule reads the holder's class from `$this` or Mago's type of a single named object; a dynamic
-  property name and a closure bound with `Closure::bind()` are not ported. A property's set visibility is asymmetric
-  only when narrower than its read visibility (`protected readonly` is `protected`, oracle-confirmed).
-
-Assistant's calls in analyse 3j (anonymous-class names, anonymous.rs and relative_path.rs, 2026-10-19; the plan was
-silent):
-- An anonymous class's name is BetterReflectionProvider's `<parent>@anonymous/<path>:<line>`: the parent class as
-  written (resolved), else the first interface, else `class`; `:<index>` when several start on one line
-  (AnonymousClassVisitor, in source order). The line is php-parser's `Class_` start: the attributes, else the
-  modifiers, else the `class` keyword.
-- The path is FuzzyRelativePathHelper's: the analysed paths' common directory below the working directory (the process
-  cwd, as PHPStan's `currentWorkingDirectory`), else ParentDirectoryRelativePathHelper's path from the cwd. Windows
-  drive prefixes are not ported.
-- A trait walked in an anonymous class's context is labelled `T.php (in context of class@anonymous/...)`, without
-  `class ` (MutatingScope::getFileDescription()).
-
-Assistant's calls in analyse 3k (property access, property_access.rs, 2026-10-19; the plan was silent):
-- AccessPropertiesRule and AccessPropertiesInAssignRule check `$this->x` only (checkThisOnly below level 2). A class
-  with a native `__get`/`__set` is never reported (reportMagicProperties is off at level 0). The narrowing that hides
-  a read is ported as scope keys: assignments, isset/empty chains, comparison and instanceof operands, a function
-  call's first argument, a true `property_exists($this, 'x')`, `if`, `while` bodies, `?:` and `&&`.
-- AccessStaticPropertiesRule is ported for `self::`, `static::`, `parent::` and named classes. `$expr::$x` and a
-  dynamic name wait for expression types. `isset(self::$x)` on a class without `$x` is still reported, and so is a
-  read after `self::$x = ...` (both oracle-checked). A static hooked property counts as static, as in PHPStan's
-  reflection, although Mago drops the flag.
-- `$this++` or `--$this` stops the `$this` checks for the rest of the function. `$this[] = ...` on a class without
-  ArrayAccess, which PHPStan then describes as `ArrayAccess&C`, is not ported.
-- `(function () {...})->bindTo()` keeps the scope's `$this` (oracle-checked). Only `->call()` and `Closure::bind()`
-  rebind it. An anonymous class's constructor arguments are walked in the enclosing scope.
-
-Assistant's calls in analyse 3l (sealed hierarchies, interface method visibility and trait duplicates, hierarchy.rs,
-2026-10-19; the plan was silent):
-- AllowedSubTypesRule reads the last `@psalm-inheritors`/`@phpstan-sealed` tag (in that order) that parses, resolved in
-  the parent's name scope, plus the parent itself when it is a concrete class. An enum parent allows only its cases.
-  Names are compared exactly, as `getObjectClassNames() === [$className]` does.
-- An anonymous class's `getName()` is `AnonymousClass` and the md5 of `<path>:<line>[:<index>]`, with the path from
-  SimpleRelativePathHelper (relative to the working directory, not the fuzzy display path). The rule-fixture export ran
-  from another directory, so that case stays in gaps.txt; tests/fixtures/hierarchy holds oracle hashes for the crate
-  directory, the working directory of `cargo test`.
-- DuplicateTraitDeclarationRule reports in each using class's context, as InTraitNode does; an unused trait is never
-  checked.
-- The level-2 `static::` rules (through_static.rs) count `@final` and anonymous classes as final. A parent's private
-  method counts, because `getMethod()` finds it. A parent's private property or constant does not, because the
-  class does not have it. A trait's member is reported on the using class. tests/fixtures/through-static is their
-  level-2 oracle fixture; their rule tests join tests/levels.rs once its level-2 export lands.
-- RestrictedMethodUsageRule and RestrictedStaticMethodUsageRule run with the `@internal` extension only, at level 2
-  with `featureToggles.internalTag` (bleedingEdge). An instance call's object classes come from Mago's inferred type,
-  and only calls to a method name that some `@internal` method or `@internal` class-like declares are typed. The
-  first-class-callable rules (`$x->m(...)`) and the level-0 class-name, constant and function extensions are not
-  ported yet.
-
-Helper queue 4, printf rules (helper-forge-rqdv, 2026-10-19):
-- PrintfParametersRule and PrintfArrayParametersRule read the format and values from the existing per-file Mago
-  inference run. Namespaced functions and imported aliases resolve before a built-in name is matched.
-- PrintfHelper uses PHPStan 2.3.1's PCRE pattern. Scanf counts port PHP 8.5's `ValidateFormat(format, 0)`, including
-  suppression, positional indices, sets, NUL termination and invalid formats. PHPStan uses its runtime's `sscanf`
-  even when the project's target PHP version is older.
-- Array sizes follow PHPStan's constant/range comparison. Disjoint sizes stay a union rather than becoming their
-  hull, and unknown arrays are skipped. The oracle cases cover optional keys and adjacent/disjoint size unions.
-- All 37 analyser tests pass, including the upstream rule fixtures. The public regression test compares PHP 7.4
-  and 8.5 targets with PHPStan output in `tests/fixtures/function_checks.json`; `function_pipe.json` covers named
-  first-class callables after `|>`, reported at the right-hand callable's line, as PHPStan's PipeHandler does.
-  Both new rule files have 100% line coverage (233 and 126 lines). Core level-0 analysis of laravel-framework/src, without vendor dependencies,
-  produces zero differences for these six identifiers. This is not whole-analyser corpus parity.
-- FilterVarRule remains unported: Mago infers `FILTER_THROW_ON_FAILURE` as mixed, so its bitwise flags value is
-  unknown. PLAN.md records the request to supply version-specific builtin constants to inference.
-
-Assistant's calls in analyse 3m (strict-rules and the level-3 property-hook rules, strict.rs and property_hooks.rs,
-2026-10-19; the plan was silent):
-- phpstan-strict-rules' ported rules run when the PHPStan config sets their `strictRules.*` switch (`allRules`
-  expanded by the config resolver); Pun reads no other strict-rules parameter yet (PLAN.md).
-- DynamicCallOnStaticMethodsRule checks `$this` (also `$this?->`) below level 2 and Mago's type of any object from
-  level 2: `null` is dropped below level 8 and union members without the method below level 7, as
-  RuleLevelHelper::findTypeToCheck() does. The objects are typed only for method names some class declares static.
-- ClosureUsesThisRule reads Mago's type of each imported variable: one named object flagged `$this` is PHPStan's
-  ThisType. A closure inside the arguments of `Closure::bind()` is skipped (`isInClosureBind()`).
-- RequireParentConstructCallRule names an anonymous class by `getName()` (AnonymousClass and the md5, oracle-checked)
-  and follows php-parser's `stmts` (if bodies, loops, try, blocks, declare, named functions, closure statements),
-  not `else`, `catch`, `switch` or a closure assigned to a variable.
-- WrongCaseOfInheritedMethodRule prints a generic parent as its ancestor display (`ArrayObject<(int|string),mixed>`).
-- SetNonVirtualPropertyHookAssignRule's flow is the approximation PLAN.md lists; a hook of a trait's property reports
-  in the using class's file without "in context of", as ClassPropertiesNode does.
+Assistant's calls where the plan was silent:
+- **Model attributes** come from one Mago expression hook that retypes `$model->column`, because Mago has no type
+  provider for magic properties. A declared property or an `@property` tag wins, as in PHPStan.
+- **Mago panics:** where Mago's analyser panics on a debug assertion, that file is skipped.
+- **Inputs PHPStan cannot parse or stops on** (modifier errors Mago accepts, an internal error on a file) still get
+  Pun's checks; those fixture cases are in the gap lists.
+- **Dead code:** PHPStan runs no rule on statements after a terminating one; Pun's walk still checks them. This is an
+  engine gap, visible only on dead code.
+- **Names in messages are printed as PHPStan prints them:** built-in type names lowercased, class and constant names
+  fully qualified, a constant value by its resolved name.
+- **Anonymous classes** display as `<parent>@anonymous/<path>:<line>` (parent as written, else the first interface,
+  else `class`; `:<index>` when several start on one line). The path is relative to the analysed paths' common
+  directory below the working directory. The internal name is `AnonymousClass` plus an md5 of the path and line. A
+  trait walked in a class's context is labelled `T.php (in context of class X)`.
+- **`final` and `abstract`** are read from the source keyword, because Mago's flags also hold `@final` and body-less
+  methods.
+- **Below level 2**, rules that PHPStan restricts to `$this` check `$this` only; magic `__get`/`__set`/`__callStatic`
+  classes are not reported at level 0.
+- **printf/scanf checks** follow PHP 8.5's format parsing whatever the project's target PHP version, as PHPStan uses
+  its runtime's.
+- **The `filter_var()` flags check** is not ported: Mago infers `FILTER_THROW_ON_FAILURE` as mixed, so the flags are unknown. It needs
+  version-specific built-in constants in inference (PLAN.md).

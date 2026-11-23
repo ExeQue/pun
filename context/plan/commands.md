@@ -1,31 +1,18 @@
 # Plan: who does what (format, lint, analyse) and `pun check`
 
-Status: **walked through with Pushpak** (2026-10-17); answers in "Decisions". Pushpak asked for this: today's PHP tools each
-promise one job and then do several, and Pun makes each command do exactly the job its name promises. This file
-explains what each upstream tool is for, where it oversteps, the split Pun uses, and how `pun check` runs (build
-list: §5).
+Status: **walked through with Pushpak**; answers in "Decisions". Build 1-2 are done, 3-5 are open (§5). Each command
+does exactly the job its name promises. This file gives the split, how a rule is placed, and how `pun check` runs.
 
-## 1. What each tool is for, and what it also does
+## 1. Today
 
-| Tool | Its real job | What it also does (the overlap) |
-| --- | --- | --- |
-| **PHP-CS-Fixer / Pint** | Code style: spaces, line breaks, casing, quotes, import order | 76 "risky" fixers that change behaviour: `strict_comparison` (`==` to `===`), `declare_strict_types`, `final_class`, `modernize_strpos`, `psr_autoloading` (renames classes). It also does some refactoring: removes unused imports, useless `else` and dead code |
-| **Rector** | Automated refactoring: rewrite code to a newer or better form | Also: version upgrades (PHP 8.4, Laravel 12, PHPUnit 11), configurable codemods (rename this method everywhere), type inference that adds types (which needs PHPStan), coding style (48 of its rules duplicate CS-Fixer's format rules), and dead-code removal |
-| **PHPStan / Larastan** | Find bugs using types: undefined methods, wrong argument types, impossible conditions | Also: syntax-only bans that need no types (strict-rules' `empty.notAllowed`, `equal.notAllowed`), whitespace checks (`whitespace.bom`), and coding policy (strict-rules) |
-| **Mago** (for reference) | All three in one binary: formatter, linter, analyser | Its formatter reprints the whole file, so it can't match Pint byte for byte |
+Pint and PHP-CS-Fixer, Rector and PHPStan each promise one job and also do parts of the others: CS-Fixer's risky
+fixers change behaviour, Rector also does coding style, PHPStan also bans syntax that needs no types. So one idea
+often lives in several tools at once; rules.md §2 has the overlaps, with strict comparison as the worked example.
+Pun keeps one rule per idea, in one command.
 
-So the same idea often lives in three or four tools at once. Strict comparison is the worked example (rules.md §2):
-
-| Tool | Rule | What it does |
-| --- | --- | --- |
-| PHP-CS-Fixer | `strict_comparison` | rewrites every `==` (risky) |
-| Rector | `UseIdenticalOverEqualWithSameType` | rewrites `==` only when both sides have the same type |
-| PHPStan strict-rules | `equal.notAllowed` | reports every `==` |
-| Mago | `identity-comparison` | reports every `==` |
-| **Pun** | `lint/…/no-loose-comparison` | one rule: reports every `==`, and `--fix` rewrites all of them; the ones without proof that both sides have the same type are labelled unsafe |
-
-Across all tools, the mapping found 105 such overlap clusters and 109 + 82 merges (rules.md §6). Pun ends up with one rule
-per idea, in one command.
+`pun check` runs format and lint per file, then analyse as a separate pass over the same paths
+(crates/pun-cli/src/run.rs), and prints the grouped view (output.md Decisions). The one shared parse and the `--fix`
+loop of §3 are not built (§5).
 
 ## 2. Pun's split: three questions
 
@@ -44,15 +31,14 @@ Each command answers one question and makes one promise.
 2. It edits code in any other way, or it reports something one file can decide → **lint**.
 3. It needs types or other files to decide → **analyse**.
 
-**Where this cleans up each tool:**
-- **CS-Fixer's risky fixers go to lint.** `pun format` can no longer change behaviour, so format-on-save is always
-  safe. (Decided; `pun check --fix` is what equals `pint`.)
-- **Rector's style rules go to format.** The 48 Rector rules that duplicate a CS-Fixer format rule map onto that rule.
-  The rest of Rector is lint.
-- **PHPStan's syntax-only bans go to lint**, where no types are needed (strict-rules' 16 bans become 9 lint rules).
-  PHPStan core's own identifiers stay in analyse until 1.0 so `pun analyse` matches `phpstan analyse` on day one (decided).
-- **When lint or format can fix what analyse finds, analyse drops it** (Pushpak, 2026-11-02): PHPStan's `method.unused`
-  is `lint/…/no-unused-private-method`, and `pun analyse` no longer reports it. Analyse keeps only reports nothing fixes.
+**What that means per tool:**
+- **CS-Fixer's risky fixers are lint.** `pun format` never changes behaviour, so format-on-save is always safe.
+  `pun check --fix` is what equals `pint`.
+- **Rector's style rules map onto the matching format rule.** The rest of Rector is lint.
+- **PHPStan's syntax-only bans are lint**, where no types are needed. PHPStan core's own identifiers stay in analyse
+  until 1.0, so `pun analyse` matches `phpstan analyse` from the start.
+- **When lint or format can fix what analyse finds, analyse drops it** (Pushpak): PHPStan's `method.unused` is
+  `lint/…/no-unused-private-method`, and `pun analyse` does not report it. Analyse keeps only reports nothing fixes.
 
 ## 3. How `pun check` works
 
@@ -69,14 +55,12 @@ parsing each file once.
    writes), and run analyse against the index.
 4. **Report, grouped by step** (output.md Decisions): one status line each for format, lint and analyse, with the
    step's problems under it, each tagged with its full rule ID and `[fix:safe]` / `[fix:unsafe]` when lint can fix it.
-   When analyse and lint report the same thing (the 18 linked pairs), only the lint problem prints.
-5. **Summary and exit code.** For example `3 files need formatting · 12 lint problems (9 fixable) · 2 analyse errors ·
-   214 files in 0.4 s`. The exit code is 1 if anything is at `error`, or anything needs formatting.
+   When analyse and lint report the same thing, only the lint problem prints.
+5. **Summary and exit code.** The exit code is 1 if anything is at `error`, or anything needs formatting.
 
 **`pun check --fix`:**
-1. **Lint fixes**: every fix of every enabled rule, except rules with `fix = "off"` (decided: no `--unsafe`). They run in a
-   loop
-   until no rule has more to fix, because one fix can expose the next.
+1. **Lint fixes**: every fix of every enabled rule, except rules with `fix = "off"` (no `--unsafe`). They run in a
+   loop until no rule has more to fix, because one fix can expose the next.
 2. **Format** the result, so whatever lint inserted gets the project's layout.
 3. **Write** each changed file once.
 4. **Analyse** the final code, re-indexing only the files that changed, and report what is left. Analyse never edits.
@@ -86,7 +70,7 @@ The order is lint, then format, then analyse, because each step works on the pre
 format tidies it, and analyse checks what you will actually commit.
 
 **Pint parity.** On a project migrated from pint.json, `pun check --fix` writes the same bytes as `pint`. CS-Fixer's
-risky fixers stay token fixers and run inside step 2 in PHP-CS-Fixer's priority order, as they do today.
+risky fixers stay token fixers and run inside step 2 in PHP-CS-Fixer's priority order.
 
 **The single commands** stay for editors and for running one step: `pun format` on save, `pun lint --fix`, and
 `pun analyse` for PHPStan-style runs.
@@ -100,73 +84,30 @@ risky fixers stay token fixers and run inside step 2 in PHP-CS-Fixer's priority 
   `\Foo` to an import);
 - sort lists whose order means nothing (imports, union types, `implements` lists, PHPDoc tags).
 
-Anything else moves to lint with a safe fix:
+Anything else is lint with a safe fix:
 - removing code;
 - adding or removing PHPDoc;
 - rewriting one construct into another;
-- changing a declaration or the order of class members.
+- changing a declaration or the order of class members;
+- adding test metadata.
 
-**Result:** 40 of the 208 format rules move. 11 of them are in the laravel preset and 2 in psr12, so format keeps 168
-rules: laravel 115, psr12 50. This list is for review; say if any rule is on the wrong side.
+**Result:** 40 of the 208 format rules moved to lint (11 of them in the laravel preset, 2 in psr12). Format keeps 168
+rules: laravel 115, psr12 50. Their lint names are in rules.md Decisions.
 
-| Why it moves | Rule today (proposed format name) | laravel | psr12 |
-| --- | --- | :-: | :-: |
-| removes code | `no-unused-imports` (`imports/no-unused`) | ✓ | ✓ |
-| removes code | `no-useless-else` (`control-flow/no-useless-else`) |  |  |
-| removes code | `no-useless-return` (`control-flow/no-useless-return`) | ✓ |  |
-| removes code | `no-empty-statement` (`statements/no-empty`) | ✓ |  |
-| removes code | `no-superfluous-elseif` (`control-flow/no-superfluous-elseif`) |  |  |
-| removes code | `no-useless-nullsafe-operator` (`operators/no-useless-nullsafe`) |  |  |
-| removes code | `no-null-property-initialization` (`classes/no-null-property-default`) |  |  |
-| removes code | `no-redundant-readonly-property` (`classes/no-redundant-readonly`) |  |  |
-| removes code | `lambda-not-used-import` (`functions/no-unused-closure-use`) | ✓ |  |
-| removes code | `general-attribute-remove` (`attributes/remove`) |  |  |
-| removes or adds PHPDoc | `no-superfluous-phpdoc-tags` (`phpdoc/no-superfluous-tags`) | ✓ |  |
-| removes or adds PHPDoc | `general-phpdoc-annotation-remove` (`phpdoc/remove-annotation`) |  |  |
-| removes or adds PHPDoc | `general-phpdoc-tag-rename` (`phpdoc/rename-tag`) | ✓ |  |
-| removes or adds PHPDoc | `phpdoc-no-access` (`phpdoc/no-access`) | ✓ |  |
-| removes or adds PHPDoc | `phpdoc-no-package` (`phpdoc/no-package`) | ✓ |  |
-| removes or adds PHPDoc | `phpdoc-no-empty-return` (`phpdoc/no-empty-return`) |  |  |
-| removes or adds PHPDoc | `phpdoc-no-useless-inheritdoc` (`phpdoc/no-useless-inheritdoc`) | ✓ |  |
-| removes or adds PHPDoc | `phpdoc-add-missing-param-annotation` (`phpdoc/add-missing-param`) |  |  |
-| removes or adds PHPDoc | `phpdoc-to-comment` (`phpdoc/to-comment`) |  |  |
-| removes or adds PHPDoc | `phpdoc-tag-no-named-arguments` (`phpdoc/tag-no-named-arguments`) |  |  |
-| removes or adds PHPDoc | `phpdoc-type-annotations-only` (`laravel/phpdoc-type-annotations-only`) |  |  |
-| rewrites one construct into another | `combine-consecutive-issets` (`control-flow/combine-issets`) |  |  |
-| rewrites one construct into another | `combine-consecutive-unsets` (`control-flow/combine-unsets`) |  |  |
-| rewrites one construct into another | `simplified-if-return` (`control-flow/simplified-if-return`) |  |  |
-| rewrites one construct into another | `simplified-null-return` (`control-flow/simplified-null-return`) |  |  |
-| rewrites one construct into another | `return-assignment` (`control-flow/no-return-assignment`) |  |  |
-| rewrites one construct into another | `ternary-to-null-coalescing` (`operators/ternary-to-coalesce`) |  |  |
-| rewrites one construct into another | `assign-null-coalescing-to-coalesce-equal` (`operators/coalesce-equal`) |  |  |
-| rewrites one construct into another | `switch-continue-to-break` (`control-flow/switch-continue-to-break`) |  |  |
-| rewrites one construct into another | `return-to-yield-from` (`control-flow/yield-from`) |  |  |
-| changes declarations or their order | `protected-to-private` (`classes/protected-to-private`) |  |  |
-| changes declarations or their order | `self-static-accessor` (`classes/self-static-accessor`) | ✓ |  |
-| changes declarations or their order | `stringable-for-to-string` (`classes/stringable-for-to-string`) |  |  |
-| changes declarations or their order | `ordered-class-elements` (`classes/ordered-members`) |  | ✓ |
-| changes declarations or their order | `phpunit-method-casing` (`phpunit/method-casing`) | ✓ |  |
-| changes declarations or their order | `phpunit-data-provider-method-order` (`phpunit/data-provider-order`) |  |  |
-| adds test metadata | `phpunit-attributes` (`phpunit/attributes`) |  |  |
-| adds test metadata | `phpunit-internal-class` (`phpunit/internal-class`) |  |  |
-| adds test metadata | `phpunit-size-class` (`phpunit/size-class`) |  |  |
-| adds test metadata | `phpunit-test-class-requires-covers` (`phpunit/require-covers`) |  |  |
-
-What changes for users:
+What this means for users:
 - `pun format` and format-on-save never delete or restructure code.
 - `pun check --fix` still writes Pint's bytes, because these stay token fixers and run in the same priority-ordered
   pass as format.
 - `pun migrate` writes the ones a pint.json enables under `[lint.rules]` at `error`, and `--fix` applies them.
-- Moving `simplified-null-return` to lint also settles its conflict with `require-consistent-return` inside one
-  command.
-- These rules then take lint names and groups, so the §8 format table in format.md loses these 40 rows.
+- `lint/control-flow/prefer-bare-return` and `lint/complexity/require-consistent-return` contradict each other; both
+  are lint, and mapping.toml lists them as a conflict pair.
 
 ## 5. Build (`pun check`)
 
-`pun check` grows as the commands land; each step keeps `pun check --fix` equal to Pint on pint.json projects.
+Each step keeps `pun check --fix` equal to Pint on pint.json projects.
 
-1. **The 40 rules move** (config.md Build 2): format stops running them, lint does.
-2. **Grouped output** (output.md Build 5) over today's format and lint steps.
+1. **The 40 rules move** (config.md Build 2). Done.
+2. **Grouped output** (output.md Build 5). Done.
 3. **One parse per file:** Mago's tree shared by lint and analyse, tokens for format, an index pass before checking.
 4. **Analyse joins** when `pun analyse` exists (analyse.md Build 1): report-only after lint fixes and format.
 5. **`--fix` loop:** lint fixes until stable, format, write each file once, re-index changed files, analyse.
@@ -175,7 +116,7 @@ What changes for users:
 
 ## Decisions
 
-Answered 2026-10-17 (Pushpak):
+Pushpak:
 
 - **One job per command.** format = how it looks, lint = a better way to write it, analyse = is it wrong. The three
   questions in §2 decide where every rule goes.
@@ -186,9 +127,9 @@ Answered 2026-10-17 (Pushpak):
   phpstan.neon. Anything Pun doesn't support yet is named explicitly to the user, never dropped silently.
 - **No levels.** PHPStan's levels don't come over; rules are turned on by name and by presets.
 - **Every PHPStan core rule is supported natively.**
-- **Fixers that delete or restructure code move from format to lint**, so format only changes layout, casing and
-  spelling. The list is in §4.
+- **Fixers that delete or restructure code are lint**, so format only changes layout, casing and spelling (§4).
 - **Laravel support is built in.** Nothing to install or import, unlike Larastan or rector-laravel.
 - **Modernisation rules** (Rector's PHP sets as `prefer-*` rules) are lint rules, gated by the PHP version.
-- **Report-only rules stay in lint** (`no-eval`, `no-debug-calls`, 68 rules): placement goes by what a rule needs
-  (one file or the whole project), not by whether it fixes (assistant's default, follows from §2).
+
+Assistant's default: **report-only rules stay in lint** (`no-eval`, `no-debug-calls`). Placement goes by what a rule
+needs (one file or the whole project), not by whether it fixes; this follows from §2.

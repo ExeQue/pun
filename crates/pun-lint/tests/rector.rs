@@ -3,7 +3,7 @@
 //! (`.oracle/rector-bin`, the rule alone) wrote for them; Pun/ holds the cases where Pun keeps the meaning but not
 //! Rector's bytes, its expected output derived by hand. A fixture is `input -----\n expected`, or only the input when
 //! the rule must not change it (Rector's FixtureSplitter). Each one must pass as
-//! `format(pun lint --fix) == format(expected)` (lint.md Build 1), with format being the laravel preset. The text edits
+//! `format(pun lint --fix) == format(expected)` (lint.md §6), with format being the laravel preset. The text edits
 //! also reproduce Rector's bytes before format, which is checked too.
 
 use std::path::{Path, PathBuf};

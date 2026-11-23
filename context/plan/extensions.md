@@ -1,30 +1,13 @@
 # Extensions
 
-Laravel, Larastan, Pest and PHPUnit support moves out of Pun's core into extensions. Each extension uses the
-same API that any other extension would use. The model is Mago's built-in Rust
-plugins (`mago-analyzer`'s `Plugin` trait and `ALL_PLUGINS`), widened to every command. Extensions are Rust only for
-now (Pushpak, 2026-11-14).
-
-## What Mago does (1.59.0)
-
-- **Built-in plugins.** `crates/analyzer/src/plugin/plugin.rs` defines
-  `trait Plugin: Send + Sync { fn meta(&self) -> &'static PluginMeta; fn register(&self, registry: &mut PluginRegistry); }`,
-  and `plugin/libraries/mod.rs` lists them in `static ALL_PLUGINS`. `PluginRegistry` has typed `register_*` methods for:
-  - function and method return types;
-  - assertions and throw types;
-  - program, statement, expression, call and declaration hooks;
-  - issue filters.
-- **External extensions.** Worker processes over the `mago-extension` binary protocol, with a PHP SDK, configured
-  under `[extension-hosts.NAME]`. They hook the linter and the analyzer only. Mago's formatter has no extension API.
-- **Framework lint rules.** Mago has no plugin for these. They sit behind a fixed `enum Integration` (Laravel,
-  Symfony, PHPUnit, Pest and others) that `mago init` fills from composer.json.
+Laravel, Pest and PHPUnit support lives in extensions: Rust types compiled into `pun` that implement one `Extension`
+trait with a hook per command, the same API any other extension would use (Rust only for now, Pushpak).
 
 ## Design
 
 ### The Extension trait
 
-`crates/pun-extension` defines one trait with one hook per command. `pun-cli` lists the built-in extensions, as Mago
-lists `ALL_PLUGINS`:
+`crates/pun-extension` defines the trait, and `pun-cli` lists the built-in extensions:
 
 ```rust
 pub trait Extension: Send + Sync {
@@ -43,29 +26,27 @@ pub static ALL: &[&dyn Extension] = &[&Laravel, &Pest, &Phpunit];
 - `id`, `name`, `description` and `aliases`.
 - `groups`: the rule groups the extension owns, such as `laravel` and `laravel-*`.
 - `packages`: the locked packages that turn it on, such as `laravel/framework`.
-- `rules`: its mapping.toml fragment, which uses the same schema as mapping.toml.
+- `rules`: its mapping.toml fragment, in mapping.toml's schema.
 
 ### Registration per command
 
-- **Format.** `FixerRegistry::add`. Fixers are still sorted by priority, then by name, so the order extensions
-  register in changes no output.
-- **Lint.** `RuleRegistry::add` takes a native rule, and `add_fixer` takes a token fixer that backs a lint rule. The
-  registry keeps insertion order, because the order of fix rounds changes the bytes.
+- **Format.** `FixerRegistry::add`. Fixers are sorted by priority, then by name, so registration order changes no
+  output.
+- **Lint.** `RuleRegistry::add` takes a native rule, and `add_fixer` a token fixer that backs a lint rule. The registry
+  keeps insertion order, because the order of fix rounds changes the bytes.
 - **Analyse.** Two layers:
-  - **Mago's `PluginRegistry`, passed through,** for providers and expression hooks.
-  - **PHPStan-shaped extension points in one `AnalyseExtension` trait.** Larastan plugs into PHPStan, not Mago, and
-    parity is with Larastan. Its methods:
-    - `from_parameters` for activation;
-    - `stub_files`;
-    - `prepare_codebase`;
-    - `settings`;
-    - `has_method` and `has_property`, the class reflection extensions;
-    - `type_node`;
-    - `visit_*`, `enter_function` and `leave_function`, which are rules;
-    - `finish`, which collects;
-    - `identifiers`.
+  - Mago's `PluginRegistry`, passed through, for providers and expression hooks.
+  - `pun_analyse::AnalyseExtension`, shaped like PHPStan's extension points, because Larastan plugs into PHPStan and
+    parity is with Larastan. It has `stub_files`, `bundled_stub`, `class_aliases`, `prepare_codebase`, `load`,
+    `register` (the `PluginRegistry`, per file), `settings`, `typed_expressions` and `type_node`. Still to add:
+    `from_parameters` (activation), the rule callbacks `visit_*`, `enter_function` and `leave_function`, `finish`
+    (collects) and `identifiers`.
+  - A crate-private `ClassReflectionExtension` (`rules/class_reflection.rs`) answers method and property lookups:
+    `method` (returns `MethodAnswer::{Forward(Type), Exists}`), `has_property`, `calls_inaccessible_method` (a model's
+    `increment`/`decrement`) and `static_forward` (a static call on a model to a builder method). It takes the
+    crate-private `Checker`, so it stays crate-private until step 7 gives it a public reflection facade.
 
-  The checker holds `&[&dyn AnalyseExtension]` in place of `Option<&Larastan>`.
+  The checker will hold `&[&dyn AnalyseExtension]` in place of `Option<&Larastan>`.
 - **Packages.** Composer plugin ports, such as `pestphp/pest-plugin`, keyed by the plugin's package name.
 
 ### pun.toml
@@ -76,95 +57,70 @@ laravel = "on"
 pest = "on"
 ```
 
-Decided (Pushpak, 2026-11-16): an extension is on only when `[extensions]` says `"on"`. A locked package never turns
-one on by itself, so pun.toml alone shows what runs. `pun migrate` and `pun init` write `"on"` for each extension
-whose package composer.lock locks. `"auto"` is a config error that says so.
-
-- An extension that is on brings every rule of its groups that sits in some lint set, whatever `[lint] sets` lists;
-  its rules in no set (its upgrade groups, opinionated codemods) stay opt-in by name or group. Analyse rules still
+- An extension runs only when `[extensions]` says `"on"`, so pun.toml alone shows what runs (Pushpak). A locked
+  package never turns one on. `pun migrate` and `pun init` write `"on"` for each extension whose package composer.lock locks.
+  `"auto"` is a config error that says so.
+- An extension that is on brings every rule of its groups that sits in some lint set, whatever `[lint] sets` lists.
+  Its rules in no set (its upgrade groups, opinionated codemods) stay opt-in by name or group. Analyse rules still
   follow the analyse preset.
 - Format rules don't depend on extensions: `format/laravel/blade` stays a `[format.rules]` entry, which migrate writes
-  only when pint.json turns it on, as Pint does.
-- Doctrine and Symfony support is removed; the built-in extensions are Laravel, Pest and PHPUnit.
-- The existing `[lint.groups]` and `[analyse.rules]` group switches keep working.
+  only when pint.json turns it on.
+- The `[lint.groups]` and `[analyse.rules]` group switches keep working.
 - `pun config` prints the resolved `[extensions]` table.
 
 ### Rule IDs
 
 Rule IDs stay `<command>/<group>/<name>`, and each extension owns its groups, so every existing ID survives.
-Registration fails in three cases:
-
-- two extensions own the same group;
-- an extension claims a core group;
-- a rule uses a group that its extension does not own.
+Registration fails when two extensions own the same group, an extension claims a core group, or a rule uses a group
+its extension does not own.
 
 ### Distribution
 
-- **Now:** compiled in. First-party extensions are `crates/pun-ext-*`, and third-party extensions arrive by pull
+- **Now:** compiled in. First-party extensions become `crates/pun-ext-*`; third-party extensions arrive by pull
   request.
 - **Later:** a custom binary. `pun_cli::main(&[&dyn Extension])` would let a third party build its own `pun`. The
-  crates have `publish = false`, so that needs tag-pinned git dependencies, and the patched-Mago `[patch]` section
-  copied over.
+  crates have `publish = false`, so that needs tag-pinned git dependencies and a copy of the patched-Mago `[patch]`
+  section.
 - **Rejected:** dynamic libraries. Rust has no stable ABI, and Pun ships static musl binaries.
-- **Future:** worker processes on Mago's protocol, or WASM.
+- **Future:** worker processes or WASM.
 
 ## Migration
 
-No step changes output. Every step must keep these green: the parity tests, `pun-harness`, `scripts/cli-parity.sh` and
+No step changes output. Every step keeps these green: the parity tests, `pun-harness`, `scripts/cli-parity.sh` and
 `cargo nextest run -p punphp-analyse`.
 
-1. **ExtensionMeta.** Add `ExtensionMeta` to `pun-config` for the four ecosystems. `Ecosystem` becomes a lookup over
-   the metas, and `Gates::locked` matches on package names.
-2. **The `[extensions]` table.** Add it with `auto`, `on` and `off`. An unknown name is a config error (exit 2).
-3. **pun-extension and the lint registry.** `run.rs` and `lint_plan.rs` build their rules from `ALL`. The rules
-   themselves stay inside pun-lint for now, because moving them means making about 400 helper references public.
-   Done: `pun_extension::lint_rules` registers the core's rules, then each extension's. The core used to sit between
-   Laravel's and Pest's rules, so a file's findings now list in a different order; on pinkary with every lint group on,
-   `pun lint --fix` writes the same bytes. Four `lint/phpunit` rules that live in `types/` are now the PHPUnit
-   extension's.
-4. **The format registry.**
-   - `build.rs` emits `core()`, `laravel()` and `pest()`.
-   - The `php_unit_*` fixers stay core, because PHP-CS-Fixer ships them in its core.
-5. **`AnalyseExtension`, one seam at a time.** Larastan implements it in place, in this order:
-   1. stubs and codebase setup;
-   2. providers and settings;
-   3. reflection queries (`types/receivers.rs` first);
-   4. node callbacks and `finish`;
-   5. identifiers;
-   6. `Project.larastan` becomes `extensions`.
+1. Done.
+2. Done.
+3. Done. `pun_extension::lint_rules` registers the core's rules, then each extension's. The rules still live inside
+   pun-lint, because moving them means making about 400 helpers public.
+4. Done. The `php_unit_*` fixers stay core, because PHP-CS-Fixer ships them in its core.
+5. **`AnalyseExtension`, one seam at a time.** Larastan implements it in place:
+   1. Done.
+   2. Done.
+   3. Done.
+   4. Node callbacks and `finish` (next). Also moves the static-forward gate in `calls.rs` off `c.larastan`.
+   5. Identifiers.
+   6. `Project.larastan` becomes `extensions`. `Project::extensions()` still yields `project.larastan`, and `load`
+      takes `&mut self`, so this needs owned extensions.
 
-   At the end, `pun analyse` JSON on pinkary, larastan, pest and laravel-framework must be byte-identical to the
-   base commit.
+   *Done when* `pun analyse` JSON on pinkary, larastan, pest and laravel-framework is byte-identical to the base
+   commit.
+6. **mapping.toml.** The ecosystem rows move into per-extension fragments. Done with step 7, because the Rust section
+   loader and eight scripts read the one file and `gen-phpstan-parameters.py` rewrites it in place.
+7. **Physical crates.** The extensions become `crates/pun-ext-{laravel,pest,phpunit}`, which makes the helpers they use
+   public.
+8. Done.
 
-   Done (2026-11-15): 5.1 and 5.2. `pun_analyse::AnalyseExtension` has `stub_files`, `bundled_stub`, `class_aliases`,
-   `prepare_codebase`, `load`, `register` (Mago's `PluginRegistry`, per file), `settings`, `typed_expressions` and
-   `type_node`. Larastan implements it in place. `Project::extensions()` still yields `project.larastan` until 5.6;
-   `load` takes `&mut self`, so 5.6 needs owned extensions. The bundled Larastan stubs are now read only while
-   Larastan is on.
+## Decisions
 
-   Done (2026-11-15): 5.3. A crate-private `ClassReflectionExtension` (`rules/class_reflection.rs`), which
-   Larastan implements in `rules/larastan/reflection.rs`, holds PHPStan's methods and properties class reflection
-   extensions:
-   - `method(c, phase, receiver, class, name) -> Option<MethodAnswer>`, with `MethodAnswer::{Forward(Type), Exists}`.
-     `MethodPhase` keeps Pun's lookup order (Pushpak, 2026-11-15): `BeforeMixins` runs after the class's own methods,
-     where a forward that finds nothing lets the lookup go on; `Last` runs after `@mixin` and
-     `@phpstan-require-extends`. PHPStan asks once, before `@mixin`; moving to that order needs its own corpus proof.
-   - `has_property`, `calls_inaccessible_method` (PHPStan's `getMethod($name, $scope)` fallback: a model's
-     `increment`/`decrement`) and `static_forward` (a static call on a model to a builder method).
-   - The trait takes the crate-private `Checker`, so it stays crate-private until step 7 gives it a public reflection
-     facade. `calls.rs` still gates the static forward on `c.larastan`; that goes with 5.4.
-
-6. **mapping.toml.** The ecosystem rows move into per-extension fragments.
-   Folded into step 7 (2026-11-15): the Rust section loader and eight scripts read the one file, and
-   `gen-phpstan-parameters.py` rewrites it in place, so the fragments move once each extension has a crate to hold
-   them.
-7. **Physical crates.** The extensions become `crates/pun-ext-{laravel,pest,phpunit}`, which makes the helpers they
-   use public.
-8. **Discovery.** Add `pun extension list` and a docs page. Done: docs/content/docs/commands/extension.mdx.
+- **Built-in extensions** are Laravel, Pest and PHPUnit. Doctrine and Symfony support is removed.
+- **Method lookup order** (Pushpak): `MethodPhase::BeforeMixins` runs after the class's own methods, and a forward that
+  finds nothing lets the lookup go on; `MethodPhase::Last` runs after `@mixin` and `@phpstan-require-extends`. PHPStan
+  asks once, before `@mixin`; moving to that order needs its own corpus proof.
 
 ## Risks
 
 - Lint registration order changes fixed bytes. Diff the old `all()` ID list against the registry's once, before
   deleting `all()`.
-- Larastan branches sit inside core PHPStan rules (`calls.rs`, `types/receivers.rs`, `types/convert.rs` and
-  `driver.rs`). Step 5.3 is the hard part, so spike it on `types/receivers.rs` first.
+- Larastan branches still sit inside core rules (`calls.rs`, `types/receivers.rs`, `types/convert.rs` and
+  `driver.rs`).
