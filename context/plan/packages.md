@@ -2,7 +2,7 @@
 
 Status: steps 2-6, 8 and 9 are built, with parts left (§5); step 7 is built for the script events; steps 1, 10 and
 11 are partly or not built. Workspaces and `pun x` are built (§7). Decisions: §6. Beyond Composer: §7. Open
-questions: §8. Benchmarks: context/reports/scoreboard.md ("Package manager benchmark").
+questions: §8.
 
 ## 1. What it is
 
@@ -138,10 +138,9 @@ teammates run, and it needs no resolver.
 10. **The long tail of `pun composer`:** `show`, `outdated`, `why`, `why-not`, `audit`, `licenses`, `check-platform-reqs`,
     `config`, `init`, `create-project`, `global`, `status`, `reinstall`, `bump`, in that order, each with its machine
     format matched. Not built.
-11. **Docs and bench.** A docs section for the package manager (commands, compatibility, plugins, what is not
-    supported), and `BENCH=install` in `scripts/bench.py` (cold cache, warm cache, no-op, against Composer and phast)
-    with results in `context/reports/scoreboard.md`. *Today:* command pages under docs/content/docs/commands/ and a
-    workspaces guide exist; `BENCH=install` is not built.
+11. **Docs.** A docs section for the package manager (commands, compatibility, plugins, what is not supported).
+    *Today:* command pages under docs/content/docs/commands/ and a workspaces guide exist. No benchmark figures are
+    published (PLAN.md §2, 2026-11-23).
 
 ## 6. Decisions
 

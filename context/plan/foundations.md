@@ -28,7 +28,6 @@ pun-harness is dev-only and out of dist; its fixtures live in pun-fixers/tests/f
 2. Lint mode: `format(pun lint --fix)` against `format(rector process)` per project and per rule.
 3. Analyse mode: errors (file, line, identifier) against PHPStan + Larastan per project and preset.
 4. `scripts/cli-parity.sh` compares exit codes and resulting files, and output only for machine formats. Done.
-5. A benchmark rig in CI.
 
 ## 3. Docs site and brand (C12)
 

@@ -9,14 +9,6 @@ config.md. Output: output.md.
 `pun format` rewrites the layout of PHP files exactly as Pint does. It never changes what the code does. On any
 project, `pun check --fix` writes the same bytes as `pint`. `pun format` alone runs only the safe subset (§4).
 
-Measured on an 8-core orb with the profiling build, `--test`, cold runs without the result cache
-(reports/scoreboard.md):
-
-| Run | Pint | Pun |
-| --- | --- | --- |
-| laravel/framework, its own pint.json (3,158 files) | 294.7 s | 1.76 s |
-| Pinkary with Blade | 21.9 s | 1.66 s |
-
 **How parity is checked.** `pun-harness format` compares Pint with `pun migrate` followed by `pun check --fix` on every
 corpus project, with the laravel and psr12 presets. `scripts/cli-parity.sh` compares exit codes, machine formats and
 resulting files byte for byte. `scripts/fuzz-parity.sh` mutates corpus files (CRLF and mixed line endings included)
@@ -48,10 +40,9 @@ skips it, and asks for a PR to shipfastlabs/pun.
 **Blade.** With the `laravel/blade` rule on, `.blade.php` files go through Prettier and prettier-plugin-blade in Node
 (Bun in a project with a Bun lock file), as Pint 1.32 does. A few threads format the templates, largest first, each
 with one long-lived worker (one per 32 templates, at most `--max-processes`). The other threads format the PHP files.
-It needs Node or Bun, and Prettier is most of Pinkary's 1.66 s. The dependency probe's worker becomes the first
+It needs Node or Bun, and Prettier is most of Pinkary's run time. The dependency probe's worker becomes the first
 formatting worker, and Pun stops an unused probe worker on early exits, non-Blade stdin and PHP-only selections.
-Workers stay parallel with Node's default memory settings: serializing them or fixing the semi-space size was slower
-([scoreboard](../reports/scoreboard.md#blade-probe-recovery-linux-2026-10-25)).
+Workers stay parallel with Node's default memory settings: serializing them or fixing the semi-space size was slower.
 
 ## 3. The config
 
@@ -97,9 +88,8 @@ Speed and memory come first (decided).
    `pun migrate` stops on a pint.json that uses it.
 2. **The new output.** Done.
 3. **Fewer allocations per token.** Done.
-4. **Memory target** next to the speed one: peak RSS per corpus project in reports/scoreboard.md via
-   `scripts/bench.py`. Status: todo (PLAN.md §3).
-5. **8-core benchmark in CI:** laravel-framework under 1 s cold. Status: todo (PLAN.md §3).
+4. **Memory target** and 5. **8-core benchmark in CI:** dropped. No benchmark figures are published (PLAN.md §2,
+   2026-11-23).
 6. **Pinkary's CI swap:** `vendor/bin/pint` replaced by Pun. *Done when* Pinkary's CI is green on Pun. Status: todo
    (PLAN.md §3).
 7. **Port every format rule.** Done: all 164 are native. Follow-ups are rows in PLAN.md §3.
@@ -213,8 +203,8 @@ Answered 2026-10-17 (Pushpak):
 - **A Pun style** (`preset = "pun"`, a whole-file reprint at a line width) is wanted, after 1.0.
 - **Pun's own terminal output** (§9), modelled on oxfmt, Biome and Ruff. Exit codes and machine formats stay
   Pint-compatible; scripts/cli-parity.sh and tests/output.rs then cover only those.
-- **Speed and memory are a priority now**, with a memory target next to the speed one.
-- **Big runs stay parallel** (one worker per core), measured by the 8-core benchmark (§7).
+- **Speed and memory are a priority now.**
+- **Big runs stay parallel** (one worker per core).
 - **A result cache** reuses unchanged files' results (Pushpak, 2026-11-15); `--cache-file` and `--no-cache` control it.
 
 **Option names** (assistant's calls where "redesigned for TOML" is silent). The data is
