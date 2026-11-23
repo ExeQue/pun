@@ -3538,6 +3538,9 @@
         "ConvertStaticToSelf",
         "ConvertStaticToSelfRector",
         "Rector\\CodeQuality\\Rector\\Class_\\ConvertStaticToSelfRector",
+        "Rector\\Php55\\Rector\\ClassConstFetch\\StaticToSelfOnFinalClassRector",
+        "StaticToSelfOnFinalClass",
+        "StaticToSelfOnFinalClassRector",
         "redundant-static",
         "self_static_accessor"
       ],
@@ -9925,6 +9928,66 @@
         "EnsureTypeChecksFirst",
         "EnsureTypeChecksFirstRector",
         "Pest\\Rector\\Rules\\EnsureTypeChecksFirstRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-5.5/no-class-magic-constant",
+      "command": "lint",
+      "group": "php-5.5",
+      "summary": "Change __CLASS__ to self::class",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ClassConstantToSelfClass",
+        "ClassConstantToSelfClassRector",
+        "Rector\\Php55\\Rector\\Class_\\ClassConstantToSelfClassRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-5.5/prefer-self-over-get-called-class",
+      "command": "lint",
+      "group": "php-5.5",
+      "summary": "Change get_called_class() to self::class on final class",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "GetCalledClassToSelfClass",
+        "GetCalledClassToSelfClassRector",
+        "Rector\\Php55\\Rector\\FuncCall\\GetCalledClassToSelfClassRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-5.5/prefer-static-over-get-called-class",
+      "command": "lint",
+      "group": "php-5.5",
+      "summary": "Change get_called_class() to static::class on non-final class",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "GetCalledClassToStaticClass",
+        "GetCalledClassToStaticClassRector",
+        "Rector\\Php55\\Rector\\FuncCall\\GetCalledClassToStaticClassRector"
       ],
       "ported": true
     },

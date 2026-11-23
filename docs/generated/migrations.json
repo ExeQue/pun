@@ -2471,7 +2471,7 @@
         "rules": [
           "lint/classes/prefer-self-in-final"
         ],
-        "note": "Merged with ConvertStaticToSelf, redundant-static.",
+        "note": "Merged with ConvertStaticToSelf, StaticToSelfOnFinalClass, redundant-static.",
         "unsupported": false
       },
       {
@@ -5457,7 +5457,7 @@
         "rules": [
           "lint/classes/prefer-self-in-final"
         ],
-        "note": "Merged with ConvertStaticToSelf, redundant-static.",
+        "note": "Merged with ConvertStaticToSelf, StaticToSelfOnFinalClass, redundant-static.",
         "unsupported": false
       },
       {
@@ -6816,9 +6816,11 @@
         "name": "ClassConstantToSelfClass",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/class-constant-to-self-class-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-5.5/no-class-magic-constant"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ClassMethodArrayDocblockParamFromLocalCalls",
@@ -7069,7 +7071,7 @@
         "rules": [
           "lint/classes/prefer-self-in-final"
         ],
-        "note": "Merged with self_static_accessor, redundant-static.",
+        "note": "Merged with self_static_accessor, StaticToSelfOnFinalClass, redundant-static.",
         "unsupported": false
       },
       {
@@ -7558,17 +7560,21 @@
         "name": "GetCalledClassToSelfClass",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-called-class-to-self-class-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-5.5/prefer-self-over-get-called-class"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "GetCalledClassToStaticClass",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-called-class-to-static-class-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-5.5/prefer-static-over-get-called-class"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "GetClassOnNull",
@@ -10206,9 +10212,11 @@
         "name": "StaticToSelfOnFinalClass",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/static-to-self-on-final-class-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/classes/prefer-self-in-final"
+        ],
+        "note": "Merged with self_static_accessor, ConvertStaticToSelf, redundant-static.",
+        "unsupported": false
       },
       {
         "name": "StrContains",
@@ -27807,7 +27815,7 @@
         "rules": [
           "lint/classes/prefer-self-in-final"
         ],
-        "note": "Merged with self_static_accessor, ConvertStaticToSelf. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
+        "note": "Merged with self_static_accessor, ConvertStaticToSelf, StaticToSelfOnFinalClass. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
         "unsupported": false
       },
       {

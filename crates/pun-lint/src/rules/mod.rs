@@ -19,6 +19,7 @@ mod functions;
 mod laravel;
 mod operators;
 mod pest;
+mod php_5_5;
 mod php_7_0;
 mod php_7_1;
 mod php_7_2;
@@ -161,6 +162,9 @@ rules! {
         complexity::no_sole_value_sprintf => NoSoleValueSprintf,
         complexity::no_compact => NoCompact,
         complexity::require_is_a_allow_string => RequireIsAAllowString,
+        php_5_5::no_class_magic_constant => NoClassMagicConstant,
+        php_5_5::prefer_self_over_get_called_class => PreferSelfOverGetCalledClass,
+        php_5_5::prefer_static_over_get_called_class => PreferStaticOverGetCalledClass,
         php_7_0::no_call_user_method => NoCallUserMethod,
         php_7_0::prefer_random_int => PreferRandomInt,
         php_7_0::prefer_time => PreferTime,

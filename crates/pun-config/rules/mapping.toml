@@ -77,6 +77,7 @@ laravel = "Laravel (ecosystem: on when composer.lock has laravel/framework)"
 pest = "Pest (ecosystem: on when composer.lock has pestphp/pest)"
 phpunit = "PHPUnit (ecosystem: on when composer.lock has phpunit/phpunit)"
 laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or does better"
+"php-5.5" = "Upgrade to PHP 5.5: code a newer PHP removes, deprecates or does better"
 "php-7.0" = "Upgrade to PHP 7.0: code a newer PHP removes, deprecates or does better"
 "php-7.1" = "Upgrade to PHP 7.1: code a newer PHP removes, deprecates or does better"
 "php-7.2" = "Upgrade to PHP 7.2: code a newer PHP removes, deprecates or does better"
@@ -257,6 +258,9 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "whitespace/statement-indentation" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "Each statement must be indented." }
 
 [rules.lint]
+"php-5.5/no-class-magic-constant" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Leaves a `__CLASS__` outside any class alone, where Rector writes `self::class`, which PHP rejects there.", summary = "Change `__CLASS__` to `self::class`" }
+"php-5.5/prefer-self-over-get-called-class" = { fix = "unsafe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Unsafe: as in Rector, it also rewrites a call in a closure or arrow function of a class that is not `final`, where `get_called_class()` named the late static binding class and `self::class` names the declaring class.", summary = "Change `get_called_class()` to `self::class` on final class" }
+"php-5.5/prefer-static-over-get-called-class" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Change `get_called_class()` to `static::class` on non-final class" }
 "php-7.0/no-call-user-method" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Leaves a call with an unpacked or named method or object argument alone, where Rector writes `[null, ...]`.", summary = "Changes call_user_method()/call_user_method_array() to call_user_func()/call_user_func_array()" }
 "php-7.0/prefer-random-int" = { fix = "unsafe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", note = "Unsafe: `random_int()` draws from the CSPRNG, so `mt_srand()` no longer makes its numbers repeatable, and it throws where `rand()` swapped a minimum above the maximum that is not two integer literals. Unlike `lint/style/prefer-random-int` (PHP-CS-Fixer's `random_api_migration`), it changes `rand()` to `random_int()`, not `mt_rand()`, as Rector does.", summary = "Changes rand, srand, and getrandmax to newer alternatives" }
 "php-7.0/prefer-time" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Renames mktime() without arguments to time()" }
@@ -294,7 +298,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "classes/no-underscore-class" = { fix = "none", sets = ["modernize"], ported = true, origin = "mago", status = "decided", summary = "Detects class, interface, trait, or enum declarations named `_`." }
 "classes/no-unset-on-property" = { fix = "unsafe", intent = "suspicious", sets = ["code-quality"], ported = true, status = "decided", summary = "Properties should be set to `null` instead of using `unset`." }
 "classes/prefer-new-self" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Change `new static()` to `new self()` in a final class" }
-"classes/prefer-self-in-final" = { fix = "safe", sets = ["modernize", "code-quality"], ported = true, status = "decided", merged = ["php-cs-fixer:self_static_accessor", "rector:ConvertStaticToSelf"], replaces = ["lint/classes/prefer-self-over-static"], note = "Rector also rewrote `static::` to `self::` for private members of non-final classes; that case is not covered yet.", summary = "Inside an enum or `final`/anonymous class, `self` should be preferred over `static`." }
+"classes/prefer-self-in-final" = { fix = "safe", sets = ["modernize", "code-quality"], ported = true, status = "decided", merged = ["php-cs-fixer:self_static_accessor", "rector:ConvertStaticToSelf", "rector:StaticToSelfOnFinalClass"], replaces = ["lint/classes/prefer-self-over-static"], note = "Rector also rewrote `static::` to `self::` for private members of non-final classes; that case is not covered yet.", summary = "Inside an enum or `final`/anonymous class, `self` should be preferred over `static`." }
 "classes/require-class-matches-file" = { fix = "unsafe", intent = "correctness", sets = ["code-quality"], ported = true, status = "decided", summary = "Classes must be in a path that matches their namespace, be at least one namespace deep and the class name should match the file name." }
 "classes/require-member-order" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Orders the elements of classes/interfaces/traits/enums." }
 "comments/no-unused-ignore" = { fix = "safe", intent = "suspicious", sets = ["code-quality"], ported = true, status = "decided", pun_only = true, summary = "A @pun-ignore comment that suppressed nothing. Fix removes it." }
@@ -2298,7 +2302,7 @@ ChangeOrIfContinueToMultiContinue = { class = "Rector\\EarlyReturn\\Rector\\If_\
 ChangeSwitchToMatch = { class = "Rector\\Php80\\Rector\\Switch_\\ChangeSwitchToMatchRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php80"], status = "decided" }
 ChildDoctrineRepositoryClassType = { class = "Rector\\TypeDeclaration\\Rector\\Class_\\ChildDoctrineRepositoryClassTypeRector", unsupported = "Doctrine rules: out of scope (Laravel-first)", sets = ["type-declaration"], status = "decided" }
 ChrArgModulo = { class = "Rector\\Php85\\Rector\\FuncCall\\ChrArgModuloRector", pun = "lint/php-8.5/no-out-of-range-chr", sets = ["php85"], options = "none", status = "decided" }
-ClassConstantToSelfClass = { class = "Rector\\Php55\\Rector\\Class_\\ClassConstantToSelfClassRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php55"], status = "decided" }
+ClassConstantToSelfClass = { class = "Rector\\Php55\\Rector\\Class_\\ClassConstantToSelfClassRector", pun = "lint/php-5.5/no-class-magic-constant", sets = ["php55"], options = "none", status = "decided" }
 ClassMethodArrayDocblockParamFromLocalCalls = { class = "Rector\\TypeDeclarationDocblocks\\Rector\\Class_\\ClassMethodArrayDocblockParamFromLocalCallsRector", pun = "lint/types/add-param-phpdoc-from-local-calls", sets = ["type-declaration-docblocks"], options = "none", status = "decided" }
 ClassOnObject = { class = "Rector\\Php80\\Rector\\FuncCall\\ClassOnObjectRector", pun = "lint/style/prefer-class-keyword-on-object", sets = ["php80"], options = "none", status = "decided" }
 ClassOnThisVariableObject = { class = "Rector\\Php80\\Rector\\ClassConstFetch\\ClassOnThisVariableObjectRector", pun = "lint/php-8.0/prefer-static-class", sets = ["php80"], options = "none", status = "decided" }
@@ -2380,8 +2384,8 @@ FuncCallToStaticCall = { class = "Rector\\Transform\\Rector\\FuncCall\\FuncCallT
 FuncGetArgsToVariadicParam = { class = "Rector\\CodingStyle\\Rector\\ClassMethod\\FuncGetArgsToVariadicParamRector", pun = "lint/style/prefer-variadic-param", sets = ["coding-style"], options = "none", status = "decided" }
 FunctionArgumentDefaultValueReplacer = { class = "Rector\\Arguments\\Rector\\FuncCall\\FunctionArgumentDefaultValueReplacerRector", unsupported = "only in php52..php81 upgrade sets (below php82)", status = "decided" }
 FunctionFirstClassCallable = { class = "Rector\\CodingStyle\\Rector\\FuncCall\\FunctionFirstClassCallableRector", pun = "lint/php-8.1/prefer-first-class-callable-argument", sets = ["php81"], options = "none", status = "decided" }
-GetCalledClassToSelfClass = { class = "Rector\\Php55\\Rector\\FuncCall\\GetCalledClassToSelfClassRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php55"], status = "decided" }
-GetCalledClassToStaticClass = { class = "Rector\\Php55\\Rector\\FuncCall\\GetCalledClassToStaticClassRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php55"], status = "decided" }
+GetCalledClassToSelfClass = { class = "Rector\\Php55\\Rector\\FuncCall\\GetCalledClassToSelfClassRector", pun = "lint/php-5.5/prefer-self-over-get-called-class", sets = ["php55"], options = "none", status = "decided" }
+GetCalledClassToStaticClass = { class = "Rector\\Php55\\Rector\\FuncCall\\GetCalledClassToStaticClassRector", pun = "lint/php-5.5/prefer-static-over-get-called-class", sets = ["php55"], options = "none", status = "decided" }
 GetClassOnNull = { class = "Rector\\Php72\\Rector\\FuncCall\\GetClassOnNullRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php72"], status = "decided" }
 GetDebugType = { class = "Rector\\Php80\\Rector\\Ternary\\GetDebugTypeRector", pun = "lint/php-8.0/prefer-get-debug-type", sets = ["php-polyfills", "php80"], options = "none", status = "decided" }
 GetHeadersArgumentFormat = { class = "Rector\\Php80\\Rector\\FuncCall\\GetHeadersArgumentFormatRector", pun = "lint/php-8.0/no-int-get-headers-format", sets = ["php80"], options = "none", status = "decided" }
@@ -2664,7 +2668,7 @@ StaticCallToFuncCall = { class = "Rector\\Transform\\Rector\\StaticCall\\StaticC
 StaticCallToMethodCall = { class = "Rector\\Transform\\Rector\\StaticCall\\StaticCallToMethodCallRector", unsupported = "deprecated upstream (2.8.4, main)", status = "decided" }
 StaticCallToNew = { class = "Rector\\Transform\\Rector\\StaticCall\\StaticCallToNewRector", unsupported = "in no set", status = "decided" }
 StaticClosure = { class = "Rector\\CodingStyle\\Rector\\Closure\\StaticClosureRector", unsupported = "deprecated upstream (2.6.1, 2.7.0, main)", status = "decided" }
-StaticToSelfOnFinalClass = { class = "Rector\\Php55\\Rector\\ClassConstFetch\\StaticToSelfOnFinalClassRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php55"], status = "decided" }
+StaticToSelfOnFinalClass = { class = "Rector\\Php55\\Rector\\ClassConstFetch\\StaticToSelfOnFinalClassRector", pun = "lint/classes/prefer-self-in-final", sets = ["php55"], options = "none", status = "decided" }
 StrContains = { class = "Rector\\Php80\\Rector\\NotIdentical\\StrContainsRector", pun = "lint/style/prefer-str-contains", sets = ["php-polyfills", "php80"], options = "none", status = "decided" }
 StrEndsWith = { class = "Rector\\Php80\\Rector\\Identical\\StrEndsWithRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php-polyfills", "php80"], status = "decided" }
 StrStartsWith = { class = "Rector\\Php80\\Rector\\Identical\\StrStartsWithRector", unsupported = "only in php52..php81 upgrade sets (below php82)", sets = ["php-polyfills", "php80"], status = "decided" }
