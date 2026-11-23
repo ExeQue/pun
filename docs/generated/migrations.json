@@ -39,7 +39,7 @@
         "rules": [
           "format/arrays/syntax"
         ],
-        "note": "Merged with array-style. Options: renamed for TOML: [options.\"format/arrays/syntax\"].",
+        "note": "Merged with LongArrayToShortArray, array-style. Options: renamed for TOML: [options.\"format/arrays/syntax\"].",
         "unsupported": false
       },
       {
@@ -3025,7 +3025,7 @@
         "rules": [
           "format/arrays/syntax"
         ],
-        "note": "Merged with array-style. Options: renamed for TOML: [options.\"format/arrays/syntax\"].",
+        "note": "Merged with LongArrayToShortArray, array-style. Options: renamed for TOML: [options.\"format/arrays/syntax\"].",
         "unsupported": false
       },
       {
@@ -7820,9 +7820,11 @@
         "name": "LongArrayToShortArray",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/long-array-to-short-array-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "format/arrays/syntax"
+        ],
+        "note": "Merged with array_syntax, array-style.",
+        "unsupported": false
       },
       {
         "name": "MakeInheritedMethodVisibilitySameAsParent",
@@ -8965,7 +8967,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-reference-from-call-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not parse on PHP 8.4 (call-time pass-by-reference was removed in PHP 5.4)",
         "unsupported": true
       },
       {
@@ -9285,7 +9287,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-zero-break-continue-rector",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "the code it rewrites does not compile on PHP 8.4 (`break 0` and `break $x` are fatal errors since PHP 5.4)",
         "unsupported": true
       },
       {
@@ -26243,7 +26245,7 @@
         "rules": [
           "format/arrays/syntax"
         ],
-        "note": "Merged with array_syntax. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
+        "note": "Merged with array_syntax, LongArrayToShortArray. Options: none (Mago options do not carry; Pun uses the CS-Fixer rule options).",
         "unsupported": false
       },
       {

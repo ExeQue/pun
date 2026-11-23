@@ -205,9 +205,13 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "LongArrayToShortArray",
+        "LongArrayToShortArrayRector",
+        "Rector\\Php54\\Rector\\Array_\\LongArrayToShortArrayRector",
         "array-style",
         "array_syntax"
       ],

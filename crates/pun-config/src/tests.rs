@@ -855,6 +855,7 @@ group     arrays: Array literals, list() destructuring and array access
 presets   laravel
 fix       safe
 upstream  array_syntax (php-cs-fixer)
+          LongArrayToShortArray (rector)
           array-style (mago-linter)
 "
     );
