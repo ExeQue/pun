@@ -19,7 +19,10 @@ export default defineConfig({
   integrations: [devModulePreload(), devAgentation()],
 
   // The quickstart was merged into the introduction.
-  redirects: [{ from: "/docs/quickstart", to: "/docs#get-started" }],
+  redirects: [
+    { from: "/docs/quickstart", to: "/docs#get-started" },
+    { from: "/docs/why-three-commands", to: "/docs/vision" },
+  ],
 
   github: {
     owner: "shipfastlabs",

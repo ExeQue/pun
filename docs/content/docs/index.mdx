@@ -3,9 +3,7 @@ title: Introduction
 description: Pun is one Rust binary that formats, lints, and analyses PHP 8.3+ projects and installs their Composer packages.
 ---
 
-Pun is one binary, written in Rust, for your PHP toolchain. Each command gives the same answers as the tool it replaces: Pint and PHP-CS-Fixer, Rector, PHPStan and Larastan, or Composer. You can switch one command at a time.
-
-Pun supports projects that target PHP 8.3 or later. Rules that write newer syntax or call newer functions run only when the target allows them, so a PHP 8.3 project never gets PHP 8.4 code.
+Pun is one Rust binary for your PHP toolchain. It replaces Pint, PHP-CS-Fixer, Rector, PHPStan, Larastan, and Composer, and gives the same answers as each. Switch one command at a time. It supports projects that target PHP 8.3 or later.
 
 ## Commands
 
@@ -25,14 +23,6 @@ Pun supports projects that target PHP 8.3 or later. Rules that write newer synta
 | [`pun self-update`](/docs/commands/self-update) | Replaces `pun` with the latest release |
 
 To inspect a project, use [`pun config`](/docs/commands/config), [`pun list-files`](/docs/commands/list-files), [`pun extension list`](/docs/commands/extension), and [`pun explain`](/docs/commands/explain).
-
-## Status
-
-- **Format** matches Pint on every project in the [parity scoreboard](/docs/parity). It changes layout only. Pint's risky and code-deleting fixers are lint rules, so run `pun check --fix` to apply a migrated Pint config.
-- **Lint** and **analyse** cover part of Rector, PHPStan, and Larastan. The [rule reference](/docs/rules) marks missing rules as Planned.
-- **The package manager** reads `composer`, `package`, and `path` repositories, and runs the Composer plugins that `allow-plugins` allows. It does not support `vcs` repositories.
-
-Format, lint, and analyse need no PHP runtime. Blade formatting needs Node.js (or Bun) and Prettier. Some config migrations need PHP and the original tool.
 
 ## Get started
 
