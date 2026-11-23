@@ -1669,7 +1669,7 @@
       "id": "format/operators/linebreak",
       "command": "format",
       "group": "operators",
-      "summary": "Operators - when multiline - must always be at the beginning or at the end of the line.",
+      "summary": "In a multiline expression, each operator must be at the beginning or at the end of the line.",
       "enabled": [],
       "fix": "safe",
       "ecosystem": "core",
@@ -3669,7 +3669,7 @@
       "id": "lint/complexity/no-constant-condition",
       "command": "lint",
       "group": "complexity",
-      "summary": "Detects if statements where the condition is a constant that always",
+      "summary": "Detects if statements whose condition is a constant that is always true or always false.",
       "enabled": [
         "dead-code"
       ],
@@ -4691,7 +4691,7 @@
       "id": "lint/control-flow/no-assign-in-condition",
       "command": "lint",
       "group": "control-flow",
-      "summary": "Detects assignments in conditions which can lead to unexpected behavior and make the code harder",
+      "summary": "Detects assignments in conditions. They can cause unexpected behavior and make the code harder to read.",
       "enabled": [
         "code-quality"
       ],
@@ -6208,7 +6208,7 @@
       "id": "lint/functions/no-assign-in-argument",
       "command": "lint",
       "group": "functions",
-      "summary": "Detects assignments in function call arguments which can lead to unexpected behavior and make",
+      "summary": "Detects assignments in function call arguments. They can cause unexpected behavior and make the code harder to read.",
       "enabled": [
         "code-quality"
       ],
@@ -9577,7 +9577,7 @@
       "id": "lint/pest/prefer-to-equal-with-delta",
       "command": "lint",
       "group": "pest",
-      "summary": "Converts expect(abs($a - $b) < $delta)->toBeTrue() to expect($a)->toEqualWithDelta($b, $delta)",
+      "summary": "Converts expect(abs($a - $b) < $delta)->toBeTrue() to expect($a)->toEqualWithDelta($b, $delta).",
       "enabled": [
         "coding-style"
       ],
@@ -14030,7 +14030,7 @@
       "id": "lint/style/no-invalid-phpdoc",
       "command": "lint",
       "group": "style",
-      "summary": "Checks for syntax errors in docblock comments, such as malformed {@see} or",
+      "summary": "Checks for syntax errors in docblock comments, such as a malformed {@see} or {@link} tag.",
       "enabled": [
         "coding-style"
       ],

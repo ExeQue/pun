@@ -16,7 +16,8 @@ Run `pun migrate --from php-cs-fixer`. It reads `.php-cs-fixer.php` or `.php-cs-
 | `setRules()` and rule sets such as `@PER-CS` | Expanded rules, split between `[format.rules]` and `[lint.rules]` |
 | `setRiskyAllowed(true)` | Enabled risky fixers become lint rules at `"error"` |
 | Configured options | Pun names and values, on each rule page |
-| Finder `in()`, `exclude()`, `notName()`, `notPath()` | `[files] paths`, `exclude`; `[format] not-name`, `not-path` |
+| Finder `in()`, `exclude()` | `[files] paths`, `[files] exclude` |
+| Finder `notName()`, `notPath()` | `[format] not-name`, `[format] not-path` |
 | Custom fixer classes | Reported and skipped |
 
 ## Rule mapping

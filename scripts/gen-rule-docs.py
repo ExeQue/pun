@@ -135,19 +135,26 @@ def badges(data: dict, rid: str, rule: dict, sources: list[dict], links: bool = 
     if command == "analyse" and len(labels) > 1:
         # Analyse presets are cumulative, so the lowest one names them all.
         sentences = [f"In the {labels[0]} preset and every stricter one."]
+    ecosystem = next((e for e in data["meta"]["ecosystems"] if group == e or group.startswith(e + "-")), None)
+    extension = f"[`{ecosystem}` extension](/docs/configuration/pun-toml#extensions)" if links else f"`{ecosystem}` extension"
+    if ecosystem and command == "lint":
+        # An extension that is on brings its rules that are in any set. Its rules in no set stay opt-in.
+        sentences = [f"On when the {extension} is on." if enabled else "Off until you name it or its group."]
+        if group != ecosystem:
+            sentences.append(f"Needs the {extension}.")
+    elif ecosystem and command == "analyse":
+        sentences.append(f"Needs the {extension}.")
     sentences.append({"safe": "Safe fix.", "unsafe": "Unsafe fix: it can change behaviour.",
                       "mixed": "Safe fix where types prove it, unsafe otherwise.", "none": "Report only."}[rule.get("fix", "none")])
     if rule.get("intent"):
         sentences.append(f"Intent: {rule['intent']}.")
-    ecosystem = next((e for e in data["meta"]["ecosystems"] if group == e or group.startswith(e + "-")), None)
-    if ecosystem:
-        sentences.append(f"Runs when {ecosystem} is installed.")
-    if rule.get("gated_by") or re.match(r"(php|laravel|phpunit|pest)-\d", group):
-        gate = group if re.search(r"\d", group) else rule["gated_by"]
-        sentences.append(f"Gated by {gate}.")
+    if version := re.fullmatch(r"php-(\d+\.\d+)", group):
+        sentences.append(f"Runs only when `[php] version` is {version[1]} or later.")
+    elif rule.get("gated_by") == "php-version":
+        sentences.append("Depends on `[php] version`.")
     gates = sorted({s["gated_by"] for s in sources if s.get("gated_by")})
     if gates:
-        sentences.append("Upstream gates: " + ", ".join(f"`{gate}`" for gate in gates) + ".")
+        sentences.append("Upstream setting: " + ", ".join(f"`{gate}`" for gate in gates) + ".")
     if not sources:
         sentences.append("No upstream equivalent.")
     if not rule.get("ported"):
@@ -293,36 +300,44 @@ def selection_page(data: dict, command: str, name: str, on: dict) -> str:
     title = f"{name} {'set' if is_set else command + ' preset'}"
     purposes = {
         "format": {"laravel": "Laravel Pint's default formatting style.", "psr12": "The PSR-12 formatting standard.",
-                   "empty": "No format rules. Every enabled rule is explicit."},
+                   "empty": "No format rules. You turn on each rule in `[format.rules]`."},
         "lint": {"dead-code": "Code that never runs, or whose result is never used.",
                  "modernize": "Newer PHP syntax, up to your configured PHP target version.",
                  "code-quality": "Simpler equivalents and likely bugs.", "types": "Missing type declarations and PHPDoc types.",
                  "early-return": "Early returns and continues instead of nesting.",
-                 "privatization": "Narrower visibility, final classes and constants.",
-                 "naming": "Names that match their types. No rules remain in this set after upstream deprecations.",
+                 "privatization": "Narrower visibility, and final classes and constants.",
+                 "naming": "Names that match their types. It is empty, because upstream deprecated every rule it held.",
                  "coding-style": "One consistent way to write the same thing."},
-        "analyse": {"basic": "Unknown names, wrong argument counts and undefined variables.",
-                    "essential": "Unknown methods and properties, PHPDoc, return and property types.",
-                    "recommended": "Dead code, constant conditions and argument types. The default analyse preset.",
-                    "strict": "Missing typehints, union types and nullable values.", "max": "Explicit and implicit mixed types."},
+        "analyse": {"basic": "Unknown names, wrong argument counts, and undefined variables.",
+                    "essential": "Unknown methods and properties, and PHPDoc, return, and property types.",
+                    "recommended": "Dead code, constant conditions, and argument types. The default analyse preset.",
+                    "strict": "Missing typehints, union types, and nullable values.", "max": "Explicit and implicit mixed types."},
     }
-    body = purposes[command][name] + "\n\n"
+    body = purposes[command][name] + " Turn it on in `pun.toml`:\n\n"
     body += code(f'[{command}]\n' + (f'sets = ["{name}"]' if is_set else f'preset = "{name}"'), "toml")
-    body += "\nEcosystem and target-version gates still apply. Planned rules do not run.\n"
+    notes = {
+        "format": "",
+        "lint": "Laravel, Pest, and PHPUnit rules also need their [extension](/docs/configuration/pun-toml#extensions). "
+                "PHP upgrade rules run only up to `[php] version`. ",
+        "analyse": "Laravel rules also need the `laravel` [extension](/docs/configuration/pun-toml#extensions). ",
+    }
+    body += f"\n{notes[command]}Planned rules do not run. [Presets and sets](/docs/configuration/presets) compares them all.\n"
     if command == "analyse":
         presets = data["meta"]["presets"]["analyse"]
         bands = [(0, 1), (2, 3), (4, 5), (6, 8), (9, 10)]
         low, high = bands[presets.index(name)]
-        body += f"\nCovers PHPStan levels {low}–{high}, and every lower preset with them (levels 0–{high}). "
-        body += "Extension rules join by their own preset, not by PHPStan level.\n\n"
+        levels = f"{low} and {high}" if high == low + 1 else f"{low} to {high}"
+        body += f"\nThis preset adds PHPStan levels {levels}."
+        body += f" With the presets below it, it covers levels 0 to {high}." if low else ""
+        body += " Extension rules belong to a preset directly, not to a PHPStan level.\n\n"
         switches = [s for p in presets[:presets.index(name) + 1] for s in data["meta"]["preset_switches"].get(p, [])]
         if switches:
-            body += "Type switches it turns on:\n\n" + code("[analyse]\n" + "\n".join(f"{s} = true" for s in switches), "toml")
-        body += "\n### What each PHPStan level adds\n"
+            body += "It also turns on these type switches:\n\n" + code("[analyse]\n" + "\n".join(f"{s} = true" for s in switches), "toml")
+        body += "\n## What each PHPStan level adds\n"
         for level in range(high + 1):
             added = sorted({r["pun"] for r in data["upstream"]["phpstan-classes"].values()
                             if str(r.get("level")) == str(level) and r.get("pun", "").startswith("analyse/")})
-            body += f"\n#### Level {level}\n\n"
+            body += f"\n### Level {level}\n\n"
             body += "\n".join(f"- {rule_link(r)}" for r in added) or {
                 7: "Checks each member of a union (`union-types = true`).",
                 8: "Checks nullable values (`nullables = true`).",
@@ -330,13 +345,15 @@ def selection_page(data: dict, command: str, name: str, on: dict) -> str:
                 10: "Checks implicit mixed (`implicit-mixed = true`).",
             }.get(level, "No new rules.")
             body += "\n"
-    body += f"\n## Enabled rules ({len(on)})\n\n| Rule | Configuration | Status |\n| --- | --- | --- |\n"
+    body += f"\n## Enabled rules ({len(on)})\n\n"
+    if on:
+        body += "| Rule | Configuration | Status |\n| --- | --- | --- |\n"
     for rid, config in sorted(on.items()):
         rule = data["rules"][command][rid.split("/", 1)[1]]
         status = "Ported" if rule.get("ported") else "Planned"
         body += f"| {rule_link(rid)} | `{toml_value(config)}` | {status} |\n"
     if not on:
-        body += "\nNo rules.\n"
+        body += "No rules.\n"
     off = [f"{command}/{key}" for key in sorted(data["rules"][command]) if f"{command}/{key}" not in on]
     body += f"\n## Rules left off ({len(off)})\n\n"
     body += "\n".join(f"- {rule_link(r)}" for r in off) or "None."
@@ -353,9 +370,10 @@ def translation(tool: str) -> str:
 | `preset: laravel` or `psr12` | `[format] preset = \"laravel\"` or `\"psr12\"` |
 | `preset: per`, and `@PER-CS` rule sets | Explicit rules over the `empty` format preset |
 | `preset: symfony` | Not supported: `pun migrate` stops with an error |
-| `rules` | `[format.rules]` for layout; `[lint.rules]` at `\"error\"` for code edits |
+| `rules` | `[format.rules]` for layout, and `[lint.rules]` at `\"error\"` for code edits |
 | Rule options | Pun option names and values, on each rule page |
-| `in`, `exclude`, `notName`, `notPath` | `[files] paths`, `exclude`; `[format] not-name`, `not-path` |
+| `in`, `exclude` | `[files] paths`, `[files] exclude` |
+| `notName`, `notPath` | `[format] not-name`, `[format] not-path` |
 | `@php-cs-fixer-ignore` | `@pun-ignore-file` with the full format rule ID |
 """,
         "php-cs-fixer": """Run `pun migrate --from php-cs-fixer`. It reads `.php-cs-fixer.php` or `.php-cs-fixer.dist.php` through PHP-CS-Fixer, so it needs system PHP.
@@ -365,7 +383,8 @@ def translation(tool: str) -> str:
 | `setRules()` and rule sets such as `@PER-CS` | Expanded rules, split between `[format.rules]` and `[lint.rules]` |
 | `setRiskyAllowed(true)` | Enabled risky fixers become lint rules at `\"error\"` |
 | Configured options | Pun names and values, on each rule page |
-| Finder `in()`, `exclude()`, `notName()`, `notPath()` | `[files] paths`, `exclude`; `[format] not-name`, `not-path` |
+| Finder `in()`, `exclude()` | `[files] paths`, `[files] exclude` |
+| Finder `notName()`, `notPath()` | `[format] not-name`, `[format] not-path` |
 | Custom fixer classes | Reported and skipped |
 """,
         "rector": """Run `pun migrate --from rector` after `composer install`. It reads `rector.php` through the project's Rector, so it needs system PHP.
@@ -383,7 +402,7 @@ def translation(tool: str) -> str:
 
 Layout-only Rector rules map to format rules. The migration reports any that `[format]` does not run.
 """,
-        "phpstan": """Run `pun migrate --from phpstan`. It follows the config's includes, also the ones an included `.php` file builds with variables, `foreach`, `if`, `glob()`, `is_file()`, `class_exists()` and `interface_exists()`. `class_exists()` and `interface_exists()` know PHP's and PHPStan's own classes only, and stop with an error on any other class, such as one from a PHPStan extension in `vendor/`.
+        "phpstan": """Run `pun migrate --from phpstan`. It follows the config's includes. That covers includes that an included `.php` file builds with variables, `foreach`, `if`, `glob()`, `is_file()`, `class_exists()`, and `interface_exists()`. `class_exists()` and `interface_exists()` know only PHP's and PHPStan's own classes. Any other class, such as one from a PHPStan extension in `vendor/`, stops the migration with an error.
 
 | phpstan.neon | pun.toml |
 | --- | --- |
@@ -394,11 +413,11 @@ Layout-only Rector rules map to format rules. The migration reports any that `[f
 | `reportUnmatchedIgnoredErrors: false` | `report-unmatched = false` on each entry that doesn't set `reportUnmatched` |
 | Changed rule parameters | Kebab-case options on each running rule that reads the parameter |
 | strict-rules or deprecation-rules includes | The matching Pun checks, when their parameter enables them |
-| A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere. `pun analyse` also reports the check's errors under the lint rule's ID, since the lint rule sees no types and can miss them |
+| A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere. `pun analyse` also reports the check's errors under the lint rule's ID, because the lint rule sees no types and can miss some |
 | `@phpstan-ignore method.notFound` | `@pun-ignore analyse/undefined/method` |
 | Baselines | Not copied. Run `pun analyse --generate-baseline`. |
-| `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`; the rules it turns on get `"on"` lines |
-| `phpVersion: 80400`, or `{min, max}` | `[php] version = "8.4"`, from `min`; a different `max` is reported and skipped |
+| `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`, and an `"on"` line for each rule it turns on |
+| `phpVersion: 80400`, or `{min, max}` | `[php] version = "8.4"`, from `min`. A different `max` is reported and skipped |
 | Custom extensions, `rules:` classes, services tagged `phpstan.*` | Reported and skipped, one line each |
 
 The rule mapping lists PHPStan identifiers. An exact identifier wins over a pattern.
@@ -407,11 +426,11 @@ The rule mapping lists PHPStan identifiers. An exact identifier wins over a patt
 
 | Larastan config | pun.toml |
 | --- | --- |
-| Larastan include | Built-in Laravel checks, with no PHP at runtime |
-| Laravel dependency in composer.lock | Automatic Laravel ecosystem gate |
-| Config without the Larastan include | The analyse `laravel` group is off |
-| Rule booleans and changed parameters | Rule on/off settings and kebab-case options |
-| `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs. Ignore tables keep the original identifier |
+| Larastan include | Pun's built-in Laravel checks, which run no PHP |
+| `laravel/framework` in composer.lock | `laravel = \"on\"` in `[extensions]` |
+| Config without the Larastan include | `\"laravel\" = \"off\"` in `[analyse.rules]` |
+| Rule booleans and changed parameters | Rule on and off settings, and kebab-case options |
+| `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs. `[[analyse.ignore]]` entries keep the original identifier |
 
 Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#configuration).
 """,
@@ -424,7 +443,7 @@ Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#confi
 | Analyzer issue codes | Linked analyse rule IDs, sometimes several per code |
 | Exclusions | `[files] exclude`, or exclusions under the matching command |
 
-Analyzer links go to Mago's analyzer overview, because Mago 1.57 has no page per code. `Pun/*` names are Pun's Mago ports, not Mago rule codes.
+Analyzer links go to Mago's analyzer overview, because Mago's docs have no page per analyzer code. `Pun/*` names are Pun's ports of Mago rules, not Mago rule codes.
 """,
     }
     return shared + sections[tool]
@@ -575,7 +594,10 @@ def generate(data: dict) -> dict[Path, str]:
                 body += badges(data, rid, rule, sources[rid], links=False) + "\n\n</Card>\n"
             out[CONTENT / f"rules/{command}/{group}/index.mdx"] = page(f"{command}/{group}", body + "</CardGroup>")
         links = "\n".join(f"- [{g}](/docs/rules/{command}/{g}) ({len(ns)} rule{'s' * (len(ns) != 1)})" for g, ns in groups.items())
-        out[CONTENT / f"rules/{command}/index.mdx"] = page(f"{command} rules", links)
+        intro = {"format": "Format rules change layout only. [`pun format`](/docs/commands/format) applies them.",
+                 "lint": "Lint rules report code problems, and many fix them. [`pun lint`](/docs/commands/lint) runs them.",
+                 "analyse": "Analyse rules report type errors and never edit files. [`pun analyse`](/docs/commands/analyse) runs them."}
+        out[CONTENT / f"rules/{command}/index.mdx"] = page(f"{command} rules", f"{intro[command]} Each group lists its rules.\n\n{links}")
     preset_names = []
     for command in ("format", "analyse"):
         for preset in data["meta"]["presets"][command]:
@@ -586,13 +608,15 @@ def generate(data: dict) -> dict[Path, str]:
                 if slug in memberships(data, "analyse", rule)}
             out[CONTENT / f"rules/presets/{slug}.mdx"] = selection_page(data, command, preset, on)
     out[CONTENT / "rules/presets/meta.ts"] = meta("Presets", preset_names)
-    out[CONTENT / "rules/presets/index.mdx"] = page("Rule presets", "\n".join(
+    out[CONTENT / "rules/presets/index.mdx"] = page("Rule presets", "Each page lists the rules a format or analyse preset turns on. "
+        "[Presets and sets](/docs/configuration/presets) explains how to pick one.\n\n" + "\n".join(
         f"- [{name}](/docs/rules/presets/{name})" for name in preset_names))
     for name in data["meta"]["sets"]:
         on = {f"lint/{key}": "error" for key, rule in data["rules"]["lint"].items() if name in rule.get("sets", [])}
         out[CONTENT / f"rules/sets/{name}.mdx"] = selection_page(data, "lint", name, on)
     out[CONTENT / "rules/sets/meta.ts"] = meta("Sets", data["meta"]["sets"])
-    out[CONTENT / "rules/sets/index.mdx"] = page("Lint sets", "\n".join(
+    out[CONTENT / "rules/sets/index.mdx"] = page("Lint sets", "Each page lists the rules a lint set turns on. "
+        "[Presets and sets](/docs/configuration/presets) explains how to pick them.\n\n" + "\n".join(
         f"- [{name}](/docs/rules/sets/{name})" for name in data["meta"]["sets"]))
     out.update(migration_pages(data, rows, urls))
     # Search also accepts literal mapping patterns, including those shadowed by an exact identifier.

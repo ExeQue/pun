@@ -9,7 +9,7 @@ pagination: false
 
 `pun migrate` keeps the old config and reports what it skips. Planned rules do not run.
 
-Run `pun migrate --from phpstan`. It follows the config's includes, also the ones an included `.php` file builds with variables, `foreach`, `if`, `glob()`, `is_file()`, `class_exists()` and `interface_exists()`. `class_exists()` and `interface_exists()` know PHP's and PHPStan's own classes only, and stop with an error on any other class, such as one from a PHPStan extension in `vendor/`.
+Run `pun migrate --from phpstan`. It follows the config's includes. That covers includes that an included `.php` file builds with variables, `foreach`, `if`, `glob()`, `is_file()`, `class_exists()`, and `interface_exists()`. `class_exists()` and `interface_exists()` know only PHP's and PHPStan's own classes. Any other class, such as one from a PHPStan extension in `vendor/`, stops the migration with an error.
 
 | phpstan.neon | pun.toml |
 | --- | --- |
@@ -20,11 +20,11 @@ Run `pun migrate --from phpstan`. It follows the config's includes, also the one
 | `reportUnmatchedIgnoredErrors: false` | `report-unmatched = false` on each entry that doesn't set `reportUnmatched` |
 | Changed rule parameters | Kebab-case options on each running rule that reads the parameter |
 | strict-rules or deprecation-rules includes | The matching Pun checks, when their parameter enables them |
-| A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere. `pun analyse` also reports the check's errors under the lint rule's ID, since the lint rule sees no types and can miss them |
+| A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere. `pun analyse` also reports the check's errors under the lint rule's ID, because the lint rule sees no types and can miss some |
 | `@phpstan-ignore method.notFound` | `@pun-ignore analyse/undefined/method` |
 | Baselines | Not copied. Run `pun analyse --generate-baseline`. |
-| `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`; the rules it turns on get `"on"` lines |
-| `phpVersion: 80400`, or `{min, max}` | `[php] version = "8.4"`, from `min`; a different `max` is reported and skipped |
+| `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`, and an `"on"` line for each rule it turns on |
+| `phpVersion: 80400`, or `{min, max}` | `[php] version = "8.4"`, from `min`. A different `max` is reported and skipped |
 | Custom extensions, `rules:` classes, services tagged `phpstan.*` | Reported and skipped, one line each |
 
 The rule mapping lists PHPStan identifiers. An exact identifier wins over a pattern.

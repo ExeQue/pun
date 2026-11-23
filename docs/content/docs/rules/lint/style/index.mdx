@@ -82,49 +82,49 @@ In the `code-quality` and `coding-style` sets. Unsafe fix: it can change behavio
 
 Disallows calling a method by a variable name (`$object->$method()`).
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.noVariableVariables`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariableVariables`.
 
 </Card>
 <Card title="no-dynamic-method-callable" href="/docs/rules/lint/style/no-dynamic-method-callable">
 
 Disallows a first-class callable of a method with a variable name (`$object->$method(...)`).
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.noVariableVariables`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariableVariables`.
 
 </Card>
 <Card title="no-dynamic-property" href="/docs/rules/lint/style/no-dynamic-property">
 
 Disallows accessing a property by a variable name (`$object->$property`).
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.noVariableVariables`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariableVariables`.
 
 </Card>
 <Card title="no-dynamic-static-call" href="/docs/rules/lint/style/no-dynamic-static-call">
 
 Disallows calling a static method by a variable name (`Foo::$method()`).
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.noVariableVariables`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariableVariables`.
 
 </Card>
 <Card title="no-dynamic-static-callable" href="/docs/rules/lint/style/no-dynamic-static-callable">
 
 Disallows a first-class callable of a static method with a variable name (`Foo::$method(...)`).
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.noVariableVariables`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariableVariables`.
 
 </Card>
 <Card title="no-dynamic-static-property" href="/docs/rules/lint/style/no-dynamic-static-property">
 
 Disallows accessing a static property by a variable name (`Foo::$$property`).
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.noVariableVariables`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariableVariables`.
 
 </Card>
 <Card title="no-empty" href="/docs/rules/lint/style/no-empty">
 
 Detects the use of the `empty()` construct.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Intent: suspicious. Upstream gates: `strictRules.disallowedEmpty`.
+In the `code-quality` set. Unsafe fix: it can change behaviour. Intent: suspicious. Upstream setting: `strictRules.disallowedEmpty`.
 
 </Card>
 <Card title="no-ereg" href="/docs/rules/lint/style/no-ereg">
@@ -164,7 +164,7 @@ Not in any set. Report only.
 </Card>
 <Card title="no-invalid-phpdoc" href="/docs/rules/lint/style/no-invalid-phpdoc">
 
-Checks for syntax errors in docblock comments, such as malformed `{@see}` or
+Checks for syntax errors in docblock comments, such as a malformed `{@see}` or `{@link}` tag.
 
 In the `coding-style` set. Report only.
 
@@ -243,7 +243,7 @@ In the `coding-style` set. Unsafe fix: it can change behaviour.
 
 Detects the use of the shorthand ternary and elvis operators.
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.disallowedShortTernary`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.disallowedShortTernary`.
 
 </Card>
 <Card title="no-side-effects-with-declarations" href="/docs/rules/lint/style/no-side-effects-with-declarations">
@@ -257,7 +257,7 @@ Not in any set. Report only.
 
 Replace __sleep()/__wakeup() with __serialize()/__unserialize().
 
-In the `modernize` set. Unsafe fix: it can change behaviour. Gated by php-version.
+In the `modernize` set. Unsafe fix: it can change behaviour. Depends on `[php] version`.
 
 </Card>
 <Card title="no-sprintf-concat" href="/docs/rules/lint/style/no-sprintf-concat">
@@ -292,7 +292,7 @@ In the `dead-code` set. Unsafe fix: it can change behaviour.
 
 Disallows variable variables (`$$name`).
 
-In the `coding-style` set. Report only. Upstream gates: `strictRules.noVariableVariables`.
+In the `coding-style` set. Report only. Upstream setting: `strictRules.noVariableVariables`.
 
 </Card>
 <Card title="prefer-arrow-function" href="/docs/rules/lint/style/prefer-arrow-function">
@@ -369,7 +369,7 @@ In the `modernize` set. Unsafe fix: it can change behaviour.
 
 Replace nested dirname() calls with one call and a `$levels` argument.
 
-In the `modernize` set. Unsafe fix: it can change behaviour. Gated by php-version.
+In the `modernize` set. Unsafe fix: it can change behaviour. Depends on `[php] version`.
 
 </Card>
 <Card title="prefer-early-continue" href="/docs/rules/lint/style/prefer-early-continue">

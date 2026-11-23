@@ -13,11 +13,11 @@ Run `pun migrate --from phpstan` on the config that includes `larastan/larastan/
 
 | Larastan config | pun.toml |
 | --- | --- |
-| Larastan include | Built-in Laravel checks, with no PHP at runtime |
-| Laravel dependency in composer.lock | Automatic Laravel ecosystem gate |
-| Config without the Larastan include | The analyse `laravel` group is off |
-| Rule booleans and changed parameters | Rule on/off settings and kebab-case options |
-| `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs. Ignore tables keep the original identifier |
+| Larastan include | Pun's built-in Laravel checks, which run no PHP |
+| `laravel/framework` in composer.lock | `laravel = "on"` in `[extensions]` |
+| Config without the Larastan include | `"laravel" = "off"` in `[analyse.rules]` |
+| Rule booleans and changed parameters | Rule on and off settings, and kebab-case options |
+| `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs. `[[analyse.ignore]]` entries keep the original identifier |
 
 Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#configuration).
 

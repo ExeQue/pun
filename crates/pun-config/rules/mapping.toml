@@ -167,7 +167,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "operators/binary-spacing" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "Binary operators should be surrounded by space as configured." }
 "operators/concat-spacing" = { fix = "safe", presets = ["laravel"], ported = true, status = "decided", summary = "Concatenation should be spaced according to configuration." }
 "operators/increment-style" = { fix = "safe", presets = ["laravel"], ported = true, status = "decided", summary = "Pre- or post-increment and decrement operators should be used if possible." }
-"operators/linebreak" = { fix = "safe", ported = true, status = "decided", summary = "Operators - when multiline - must always be at the beginning or at the end of the line." }
+"operators/linebreak" = { fix = "safe", ported = true, status = "decided", summary = "In a multiline expression, each operator must be at the beginning or at the end of the line." }
 "operators/new-expression-parentheses" = { fix = "safe", ported = true, status = "decided", summary = "All `new` expressions with a further call must (not) be wrapped in parentheses." }
 "operators/new-parentheses" = { fix = "safe", presets = ["laravel", "psr12"], ported = true, status = "decided", summary = "All instances created with `new` keyword must (not) be followed by parentheses." }
 "operators/no-space-around-arrow" = { fix = "safe", presets = ["laravel"], ported = true, status = "decided", summary = "There should not be space before or after object operators `->` and `?->`." }
@@ -273,7 +273,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "complexity/no-boolean-flag-parameter" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "Flags function-like parameters that use a boolean type and drive the function's behaviour." }
 "complexity/no-compact" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Change `compact()` call to own array" }
 "complexity/no-concat-assign-new-item" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Change concat assign on a new array item to plain assign, as the new item is always null" }
-"complexity/no-constant-condition" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", summary = "Detects `if` statements where the condition is a constant that always" }
+"complexity/no-constant-condition" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", summary = "Detects `if` statements whose condition is a constant that is always true or always false." }
 "complexity/no-constant-via-variable" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Change variable class constant fetch to direct class constant fetch when class or constant target is final" }
 "complexity/no-dirname-dir-concat" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Change dirname() and string concat, to __DIR__ and direct string path" }
 "complexity/no-duplicate-match-arm" = { fix = "none", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects `match` arms that produce the same result as an earlier arm." }
@@ -325,7 +325,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "complexity/require-is-a-allow-string" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Complete missing 3rd argument in case is_a() function in case of strings" }
 "complexity/require-named-argument-order" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Order named arguments as the parameters are declared." }
 "complexity/require-previous-exception" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "When throwing into a catch block, checks that the previous exception is passed to the new throw clause" }
-"control-flow/no-assign-in-condition" = { fix = "none", intent = "correctness", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects assignments in conditions which can lead to unexpected behavior and make the code harder" }
+"control-flow/no-assign-in-condition" = { fix = "none", intent = "correctness", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects assignments in conditions. They can cause unexpected behavior and make the code harder to read." }
 "control-flow/no-else-after-return" = { fix = "safe", sets = ["code-quality"], ported = true, status = "decided", summary = "Drop the else after a branch that always returns, throws or exits, and move its body after the if." }
 "control-flow/no-empty-catch" = { fix = "none", intent = "correctness", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Report an empty `catch` block, which swallows the exception." }
 "control-flow/no-for-init-overwrite" = { fix = "none", intent = "suspicious", sets = ["code-quality"], ported = true, status = "decided", summary = "Disallows a `for` loop's init expression overwriting a variable that is already defined." }
@@ -396,7 +396,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "dead-code/no-useless-override" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", summary = "Remove methods and constructors that only call the parent with the same arguments." }
 "dead-code/no-useless-phpdoc-type" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", summary = "Remove PHPDoc types that add nothing over the native type (`@var null`, unions wider than the native return type)." }
 "dead-code/no-useless-ternary" = { fix = "safe", sets = ["dead-code", "code-quality"], ported = true, status = "decided", merged = ["rector:RemoveUselessTernary", "rector:SimplifyTautologyTernary", "rector:UnnecessaryTernaryExpression"], replaces = ["lint/dead-code/no-bool-ternary", "lint/dead-code/no-tautology-ternary"], summary = "Simplify ternaries whose result does not depend on the condition, or that equal a boolean expression." }
-"functions/no-assign-in-argument" = { fix = "none", intent = "correctness", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects assignments in function call arguments which can lead to unexpected behavior and make" }
+"functions/no-assign-in-argument" = { fix = "none", intent = "correctness", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects assignments in function call arguments. They can cause unexpected behavior and make the code harder to read." }
 "functions/no-call-user-func-method" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Refactor `call_user_func()` on known class method to a method call" }
 "functions/no-extra-arguments" = { fix = "safe", sets = ["code-quality"], gated_by = "php-version", ported = true, status = "decided", summary = "Remove extra parameters" }
 "functions/no-missing-format-argument" = { fix = "none", intent = "correctness", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects `sprintf`-style format calls where the number of placeholders" }
@@ -562,7 +562,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "pest/prefer-to-contain-only-instances-of" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts ->each->toBeInstanceOf() pattern to toContainOnlyInstancesOf() matcher" }
 "pest/prefer-to-end-with" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts str_ends_with() checks to toEndWith() matcher" }
 "pest/prefer-to-equal-canonicalizing" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts sort-then-compare to toEqualCanonicalizing() matcher" }
-"pest/prefer-to-equal-with-delta" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts expect(abs($a - $b) < $delta)->toBeTrue() to expect($a)->toEqualWithDelta($b, $delta)" }
+"pest/prefer-to-equal-with-delta" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts `expect(abs($a - $b) < $delta)->toBeTrue()` to `expect($a)->toEqualWithDelta($b, $delta)`." }
 "pest/prefer-to-have-count" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts expect(count($arr))->toBe(5) to expect($arr)->toHaveCount(5)" }
 "pest/prefer-to-have-key" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts array_key_exists() checks to toHaveKey() matcher" }
 "pest/prefer-to-have-keys" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts chained toHaveKey() calls to toHaveKeys() with array of keys" }
@@ -787,7 +787,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "style/no-hash-emoji" = { fix = "safe", sets = ["coding-style"], ported = true, origin = "mago", status = "decided", summary = "Discourages usage of the `#️⃣` emoji in place of the ASCII `#`." }
 "style/no-ini-set" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "Enforces that ini_set is not used." }
 "style/no-inline-html" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "Disallows inline content (text outside of PHP tags) in source files." }
-"style/no-invalid-phpdoc" = { fix = "none", sets = ["coding-style"], ported = true, origin = "mago", status = "decided", summary = "Checks for syntax errors in docblock comments, such as malformed `{@see}` or" }
+"style/no-invalid-phpdoc" = { fix = "none", sets = ["coding-style"], ported = true, origin = "mago", status = "decided", summary = "Checks for syntax errors in docblock comments, such as a malformed `{@see}` or `{@link}` tag." }
 "style/no-is-null" = { fix = "unsafe", ported = true, status = "decided", summary = "Replaces `is_null($var)` expression with `null === $var`." }
 "style/no-isset" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "Detects the use of the `isset()` construct." }
 "style/no-multi-assign" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Split chained assignments (`$a = $b = 1`) into one assignment per statement." }

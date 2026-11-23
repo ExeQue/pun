@@ -12,679 +12,679 @@ Laravel (ecosystem: on when composer.lock has laravel/framework). Also in [forma
 
 Adds the @extends annotation to Factories.
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed. Gated by laravel-version.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="add-has-factory-trait" href="/docs/rules/lint/laravel/add-has-factory-trait">
 
 Adds the HasFactory trait to Models.
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="add-legacy-relation-generics" href="/docs/rules/lint/laravel/add-legacy-relation-generics">
 
 Add generic return type to relations in child of Illuminate\Database\Eloquent\Model
 
-In the `types` set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="add-new-relation-generics" href="/docs/rules/lint/laravel/add-new-relation-generics">
 
 Add generic return type to relations in child of Illuminate\Database\Eloquent\Model
 
-In the `types` set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="add-query-closure-type" href="/docs/rules/lint/laravel/add-query-closure-type">
 
 Type-hint the closure parameter of Eloquent where()/whereHas() and similar query methods.
 
-In the `types` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="add-relation-generics" href="/docs/rules/lint/laravel/add-relation-generics">
 
 Add generic return type to relations in child of Illuminate\Database\Eloquent\Model
 
-In the `types` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="add-relation-query-closure-type" href="/docs/rules/lint/laravel/add-relation-query-closure-type">
 
 Add type hinting to where relation has methods e.g. `whereHas`, `orWhereHas`, `whereDoesntHave`, `orWhereDoesntHave`, `whereHasMorph`, `orWhereHasMorph`, `whereDoesntHaveMorph`, `orWhereDoesntHaveMorph`
 
-In the `types` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="add-scope-builder-generics" href="/docs/rules/lint/laravel/add-scope-builder-generics">
 
 Add generic Builder return type to scopes in child of Illuminate\Database\Eloquent\Model
 
-In the `types` set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="add-tap-closure-type" href="/docs/rules/lint/laravel/add-tap-closure-type">
 
 Automatically type hints your tappable closures
 
-In the `types` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-app-array-access" href="/docs/rules/lint/laravel/no-app-array-access">
 
 Replace magical call on $this->app["something"] to standalone type assign variable
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-collection-aliases" href="/docs/rules/lint/laravel/no-collection-aliases">
 
 Use the base collection methods instead of their aliases.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-controller-middleware" href="/docs/rules/lint/laravel/no-controller-middleware">
 
 This rule warns against applying middlewares in controllers.
 
-Not in any set. Report only. Runs when laravel is installed.
+Off until you name it or its group. Report only.
 
 </Card>
 <Card title="no-default-authorize" href="/docs/rules/lint/laravel/no-default-authorize">
 
 Remove the authorize() method from FormRequest classes when it only returns true, as passesAuthorization() defaults to true when the method does not exist
 
-In the `code-quality` set. Safe fix. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `laravel` extension is on. Safe fix. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="no-implicit-model-query" href="/docs/rules/lint/laravel/no-implicit-model-query">
 
 Start Eloquent queries with Model::query() instead of static magic calls.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-negated-blank-filled" href="/docs/rules/lint/laravel/no-negated-blank-filled">
 
 Swap the use of NotBooleans used with filled() and blank() to the correct helper.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-negated-contains" href="/docs/rules/lint/laravel/no-negated-contains">
 
 Convert negated calls to `contains` to `doesntContain`, or vice versa.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-negated-filter" href="/docs/rules/lint/laravel/no-negated-filter">
 
 Avoid negated conditionals in `filter()` by using `reject()`, or vice versa.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-negated-when" href="/docs/rules/lint/laravel/no-negated-when">
 
 Reverse conditionable method calls
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-request-all" href="/docs/rules/lint/laravel/no-request-all">
 
 Detects the use of `$request->all()` or `Request::all()` in Laravel applications.
 
-In the `code-quality` set. Report only. Runs when laravel is installed.
+On when the `laravel` extension is on. Report only.
 
 </Card>
 <Card title="no-useless-value-call" href="/docs/rules/lint/laravel/no-useless-value-call">
 
 Removes redundant value helper calls
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="no-useless-with-call" href="/docs/rules/lint/laravel/no-useless-with-call">
 
 Removes redundant with helper calls
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-abort-if" href="/docs/rules/lint/laravel/prefer-abort-if">
 
 Change if abort to abort_if
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-aliases-attribute" href="/docs/rules/lint/laravel/prefer-aliases-attribute">
 
 Changes the aliases property to use the Aliases attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-anonymous-migration" href="/docs/rules/lint/laravel/prefer-anonymous-migration">
 
 Prefer using anonymous classes for Laravel migrations instead of named classes.
 
-In the `code-quality` set. Report only. Runs when laravel is installed.
+On when the `laravel` extension is on. Report only.
 
 </Card>
 <Card title="prefer-appends-attribute" href="/docs/rules/lint/laravel/prefer-appends-attribute">
 
 Changes model appends property to use the appends attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-array-validation-rules" href="/docs/rules/lint/laravel/prefer-array-validation-rules">
 
 Use array syntax for validation rules instead of 'a&#124;b' strings.
 
-In the `code-quality` set. Safe fix. Runs when laravel is installed.
+On when the `laravel` extension is on. Safe fix.
 
 </Card>
 <Card title="prefer-back-helper" href="/docs/rules/lint/laravel/prefer-back-helper">
 
 Replace `redirect()->back()` and `Redirect::back()` with `back()`
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-backoff-attribute" href="/docs/rules/lint/laravel/prefer-backoff-attribute">
 
 Changes the backoff property to use the Backoff attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-casts-method" href="/docs/rules/lint/laravel/prefer-casts-method">
 
 Detects the `$casts` property on an Eloquent model. Laravel 11 introduced the `casts()`
 
-In the `coding-style` set. Safe fix. Runs when laravel is installed.
+On when the `laravel` extension is on. Safe fix.
 
 </Card>
 <Card title="prefer-class-container-key" href="/docs/rules/lint/laravel/prefer-class-container-key">
 
 Changes the string or class const used for a service container make call
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-closure-only-bind" href="/docs/rules/lint/laravel/prefer-closure-only-bind">
 
 Drop the specified abstract class from the bind method and replace it with a closure that returns the abstract class.
 
-Not in any set. Safe fix. Runs when laravel is installed.
+Off until you name it or its group. Safe fix.
 
 </Card>
 <Card title="prefer-collected-by-attribute" href="/docs/rules/lint/laravel/prefer-collected-by-attribute">
 
 Changes model newCollection method to use the CollectedBy attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-collection-all" href="/docs/rules/lint/laravel/prefer-collection-all">
 
 Convert `toArray()` to `all()` when the collection does not contain any Arrayable objects.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-collection-is-empty" href="/docs/rules/lint/laravel/prefer-collection-is-empty">
 
 Convert collection `count()` comparisons against 0 or 1 to `isEmpty()` or `isNotEmpty()`
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="prefer-collects-attribute" href="/docs/rules/lint/laravel/prefer-collects-attribute">
 
 Changes the collects property to use the Collects attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-command-hidden-attribute" href="/docs/rules/lint/laravel/prefer-command-hidden-attribute">
 
 Changes the hidden property to use the Hidden attribute on console commands
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-connection-attribute" href="/docs/rules/lint/laravel/prefer-connection-attribute">
 
 Changes model connection property to use the Connection attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-constructor-injection" href="/docs/rules/lint/laravel/prefer-constructor-injection">
 
 Move help facade-like function calls to constructor injection
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-container-method-call" href="/docs/rules/lint/laravel/prefer-container-method-call">
 
 Change array access on the container to the matching method call, as the contract does not extend ArrayAccess
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+Off until you name it or its group. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="prefer-date-facade" href="/docs/rules/lint/laravel/prefer-date-facade">
 
 Refactor Carbon static method calls to use the Date facade instead.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-date-format-attribute" href="/docs/rules/lint/laravel/prefer-date-format-attribute">
 
 Changes model dateFormat property to use the DateFormat attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-dedicated-status-assertion" href="/docs/rules/lint/laravel/prefer-dedicated-status-assertion">
 
 Use assertOk(), assertNotFound() and similar instead of assertStatus(200).
 
-In the `code-quality` set. Safe fix. Runs when laravel is installed.
+On when the `laravel` extension is on. Safe fix.
 
 </Card>
 <Card title="prefer-default-argument" href="/docs/rules/lint/laravel/prefer-default-argument">
 
 Apply default instead of null coalesce
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-delay-attribute" href="/docs/rules/lint/laravel/prefer-delay-attribute">
 
 Changes the delay property to use the Delay attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-delete-when-missing-models-attribute" href="/docs/rules/lint/laravel/prefer-delete-when-missing-models-attribute">
 
 Changes the deleteWhenMissingModels property to use the DeleteWhenMissingModels attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-description-attribute" href="/docs/rules/lint/laravel/prefer-description-attribute">
 
 Changes the description property to use the Description attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-dispatch-helper" href="/docs/rules/lint/laravel/prefer-dispatch-helper">
 
 Use the event or dispatch helpers instead of the static dispatch method.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-env-helper" href="/docs/rules/lint/laravel/prefer-env-helper">
 
 Change env variable to env static call
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-environment-check" href="/docs/rules/lint/laravel/prefer-environment-check">
 
 Replace app environment comparison with parameter or method call
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-error-bag-attribute" href="/docs/rules/lint/laravel/prefer-error-bag-attribute">
 
 Changes the errorBag property to use the ErrorBag attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-exception-class-string" href="/docs/rules/lint/laravel/prefer-exception-class-string">
 
 changes use of a new throw instance to class string
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-explicit-json-call" href="/docs/rules/lint/laravel/prefer-explicit-json-call">
 
 Change method calls from $this->json to $this->postJson, $this->putJson, etc.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-facade-over-app" href="/docs/rules/lint/laravel/prefer-facade-over-app">
 
 Change app() func calls to facade calls
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-fail-on-timeout-attribute" href="/docs/rules/lint/laravel/prefer-fail-on-timeout-attribute">
 
 Changes the failOnTimeout property to use the FailOnTimeout attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-fake-helper" href="/docs/rules/lint/laravel/prefer-fake-helper">
 
 Use the fake() helper instead of $this->faker.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-file-facade-delete" href="/docs/rules/lint/laravel/prefer-file-facade-delete">
 
 Use the File facade instead of the unlink() function.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="prefer-fillable-attribute" href="/docs/rules/lint/laravel/prefer-fillable-attribute">
 
 Changes model fillable property to use the fillable attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-guarded-attribute" href="/docs/rules/lint/laravel/prefer-guarded-attribute">
 
 Changes model guarded property to use the guarded attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-help-attribute" href="/docs/rules/lint/laravel/prefer-help-attribute">
 
 Changes the help property to use the Help attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-hidden-attribute" href="/docs/rules/lint/laravel/prefer-hidden-attribute">
 
 Changes model hidden property to use the hidden attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-job-connection-attribute" href="/docs/rules/lint/laravel/prefer-job-connection-attribute">
 
 Changes the connection property to use the Connection attribute on queue jobs
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-latest-oldest" href="/docs/rules/lint/laravel/prefer-latest-oldest">
 
 Changes orderBy() to latest() or oldest()
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-max-exceptions-attribute" href="/docs/rules/lint/laravel/prefer-max-exceptions-attribute">
 
 Changes the maxExceptions property to use the MaxExceptions attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-nullsafe" href="/docs/rules/lint/laravel/prefer-nullsafe">
 
 Convert simple calls to optional helper to use the nullsafe operator
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-pivot-class" href="/docs/rules/lint/laravel/prefer-pivot-class">
 
 Changes the pivot table name of a many to many relation to the pivot model class.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="prefer-preserve-keys-attribute" href="/docs/rules/lint/laravel/prefer-preserve-keys-attribute">
 
 Changes the preserveKeys property to use the PreserveKeys attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-protected-model-methods" href="/docs/rules/lint/laravel/prefer-protected-model-methods">
 
 Makes Model attributes and scopes protected
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed. Upstream gates: `checkModelMethodVisibility (default false)`.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour. Upstream setting: `checkModelMethodVisibility (default false)`.
 
 </Card>
 <Card title="prefer-queue-attribute" href="/docs/rules/lint/laravel/prefer-queue-attribute">
 
 Changes the queue property to use the Queue attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-report-if" href="/docs/rules/lint/laravel/prefer-report-if">
 
 Change if report to report_if
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-repository-method-call" href="/docs/rules/lint/laravel/prefer-repository-method-call">
 
 Change array access on a config or cache repository to the matching method call, as the contracts do not extend ArrayAccess
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+Off until you name it or its group. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="prefer-request-facade" href="/docs/rules/lint/laravel/prefer-request-facade">
 
 Use the Request facade instead of $_GET, $_POST and $_SERVER.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-request-server" href="/docs/rules/lint/laravel/prefer-request-server">
 
 Change server variable to Request facade's server method
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-request-validate" href="/docs/rules/lint/laravel/prefer-request-validate">
 
 Change `Request::validate()` and `request()` to an injected `$request`. Adds a `Request $request` parameter to the method, so update its callers.
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-resolve-helper" href="/docs/rules/lint/laravel/prefer-resolve-helper">
 
 Convert app() to resolve() where applicable.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-route-key-attribute" href="/docs/rules/lint/laravel/prefer-route-key-attribute">
 
 Changes model getRouteKeyName() method to use the RouteKey attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+Off until you name it or its group. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="prefer-session-facade" href="/docs/rules/lint/laravel/prefer-session-facade">
 
 Change PHP session usage to Session Facade methods
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-signature-attribute" href="/docs/rules/lint/laravel/prefer-signature-attribute">
 
 Changes the signature property to use the Signature attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-sleep-facade" href="/docs/rules/lint/laravel/prefer-sleep-facade">
 
 Use Sleep::sleep() and Sleep::usleep() instead of the sleep() and usleep() function.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-stop-on-first-failure-attribute" href="/docs/rules/lint/laravel/prefer-stop-on-first-failure-attribute">
 
 Changes the stopOnFirstFailure property to use the StopOnFirstFailure attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-str-starts-with" href="/docs/rules/lint/laravel/prefer-str-starts-with">
 
 Use Str::startsWith() or Str::endsWith() instead of substr() === $str
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-table-attribute" href="/docs/rules/lint/laravel/prefer-table-attribute">
 
 Changes model table-related properties to use the Table attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-throw-if" href="/docs/rules/lint/laravel/prefer-throw-if">
 
 Change if throw to throw_if
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-timeout-attribute" href="/docs/rules/lint/laravel/prefer-timeout-attribute">
 
 Changes the timeout property to use the Timeout attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-to-route-helper" href="/docs/rules/lint/laravel/prefer-to-route-helper">
 
 Replace `redirect()->route("home")` and `Redirect::route("home")` with `to_route("home")`
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-today" href="/docs/rules/lint/laravel/prefer-today">
 
 Use today() instead of now()->startOfDay()
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-touches-attribute" href="/docs/rules/lint/laravel/prefer-touches-attribute">
 
 Changes model touches property to use the touches attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-travel-to" href="/docs/rules/lint/laravel/prefer-travel-to">
 
 Use the `$this->travelTo()` method in Laravel's `TestCase` class instead of the `Carbon::setTestNow()` method.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-tries-attribute" href="/docs/rules/lint/laravel/prefer-tries-attribute">
 
 Changes the tries property to use the Tries attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-typed-assert-closure" href="/docs/rules/lint/laravel/prefer-typed-assert-closure">
 
 Changes assert calls to use a type hinted closure.
 
-In the `code-quality` set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+On when the `laravel` extension is on. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-unguarded-attribute" href="/docs/rules/lint/laravel/prefer-unguarded-attribute">
 
 Changes model empty guarded property to use the Unguarded attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed. **Planned: not in Pun yet.** Enabling it is a config error.
+Off until you name it or its group. Unsafe fix: it can change behaviour. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
 <Card title="prefer-unique-for-attribute" href="/docs/rules/lint/laravel/prefer-unique-for-attribute">
 
 Changes the uniqueFor property to use the UniqueFor attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-view-array" href="/docs/rules/lint/laravel/prefer-view-array">
 
 Prefer passing data to views using the array parameter in the `view()` function,
 
-Not in any set. Report only. Runs when laravel is installed.
+Off until you name it or its group. Report only.
 
 </Card>
 <Card title="prefer-visible-attribute" href="/docs/rules/lint/laravel/prefer-visible-attribute">
 
 Changes model visible property to use the Visible attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-without-incrementing-attribute" href="/docs/rules/lint/laravel/prefer-without-incrementing-attribute">
 
 Changes model incrementing = false property to use the WithoutIncrementing attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="prefer-without-timestamps-attribute" href="/docs/rules/lint/laravel/prefer-without-timestamps-attribute">
 
 Changes model timestamps = false property to use the WithoutTimestamps attribute
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="require-final-controller" href="/docs/rules/lint/laravel/require-final-controller">
 
 Enforces that controller classes are declared as `final`.
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 <Card title="require-phpdoc-types-only" href="/docs/rules/lint/laravel/require-phpdoc-types-only">
 
 Keeps only type annotations in PHPDoc.
 
-Not in any set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
+Off until you name it or its group. Unsafe fix: it can change behaviour.
 
 </Card>
 </CardGroup>

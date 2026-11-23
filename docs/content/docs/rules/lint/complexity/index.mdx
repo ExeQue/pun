@@ -38,7 +38,7 @@ In the `code-quality` set. Safe fix.
 </Card>
 <Card title="no-constant-condition" href="/docs/rules/lint/complexity/no-constant-condition">
 
-Detects `if` statements where the condition is a constant that always
+Detects `if` statements whose condition is a constant that is always true or always false.
 
 In the `dead-code` set. Safe fix.
 
@@ -236,7 +236,7 @@ In the `code-quality` set. Safe fix.
 
 Detects redundant `goto` labels that are declared but not used.
 
-In the `code-quality` set. Report only. Upstream gates: `bleedingEdge (featureToggles.unusedLabel)`.
+In the `code-quality` set. Report only. Upstream setting: `bleedingEdge (featureToggles.unusedLabel)`.
 
 </Card>
 <Card title="no-useless-array-values" href="/docs/rules/lint/complexity/no-useless-array-values">
@@ -341,7 +341,7 @@ In the `code-quality` set. Safe fix.
 
 Use `??` instead of isset()/array_key_exists() ternaries, if/return chains and foreach lookups.
 
-In the `code-quality` set. Safe fix. Gated by php-version.
+In the `code-quality` set. Safe fix. Depends on `[php] version`.
 
 </Card>
 <Card title="prefer-property-default" href="/docs/rules/lint/complexity/prefer-property-default">
@@ -355,7 +355,7 @@ In the `code-quality` set. Safe fix.
 
 Use property_exists() instead of array_key_exists() or isset() on object properties.
 
-In the `code-quality` set. Safe fix. Gated by php-version.
+In the `code-quality` set. Safe fix. Depends on `[php] version`.
 
 </Card>
 <Card title="prefer-simple-condition" href="/docs/rules/lint/complexity/prefer-simple-condition">

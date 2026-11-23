@@ -10,7 +10,7 @@ if, switch, match, loops, return and the other control structures. Also in [form
 <CardGroup cols={2}>
 <Card title="no-assign-in-condition" href="/docs/rules/lint/control-flow/no-assign-in-condition">
 
-Detects assignments in conditions which can lead to unexpected behavior and make the code harder
+Detects assignments in conditions. They can cause unexpected behavior and make the code harder to read.
 
 In the `code-quality` set. Report only. Intent: correctness.
 
@@ -33,14 +33,14 @@ In the `code-quality` set. Report only. Intent: correctness.
 
 Disallows a `for` loop's init expression overwriting a variable that is already defined.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream gates: `strictRules.overwriteVariablesWithLoop`.
+In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.overwriteVariablesWithLoop`.
 
 </Card>
 <Card title="no-loop-variable-overwrite" href="/docs/rules/lint/control-flow/no-loop-variable-overwrite">
 
 Disallows a `foreach` key or value variable overwriting a variable that is already defined.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream gates: `strictRules.overwriteVariablesWithLoop`.
+In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.overwriteVariablesWithLoop`.
 
 </Card>
 <Card title="no-return-assignment" href="/docs/rules/lint/control-flow/no-return-assignment">

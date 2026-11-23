@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/pest/prefer-to-equal-with-delta" />
 
-In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix. Runs when pest is installed.
+On when the [`pest` extension](/docs/configuration/pun-toml#extensions) is on. Safe fix.
 
 ## What it does
 
-Converts expect(abs($a - $b) &lt; $delta)->toBeTrue() to expect($a)->toEqualWithDelta($b, $delta)
+Converts `expect(abs($a - $b) < $delta)->toBeTrue()` to `expect($a)->toEqualWithDelta($b, $delta)`.
 
 ## Configuration
 

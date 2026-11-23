@@ -10,7 +10,7 @@ Function and method declarations, calls, arguments and closures. Also in [format
 <CardGroup cols={2}>
 <Card title="no-assign-in-argument" href="/docs/rules/lint/functions/no-assign-in-argument">
 
-Detects assignments in function call arguments which can lead to unexpected behavior and make
+Detects assignments in function call arguments. They can cause unexpected behavior and make the code harder to read.
 
 In the `code-quality` set. Report only. Intent: correctness.
 
@@ -26,7 +26,7 @@ In the `coding-style` set. Unsafe fix: it can change behaviour.
 
 Remove extra parameters
 
-In the `code-quality` set. Safe fix. Gated by php-version.
+In the `code-quality` set. Safe fix. Depends on `[php] version`.
 
 </Card>
 <Card title="no-missing-format-argument" href="/docs/rules/lint/functions/no-missing-format-argument">
@@ -75,7 +75,7 @@ In the `modernize` set. Report only.
 
 Requires a callback for `array_filter()`: without one it drops every falsy value, not only `null`.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream gates: `strictRules.strictArrayFilter`.
+In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.strictArrayFilter`.
 
 </Card>
 <Card title="require-assert-description" href="/docs/rules/lint/functions/require-assert-description">
@@ -96,7 +96,7 @@ In the `coding-style` set. Safe fix where types prove it, unsafe otherwise. Inte
 
 Requires the strict flag of `in_array()`, `array_search()`, `array_keys()` with a search value and `base64_decode()`.
 
-In the `coding-style` set. Report only. Intent: suspicious. Upstream gates: `strictRules.strictFunctionCalls`.
+In the `coding-style` set. Report only. Intent: suspicious. Upstream setting: `strictRules.strictFunctionCalls`.
 
 </Card>
 <Card title="require-strict-in-array" href="/docs/rules/lint/functions/require-strict-in-array">
