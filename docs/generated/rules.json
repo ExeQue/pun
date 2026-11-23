@@ -9921,6 +9921,86 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.3/no-case-insensitive-define",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Change case insensitive constant definition to sensitive one",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php73\\Rector\\FuncCall\\SensitiveDefineRector",
+        "SensitiveDefine",
+        "SensitiveDefineRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.3/no-unescaped-regex-dash",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Escape - in some cases",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php73\\Rector\\FuncCall\\RegexDashEscapeRector",
+        "RegexDashEscape",
+        "RegexDashEscapeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.3/prefer-array-key-first-last",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Make use of array_key_first() and array_key_last() instead of reading a single key off array_keys()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ArrayKeysToArrayKeyFirstLast",
+        "ArrayKeysToArrayKeyFirstLastRector",
+        "Rector\\Php73\\Rector\\FuncCall\\ArrayKeysToArrayKeyFirstLastRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.3/prefer-is-countable",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Changes is_array + Countable check to is_countable",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "IsCountable",
+        "IsCountableRector",
+        "Rector\\Php73\\Rector\\BooleanOr\\IsCountableRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.4/no-filter-magic-quotes",
       "command": "lint",
       "group": "php-7.4",

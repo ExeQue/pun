@@ -6542,9 +6542,11 @@
         "name": "ArrayKeysToArrayKeyFirstLast",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/array-keys-to-array-key-first-last-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/prefer-array-key-first-last"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ArrayMergeOfNonArraysToSimpleArray",
@@ -7688,9 +7690,11 @@
         "name": "IsCountable",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/is-countable-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/prefer-is-countable"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "IsIterable",
@@ -8442,9 +8446,11 @@
         "name": "RegexDashEscape",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/regex-dash-escape-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/no-unescaped-regex-dash"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveAlwaysElse",
@@ -9766,9 +9772,11 @@
         "name": "SensitiveDefine",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/sensitive-define-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/no-case-insensitive-define"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "SensitiveHereNowDoc",
