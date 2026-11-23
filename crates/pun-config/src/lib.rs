@@ -99,7 +99,6 @@ pub struct Options {
     pub config: Option<PathBuf>,
     pub no_config: bool,
     pub preset: Option<String>,
-    pub blade: bool,
     /// Load a project whose composer.json allows PHP < 8.4 (the harness's escape hatch for older corpora).
     pub ignore_php_constraint: bool,
 }
@@ -319,9 +318,6 @@ fn parse(
         let fixer = fixer_of("format", &id).unwrap();
         let v = options::to_fixer(&name, &id, v).map_err(|e| anyhow::anyhow!("{at}: {e}"))?;
         rules.insert(fixer.into(), v);
-    }
-    if opts.blade {
-        rules.insert("Pint/laravel_blade".into(), Value::Bool(true));
     }
     rules.retain(|name, _| !rule_of(name).is_some_and(|id| id.starts_with("lint/")));
     let rules = enabled(rules);

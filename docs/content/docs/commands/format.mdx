@@ -20,7 +20,6 @@ pun format app/Models
 | `--repair` | Format the files, and exit 1 if any file changed. |
 | `--dirty` | Select only files with uncommitted changes. |
 | `--diff=<branch>` | Select only files changed since you branched from `<branch>`. |
-| `--blade` | Also format Blade files. This turns on `format/laravel/blade`. |
 | `--config=<path>` | Use this `pun.toml`. |
 | `--preset=<name>` | Use `laravel`, `psr12`, or `empty` instead of `pun.toml`. For `per`, run `pun migrate --preset per`. |
 | `--no-config` | Use the `laravel` preset and no config file. |
@@ -49,6 +48,15 @@ pun format app/Models
 Pun remembers each file's result, including its findings. The next run reuses that result while the file's content, the config, the flags, and the Pun binary stay the same. Pun checks a file again on the next run after `--fix` changes it.
 
 The cache is one file per project in `$PUN_CACHE_DIR/results`. `PUN_CACHE_DIR` defaults to `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. `--no-cache` or `PUN_NO_CACHE=1` turns the cache off. Code from stdin never uses it. You can delete the file at any time.
+
+To format Blade files, turn on the `laravel/blade` rule in `pun.toml`:
+
+```toml
+[format.rules]
+"laravel/blade" = true
+```
+
+Pun has no `--blade` flag. `pun migrate` turns the rule on when `pint.json` does.
 
 Blade formatting keeps its Prettier worker scripts and Node's compile cache in `$PUN_CACHE_DIR/blade-*`, so later runs start faster. A `NODE_COMPILE_CACHE` that you set yourself takes precedence.
 

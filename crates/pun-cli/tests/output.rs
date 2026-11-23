@@ -977,12 +977,16 @@ fn prettier_preflight_like_pint() {
         PLAIN,
         &format!("{needs}\n{}", install("pnpm add -D")),
     );
-    let mut flag = tree();
-    flag.push(("bun.lock", ""));
-    flag.push(("bunfig.toml", "[install]\nauto = \"disable\"\n"));
+    let mut bun = tree();
+    bun[1] = (
+        "pint.json",
+        r#"{"preset":"laravel","rules":{"Pint/laravel_blade":true}}"#,
+    );
+    bun.push(("bun.lock", ""));
+    bun.push(("bunfig.toml", "[install]\nauto = \"disable\"\n"));
     cx.same_abort(
-        &flag,
-        &["--blade", "--test"],
+        &bun,
+        &["--test"],
         PLAIN,
         &format!("{needs}\n{}", install("bun add -d")),
     );

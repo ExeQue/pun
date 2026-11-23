@@ -71,11 +71,12 @@ deprecated fixer or a custom fixer class.
 
 ## 6. The CLI
 
-`pun format` takes Pint's flags that change what it does (`--blade`, `--test`, `--bail`, `--repair`, `--dirty`,
+`pun format` takes Pint's flags that change what it does (`--test`, `--bail`, `--repair`, `--dirty`,
 `--diff=<branch>`, `--config`, `--no-config`, `--preset`, `--format`, `--output-to-file`, `--output-format`,
 `--stdin-filename`, `--max-processes`, `--cache-file`, `-v`, `-q`, and `--ansi`/`--no-ansi` as hidden spellings of
 `--color`). It adds `--staged`, `--since=<ref>`, `--watch`, `--stdin`, `--explain`, `--color` and `--no-cache`. Pint's
-no-op flags (`-p`/`--parallel`, `-n`/`--no-interaction`) are gone. The human output is Pun's own (§9). Exit codes and
+no-op flags (`-p`/`--parallel`, `-n`/`--no-interaction`) are gone, and so is `--blade`: Blade formatting is the
+`laravel/blade` rule in pun.toml (Pushpak, 2026-11-23). The human output is Pun's own (§9). Exit codes and
 the machine formats (`--format=json|txt|checkstyle|junit|xml|gitlab|github`) stay Pint-compatible. Under a coding
 agent it prints compact lines (output.md §3).
 

@@ -329,7 +329,7 @@ fn stdin_exclusion_matches_pint() {
         if name.ends_with(".blade.php") {
             assert!(
                 !is_path_excluded(&blade_cfg, Path::new(name)),
-                "--blade keeps {name}"
+                "the laravel/blade rule keeps {name}"
             );
         }
     }

@@ -56,7 +56,6 @@ pub(crate) fn load_config(a: &FormatArgs, root: &Path) -> Result<Config> {
         config: a.config.clone(),
         no_config: a.no_config,
         preset: a.preset.clone(),
-        blade: a.blade,
         ignore_php_constraint: crate::ignore_php_constraint(),
     };
     load(root, &opts)
@@ -387,15 +386,7 @@ fn open_cache(
     };
     let exe = std::env::current_exe().ok()?;
     let mut key = cache::Key::default();
-    let flags = (
-        a.test,
-        a.bail,
-        a.repair,
-        a.blade,
-        &a.config,
-        a.no_config,
-        &a.preset,
-    );
+    let flags = (a.test, a.bail, a.repair, &a.config, a.no_config, &a.preset);
     let env = [
         "PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS",
         "PUN_IGNORE_PHP_CONSTRAINT",

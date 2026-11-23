@@ -164,9 +164,6 @@ enum ConfigFormat {
 pub(crate) struct FormatArgs {
     /// The paths to run on (`-` reads stdin).
     paths: Vec<PathBuf>,
-    /// Enable the `format/laravel/blade` rule to format Blade files.
-    #[arg(long)]
-    blade: bool,
     /// The configuration that should be used.
     #[arg(long)]
     config: Option<PathBuf>,

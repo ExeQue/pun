@@ -233,16 +233,9 @@ not-path = ["p"]
     assert_eq!(c.sources, [d.join("composer.json"), d.join("pun.toml")]);
     let d = dir(&[(
         "pun.toml",
-        "[format]\npreset = \"empty\"\n[format.rules]\n\"imports/ordered\" = { sort = \"alphabetical\", order = [\"class\", \"const\"] }\n",
+        "[format]\npreset = \"empty\"\n[format.rules]\n\"imports/ordered\" = { sort = \"alphabetical\", order = [\"class\", \"const\"] }\n\"laravel/blade\" = true\n",
     )]);
-    let c = load(
-        &d,
-        &Options {
-            blade: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    let c = load(&d, &Options::default()).unwrap();
     assert_eq!(names(&c.rules), ["ordered_imports", "Pint/laravel_blade"]);
     assert_eq!(
         c.rules[0].options,

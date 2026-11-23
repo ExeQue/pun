@@ -557,9 +557,13 @@ fn prettier_preflight() {
     if Command::new("node").arg("-v").output().is_err() {
         return;
     }
-    let d = common::project("agent", "t", &[("pun.toml", TOML), ("app/A.php", CLEAN)]);
+    let toml = TOML.replace(
+        "\"arrays/syntax\" = true\n",
+        "\"arrays/syntax\" = true\n\"laravel/blade\" = true\n",
+    );
+    let d = common::project("agent", "t", &[("pun.toml", &toml), ("app/A.php", CLEAN)]);
     assert_eq!(
-        agent(&d, &["format", "--blade"]),
+        agent(&d, &["format"]),
         (
             "pun format: error: The rules enabled in your pint configuration require the following prettier dependencies to be installed: prettier, prettier-plugin-blade, prettier-plugin-tailwindcss.\n".into(),
             Some(2)
