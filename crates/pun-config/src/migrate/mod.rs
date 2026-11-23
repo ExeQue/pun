@@ -261,6 +261,7 @@ fn write(
     runs: Runs,
 ) -> Result<Migration> {
     let preset = crate::FormatPreset::parse(preset).map_or("empty", crate::FormatPreset::name);
+    resolve_proxies(&mut rules);
     if let Some(i) = rules.iter().position(|r| r.name == "visibility_required") {
         let vr = rules.remove(i).options;
         match rules.iter_mut().find(|r| r.name == "modifier_keywords") {
@@ -362,6 +363,113 @@ fn write(
         format_rules,
     })
 }
+
+/// PHP-CS-Fixer's deprecated proxy fixers run only their successor: with the proxy's own configuration, or with
+/// the fixed one the proxy gives it (its `createProxyFixers()`). Beside the successor (from a set such as @PSR12)
+/// both run, in name order at their equal priority (`Utils::sortFixers`): the later name's options win. A proxy
+/// run within the successor's default run adds nothing; any other second run is one a pun.toml rule can't hold,
+/// so the proxy stays and is named as skipped.
+fn resolve_proxies(rules: &mut Vec<Rule>) {
+    for (old, new, fixed, within_defaults) in PROXIES {
+        let Some(i) = rules.iter().position(|r| r.name == *old) else {
+            continue;
+        };
+        if let Some(j) = rules.iter().position(|r| r.name == *new) {
+            match rules[i].options.clone() {
+                Value::Object(own) if fixed.is_none() => {
+                    let mut merged = rules[j].options.as_object().cloned().unwrap_or_default();
+                    if old > new {
+                        merged.extend(own);
+                    } else {
+                        let mut first = own;
+                        first.extend(merged);
+                        merged = first;
+                    }
+                    rules[j].options = Value::Object(merged);
+                    rules.remove(i);
+                }
+                Value::Null if *within_defaults && rules[j].options.is_null() => {
+                    rules.remove(i);
+                }
+                _ => {}
+            }
+            continue;
+        }
+        let proxy = rules.remove(i);
+        let options = fixed.map_or(proxy.options, |f| serde_json::from_str(f).unwrap());
+        rules.insert(
+            i,
+            Rule {
+                name: (*new).into(),
+                options,
+            },
+        );
+    }
+}
+
+/// PHP-CS-Fixer's deprecated fixers that only run a successor: (name, successor, the successor's fixed configuration
+/// when the proxy sets one instead of passing its own through, whether that run is within the successor's default
+/// one). The successors' defaults: `no_trailing_comma_in_singleline` all four elements, `type_declaration_spaces`
+/// function and property, `blank_lines_before_namespace` 2 and 2.
+const PROXIES: &[(&str, &str, Option<&str>, bool)] = &[
+    (
+        "compact_nullable_typehint",
+        "compact_nullable_type_declaration",
+        None,
+        true,
+    ),
+    ("curly_braces_position", "braces_position", None, true),
+    (
+        "function_typehint_space",
+        "type_declaration_spaces",
+        Some(r#"{"elements":["function"]}"#),
+        true,
+    ),
+    (
+        "native_function_type_declaration_casing",
+        "native_type_declaration_casing",
+        None,
+        true,
+    ),
+    ("new_with_braces", "new_with_parentheses", None, true),
+    (
+        "no_blank_lines_before_namespace",
+        "blank_lines_before_namespace",
+        Some(r#"{"min_line_breaks":0,"max_line_breaks":1}"#),
+        false,
+    ),
+    (
+        "no_spaces_inside_parenthesis",
+        "spaces_inside_parentheses",
+        None,
+        true,
+    ),
+    (
+        "no_trailing_comma_in_list_call",
+        "no_trailing_comma_in_singleline",
+        Some(r#"{"elements":["array_destructuring"]}"#),
+        true,
+    ),
+    (
+        "no_trailing_comma_in_singleline_array",
+        "no_trailing_comma_in_singleline",
+        Some(r#"{"elements":["array"]}"#),
+        true,
+    ),
+    (
+        "no_trailing_comma_in_singleline_function_call",
+        "no_trailing_comma_in_singleline",
+        Some(r#"{"elements":["arguments","array_destructuring"]}"#),
+        true,
+    ),
+    ("no_unneeded_curly_braces", "no_unneeded_braces", None, true),
+    (
+        "single_blank_line_before_namespace",
+        "blank_lines_before_namespace",
+        Some(r#"{"min_line_breaks":2,"max_line_breaks":2}"#),
+        true,
+    ),
+];
 
 fn toml_value(v: &Value) -> Option<String> {
     serde_json::from_value::<toml::Value>(v.clone())

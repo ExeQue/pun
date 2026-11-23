@@ -51,6 +51,7 @@ Migration resolves Pint's `extend`, `--config`, and `--preset`. It reads `.php-c
 - Finder paths and `exclude` go to `[files]`, so lint and analyse skip those folders too. `notName` and `notPath` become format exclusions. [Two exclusion details](/docs/configuration/pint-json) differ from Pint.
 - `per` and rule sets such as `@PER-CS` expand to explicit rules over `preset = "empty"`. Pun does not support Pint's `symfony` preset, so migration stops with an error.
 - Options are renamed to [Pun names and values](/docs/configuration/pun-toml#rule-options).
+- A deprecated PHP-CS-Fixer rule that only runs a newer one, such as `curly_braces_position` or `new_with_braces`, becomes that rule with the same options. If the config also turns on the newer rule with options that one rule can't hold, migration reports the old name and skips it.
 - Migration reports and skips these Finder calls: `name()` other than `*.php`, `path()`, `depth()`, `contains()`, `notContains()`, `size()`, `date()`, `filter()`, `append()`, `followLinks()`, and `ignoreVCSIgnored()`. It also skips a Finder other than Symfony's.
 - `setIndent()` and `setLineEnding()` are ignored without a warning. Pun always indents with four spaces and writes `\n` line endings.
 

@@ -1522,6 +1522,75 @@ not-path = ["y"]
         );
     }
 
+    /// nikic/php-parser's `@PSR12` with `curly_braces_position` (deprecated, a proxy of `braces_position`) skipped the
+    /// proxy, so Pun moved every function brace to the next line, which PHP-CS-Fixer leaves alone. A proxy runs its
+    /// successor with its own configuration or the fixed one its `createProxyFixers()` sets (expected values read off
+    /// PHP-CS-Fixer 3.95.25's proxies). Beside the successor both run in name order (`Utils::sortFixers`), so the later
+    /// name's options win; a run within the successor's defaults adds nothing; any other second run is skipped.
+    #[test]
+    fn deprecated_proxies_become_their_successors() {
+        let migrate = |rules: serde_json::Value| {
+            from_rules(
+                rules.as_object().unwrap().clone(),
+                &serde_json::Map::new(),
+                &|_| true,
+            )
+            .unwrap()
+        };
+        let has = |m: &crate::migrate::Migration, lines: &[&str]| {
+            for line in lines {
+                assert!(
+                    m.toml.contains(&format!("\n{line}\n")),
+                    "{line}\n{}",
+                    m.toml
+                );
+            }
+        };
+        let m = migrate(json!({
+            "@PSR12": true,
+            "curly_braces_position": {"functions_opening_brace": "same_line"},
+            "new_with_braces": {"anonymous_class": false, "named_class": false},
+            "no_trailing_comma_in_singleline_array": true,
+            "single_blank_line_before_namespace": true,
+            "compact_nullable_typehint": true,
+            "no_blank_lines_before_namespace": true,
+        }));
+        assert_eq!(
+            m.unsupported,
+            [
+                "no_blank_lines_before_namespace: deprecated upstream; successor: blank_lines_before_namespace"
+            ]
+        );
+        has(
+            &m,
+            &[
+                "\"statements/braces-position\" = { allow-single-line-anonymous-functions = false, allow-single-line-empty-anonymous-classes = true, functions-opening-brace = \"same-line\" }",
+                "\"operators/new-parentheses\" = { anonymous-class = true, named-class = false }",
+                "\"arrays/no-trailing-comma-single-line\" = [\"array\"]",
+                "\"imports/blank-lines-before-namespace\" = true",
+                "\"types/compact-nullable\" = true",
+            ],
+        );
+        let m = migrate(json!({
+            "no_trailing_comma_in_singleline": true,
+            "no_trailing_comma_in_singleline_array": true,
+            "no_blank_lines_before_namespace": true,
+            "no_unneeded_curly_braces": true,
+            "no_unneeded_braces": {"namespaces": true},
+        }));
+        assert_eq!(
+            m.unsupported,
+            ["no_unneeded_curly_braces: deprecated upstream; successor: no_unneeded_braces"]
+        );
+        has(
+            &m,
+            &[
+                "\"arrays/no-trailing-comma-single-line\" = true",
+                "\"imports/blank-lines-before-namespace\" = { min-line-breaks = 0, max-line-breaks = 1 }",
+            ],
+        );
+    }
+
     #[test]
     fn php_cs_fixer_rules() {
         let rules =
