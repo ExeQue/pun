@@ -302,6 +302,20 @@ Anonymous functions with return as the only statement must use arrow functions.
 In the `modernize` set. Unsafe fix: it can change behavior.
 
 </Card>
+<Card title="prefer-carbon" href="/docs/rules/lint/style/prefer-carbon">
+
+Convert `new DateTime()` to `Carbon::*()`
+
+Not in any set. Unsafe fix: it can change behavior.
+
+</Card>
+<Card title="prefer-carbon-timestamp" href="/docs/rules/lint/style/prefer-carbon-timestamp">
+
+Convert `time()` function call to `Carbon::now()->getTimestamp()`
+
+Not in any set. Unsafe fix: it can change behavior.
+
+</Card>
 <Card title="prefer-cast-over-intval" href="/docs/rules/lint/style/prefer-cast-over-intval">
 
 Replaces `intval`, `floatval`, `doubleval`, `strval` and `boolval` function calls with according type casting operator.

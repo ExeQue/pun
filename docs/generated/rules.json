@@ -16231,6 +16231,45 @@
       "ported": true
     },
     {
+      "id": "lint/style/prefer-carbon",
+      "command": "lint",
+      "group": "style",
+      "summary": "Convert new DateTime() to Carbon::*()",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "DateTimeInstanceToCarbon",
+        "DateTimeInstanceToCarbonRector",
+        "DateTimeMethodCallToCarbon",
+        "DateTimeMethodCallToCarbonRector",
+        "Rector\\Carbon\\Rector\\MethodCall\\DateTimeMethodCallToCarbonRector",
+        "Rector\\Carbon\\Rector\\New_\\DateTimeInstanceToCarbonRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/style/prefer-carbon-timestamp",
+      "command": "lint",
+      "group": "style",
+      "summary": "Convert time() function call to Carbon::now()->getTimestamp()",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Carbon\\Rector\\FuncCall\\TimeFuncCallToCarbonRector",
+        "TimeFuncCallToCarbon",
+        "TimeFuncCallToCarbonRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/style/prefer-cast-over-intval",
       "command": "lint",
       "group": "style",

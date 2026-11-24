@@ -1,5 +1,5 @@
 mod add_override_attribute;
-mod configured_codemods;
+pub(crate) mod configured_codemods;
 pub(super) mod no_negated_condition;
 mod prefer_attribute_over_annotation;
 mod remove_function_argument;

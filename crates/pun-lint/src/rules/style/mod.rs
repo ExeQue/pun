@@ -16,6 +16,7 @@ pub(super) mod no_short_ternary;
 pub(super) mod no_side_effects_with_declarations;
 pub(super) mod no_unreachable_loop;
 pub(super) mod no_variable_variable;
+pub(super) mod prefer_carbon;
 pub(super) mod prefer_catch_name_from_type;
 pub(super) mod prefer_class_constant;
 pub(super) mod prefer_class_keyword;

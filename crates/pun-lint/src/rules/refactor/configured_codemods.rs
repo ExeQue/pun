@@ -18,7 +18,7 @@ use crate::syntax::node_span;
 use crate::{Context, OptionsError, Report, Rule};
 
 /// php-parser's `pSingleQuotedString()`: a `'` and a `\` before `\`, `'` or the end get a backslash.
-fn single_quoted(value: &str) -> String {
+pub(crate) fn single_quoted(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut out = String::from("'");
     for (i, c) in value.char_indices() {
