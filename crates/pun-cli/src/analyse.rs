@@ -487,9 +487,10 @@ fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant)
                 general: &analysed.general,
                 config: cfg.pun_toml().map(|s| relative(root, s)),
             };
+            let findings = with_malformed(analysed, root);
             print!(
                 "{}",
-                analyse_report::render(format, &analysed.findings, &cx)
+                analyse_report::render(format, &findings, &cx)
                     .map_err(|e| unsupported_format(&e))?
             );
         }
@@ -510,6 +511,43 @@ fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant)
     } else {
         Exit::Success
     })
+}
+
+/// The findings, and the malformed `@pun-ignore` comments as errors that can't be ignored: they fail the run, so
+/// every format reports them (PHPStan has no such comment, so its formats are unchanged without one).
+fn with_malformed(analysed: &Analysed, root: &Path) -> Vec<Finding> {
+    if analysed.malformed.is_empty() {
+        return analysed.findings.clone();
+    }
+    let sources = sources(analysed);
+    let mut findings = analysed.findings.clone();
+    for m in &analysed.malformed {
+        let source = root_join(analysed, &m.path);
+        let source = if source.is_absolute() {
+            source
+        } else {
+            root.join(source)
+        };
+        let line = sources
+            .get(&root_join(analysed, &m.path))
+            .map_or(0, |(_, index)| index.line_col(m.span.start).line);
+        let rel = m.path.to_string_lossy().replace('\\', "/");
+        findings.push(Finding {
+            file: source.clone(),
+            rel: rel.clone(),
+            line: u32::try_from(line).unwrap_or(0),
+            identifier: INVALID_IGNORE.into(),
+            rule: INVALID_IGNORE.into(),
+            message: m.message.clone(),
+            tip: m.help.clone(),
+            can_be_ignored: false,
+            fixable: false,
+            source,
+            source_rel: rel,
+        });
+    }
+    findings.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+    findings
 }
 
 fn unsupported_format(e: &anyhow::Error) -> anyhow::Error {

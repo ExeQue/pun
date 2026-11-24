@@ -448,9 +448,11 @@ fn ignore_comments_drop_errors() {
         .lines()
         .map(|l| l.rsplit_once("/src/").unwrap().1)
         .collect();
+    // The bare `@pun-ignore` ignores nothing and is an error itself.
     assert_eq!(
         lines,
         [
+            "a.php:8:`@pun-ignore` needs one or more rule IDs",
             "a.php:9:Instantiated class App\\Missing not found.",
             "a.php:16:Call to an undefined method App\\B::nope().",
         ]
@@ -608,6 +610,28 @@ fn malformed_ignores_show_in_every_output() {
     assert_eq!(
         pun(&d, &["-q"], &[]),
         (String::new(), String::new(), Some(1))
+    );
+    // The machine formats count the malformed comment too, so they agree with the exit code.
+    let (out, _, code) = pun(&d, &["--format=json"], &[]);
+    let json: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(code, Some(1));
+    assert_eq!(json["totals"]["file_errors"], 3, "{out}");
+    let messages = json["files"].as_object().unwrap().values().next().unwrap()["messages"].clone();
+    assert_eq!(
+        messages[2],
+        serde_json::json!({
+            "message": "`@pun-ignore` needs one or more rule IDs",
+            "line": 8,
+            "ignorable": false,
+            "tip": "name the rule IDs it ignores: `@pun-ignore lint/group/rule`",
+            "identifier": "invalid-ignore-comment",
+        })
+    );
+    let (out, _, _) = pun(&d, &["--format=junit"], &[]);
+    assert!(out.contains("<testsuite failures=\"3\""), "{out}");
+    assert!(
+        out.contains("<testcase name=\"src/a.php:8\"><failure type=\"ERROR\" message=\"`@pun-ignore` needs one or more rule IDs\" /></testcase>"),
+        "{out}"
     );
 }
 
