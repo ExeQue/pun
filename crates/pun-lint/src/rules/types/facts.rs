@@ -214,7 +214,24 @@ impl Scanned {
             .collect();
         let mut native_program = program.clone();
         native_program.trivia = Sequence::from_slice(&trivia);
-        let native = scan_symbols(&arena, &file, &native_program, &names, version);
+        let mut native = scan_symbols(&arena, &file, &native_program, &names, version);
+        // PHPStan's native type of a backed enum's `from()` and `tryFrom()` is `mixed`; Mago declares
+        // them as returning the enum.
+        let factories: Vec<_> = (native.function_likes.keys())
+            .filter(|(class, method)| {
+                (method.as_bytes().eq_ignore_ascii_case(b"from")
+                    || method.as_bytes().eq_ignore_ascii_case(b"tryfrom"))
+                    && native
+                        .get_class_like(class.as_bytes())
+                        .is_some_and(|c| c.kind.is_enum())
+            })
+            .copied()
+            .collect();
+        for id in factories {
+            let method = native.function_likes.get_mut(&id).unwrap();
+            method.return_type_declaration_metadata = None;
+            method.return_type_metadata = None;
+        }
         Self {
             id: file.id,
             native,
