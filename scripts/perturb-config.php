@@ -8,7 +8,8 @@ return (new PhpCsFixer\Config)
     ->setUsingCache(false)
     ->setUnsupportedPhpVersionAllowed(true)
     ->setFinder(PhpCsFixer\Finder::create()->in(getenv('PERTURB_DIR'))->notName('*.blade.php')
-        ->exclude(['node_modules', 'storage', 'bootstrap/cache', 'build']))
+        ->exclude(['node_modules', 'storage', 'bootstrap/cache', 'build'])
+        ->filter(fn (SplFileInfo $f) => ! $f->isLink())) // a link could point outside the tree
     ->setRules([
         'array_syntax' => ['syntax' => 'long'],
         'list_syntax' => ['syntax' => 'long'],

@@ -23,12 +23,18 @@ export PUN_NO_CACHE=1  # every mutant is a new scratch project: a result cache w
 # reports differences the code no longer has.
 stale=$(cd "$ROOT/crates" && find pun-tokens pun-format pun-fixers pun-config -name '*.rs' -newer "$PUN_BIN" -print -quit)
 [ -z "$stale" ] || { echo "$PUN_BIN is older than $stale: rebuild it or set PUN_BIN" >&2; exit 2; }
-w="${FUZZ_DIR:-/tmp/pun-fuzz}/$(basename "$project")-$seed"
-rm -rf "$w"; mkdir -p "$w/src"
+# A new owner-only directory per run (mktemp -d makes it 0700), removed on exit: a fixed path under a shared /tmp
+# could be another user's.
+parent="${FUZZ_DIR:-${TMPDIR:-/tmp}}"; mkdir -p "$parent"
+w=$(mktemp -d "$parent/pun-fuzz-$(basename "$project")-$seed.XXXXXX")
+trap 'rm -rf "$w"' EXIT
+mkdir "$w/src"
 for f in pint.json package.json; do [ -f "$project/$f" ] && cp "$project/$f" "$w/src/"; done
 [ -n "${FUZZ_CONFIG:-}" ] && cp "$FUZZ_CONFIG" "$w/src/pint.json"
 for p in "${paths[@]}"; do mkdir -p "$w/src/$(dirname "$p")"; cp -r "$project/$p" "$w/src/$p"; done
 find "$w/src" \( -name vendor -o -name node_modules \) -prune -exec rm -rf {} +
+# cp -r keeps symlinks, and Pint, Pun and mutate.py would each write through one to a file outside the copy.
+find "$w/src" -type l -delete
 echo "seed $seed: $(python3 "$ROOT/scripts/mutate.py" mutate "$w/src" "$seed")"
 [ -d "$project/node_modules" ] && ln -s "$project/node_modules" "$w/src/node_modules"
 cp -a "$w/src" "$w/pint"; cp -a "$w/src" "$w/pun"

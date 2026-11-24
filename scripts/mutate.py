@@ -85,9 +85,10 @@ def mutate(root, seed):
     applied = {}
     for d, _, fs in sorted(os.walk(root)):
         for f in sorted(fs):
-            if not f.endswith('.php') or f.endswith('.blade.php'):
-                continue
             p = os.path.join(d, f)
+            # A link could point outside the tree, and the rewrite would follow it.
+            if not f.endswith('.php') or f.endswith('.blade.php') or os.path.islink(p):
+                continue
             rnd = random.Random(f'{seed}:{os.path.relpath(p, root)}')
             s = open(p, encoding='utf-8', errors='surrogateescape', newline='').read()
             extra = [(n, fn) for n, fn in MUTATIONS if n in os.environ.get('FUZZ_EXTRA', '').split(',')]

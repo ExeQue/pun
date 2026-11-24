@@ -17,7 +17,8 @@ $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, Filesys
 $changed = $rejected = 0;
 foreach ($it as $f) {
     $path = $f->getPathname();
-    if (! str_ends_with($path, '.php') || str_ends_with($path, '.blade.php') || preg_match('#/(vendor|node_modules|\.git)/#', $path)) {
+    // A link could point outside the tree, and the rewrite would follow it.
+    if ($f->isLink() || ! str_ends_with($path, '.php') || str_ends_with($path, '.blade.php') || preg_match('#/(vendor|node_modules|\.git)/#', $path)) {
         continue;
     }
     $code = file_get_contents($path);
