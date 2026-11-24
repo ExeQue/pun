@@ -150,6 +150,10 @@ fn watch_reformats_like_pint() {
         ("vendor/V.php", "<?php\n$v = array(1);\n"),
     ];
     write_files(&dir, &excluded);
+    // A new symlink to a file outside the project is skipped, as a full run skips it: the file it leads to stays.
+    let outside = scratch("watch", "outside").join("O.php");
+    std::fs::write(&outside, "<?php\n$o = array(1);\n").unwrap();
+    std::os::unix::fs::symlink(&outside, dir.join("app/Link.php")).unwrap();
     write_files(&dir, &edits);
     let (second, after) = pint(&fixed, &edits, true);
     assert!(second.contains("2 files"), "{second}");
@@ -167,6 +171,8 @@ fn watch_reformats_like_pint() {
     for (f, c) in excluded {
         assert_eq!(std::fs::read_to_string(dir.join(f)).unwrap(), c, "{f}");
     }
+    let o = std::fs::read_to_string(&outside).unwrap();
+    assert_eq!(o, "<?php\n$o = array(1);\n");
     std::thread::sleep(Duration::from_millis(1500));
     let printed = out.lock().unwrap().len();
     assert_eq!(runs(&out.lock().unwrap()).len(), 2);

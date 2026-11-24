@@ -602,6 +602,23 @@ fn dirty_narrows_to_the_lint_files() {
         ["b.php:3:1 lint/security/no-eval Unsafe use of `eval` construct."]
     );
     assert_eq!(code, Some(1));
+
+    // `[format] exclude` is for formatting only: the changed file it names is still linted.
+    let toml = TOML.replace(
+        "preset = \"empty\"",
+        "preset = \"empty\"\nexclude = [\"fmt\"]",
+    );
+    std::fs::write(d.join("pun.toml"), toml).unwrap();
+    std::fs::create_dir(d.join("fmt")).unwrap();
+    std::fs::write(d.join("fmt/c.php"), eval).unwrap();
+    git(&["add", "fmt/c.php"]);
+    std::fs::remove_file(d.join("b.php")).unwrap();
+    let (lines, _, code) = agent(&d, &["lint", "--dirty"]);
+    assert_eq!(
+        lines,
+        ["fmt/c.php:3:1 lint/security/no-eval Unsafe use of `eval` construct."]
+    );
+    assert_eq!(code, Some(1));
 }
 
 #[test]

@@ -367,7 +367,51 @@ pub enum GitSelect {
     Staged,
 }
 
+/// The files `--dirty`, `--diff` or `--staged` formats: the changed PHP files Pint's finder lists.
 pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
+    pick(cfg, &git_names(cfg, sel)?)
+}
+
+/// The files `sel` formats ([`git_paths`]), then the changed files the other stages pick theirs from: the format-only
+/// excludes (`[format] exclude` and `not-path`) don't take a file out of linting or analysis.
+pub fn git_selection(cfg: &Config, sel: &GitSelect) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+    let wanted = git_names(cfg, sel)?;
+    let format = pick(cfg, &wanted)?;
+    if cfg.finder.exclude == cfg.files.exclude && cfg.finder.not_path.is_empty() {
+        return Ok((format.clone(), format));
+    }
+    let mut shared = cfg.clone();
+    shared.finder.exclude.clone_from(&cfg.files.exclude);
+    shared.finder.not_path.clear();
+    Ok((format, pick(&shared, &wanted)?))
+}
+
+/// The changed PHP files under the root that Pint's finder lists, outside the root no symlink among them leads: Pint
+/// follows one there, and the rewrite would land in a file the project doesn't hold.
+fn pick(cfg: &Config, wanted: &std::collections::HashSet<PathBuf>) -> Result<Vec<PathBuf>> {
+    if wanted.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut f = Finder::pint(cfg)?;
+    f.dirs.push(cfg.root.clone());
+    let picked: Vec<PathBuf> = f
+        .files()?
+        .into_iter()
+        .filter(|p| wanted.contains(p))
+        .collect();
+    if picked.is_empty() {
+        Ok(picked)
+    } else {
+        let mut found = discover(cfg, &picked)?;
+        found.retain(|p| p.starts_with(&cfg.root));
+        Ok(found)
+    }
+}
+
+/// The paths git names for `sel`, joined to the root. `--dirty` and `--diff` read git as Pint does, quoting and
+/// worktree-relative names included; the Pun-only `--staged` reads NUL-separated names relative to the root, with
+/// type changes (a symlink become a file) among the changes.
+fn git_names(cfg: &Config, sel: &GitSelect) -> Result<std::collections::HashSet<PathBuf>> {
     fn diff(rev: Option<&str>) -> Vec<&str> {
         ["diff", "--name-only", "--diff-filter=AMR"]
             .into_iter()
@@ -375,21 +419,34 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
             .chain(["--", "**.php"])
             .collect()
     }
-    let lists = |cmds: &[&[&str]]| -> Option<Vec<String>> {
+    let text = |args: &[&str]| {
+        git(&cfg.root, args).map(|out| String::from_utf8_lossy(&out).replace('\r', "\n"))
+    };
+    let lists = |cmds: &[&[&str]]| -> Option<Vec<PathBuf>> {
         let mut all = Vec::new();
         for args in cmds {
             all.extend(
-                git(&cfg.root, args)?
+                text(args)?
                     .lines()
                     .filter(|l| !l.is_empty())
-                    .map(String::from),
+                    .map(PathBuf::from),
             );
         }
         Some(all)
     };
     let untracked: &[&str] = &["ls-files", "--others", "--exclude-standard", "--", "**.php"];
-    let names: Option<Vec<String>> = match sel {
-        GitSelect::Dirty => git(&cfg.root, &["status", "--short", "--", "**.php"]).map(|out| {
+    let staged = [
+        "diff",
+        "--cached",
+        "--name-only",
+        "-z",
+        "--relative",
+        "--diff-filter=AMRT",
+        "--",
+        "**.php",
+    ];
+    let names: Option<Vec<PathBuf>> = match sel {
+        GitSelect::Dirty => text(&["status", "--short", "--", "**.php"]).map(|out| {
             out.lines()
                 .filter(|l| !l.is_empty())
                 .map(|l| {
@@ -405,7 +462,7 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
                     } else {
                         f
                     }
-                    .to_string()
+                    .into()
                 })
                 .collect()
         }),
@@ -415,7 +472,13 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
             &diff(None),
             untracked,
         ]),
-        GitSelect::Staged => lists(&[&diff(Some("--cached"))]),
+        GitSelect::Staged => git(&cfg.root, &staged).map(|out| {
+            use std::os::unix::ffi::OsStrExt;
+            (out.split(|&b| b == 0))
+                .filter(|n| !n.is_empty())
+                .map(|n| std::ffi::OsStr::from_bytes(n).into())
+                .collect()
+        }),
     };
     let names = match (names, sel) {
         (Some(names), _) => names,
@@ -427,22 +490,15 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
             bail!("The [--staged] option is only available when using Git.")
         }
     };
-    let wanted: std::collections::HashSet<PathBuf> =
-        names.iter().map(|n| cfg.root.join(n)).collect();
-    if wanted.is_empty() {
-        return Ok(vec![]);
-    }
-    let mut f = Finder::pint(cfg)?;
-    f.dirs.push(cfg.root.clone());
-    let picked: Vec<PathBuf> = f
-        .files()?
-        .into_iter()
-        .filter(|p| wanted.contains(p))
-        .collect();
-    if picked.is_empty() {
-        Ok(picked)
-    } else {
-        discover(cfg, &picked)
+    Ok(names.iter().map(|n| cfg.root.join(n)).collect())
+}
+
+/// Whether `path` resolves outside `root` (canonical), a dangling symlink included: what is there isn't the project's.
+/// A path with nothing there stays inside.
+pub(crate) fn leaves(root: &Path, path: &Path) -> bool {
+    match path.canonicalize() {
+        Ok(real) => !real.starts_with(root),
+        Err(_) => path.symlink_metadata().is_ok(),
     }
 }
 
@@ -482,14 +538,14 @@ fn glob_matches(glob: &str, rel: &str) -> bool {
     ExclusionMatcher::compile([glob], GlobSettings::default()).is_ok_and(|m| m.is_match(rel))
 }
 
-fn git(root: &Path, args: &[&str]) -> Option<String> {
+fn git(root: &Path, args: &[&str]) -> Option<Vec<u8>> {
     let out = std::process::Command::new("git")
         .args(args)
         .current_dir(root)
         .output()
         .ok()
         .filter(|o| o.status.success())?;
-    Some(String::from_utf8_lossy(&out.stdout).replace('\r', "\n"))
+    Some(out.stdout)
 }
 
 fn is_regex(s: &str) -> bool {

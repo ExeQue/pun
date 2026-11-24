@@ -69,7 +69,8 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<Exit> {
             };
         let targets: Vec<PathBuf> = files
             .into_iter()
-            .filter(|f| changed.contains(f) && done.get(f).is_none_or(|&h| hash(f) != Some(h)))
+            .filter(|f| changed.contains(f) && !f.is_symlink())
+            .filter(|f| done.get(f).is_none_or(|&h| hash(f) != Some(h)))
             .collect();
         if targets.is_empty() {
             continue;

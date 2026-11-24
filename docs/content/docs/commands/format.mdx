@@ -24,14 +24,14 @@ pun format --test       # check only, change nothing
 | `--test` | Check only. Exit 1 if a file needs formatting. Alias: `--check`. |
 | `--repair` | Format, and exit 1 if a file changed. |
 | `--dirty` | Only files with uncommitted changes. |
-| `--staged` | Only files with staged changes. |
-| `--diff=<branch>` | Only files changed since `<branch>`. |
+| `--staged` | Only files with staged changes, also in a project inside a subfolder of the repository. |
+| `--diff=<branch>` | Only files changed since `<branch>`. With `--dirty`, `--staged` and `--diff`, a changed symlink to a file outside the project is skipped. |
 | `--watch` | Format again when files change. |
 | `--preset=<name>` | Use `laravel`, `psr12` or `empty` instead of `pun.toml`. |
 | `--config=<path>` | Use this `pun.toml`. |
 | `--no-config` | Use the `laravel` preset, no config file. |
 | `--format=<fmt>` | Report as `json`, `agent`, `checkstyle`, `junit`, `gitlab` or `github`. |
-| `--output-to-file=<path>` | Also write the report to a file. |
+| `--output-to-file=<path>` | Also write the report to a file. A symlink in the project that leads outside it is refused. |
 | `--no-cache` | Check every file again. |
 | `--explain` | Show the rules the run applies. |
 | `--max-processes=<n>` | Limit threads. Default: one per core. |

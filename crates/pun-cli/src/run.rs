@@ -236,9 +236,9 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     let mut unmatched_baseline = 0;
     let mut total = files.len();
     if let Stage::Check { .. } = stage
-        && selected.as_ref().is_none_or(|s| !s.is_empty())
+        && selected.as_ref().is_none_or(|(_, s)| !s.is_empty())
     {
-        let paths = selected.as_deref().unwrap_or(&a.paths);
+        let paths = selected.as_ref().map_or(&a.paths, |(_, s)| s);
         let analysed = crate::analyse::analyse(&cfg, paths, true)?;
         unmatched_baseline = analysed.unmatched_baseline;
         total = total.max(analysed.files);
@@ -286,8 +286,9 @@ fn ported_plan(a: &FormatArgs, cfg: &Config, lint: &LintOpts) -> Result<Plan> {
     Err(unported_error(a, cfg, &unported).into())
 }
 
-/// The files `--dirty`, `--diff` or `--staged` selects from git, when one of them is given.
-fn selected_files(a: &FormatArgs, cfg: &Config) -> Result<Option<Vec<PathBuf>>> {
+/// The files `--dirty`, `--diff` or `--staged` selects from git, when one of them is given: the files to format, then
+/// the changed files the other stages pick theirs from.
+fn selected_files(a: &FormatArgs, cfg: &Config) -> Result<Option<(Vec<PathBuf>, Vec<PathBuf>)>> {
     let selection = if a.dirty {
         Some(crate::finder::GitSelect::Dirty)
     } else if let Some(b) = &a.diff {
@@ -296,7 +297,7 @@ fn selected_files(a: &FormatArgs, cfg: &Config) -> Result<Option<Vec<PathBuf>>> 
         a.pun.staged.then_some(crate::finder::GitSelect::Staged)
     };
     Ok(match &selection {
-        Some(sel) => Some(crate::finder::git_paths(cfg, sel)?),
+        Some(sel) => Some(crate::finder::git_selection(cfg, sel)?),
         None => None,
     })
 }
@@ -307,16 +308,16 @@ fn file_sets(
     cfg: &Config,
     formats: bool,
     lints: bool,
-    selected: Option<&Vec<PathBuf>>,
+    selected: Option<&(Vec<PathBuf>, Vec<PathBuf>)>,
 ) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let format_set = match (formats, selected) {
         (false, _) => vec![],
-        (true, Some(files)) => files.clone(),
+        (true, Some((files, _))) => files.clone(),
         (true, None) => crate::finder::discover(cfg, &a.paths)?,
     };
     let lint_set = match (lints, selected) {
         (false, _) => vec![],
-        (true, Some(files)) => {
+        (true, Some((_, files))) => {
             let all: HashSet<PathBuf> =
                 crate::finder::files(cfg, Some(crate::finder::Command::Lint), &[])?
                     .into_iter()
@@ -336,7 +337,7 @@ fn native_rules(
     a: &FormatArgs,
     cfg: &Config,
     plan: &Plan,
-    selected: Option<&Vec<PathBuf>>,
+    selected: Option<&(Vec<PathBuf>, Vec<PathBuf>)>,
     lint_set: &[PathBuf],
 ) -> Result<(Natives, Option<Vec<PathBuf>>)> {
     let on = plan.mentioned();

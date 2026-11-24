@@ -4,7 +4,7 @@
 //! Our side must produce the same set and count. Skipped when the oracle is not installed.
 mod common;
 
-use punphp::finder::{GitSelect, discover, git_paths, is_path_excluded};
+use punphp::finder::{GitSelect, discover, git_paths, git_selection, is_path_excluded};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -393,4 +393,75 @@ fn git_selection_matches_pint() {
     git(&root, &["add", "app/Clean.php"]);
     let staged = ours(&GitSelect::Staged).unwrap();
     assert_eq!(staged, (["app/Clean.php".to_string()].into(), 1));
+}
+
+fn rel(root: &Path, files: &[PathBuf]) -> BTreeSet<String> {
+    let names = files.iter().map(|p| p.strip_prefix(root).unwrap_or(p));
+    names.map(|p| p.to_string_lossy().into_owned()).collect()
+}
+
+/// Git selection doesn't follow a changed symlink out of the project (Pint does, and formats the file it leads to);
+/// one that stays inside still selects its target, as in Pint.
+#[test]
+fn git_selection_stays_in_the_project() {
+    let top = common::tree("finder", &["ext/O.php", "repo/app/A.php"], BAD);
+    let root = top.join("repo");
+    git(&root, &["init", "-q"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-qm", "init"]);
+    git(&root, &["checkout", "-qb", "feature"]);
+    std::os::unix::fs::symlink(top.join("ext/O.php"), root.join("app/Out.php")).unwrap();
+    std::os::unix::fs::symlink("A.php", root.join("app/In.php")).unwrap();
+    let cfg = pun_config::from_toml(&root, "").unwrap();
+    let inside = BTreeSet::from(["app/A.php".to_string()]);
+    assert_eq!(
+        rel(&root, &git_paths(&cfg, &GitSelect::Dirty).unwrap()),
+        inside
+    );
+    let diff = GitSelect::Diff("main".into());
+    assert_eq!(rel(&root, &git_paths(&cfg, &diff).unwrap()), inside);
+    git(&root, &["add", "."]);
+    assert_eq!(
+        rel(&root, &git_paths(&cfg, &GitSelect::Staged).unwrap()),
+        inside
+    );
+}
+
+/// `--staged` (Pun's own flag) names every staged PHP file of a project nested in the repository: names relative to
+/// the project, names git quotes (a tab, non-ASCII), and a symlink turned into a file. The other stages start from the
+/// changed files the format-only excludes leave in.
+#[test]
+fn staged_selects_every_staged_file() {
+    let files = [
+        "sub/app/A.php",
+        "sub/app/Mod.php",
+        "sub/fmt/F.php",
+        "sub/app/Caf\u{e9}.php",
+        "sub/app/T\tab.php",
+    ];
+    let top = common::tree("finder", &files, BAD);
+    let root = top.join("sub");
+    std::os::unix::fs::symlink("A.php", root.join("app/Type.php")).unwrap();
+    git(&top, &["init", "-q"]);
+    git(&top, &["add", "."]);
+    git(&top, &["commit", "-qm", "init"]);
+    std::fs::remove_file(root.join("app/Type.php")).unwrap();
+    for f in &files {
+        std::fs::write(top.join(f), "<?PHP\necho 2;\n").unwrap();
+    }
+    std::fs::write(root.join("app/Type.php"), BAD).unwrap();
+    git(&top, &["add", "."]);
+    let cfg = pun_config::from_toml(&root, "[format]\nexclude = [\"fmt\"]\n").unwrap();
+    let changed = [
+        "app/A.php",
+        "app/Caf\u{e9}.php",
+        "app/Mod.php",
+        "app/T\tab.php",
+        "app/Type.php",
+    ];
+    let (format, every) = git_selection(&cfg, &GitSelect::Staged).unwrap();
+    assert_eq!(rel(&root, &format), changed.map(String::from).into());
+    let mut all = changed.map(String::from).to_vec();
+    all.push("fmt/F.php".into());
+    assert_eq!(rel(&root, &every), all.into_iter().collect());
 }
