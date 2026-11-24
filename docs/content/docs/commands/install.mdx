@@ -46,6 +46,13 @@ pun install --ignore-platform-req=ext-imagick
 
 With `hardlink`, editing a file in `vendor/` also changes it in other projects. Use `clone` or `copy` if you edit `vendor/` by hand.
 
+## Limitations
+
+- Installs `zip` and `tar` archives and path repositories. A package locked with only a VCS source fails.
+- Plugins don't get package events, `pre-operations-exec`, `pre-pool-create` or download events.
+- No custom installer paths, such as `composer/installers`, and no plugin commands.
+- A class added by hand to a package in `vendor/` reaches the class map only after that package is installed again.
+
 ## Exit codes
 
 | Code | Meaning |

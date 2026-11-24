@@ -51,6 +51,33 @@ baseline = "pun-baseline.toml"
 
 To ignore one line, add `// @pun-ignore <rule> -- <reason>`. See [ignore comments](/docs/configuration/ignore-comments). The [rule reference](/docs/rules/analyse) lists every check.
 
+## Limitations
+
+Pun doesn't run every PHPStan or Larastan check yet. The [rule reference](/docs/rules/analyse) marks the missing ones as Planned.
+
+**Config**
+
+- `pun.toml` takes a preset, not a numeric PHPStan level. Pun doesn't run every PHPStan rule at each level.
+- `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference` and `checkThisOnly` can't be set on their own. `pun migrate` reports them as unsupported.
+- PHPStan baselines are not read. Make a new one with `--generate-baseline`.
+- No `table` or `prettyJson` output formats.
+- `json` marks errors as `"fixable"`, but Pun doesn't fix them.
+
+**Laravel**
+
+- Larastan rules are off when the lock pins a Laravel version that Larastan 3 doesn't support. Larastan 3 supports 11.44.2+, 12.4.1+ and 13.x.
+- `enableMigrationCache` is not supported. Schema dumps are read with Larastan's MySQL-style parser.
+- Pun doesn't run PHP, so it finds macros by reading `X::macro()` and `X::mixin()` calls in your bootstrap files, `app/Providers`, Laravel and package service providers, and analysed files.
+- It misses macros with computed names, mixins that aren't `new ClassName()`, mixin classes it can't find, and macros registered by other vendor files.
+- A closure macro without a native return type is `mixed`.
+- Class aliases from service providers, dynamic config, `AliasLoader` calls, custom bootstrap, config, cache or vendor paths, and real-time `Facades\...` classes are not supported.
+- Method forwarding to container services through an alias is not supported.
+
+**Includes**
+
+- Include checks don't support bzip2, OpenSSL signatures, PHAR aliases and mounts, or runtime stream wrappers.
+- A `zip://` include is always reported as missing.
+
 ## Exit codes
 
 | Code | Meaning |

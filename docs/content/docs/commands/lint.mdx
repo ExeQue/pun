@@ -55,6 +55,13 @@ sets = ["dead-code", "modernize"]
 
 To ignore one line, add `// @pun-ignore <rule> -- <reason>`. See [ignore comments](/docs/configuration/ignore-comments).
 
+## Limitations
+
+- Pun doesn't have every Rector and PHP-CS-Fixer rule yet. The [rule reference](/docs/rules/lint) marks the missing ones as Planned.
+- A group turns on only the rules Pun has. Naming a Planned rule directly is a config error.
+- Rules from PHP-CS-Fixer accept only `@pun-ignore-file`, not line or region ignores.
+- An overriding method gets a return type only when both classes are in `vendor/`, or both are outside it.
+
 ## Exit codes
 
 | Code | Meaning |

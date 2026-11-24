@@ -51,6 +51,15 @@ Reading `.php-cs-fixer.php` or `rector.php` runs project PHP code. Run it only o
 
 Exit code 0 does not mean every rule moved. Read the warnings, then run [`pun check`](/docs/commands/check). Each tool has a [mapping page](/docs/migrate/from).
 
+## Limitations
+
+- `mago.toml` is detected but not converted.
+- Pint's `symfony` preset is not supported. Migration stops with an error.
+- Custom rules, closures, null configs, and rules Pun doesn't have are skipped with a warning.
+- PHPStan custom rules, `phpstan.*` services and your own included configs are skipped. Some PHPStan parameters have no Pun setting. See [`pun analyse`](/docs/commands/analyse#limitations).
+- PHPStan baselines are not copied.
+- If `pun.toml` already exists and differs, migrate exits 2 and doesn't overwrite it.
+
 ## Exit codes
 
 | Code | Meaning |
