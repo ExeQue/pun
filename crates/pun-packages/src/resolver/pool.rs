@@ -443,6 +443,8 @@ pub struct PoolBuilder<'a> {
     unacceptable: Vec<usize>,
     skipped: fx::HashMap<String, Vec<usize>>,
     path_unlocked: HashSet<String>,
+    /// The names `unlock` is working on: replacements that form a cycle unlock each name once.
+    unlocking: HashSet<String>,
     max_extended: fx::HashSet<String>,
     covered: fx::HashMap<String, fx::HashSet<Constraint>>,
     counter: usize,
@@ -472,6 +474,7 @@ impl<'a> PoolBuilder<'a> {
             unacceptable: vec![],
             skipped: fx::HashMap::default(),
             path_unlocked: HashSet::new(),
+            unlocking: HashSet::new(),
             max_extended: fx::HashSet::default(),
             covered: fx::HashMap::default(),
             counter: 0,
@@ -807,6 +810,14 @@ impl<'a> PoolBuilder<'a> {
     }
 
     fn unlock(&mut self, arena: &mut Vec<Package>, request: &mut Request, name: &str) {
+        if !self.unlocking.insert(name.to_string()) {
+            return;
+        }
+        self.unlock_name(arena, request, name);
+        self.unlocking.remove(name);
+    }
+
+    fn unlock_name(&mut self, arena: &mut Vec<Package>, request: &mut Request, name: &str) {
         for p in self.skipped.get(name).cloned().unwrap_or_default() {
             let replacer = arena[p].name.clone();
             if replacer != name

@@ -735,6 +735,30 @@ mod tests {
         );
     }
 
+    /// Packages that replace each other unlock each other once, where Composer's `unlockPackage` recurses forever.
+    #[test]
+    fn unlocks_cyclic_replacements_once() {
+        let m = json!({"require": {"c/c": "*"}, "repositories": repositories(json!([
+            {"name": "a/a", "version": "1.0.0", "replace": {"b/b": "*"}},
+            {"name": "b/b", "version": "1.0.0", "replace": {"a/a": "*"}},
+            {"name": "c/c", "version": "1.0.0", "replace": {"a/a": "*"}}
+        ]))});
+        let lock = json!({"content-hash": "x", "packages-dev": [], "packages": [
+            {"name": "a/a", "version": "1.0.0", "replace": {"b/b": "*"}, "type": "library"},
+            {"name": "b/b", "version": "1.0.0", "replace": {"a/a": "*"}, "type": "library"},
+            {"name": "c/c", "version": "1.0.0", "replace": {"a/a": "*"}, "type": "library"}
+        ]});
+        let options = Options {
+            allow_list: vec!["c/c".into()],
+            transitive: Transitive::Dependencies,
+            ..Options::default()
+        };
+        assert_eq!(
+            update(m, Some(lock), &options).unwrap()[0],
+            json!([["c/c", "1.0.0"]])
+        );
+    }
+
     #[test]
     fn sets_root_references_as_composer() {
         let m = json!({"minimum-stability": "dev", "require": {"a/a": "dev-main#abc", "b/b": "dev-main#def"},
