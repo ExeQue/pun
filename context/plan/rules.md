@@ -181,7 +181,8 @@ strict_comparison = { pun = "lint/types/no-loose-comparison", risky = true, opti
 list, references, exactly one of pun / drop / unsupported per upstream entry, and conflicts. Against the upstream
 inventories in `crates/pun-config/rules/upstream/*.json` it also enforces §7: every in-scope upstream rule maps to a
 Pun rule, no deprecated or out-of-scope one does, each lint or analyse rule has one primary source (or `merged`, or is
-Mago-derived), and no Rector-backed rule sits in an upgrade group below the floor (Laravel 12). An upstream
+Mago-derived), and a Rector-backed rule sits in a Laravel upgrade group below the floor (Laravel 12) only when its
+sources come from rector-laravel's sets below `laravel-120`. An upstream
 bump regenerates the inventories, so every new upstream rule needs a decision.
 
 ## 6. Counts
@@ -239,6 +240,12 @@ rector-phpunit's upgrade rules below `phpunit110` go into the `phpunit` ecosyste
 groups: rector-phpunit has no per-version sets, only `composer-based`, which binds each rule to a phpunit/phpunit
 version, and a group follows the upstream set the way `php-5.3` ... `php-8.1` follow Rector's php53 ... php81 sets. They
 are in no lint set, like the other rules only `composer-based` registers, and the checker allows them, not requires them.
+
+rector-laravel's version sets below `laravel-120` go into one group per set (`laravel-5.7`, `laravel-5.8`,
+`laravel-8` ... `laravel-11`; the legacy-factories migration into `laravel-8`), gated by the locked Laravel version
+like `laravel-12`, so they also run on Laravel 12 and 13. Its package sets below the current majors go into
+`cashier-13`, `livewire-3` and `faker-1`, the Lumen set into `lumen`, and its configurable rules into `refactor`
+(assistant's call, 2026-11-24).
 
 Rules removed for being out of scope keep their Rust code until the perf rounds end.
 

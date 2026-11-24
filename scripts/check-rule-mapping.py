@@ -15,13 +15,15 @@ Against the pinned upstream inventories in crates/pun-config/rules/upstream/*.js
 fails on: an in-scope Rector, rector-laravel, rector-phpunit or Pest rule, or an in-scope PHPStan, strict-rules,
 deprecation-rules or Larastan rule class, that has no entry or maps to no Pun rule; an entry that maps a deprecated or
 out-of-scope upstream rule (old Laravel upgrade set, no set, outside the in-scope sets) to a Pun rule (Rector's PHP
-upgrade rules below php82, its php-polyfills rules, the PHPUnit upgrade rules below phpunit110 and the rules in no set
-or only in sets outside the eight prepared sets may map to one, and need not); a lint or
+upgrade rules below php82, its php-polyfills rules, the PHPUnit upgrade rules below phpunit110, rector-laravel's
+upgrade rules below laravel-12, its package upgrade rules below the current majors, its legacy-factories and Lumen rules
+and the rules in no set or only in sets outside the eight prepared sets may map to one, and need not); a lint or
 analyse rule with no or several primary sources (one Rector rule, CS-Fixer fixer, Pint fixer or PHPStan-family rule
 class) unless it is Mago-derived (`origin = "mago"`, Mago sources only) or `pun_only`; `merged` on a lint or analyse
 rule; a class entry whose identifiers differ from the inventory; an emitted identifier with no entry, or one whose rule
 is not the rule of a class that emits it; and a rule with a Rector source in an upgrade group below the floor
-(Laravel 12). Prints rule counts per command, set, preset and source.
+(Laravel 12) unless every Rector source is in a rector-laravel set below laravel-120. Prints rule counts per command,
+set, preset and source.
 
 Usage: scripts/check-rule-mapping.py [path/to/mapping.toml]
 """
@@ -64,11 +66,18 @@ EXCLUDED_CLASSES = {
     "Rector\\TypeDeclaration\\Rector\\Class_\\TypedStaticPropertyInBehatContextRector",
     "Rector\\TypeDeclaration\\Rector\\ClassMethod\\ReturnTypeFromSymfonySerializerRector",
 }
-# Upgrade groups below the floor (Laravel 12): no rule with a Rector source may sit in one. Rector's PHP upgrade rules
-# below php82 and its php-polyfills rules may be ported into the php-5.3 ... php-8.1 groups ("Upgrades below the floor
-# too", PLAN.md §2, 2026-11-23); the inventories still mark them out of scope, so they are allowed, not required.
+# Upgrade groups below the floor (Laravel 12). Rector's PHP upgrade rules below php82 and its php-polyfills rules may be
+# ported into the php-5.3 ... php-8.1 groups, and rector-laravel's upgrade rules below laravel-120 into the laravel-5.7
+# ... laravel-11 groups ("Upgrades below the floor too", PLAN.md §2, 2026-11-23); the inventories still mark them out of
+# scope, so they are allowed, not required. A rule in a Laravel group below the floor needs every Rector source in one
+# of those old sets.
 BELOW_FLOOR = re.compile(r"laravel-([5-9](\.\d)?|1[01])")
+OLD_LARAVEL_SET = re.compile(r"laravel-([5-9]\d|1[01]\d|legacy-factories-to-classes)")
 OLD_PHP = ("only in php52..php81 upgrade sets (below php82)", "only in sets outside the eight prepared sets: php-polyfills")
+# rector-laravel's upgrade rules below laravel-12, its package upgrade rules below the current majors and its
+# legacy-factories and Lumen rules, by the start of their out-of-scope reason.
+OLD_LARAVEL = ("laravel upgrade set below laravel-12", "package upgrade set below the current major",
+               "legacy-factories migration", "lumen set")
 # Rector rules in no set, or only in sets outside the eight prepared ones, are being ported too ("All of Rector but its
 # deprecated rules", PLAN.md §2, 2026-11-23); the inventories still mark them out of scope, so they are allowed, not
 # required.
@@ -275,7 +284,7 @@ def in_scope(r):
 def may_port(r):
     reason = r.get("out_of_scope_reason") or ""
     return in_scope(r) or (not r["deprecated"]
-                           and (reason in OLD_PHP or reason == OLD_PHPUNIT or reason.startswith(NO_SET)))
+                           and (reason in OLD_PHP or reason == OLD_PHPUNIT or reason.startswith(NO_SET + OLD_LARAVEL)))
 
 
 def why_out(r):
@@ -363,7 +372,9 @@ def check_upstream(data, inv):
                 if old.removeprefix(c + "/") in data["rules"].get(c, {}):
                     err(f"{rid}: replaces {old!r}, which is still a rule")
             g = key.split("/")[0]
-            if BELOW_FLOOR.fullmatch(g) and any(s.split(":")[0] in RECTOR_TOOLS for s in primary[rid]):
+            rector_sources = [s.split(":", 1) for s in primary[rid] if s.split(":")[0] in RECTOR_TOOLS]
+            if BELOW_FLOOR.fullmatch(g) and any(
+                    not any(OLD_LARAVEL_SET.fullmatch(x) for x in up[t][k].get("sets", [])) for t, k in rector_sources):
                 err(f"{rid}: group {g} is an upgrade below the floor (Laravel 12)")
 
     # Every emitted identifier has an entry, and it points at the rule of a class that emits it.
@@ -608,6 +619,10 @@ def selftest_upstream():
         d["upstream"]["rector"]["Foo"]["pun"] = "lint/laravel-11/no-foo"
         d["upstream"]["mago-linter"]["n"]["pun"] = "lint/laravel-11/no-foo"
     bad(below_floor, "below the floor")
+    d = copy.deepcopy(good)
+    below_floor(d)
+    d["upstream"]["rector"]["Foo"]["sets"] = ["laravel-110"]
+    assert not [e for e in check_upstream(d, inv) if "below the floor" in e], check_upstream(d, inv)
 
 
 if __name__ == "__main__":
