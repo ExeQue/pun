@@ -31,10 +31,13 @@ apt_packages() {
 
 composer_bin() {
   command -v composer >/dev/null && { composer --version; return; }
-  local tmp
+  # A pinned release, checked against its SHA-256 (getcomposer.org's and GitHub's release asset agree) before root
+  # copies it: the unversioned installer would run as root whatever it downloaded.
+  local tmp version=2.11.2 sum=dd158c0afd41d15fac89e1b4e47b5d42911fe316c3687cd5edac98319b25d028
   tmp=$(mktemp -d)
-  curl -fsSLo "$tmp/installer.php" https://getcomposer.org/installer
-  sudo php "$tmp/installer.php" --quiet --install-dir=/usr/local/bin --filename=composer
+  curl -fsSLo "$tmp/composer" "https://getcomposer.org/download/$version/composer.phar"
+  echo "$sum  $tmp/composer" | sha256sum -c --quiet || { rm -rf "$tmp"; echo "composer.phar $version: checksum mismatch" >&2; return 1; }
+  sudo install -m 0755 "$tmp/composer" /usr/local/bin/composer
   rm -rf "$tmp"
   composer --version
 }
