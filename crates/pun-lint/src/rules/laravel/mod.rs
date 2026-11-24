@@ -9,6 +9,7 @@ mod array_access_calls;
 mod class_member_rules;
 mod conditional_helpers;
 mod document_string;
+mod helper_calls;
 mod names;
 mod no_app_array_access;
 mod no_collection_aliases;
@@ -63,6 +64,7 @@ mod print;
 pub(crate) mod property_attribute;
 mod property_rules;
 mod query_builder;
+mod query_calls;
 
 pub use prefer_class_container_key::ContainerService;
 pub use prefer_constructor_injection::Injection;
@@ -170,6 +172,16 @@ rules! {
         class_member_rules => PreferRouteKeyAttribute,
         class_member_rules => NoDefaultAuthorize,
         add_scope_builder_generics => AddScopeBuilderGenerics,
+        helper_calls => PreferBlankFilled,
+        helper_calls => PreferJsonResponse,
+        helper_calls => PreferTypedConfig,
+        helper_calls => NoDumpCalls::default(),
+        helper_calls => PreferComponentsProperty,
+        helper_calls => NoFactoryModelProperty,
+        query_calls => PreferWhereNull,
+        query_calls => PreferDateShorthand,
+        query_calls => PreferWhereLike::default(),
+        query_calls => PreferCacheSeconds,
     }
 }
 

@@ -6814,6 +6814,44 @@
       "ported": true
     },
     {
+      "id": "lint/laravel/no-dump-calls",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Removes dd() and dump() calls (or the configured functions) from the code.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\FuncCall\\RemoveDumpDataDeadCodeRector",
+        "RemoveDumpDataDeadCode",
+        "RemoveDumpDataDeadCodeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel/no-factory-model-property",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Removes the $model property from Factories.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\Class_\\RemoveModelPropertyFromFactoriesRector",
+        "RemoveModelPropertyFromFactories",
+        "RemoveModelPropertyFromFactoriesRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel/no-implicit-model-query",
       "command": "lint",
       "group": "laravel",
@@ -7134,6 +7172,44 @@
       "ported": true
     },
     {
+      "id": "lint/laravel/prefer-blank-filled",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Replace use of the unsafe empty() function with Laravel's safer blank() & filled() functions.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "EmptyToBlankAndFilledFunc",
+        "EmptyToBlankAndFilledFuncRector",
+        "RectorLaravel\\Rector\\Empty_\\EmptyToBlankAndFilledFuncRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel/prefer-cache-seconds",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Change minutes argument to seconds in Illuminate\\Contracts\\Cache\\Store and Illuminate\\Support\\Facades\\Cache",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "MinutesToSecondsInCache",
+        "MinutesToSecondsInCacheRector",
+        "RectorLaravel\\Rector\\StaticCall\\MinutesToSecondsInCacheRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel/prefer-casts-method",
       "command": "lint",
       "group": "laravel",
@@ -7289,6 +7365,25 @@
       "ported": true
     },
     {
+      "id": "lint/laravel/prefer-components-property",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Use $this->components property within commands",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\MethodCall\\UseComponentPropertyWithinCommandsRector",
+        "UseComponentPropertyWithinCommands",
+        "UseComponentPropertyWithinCommandsRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel/prefer-connection-attribute",
       "command": "lint",
       "group": "laravel",
@@ -7382,6 +7477,25 @@
         "DateFormatPropertyToDateFormatAttribute",
         "DateFormatPropertyToDateFormatAttributeRector",
         "RectorLaravel\\Rector\\Class_\\DateFormatPropertyToDateFormatAttributeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel/prefer-date-shorthand",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Replace date comparison where clauses with Laravel query builder shorthand methods.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "DateWhereClauseToShorthand",
+        "DateWhereClauseToShorthandRector",
+        "RectorLaravel\\Rector\\MethodCall\\DateWhereClauseToShorthandRector"
       ],
       "ported": true
     },
@@ -7781,6 +7895,25 @@
         "JobConnectionPropertyToJobConnectionAttribute",
         "JobConnectionPropertyToJobConnectionAttributeRector",
         "RectorLaravel\\Rector\\Class_\\JobConnectionPropertyToJobConnectionAttributeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel/prefer-json-response",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Use new JsonResponse instead of response()->json()",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\MethodCall\\ResponseHelperCallToJsonResponseRector",
+        "ResponseHelperCallToJsonResponse",
+        "ResponseHelperCallToJsonResponseRector"
       ],
       "ported": true
     },
@@ -8350,6 +8483,25 @@
       "ported": true
     },
     {
+      "id": "lint/laravel/prefer-typed-config",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Refactor config() calls to use type-specific methods when the expected type is known",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "ConfigToTypedConfigMethodCall",
+        "ConfigToTypedConfigMethodCallRector",
+        "RectorLaravel\\Rector\\FuncCall\\ConfigToTypedConfigMethodCallRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel/prefer-unguarded-attribute",
       "command": "lint",
       "group": "laravel",
@@ -8419,6 +8571,44 @@
         "RectorLaravel\\Rector\\Class_\\VisiblePropertyToVisibleAttributeRector",
         "VisiblePropertyToVisibleAttribute",
         "VisiblePropertyToVisibleAttributeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel/prefer-where-like",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Changes where method and static calls to whereLike calls in the Eloquent & Query Builder.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\MethodCall\\WhereToWhereLikeRector",
+        "WhereToWhereLike",
+        "WhereToWhereLikeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel/prefer-where-null",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Convert to where comparison to whereNull method call",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\MethodCall\\WhereNullComparisonToWhereNullRector",
+        "WhereNullComparisonToWhereNull",
+        "WhereNullComparisonToWhereNullRector"
       ],
       "ported": true
     },
@@ -9027,6 +9217,25 @@
         "Pest\\Rector\\Rules\\SimplifyExpectNotRector",
         "SimplifyExpectNot",
         "SimplifyExpectNotRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/pest/prefer-separate-expects",
+      "command": "lint",
+      "group": "pest",
+      "summary": "Splits ->and() calls in expect() chains into separate expect() statements",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "pest",
+      "tools": [
+        "pest-plugin-rector",
+        "rector"
+      ],
+      "upstream": [
+        "ConvertAndToExpect",
+        "ConvertAndToExpectRector",
+        "Pest\\Rector\\Rules\\ConvertAndToExpectRector"
       ],
       "ported": true
     },

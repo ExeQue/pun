@@ -11208,9 +11208,11 @@
         "name": "ConfigToTypedConfigMethodCall",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/config-to-typed-config-method-call-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-typed-config"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ConnectionPropertyToConnectionAttribute",
@@ -11282,9 +11284,11 @@
         "name": "DateWhereClauseToShorthand",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/date-where-clause-to-shorthand-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-date-shorthand"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "DelayPropertyToDelayAttribute",
@@ -11388,9 +11392,11 @@
         "name": "EmptyToBlankAndFilledFunc",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/empty-to-blank-and-filled-func-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-blank-filled"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "EnvVariableToEnvHelper",
@@ -11608,9 +11614,11 @@
         "name": "MinutesToSecondsInCache",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/minutes-to-seconds-in-cache-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-cache-seconds"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ModelCastsPropertyToCastsMethod",
@@ -11738,17 +11746,21 @@
         "name": "RemoveDumpDataDeadCode",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/remove-dump-data-dead-code-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/no-dump-calls"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "RemoveModelPropertyFromFactories",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/remove-model-property-from-factories-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/no-factory-model-property"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveRedundantValueCalls",
@@ -11888,9 +11900,11 @@
         "name": "ResponseHelperCallToJsonResponse",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/response-helper-call-to-json-response-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-json-response"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReverseConditionableMethodCall",
@@ -12112,9 +12126,11 @@
         "name": "UseComponentPropertyWithinCommands",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/use-component-property-within-commands-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-components-property"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "UseForwardsCallsTrait",
@@ -12148,17 +12164,21 @@
         "name": "WhereNullComparisonToWhereNull",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/where-null-comparison-to-where-null-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-where-null"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "WhereToWhereLike",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/where-to-where-like-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-where-like"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "WithoutIncrementingPropertyToWithoutIncrementingAttribute",
@@ -12194,9 +12214,11 @@
         "name": "ConvertAndToExpect",
         "tool": "pest-plugin-rector",
         "url": "https://getrector.com/find-rule",
-        "rules": [],
-        "note": "in no Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/pest/prefer-separate-expects"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ConvertAssertToExpect",

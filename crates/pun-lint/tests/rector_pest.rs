@@ -125,6 +125,11 @@ fn check(rule: impl Rule + 'static, class: &str) {
 }
 
 #[test]
+fn convert_and_to_expect() {
+    check(PreferSeparateExpects, "ConvertAndToExpectRector");
+}
+
+#[test]
 fn tap_to_defer() {
     check(PreferDefer, "TapToDeferRector");
 }

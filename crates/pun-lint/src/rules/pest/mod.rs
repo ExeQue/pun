@@ -12,6 +12,7 @@ mod prefer_expect;
 mod prefer_extend;
 mod prefer_filesystem_matchers;
 mod prefer_not_modifier;
+mod prefer_separate_expects;
 mod prefer_sequence;
 mod prefer_strict_equality_matchers;
 mod prefer_to_be_alpha;
@@ -130,6 +131,7 @@ rules! {
         prefer_type_matchers => PreferTypeMatchers,
         prefer_chained_expect => PreferChainedExpect::default(),
         require_type_matcher_first => RequireTypeMatcherFirst,
+        prefer_separate_expects => PreferSeparateExpects,
     }
 }
 
