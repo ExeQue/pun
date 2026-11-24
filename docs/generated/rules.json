@@ -12798,6 +12798,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/add-does-not-perform-assertions",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Tests without assertion will have #[DoesNotPerformAssertions] attribute, or @doesNotPerformAssertions annotation on PHPUnit below 10",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AddDoesNotPerformAssertionToNonAssertingTest",
+        "AddDoesNotPerformAssertionToNonAssertingTestRector",
+        "Rector\\PHPUnit\\PHPUnit60\\Rector\\ClassMethod\\AddDoesNotPerformAssertionToNonAssertingTestRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/add-instanceof-assert",
       "command": "lint",
       "group": "phpunit",
@@ -13753,6 +13772,25 @@
         "DirectInstanceOverMockArg",
         "DirectInstanceOverMockArgRector",
         "Rector\\PHPUnit\\CodeQuality\\Rector\\CallLike\\DirectInstanceOverMockArgRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/no-with-consecutive",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Refactor deprecated withConsecutive() to willReturnCallback() structure",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "Rector\\PHPUnit\\PHPUnit100\\Rector\\StmtsAwareInterface\\WithConsecutiveRector",
+        "WithConsecutive",
+        "WithConsecutiveRector"
       ],
       "ported": true
     },
@@ -15405,6 +15443,42 @@
         "AddOverrideAttributeToOverriddenPropertiesRector",
         "Rector\\Php85\\Rector\\Property\\AddOverrideAttributeToOverriddenPropertiesRector",
         "property.missingOverride"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/refactor/add-param-type",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Add param types where needed",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "AddParamTypeDeclaration",
+        "AddParamTypeDeclarationRector",
+        "Rector\\TypeDeclaration\\Rector\\ClassMethod\\AddParamTypeDeclarationRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/refactor/add-return-type",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Change defined return typehint of method and class",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "AddReturnTypeDeclaration",
+        "AddReturnTypeDeclarationRector",
+        "Rector\\TypeDeclaration\\Rector\\ClassMethod\\AddReturnTypeDeclarationRector"
       ],
       "ported": true
     },

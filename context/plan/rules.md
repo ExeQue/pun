@@ -240,6 +240,8 @@ rector-phpunit's upgrade rules below `phpunit110` go into the `phpunit` ecosyste
 groups: rector-phpunit has no per-version sets, only `composer-based`, which binds each rule to a phpunit/phpunit
 version, and a group follows the upstream set the way `php-5.3` ... `php-8.1` follow Rector's php53 ... php81 sets. They
 are in no lint set, like the other rules only `composer-based` registers, and the checker allows them, not requires them.
+The two configurable core rules those sets configure (`AddParamTypeDeclarationRector`, `AddReturnTypeDeclarationRector`)
+go into `refactor`, beside Rector's other configured rules.
 
 rector-laravel's version sets below `laravel-120` go into one group per set (`laravel-5.7`, `laravel-5.8`,
 `laravel-8` ... `laravel-11`; the legacy-factories migration into `laravel-8`), gated by the locked Laravel version

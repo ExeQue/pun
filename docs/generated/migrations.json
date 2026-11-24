@@ -6222,9 +6222,11 @@
         "name": "AddParamTypeDeclaration",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/add-param-type-declaration-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/add-param-type"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased; a PHPStan type as its PHPDoc string).",
+        "unsupported": false
       },
       {
         "name": "AddParamTypeFromPropertyType",
@@ -6346,9 +6348,11 @@
         "name": "AddReturnTypeDeclaration",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/add-return-type-declaration-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/add-return-type"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased; a PHPStan type as its PHPDoc string).",
+        "unsupported": false
       },
       {
         "name": "AddReturnTypeDeclarationBasedOnParentClassMethod",
@@ -12892,9 +12896,11 @@
         "name": "AddDoesNotPerformAssertionToNonAssertingTest",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/add-does-not-perform-assertion-to-non-asserting-test-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/add-does-not-perform-assertions"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddInstanceofAssertForNullableArgument",
@@ -14016,9 +14022,11 @@
         "name": "WithConsecutive",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/with-consecutive-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-with-consecutive"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "YieldDataProvider",

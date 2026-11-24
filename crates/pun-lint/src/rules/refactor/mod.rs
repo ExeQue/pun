@@ -1,4 +1,5 @@
 mod add_override_attribute;
+mod add_type_declarations;
 pub(crate) mod configured_codemods;
 pub(super) mod no_negated_condition;
 mod prefer_attribute_over_annotation;
@@ -58,6 +59,8 @@ rules! {
         configured_codemods => RenameAttribute::default(),
         configured_codemods => ChangeMethodVisibility::default(),
         configured_codemods => WrapReturn::default(),
+        add_type_declarations => AddParamTypeDeclaration::default(),
+        add_type_declarations => AddReturnTypeDeclaration::default(),
     }
 }
 

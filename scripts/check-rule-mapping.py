@@ -83,7 +83,8 @@ OLD_LARAVEL = ("laravel upgrade set below laravel-12", "package upgrade set belo
 # required.
 NO_SET = ("in no set", "in no rector-laravel/Pest set", "only in sets outside the eight prepared sets: ")
 # rector-phpunit's upgrade rules below phpunit110, and the core rules only its composer-based set configures, are being
-# ported too ("Upgrades below the floor too", PLAN.md §2, 2026-11-23) into the `phpunit` group; allowed, not required.
+# ported too ("Upgrades below the floor too", PLAN.md §2, 2026-11-23), into the `phpunit` group (the configurable core
+# rules into `refactor`, beside Rector's other configured rules); allowed, not required.
 OLD_PHPUNIT = "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)"
 
 

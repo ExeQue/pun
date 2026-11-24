@@ -43,6 +43,13 @@ Add return type declaration to a test method that returns type
 On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
+<Card title="add-does-not-perform-assertions" href="/docs/rules/lint/phpunit/add-does-not-perform-assertions">
+
+Tests without assertion will have #[DoesNotPerformAssertions] attribute, or @doesNotPerformAssertions annotation on PHPUnit below 10
+
+Off until you name it or its group. Unsafe fix: it can change behavior.
+
+</Card>
 <Card title="add-instanceof-assert" href="/docs/rules/lint/phpunit/add-instanceof-assert">
 
 Add an assertInstanceOf() before a nullable object is used in a PHPUnit test.
@@ -370,6 +377,13 @@ On when the `phpunit` extension is on. Safe fix.
 Use a real instance instead of a mock for entities and simple value objects in tests.
 
 On when the `phpunit` extension is on. Safe fix.
+
+</Card>
+<Card title="no-with-consecutive" href="/docs/rules/lint/phpunit/no-with-consecutive">
+
+Refactor deprecated withConsecutive() to willReturnCallback() structure
+
+Off until you name it or its group. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-assert" href="/docs/rules/lint/phpunit/prefer-assert">

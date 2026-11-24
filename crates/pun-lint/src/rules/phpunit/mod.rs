@@ -3,6 +3,7 @@ mod add_closure_return_type_from_assert;
 mod add_data_provider_allow_mock_objects;
 mod add_data_provider_iterator_return_type;
 mod add_depended_test_return_type;
+mod add_does_not_perform_assertions;
 mod add_instanceof_assert;
 mod add_mock_intersection_param;
 mod add_mock_intersection_type;
@@ -41,6 +42,7 @@ mod no_test_listener;
 mod no_unused_mock;
 mod no_unused_mock_property;
 mod no_value_object_mock;
+mod no_with_consecutive;
 pub(crate) mod phpdoc_type;
 mod prefer_assert;
 mod prefer_assert_array_has_key;
@@ -232,6 +234,8 @@ rules! {
         test_class_upgrades => AddProphecyTrait,
         test_class_upgrades => AddParentTestConstructor,
         no_test_listener => NoTestListener,
+        add_does_not_perform_assertions => AddDoesNotPerformAssertions,
+        no_with_consecutive => NoWithConsecutive,
     }
 }
 

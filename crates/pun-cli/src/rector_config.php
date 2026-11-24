@@ -43,6 +43,10 @@ try {
         if ($v instanceof \Closure || is_resource($v)) {
             return ['@unsupported' => get_debug_type($v)];
         }
+        // a PHPStan type (AddParamTypeDeclaration's, AddReturnTypeDeclaration's) as its PHPDoc string, `(string | null)`
+        if ($v instanceof \PHPStan\Type\Type) {
+            return (string) $v->toPhpDocNode();
+        }
         if (is_object($v)) {
             $props = [];
             foreach ((new \ReflectionObject($v))->getProperties() as $p) {
