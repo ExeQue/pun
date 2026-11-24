@@ -6,7 +6,9 @@
 use crate::common::run_class;
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
-use pun_lint::rules::PreferIsIterable;
+use pun_lint::rules::{
+    NoAppendToString, NoNonNumericStringOperand, PreferIsIterable, PreferMultiCatch,
+};
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
     run_class(vec![make()], class);
@@ -16,4 +18,22 @@ fn check(make: fn() -> Box<dyn Rule>, class: &str) {
 #[test]
 fn is_iterable() {
     check(|| Box::new(PreferIsIterable), "IsIterableRector");
+}
+
+#[test]
+fn assign_array_to_string() {
+    check(|| Box::new(NoAppendToString), "AssignArrayToStringRector");
+}
+
+#[test]
+fn binary_op_between_number_and_string() {
+    check(
+        || Box::new(NoNonNumericStringOperand),
+        "BinaryOpBetweenNumberAndStringRector",
+    );
+}
+
+#[test]
+fn multi_exception_catch() {
+    check(|| Box::new(PreferMultiCatch), "MultiExceptionCatchRector");
 }

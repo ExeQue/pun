@@ -6594,9 +6594,11 @@
         "name": "AssignArrayToString",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/assign-array-to-string-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.1/no-append-to-string"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AttributeKeyToClassConstFetch",
@@ -6610,9 +6612,11 @@
         "name": "BinaryOpBetweenNumberAndString",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/binary-op-between-number-and-string-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.1/no-non-numeric-string-operand"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "BinaryOpNullableToInstanceof",
@@ -7952,9 +7956,11 @@
         "name": "MultiExceptionCatch",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/multi-exception-catch-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.1/prefer-multi-catch"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "MyCLabsClassToEnum",

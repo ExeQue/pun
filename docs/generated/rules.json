@@ -10223,6 +10223,46 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.1/no-append-to-string",
+      "command": "lint",
+      "group": "php-7.1",
+      "summary": "String cannot be turned into array by assignment anymore",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "AssignArrayToString",
+        "AssignArrayToStringRector",
+        "Rector\\Php71\\Rector\\Assign\\AssignArrayToStringRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.1/no-non-numeric-string-operand",
+      "command": "lint",
+      "group": "php-7.1",
+      "summary": "Change binary operation between some number + string to PHP 7.1 compatible version",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "BinaryOpBetweenNumberAndString",
+        "BinaryOpBetweenNumberAndStringRector",
+        "Rector\\Php71\\Rector\\BinaryOp\\BinaryOpBetweenNumberAndStringRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.1/prefer-is-iterable",
       "command": "lint",
       "group": "php-7.1",
@@ -10239,6 +10279,26 @@
         "IsIterable",
         "IsIterableRector",
         "Rector\\Php71\\Rector\\BooleanOr\\IsIterableRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.1/prefer-multi-catch",
+      "command": "lint",
+      "group": "php-7.1",
+      "summary": "Change multiple catch statements of the same exception to a single one | separated",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "MultiExceptionCatch",
+        "MultiExceptionCatchRector",
+        "Rector\\Php71\\Rector\\TryCatch\\MultiExceptionCatchRector"
       ],
       "ported": true
     },
