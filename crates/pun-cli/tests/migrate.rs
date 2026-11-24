@@ -226,10 +226,6 @@ const CHECKLIST: &[(&str, &str)] = &[
 ];
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "each --from selection prints its whole report"
-)]
 fn lists_every_detected_config() {
     let files = [
         ("pint.json", PINT),
@@ -245,7 +241,7 @@ fn lists_every_detected_config() {
         (
             " ok pint.json               -> [format] preset empty, 1 rule changed, 1 rule -> [lint]
  - .php-cs-fixer.dist.php  not migrated: pint.json gives [format], as in Pint
- ok phpstan.dist.neon       -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]
+ ok phpstan.dist.neon       -> [analyse] preset phpstan/level_5, 8 rules -> [lint]
  ! rector.php              not read: run `composer install` so Pun can read it with Rector; left untouched
 
  ! Not migrated
@@ -266,17 +262,8 @@ fn lists_every_detected_config() {
     let toml = read(&d, "pun.toml");
     assert!(
         toml.starts_with(TOML)
-            && toml[TOML.len()..].starts_with(concat!(
-                "\"complexity/no-redundant-nullsafe\" = \"error\"\n",
-                "\"dead-code/no-duplicate-array-key\" = \"error\"\n",
-                "\"dead-code/no-unreachable-code\" = \"error\"\n",
-                "\"dead-code/no-unused-constructor-param\" = \"error\"\n",
-                "\"dead-code/no-unused-expression\" = \"error\"\n",
-                "\"dead-code/no-unused-private-constant\" = \"error\"\n",
-                "\"dead-code/no-unused-private-method\" = \"error\"\n",
-                "\"functions/no-unused-closure-use\" = \"error\"\n",
-                "\n[analyse]\npreset = \"recommended\"\n"
-            )),
+            // phpstan/level_5 turns on the PHPStan checks that are lint rules itself
+            && toml[TOML.len()..].starts_with("\n[analyse]\npreset = \"phpstan/level_5\"\n"),
         "{toml}"
     );
     for (f, c) in files {
@@ -289,7 +276,7 @@ fn lists_every_detected_config() {
         (
             " - pint.json               not selected
  - .php-cs-fixer.dist.php  not selected
- ok phpstan.dist.neon       -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]
+ ok phpstan.dist.neon       -> [analyse] preset phpstan/level_5, 8 rules -> [lint]
  - rector.php              not selected
 
  ! Not migrated
@@ -430,7 +417,7 @@ fn starter_beside_phpstan() {
     assert_eq!(
         (counts(&out).as_str(), code),
         (
-            " ok phpstan.neon.dist  -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]\n\n ! Not migrated\n   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\n     format/functions/backtick-to-shell-exec\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ok Wrote starter pun.toml (preset laravel)\n",
+            " ok phpstan.neon.dist  -> [analyse] preset phpstan/level_5, 8 rules -> [lint]\n\n ! Not migrated\n   a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\n     format/functions/backtick-to-shell-exec\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ok Wrote starter pun.toml (preset laravel)\n",
             Some(0)
         )
     );
@@ -454,7 +441,7 @@ fn phpstan_without_a_level_runs_no_rules() {
     assert_eq!(
         (counts(&out).lines().next(), code),
         (
-            Some(" ok phpstan.neon  -> [analyse] preset basic (level 0), N on, N off"),
+            Some(" ok phpstan.neon  -> [analyse] preset phpstan/level_0, N on, N off"),
             Some(0)
         )
     );
@@ -753,7 +740,9 @@ fn offers_the_closest_preset() {
     // Without --offer-preset, migrate writes the exact rules and doesn't ask.
     let out = pty(&d, "\\r");
     assert!(!out.contains("closest Pun preset"), "{out}");
-    assert!(read(&d, "pun.toml").contains(" = \"off\"\n"));
+    let toml = read(&d, "pun.toml");
+    assert!(toml.contains("preset = \"phpstan/level_5\"\n"), "{toml}");
+    assert!(!toml.contains("[analyse.rules]"), "{toml}");
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     let offer = |keys: &str| {
         let (out, code) =
@@ -763,19 +752,16 @@ fn offers_the_closest_preset() {
     };
     let out = offer("\\ry");
     assert!(
-        out.contains("You're on PHPStan level 5; the closest Pun preset is `recommended`. Switch to it? (0 new problems, 0 fewer)"),
+        out.contains("You're on PHPStan level 5; the closest Pun preset is `recommended`. Switch to it from `phpstan/level_5`? ("),
         "{out}"
     );
     assert!(out.contains(", switched to the preset\n"), "{out}");
     let toml = read(&d, "pun.toml");
-    assert!(
-        !toml.contains("\"on\"") && !toml.contains("\"off\""),
-        "{toml}"
-    );
+    assert!(toml.contains("preset = \"recommended\"\n"), "{toml}");
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     let out = offer("\\rn");
     assert!(!out.contains("switched to the preset"), "{out}");
-    assert!(read(&d, "pun.toml").contains(" = \"off\"\n"));
+    assert!(read(&d, "pun.toml").contains("preset = \"phpstan/level_5\"\n"));
 }
 
 /// `.oracle/<rel>` (scripts/oracle.sh), canonical; `None` skips the cases that need it.
@@ -810,7 +796,7 @@ fn phpstan_baseline_extensions_options_and_ignores() {
     let out = counts(&out);
     let line = out.lines().next().unwrap();
     assert!(
-        line.starts_with(" ok phpstan.neon  -> [analyse] preset max (level 9), N on, N off, "),
+        line.starts_with(" ok phpstan.neon  -> [analyse] preset phpstan/level_9, N on, N off, "),
         "{out}"
     );
     assert!(
@@ -1100,7 +1086,7 @@ fn phpstan_alone_beside_a_format_config() {
         (
             format!(
                 " - pint.json     not selected
- ok phpstan.neon  -> [analyse] preset basic (level 0), N on, N off, 1 rule -> [lint], phpVersion -> [php] version 8.4
+ ok phpstan.neon  -> [analyse] preset phpstan/level_0, 1 rule -> [lint], phpVersion -> [php] version 8.4
 
  ! Not migrated
    a custom PHPStan rule; Pun runs no PHP rules

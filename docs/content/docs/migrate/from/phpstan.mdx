@@ -13,8 +13,8 @@ Run `pun migrate --from phpstan`. It follows the config's includes. That covers 
 
 | phpstan.neon | pun.toml |
 | --- | --- |
-| `level: 5` | `[analyse] preset = "recommended"`, plus explicit on/off lines for exactly level 5 |
-| `level: 0..10` | The analyse preset that contains the level, with on/off differences. A type switch of a higher level in the preset is turned off, such as `nullables = false` for level 7 |
+| `level: 5` | `[analyse] preset = "phpstan/level_5"`, which runs exactly PHPStan's level 5 |
+| `level: 0..10`, `level: max` | `preset = "phpstan/level_<n>"` or `"phpstan/level_max"`, with on/off lines only for what the config changes, such as opt-in checks or strict-rules. `--offer-preset` offers Pun's closest preset instead |
 | `paths`, `excludePaths`, `stubFiles` | `[analyse] paths`, `exclude`, `stubs` |
 | `scanFiles`, `scanDirectories`, `bootstrapFiles` | `[analyse] scan` and `bootstrap`. Files under `vendor/` come back with their extension and aren't copied |
 | `ignoreErrors` identifiers, patterns, paths, count, `reportUnmatched` | `[[analyse.ignore]]` with Pun `rule`, original `identifier`, `message`, `paths`, `count`, `report-unmatched` |

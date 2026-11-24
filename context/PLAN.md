@@ -133,9 +133,16 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   `"safe-only"`; `fix = "off"` makes a rule report-only; safe/unsafe stays a label in the output.
 - **Analyse presets:** `basic` (PHPStan 0-1) < `essential` (2-3) < `recommended` (4-5, default) < `strict` (6-8) < `max`
   (9-10), under `[analyse] preset`. There is no top-level `preset` and no shared lint/analyse tier.
+- **PHPStan level presets** (2026-11-24, Pushpak): `[analyse] preset = "phpstan/level_0"` to `"phpstan/level_10"` and
+  `"phpstan/level_max"` run exactly what `phpstan analyse --level N` runs with default parameters: core rule classes
+  of that level and below (mapping.toml `level`), the level's type switches, no opt-in, strict-rules or
+  deprecation-rules rules, bleeding-edge rules only with `bleeding-edge = true`, Larastan's default rules with Laravel
+  on. The PHPStan checks that are lint rules in Pun come on in `[lint]` too, so `pun check` matches. Pun's five presets
+  stay separate. Naming matches the Rector sets (`rector/<set>`).
 - **Analyse rules are on or off**; every finding is an error.
-- **No levels anywhere.** Migrate writes the exact rules an old config ran, at `error`, and when interactive offers the
-  closest preset with a count of the new problems it would report.
+- **No numeric levels.** `[analyse] level` and `preset = 5` are errors naming `phpstan/level_5`. Migrate writes the
+  PHPStan level preset (`level: max` becomes `phpstan/level_max`) plus only what the config changes; when interactive
+  with `--offer-preset` it offers Pun's closest preset with a count of the new problems it would report.
 - **Laravel, Pest and PHPUnit turn on by themselves** from composer.lock, with their version rules; a group can be
   switched off. `[php] version` comes from composer.json's `require.php`; the config value only overrides it.
 - **`[files]`** (paths, exclude) is shared by every command, and each command's `exclude` adds to it (assistant's

@@ -630,7 +630,7 @@ fn phpstan_analyse(
             "{b} not-copied run `pun analyse --generate-baseline` for a Pun baseline"
         ));
     }
-    let mut text = format!("[analyse] preset {} (level {})", done.preset, p.level);
+    let mut text = format!("[analyse] preset {}", done.preset);
     if done.on + done.off > 0 {
         let _ = write!(text, ", {} on, {} off", done.on, done.off);
     }
@@ -663,9 +663,7 @@ fn closest_preset(
     plain
         .analyse_rules
         .retain(|(_, v)| v != "\"on\"" && v != "\"off\"");
-    if plain.analyse_rules.len() == parts.analyse_rules.len() {
-        return Ok(None);
-    }
+    plain.analyse = migrate::phpstan::with_pun_preset(&parts.analyse, level);
     let exact = pun_config::from_toml(root, &parts.render())?;
     let preset = pun_config::from_toml(root, &plain.render())?;
     let found = |cfg: &pun_config::Config| -> Result<std::collections::HashSet<_>> {
@@ -678,7 +676,7 @@ fn closest_preset(
     let new = after.difference(&before).count();
     let gone = before.difference(&after).count();
     let prompt = format!(
-        "You're on PHPStan level {level}; the closest Pun preset is `{}`. Switch to it? ({new} new problem{}, {gone} fewer)",
+        "You're on PHPStan level {level}; the closest Pun preset is `{}`. Switch to it from `phpstan/level_{level}`? ({new} new problem{}, {gone} fewer)",
         preset.analyse.preset,
         if new == 1 { "" } else { "s" },
     );

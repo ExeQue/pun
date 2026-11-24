@@ -57,7 +57,7 @@ Pun doesn't run every PHPStan or Larastan check yet. The [rule reference](/docs/
 
 **Config**
 
-- `pun.toml` takes a preset, not a numeric PHPStan level. Pun doesn't run every PHPStan rule at each level.
+- `pun.toml` takes a preset, not a numeric PHPStan level. Use `preset = "phpstan/level_<n>"` for PHPStan's exact rule set. Pun still differs from PHPStan on some cases at each level, and six rules aren't ported yet.
 - `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference` and `checkThisOnly` can't be set on their own. `pun migrate` reports them as unsupported.
 - PHPStan baselines are not read. Make a new one with `--generate-baseline`.
 - No `table` or `prettyJson` output formats.

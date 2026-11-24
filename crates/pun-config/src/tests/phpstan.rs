@@ -238,10 +238,11 @@ fn reads_level_paths_ignores_and_includes() {
     for line in [
         "\"undefined/function\" = { check-function-name-case = true }",
         "\"undefined/method\" = { check-function-name-case = true }",
-        "\"types/throws-not-covariant\" = \"off\"",
     ] {
         assert!(text.contains(&format!("\n{line}\n")), "{line}\n{text}");
     }
+    // PHPStan's opt-in throw-type covariance is not in the level preset, so nothing turns it off.
+    assert!(!text.contains("throws-not-covariant"), "{text}");
     assert_eq!(done.options, 1);
     let cfg = crate::from_toml(&d, &text).unwrap();
     assert!(cfg.analyse.bleeding_edge);
@@ -261,7 +262,7 @@ fn reads_level_paths_ignores_and_includes() {
             "[[lint.overrides]]\nfiles = [\"app/Legacy\", \"/tmp\"]\nrules = { \"complexity/no-redundant-nullsafe\" = \"off\", "
         ) && parts.render().starts_with("[php]\nversion = \"8.4\"\n\n")
             && parts.render().contains(
-            "\n\n[analyse]\npreset = \"recommended\"\npaths = [\"app\", \"tests\"]\nexclude = [\"app/Legacy\", \"/tmp\"]\nstubs = [\"stubs/Foo.stub\"]\nscan = [\"stubs/debugbar.php\", \"app/Legacy\"]\nbootstrap = [\"tests/bootstrap.php\"]\nbleeding-edge = true\n"
+            "\n\n[analyse]\npreset = \"phpstan/level_5\"\npaths = [\"app\", \"tests\"]\nexclude = [\"app/Legacy\", \"/tmp\"]\nstubs = [\"stubs/Foo.stub\"]\nscan = [\"stubs/debugbar.php\", \"app/Legacy\"]\nbootstrap = [\"tests/bootstrap.php\"]\nbleeding-edge = true\n"
         ),
         "{}",
         parts.render()
@@ -521,23 +522,10 @@ fn composes_the_level_extensions_and_parameters() {
             .map(|(k, _)| k.clone())
             .collect()
     };
+    // A plain level is its PHPStan preset, exactly: nothing to turn on or off.
     let (done, parts, d) = at(5, &[], &[]);
-    assert_eq!(done.preset, AnalysePreset::Recommended);
-    let off = lines(&parts, "\"off\"");
-    assert!(off.contains(&"deprecated/class".to_string()), "{off:?}");
-    assert!(
-        off.contains(&"classes/uninitialized-property".to_string()),
-        "{off:?}"
-    );
-    assert!(
-        off.contains(&"types/printf-argument".to_string()),
-        "{off:?}"
-    );
-    assert!(
-        !off.contains(&"types/random-int-range".to_string()),
-        "{off:?}"
-    );
-    assert_eq!((done.on, done.off), (0, off.len()));
+    assert_eq!(done.preset, AnalysePreset::PhpstanLevel(5));
+    assert_eq!((done.on, done.off), (0, 0), "{:?}", parts.analyse_rules);
     let cfg = crate::from_toml(&d, &parts.render()).unwrap();
     assert_eq!(cfg.analyse.ignore.len(), 1);
     assert_eq!(
@@ -545,11 +533,24 @@ fn composes_the_level_extensions_and_parameters() {
         Some("analyse/undefined/method")
     );
     let has = |id: &str| cfg.analyse.rules.iter().any(|r| r.id == id);
-    assert!(!has("analyse/deprecated/class") && has("analyse/deprecated/to-string"));
+    // deprecation rules are a separate package; uninitialized properties and bleeding-edge printf checks opt-in
+    for id in [
+        "analyse/deprecated/class",
+        "analyse/classes/uninitialized-property",
+        "analyse/types/printf-argument",
+    ] {
+        assert!(!has(id), "{id}");
+    }
+    assert!(has("analyse/types/random-int-range") && has("analyse/deprecated/to-string"));
 
     let (done, parts, _) = at(4, &[], &[]);
-    assert_eq!(done.preset, AnalysePreset::Recommended);
-    assert!(lines(&parts, "\"off\"").contains(&"types/random-int-range".to_string()));
+    assert_eq!(done.preset, AnalysePreset::PhpstanLevel(4));
+    assert_eq!((done.on, done.off), (0, 0), "{:?}", parts.analyse_rules);
+
+    // With deprecation rules installed, migrate turns them on beside the preset.
+    let (done, parts, _) = at(5, &["phpstan/phpstan-deprecation-rules"], &[]);
+    assert!(lines(&parts, "\"on\"").contains(&"deprecated/class".to_string()));
+    assert_eq!(done.off, 0);
 
     let strict = "phpstan/phpstan-strict-rules";
     let params = [
@@ -558,7 +559,7 @@ fn composes_the_level_extensions_and_parameters() {
         ("uselessCast", false),
     ];
     let (done, parts, _) = at(0, &[strict], &params);
-    assert_eq!(done.preset, AnalysePreset::Basic);
+    assert_eq!(done.preset, AnalysePreset::PhpstanLevel(0));
     let on = lines(&parts, "\"on\"");
     assert!(
         on.contains(&"operators/non-boolean-and-operand".to_string()),
@@ -570,13 +571,11 @@ fn composes_the_level_extensions_and_parameters() {
         "needs bleedingEdge too"
     );
     assert_eq!(done.lint, 2);
-    for rule in ["style/no-empty", "dead-code/no-duplicate-array-key"] {
-        assert!(
-            parts
-                .lint_rules
-                .contains(&(rule.into(), "\"error\"".into()))
-        );
-    }
+    // strict-rules' check is written; phpstan/level_0 turns on the duplicate-key check itself.
+    assert_eq!(
+        parts.lint_rules,
+        [("style/no-empty".into(), "\"error\"".into())]
+    );
     let (done, parts, _) = at_in(5, &[], &[], &[("composer.lock", super::LARAVEL_LOCK)], "");
     assert!((parts.analyse_rules.iter()).any(|(k, v)| k == "laravel" && v == "\"off\""));
     assert!(
@@ -663,7 +662,11 @@ fn lint_rules_keep_to_the_phpstan_paths() {
     };
     let done = compose(&d, &mut parts, &p).unwrap();
     assert_eq!(done.lint, 1);
-    assert!(parts.lint_rules.is_empty(), "{:?}", parts.lint_rules);
+    // phpstan/level_0 turns it on everywhere; migrate turns it off there and on in PHPStan's paths.
+    assert_eq!(
+        parts.lint_rules,
+        [("dead-code/no-duplicate-array-key".into(), "\"off\"".into())]
+    );
     assert_eq!(
         parts.overrides,
         "[[lint.overrides]]\nfiles = [\"src\"]\nrules = { \"dead-code/no-duplicate-array-key\" = \"error\" }\n\n[[lint.overrides]]\nfiles = [\"src/Legacy\"]\nrules = { \"dead-code/no-duplicate-array-key\" = \"off\" }\n"

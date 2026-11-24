@@ -14,7 +14,7 @@ pub use explain::{RULE_DOCS_URL, explain};
 pub use identifiers::{identifiers_of_rules, rule_of_identifier};
 pub use schema::{
     Analyse, AnalysePreset, AnalyseRule, Files, FixSafety, FormatPreset, Ignore, LINT_SETS, Level,
-    Lint, LintRule, LintSetting, Override, PhpVersion, groups,
+    Lint, LintRule, LintSetting, Override, PhpVersion, groups, phpstan_level_rules,
 };
 
 use anyhow::{Context, Result, bail};
@@ -275,7 +275,8 @@ fn parse(
         composer,
         switches: extensions::switches(&at.to_string(), extensions)?,
     };
-    let lint = schema::lint(path, lint, &files, &gates)?;
+    let phpstan_lint = analyse.phpstan_lint(path)?;
+    let lint = schema::lint(path, lint, &files, &gates, &phpstan_lint)?;
     let analyse = schema::analyse(path, analyse, &files, &gates)?;
     let escapes = |b: &&str| {
         let dir = Path::new(b).parent().unwrap_or(Path::new(""));

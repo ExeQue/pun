@@ -54,6 +54,33 @@ Each preset includes the ones above it in this table.
 preset = "strict"
 ```
 
-Pun doesn't run every PHPStan rule at each level. See [analysis limitations](/docs/commands/analyse#limitations).
+Pun's presets are its own picks. They also turn on a few checks that PHPStan leaves opt-in, such as uninitialized properties in `basic` and missing `@throws` in `max`.
 
-`pun.toml` doesn't accept a numeric `[analyse] level`. `pun migrate` picks the preset that contains your PHPStan level and writes the rule differences.
+## PHPStan level presets
+
+To run exactly what `phpstan analyse --level N` runs, use the level's preset:
+
+```toml pun.toml
+[analyse]
+preset = "phpstan/level_5"
+```
+
+| Preset | Runs |
+| --- | --- |
+| `phpstan/level_0` to `phpstan/level_6` | PHPStan's rules of that level and every lower one |
+| `phpstan/level_7` | Level 6, plus `union-types` |
+| `phpstan/level_8` | Level 7, plus `nullables` |
+| `phpstan/level_9` | Level 8, plus `explicit-mixed` |
+| `phpstan/level_10`, `phpstan/level_max` | Level 9, plus `implicit-mixed` |
+
+A level preset follows PHPStan's defaults:
+
+- PHPStan's opt-in checks stay off, such as `checkUninitializedProperties` and the missing `@throws` checks. Turn them on in `[analyse.rules]`.
+- phpstan-strict-rules and phpstan-deprecation-rules are separate packages, not levels. Turn their rules on in `[analyse.rules]`. `pun migrate` does this for you.
+- Bleeding-edge checks run only with `bleeding-edge = true`, as with PHPStan's `bleedingEdge.neon`.
+- With the `laravel` extension on, Larastan's default rules run too.
+- Some PHPStan checks are lint rules in Pun, such as unreachable code at level 4. The preset turns them on in `[lint]` as well, so `pun check` reports what PHPStan reports. `[lint.rules]` can still turn them off.
+
+[PHPStan level presets](/docs/rules/presets/analyse-phpstan) lists what each level adds. Pun doesn't match PHPStan on every case yet. See [analysis limitations](/docs/commands/analyse#limitations).
+
+`pun.toml` doesn't accept a numeric `[analyse] level`. `pun migrate` writes the PHPStan level preset of your level, plus the rules your `phpstan.neon` adds or removes.

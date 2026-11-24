@@ -102,6 +102,8 @@ format, lint and analyse can see different file sets. `vendor/` is never checked
 - **Analyse presets** by PHPStan level band, each including the one below: `basic` (0-1), `essential` (2-3),
   `recommended` (4-5, default), `strict` (6-8), `max` (9-10). The four type switches (`union-types`, `nullables`,
   `explicit-mixed`, `implicit-mixed`) come with the presets. Analyse rules are on or off; there is no `warn`.
+- **PHPStan level presets:** `phpstan/level_0` to `phpstan/level_10` and `phpstan/level_max` run exactly PHPStan's
+  level (analyse.md §3), including the lint rules that are PHPStan checks.
 - **Ecosystems:** Laravel, Pest and PHPUnit turn on only through `[extensions]`; their versions in composer.lock gate
   the version groups. A project switches one's rules off with its group (`[lint.groups] laravel = "off"`,
   `[analyse.rules]` the same way).
@@ -168,7 +170,7 @@ The assistant's calls where the plan is silent:
 **Errors** (Build 3, 6). Config errors exit 2 (output.md).
 - Removed keys are errors that name the replacement: the top-level `preset`, `[format] preset = "per" | "symfony"`,
   `fix = "apply" | "safe-only"`, `"info"`, `severity`, `[format] paths` (names `[files] paths`), and `[analyse] level`
-  or a number as `[analyse] preset` (names the preset that holds that PHPStan level).
+  or a number as `[analyse] preset` (names `phpstan/level_<n>` and Pun's preset that holds that level).
 - Rules Pun can't run: a rule a set or group turns on is skipped. A rule named in pun.toml or set by the preset stops
   every `format`, `lint` and `check` run (so a lint rule stops `pun format` too) with
   `<pun.toml path>: rule(s) not supported by Pun yet: `<Pun ID>`, ...`. The upstream name stands in when the rule has

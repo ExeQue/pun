@@ -4,7 +4,7 @@ use crate::{fixer_of, options, renamed, rules};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 pub use pun_tokens::PhpVersion;
@@ -97,17 +97,41 @@ impl FixSafety {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[serde(rename_all = "lowercase")]
+/// `[analyse] preset`: one of Pun's five presets, or one of PHPStan's levels by its upstream name
+/// (`phpstan/level_0` to `phpstan/level_10`, and `phpstan/level_max`), which runs exactly the rules and type checks
+/// that `phpstan analyse --level N` runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnalysePreset {
     Basic,
     Essential,
     Recommended,
     Strict,
     Max,
+    /// PHPStan's level 0 to 10.
+    PhpstanLevel(u8),
+    /// PHPStan's `max`: level 10 today, under its own name.
+    PhpstanMax,
 }
 
+const PHPSTAN_LEVEL_NAMES: [&str; 11] = [
+    "phpstan/level_0",
+    "phpstan/level_1",
+    "phpstan/level_2",
+    "phpstan/level_3",
+    "phpstan/level_4",
+    "phpstan/level_5",
+    "phpstan/level_6",
+    "phpstan/level_7",
+    "phpstan/level_8",
+    "phpstan/level_9",
+    "phpstan/level_10",
+];
+
+/// PHPStan's highest level, the one `max` stands for.
+pub(crate) const PHPSTAN_MAX_LEVEL: u8 = 10;
+
 impl AnalysePreset {
+    /// Pun's own presets, lowest first.
     pub const ALL: [Self; 5] = [
         Self::Basic,
         Self::Essential,
@@ -116,6 +140,13 @@ impl AnalysePreset {
         Self::Max,
     ];
 
+    /// PHPStan's level presets, lowest first, then `phpstan/level_max`.
+    pub fn phpstan() -> impl Iterator<Item = Self> {
+        (0..=PHPSTAN_MAX_LEVEL)
+            .map(Self::PhpstanLevel)
+            .chain([Self::PhpstanMax])
+    }
+
     pub fn name(self) -> &'static str {
         match self {
             Self::Basic => "basic",
@@ -123,15 +154,52 @@ impl AnalysePreset {
             Self::Recommended => "recommended",
             Self::Strict => "strict",
             Self::Max => "max",
+            Self::PhpstanLevel(l) => PHPSTAN_LEVEL_NAMES[usize::from(l)],
+            Self::PhpstanMax => "phpstan/level_max",
         }
     }
 
-    fn parse(s: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|p| p.name() == s)
+    pub fn parse(s: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .chain(Self::phpstan())
+            .find(|p| p.name() == s)
     }
 
+    /// Pun's preset that holds PHPStan level `level`.
     pub fn of_level(level: usize) -> Self {
         Self::ALL[[0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4][level]]
+    }
+
+    /// The PHPStan preset of `level` (`phpstan/level_max` when `max`).
+    pub fn phpstan_of(level: u8, max: bool) -> Self {
+        if max {
+            Self::PhpstanMax
+        } else {
+            Self::PhpstanLevel(level)
+        }
+    }
+
+    /// The PHPStan level of a PHPStan preset; `None` for Pun's own.
+    pub fn phpstan_level(self) -> Option<u8> {
+        match self {
+            Self::PhpstanLevel(l) => Some(l),
+            Self::PhpstanMax => Some(PHPSTAN_MAX_LEVEL),
+            _ => None,
+        }
+    }
+
+    /// Whether this Pun preset includes Pun preset `other` (each includes the ones below it). Always false for the
+    /// PHPStan presets, which choose rules by PHPStan level instead.
+    pub(crate) fn includes(self, other: Self) -> bool {
+        let rank = |p: Self| Self::ALL.iter().position(|a| *a == p);
+        matches!((rank(other), rank(self)), (Some(a), Some(b)) if a <= b)
+    }
+}
+
+impl Serialize for AnalysePreset {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.name())
     }
 }
 
@@ -367,6 +435,18 @@ pub(crate) struct AnalyseToml {
     level: Option<toml::Value>,
 }
 
+impl AnalyseToml {
+    /// The lint rules this `[analyse]` preset turns on: a PHPStan preset's checks that are lint rules in Pun.
+    pub(crate) fn phpstan_lint(&self, path: &Path) -> Result<BTreeSet<String>> {
+        let preset = analyse_preset(path, self.preset.as_ref())?;
+        Ok((preset.phpstan_level())
+            .map_or_default(|l| phpstan_level_rules(l, self.bleeding_edge))
+            .into_iter()
+            .filter(|id| id.starts_with("lint/"))
+            .collect())
+    }
+}
+
 impl Files {
     pub(crate) fn from(t: FilesToml) -> Files {
         Files {
@@ -530,7 +610,15 @@ fn setting(path: &Path, name: &str, v: toml::Value) -> Result<LintSetting> {
     })
 }
 
-pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Result<Lint> {
+/// `phpstan`: the lint rules a PHPStan preset in `[analyse]` turns on (PHPStan checks that are lint rules in Pun),
+/// at `error`, below `[lint.groups]` and `[lint.rules]`.
+pub(crate) fn lint(
+    path: &Path,
+    t: LintToml,
+    files: &Files,
+    gates: &Gates,
+    phpstan: &BTreeSet<String>,
+) -> Result<Lint> {
     for s in &t.sets {
         if !LINT_SETS.contains(&s.as_str()) {
             bail!(
@@ -611,6 +699,10 @@ pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Re
             }
         }
     }
+    for id in phpstan_lint_on(phpstan, &groups, gates, &ecosystems) {
+        on.entry(id.clone())
+            .or_insert_with(|| rule(id, Level::Error, true, Value::Null, false));
+    }
     for s in named {
         match s.level {
             Some(level) => drop(on.insert(s.id.clone(), rule(s.id, level, s.fix, s.options, true))),
@@ -624,6 +716,25 @@ pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Re
         rules: on.into_values().collect(),
         overrides,
     })
+}
+
+/// The PHPStan preset's lint rules that run: ported, in no group `[lint.groups]` sets, allowed by their gates.
+fn phpstan_lint_on(
+    phpstan: &BTreeSet<String>,
+    groups: &BTreeMap<String, Option<Level>>,
+    gates: &Gates,
+    ecosystems: &[&'static ExtensionMeta],
+) -> Vec<String> {
+    let ported = |e: &toml::Value| e.get("ported").and_then(toml::Value::as_bool) != Some(false);
+    (rules().iter())
+        .filter(|(id, e)| phpstan.contains(id) && ported(e))
+        .map(|(id, _)| id)
+        .filter(|id| {
+            let group = group_of(id);
+            !groups.contains_key(group) && gates.allows(group, ecosystems)
+        })
+        .cloned()
+        .collect()
 }
 
 fn groups_contains(g: &str) -> bool {
@@ -651,31 +762,21 @@ pub(crate) fn analyse(
             .and_then(|l| usize::try_from(l).ok())
             .filter(|l| *l <= 10)
             .map_or_default(|l| {
-                format!(": level {l} is preset = \"{}\"", AnalysePreset::of_level(l))
+                format!(
+                    ": level {l} is preset = \"phpstan/level_{l}\" (or Pun's \"{}\")",
+                    AnalysePreset::of_level(l)
+                )
             });
         let presets: Vec<String> = (AnalysePreset::ALL.iter())
             .map(|p| format!("\"{p}\""))
             .collect();
         bail!(
-            "{}: [analyse] level: PHPStan's levels are presets in Pun; use preset = {}{hint}",
+            "{}: [analyse] level: PHPStan's levels are presets in Pun; use preset = {} or \"phpstan/level_<n>\"{hint}",
             path.display(),
             presets.join(" | ")
         );
     }
-    let preset = match t.preset {
-        None => AnalysePreset::Recommended,
-        Some(v) if let Some(p) = v.as_str().and_then(AnalysePreset::parse) => p,
-        Some(toml::Value::Integer(l)) if let Ok(level @ 0..=10) = usize::try_from(l) => bail!(
-            "{}: [analyse] preset = {l}: PHPStan level {l} is preset = \"{}\"",
-            path.display(),
-            AnalysePreset::of_level(level)
-        ),
-        Some(v) => bail!(
-            "{}: [analyse] preset = {v}: expected {}",
-            path.display(),
-            list(&AnalysePreset::ALL.map(AnalysePreset::name))
-        ),
-    };
+    let preset = analyse_preset(path, t.preset.as_ref())?;
 
     let mut groups = BTreeMap::new();
     let mut named = vec![];
@@ -708,17 +809,20 @@ pub(crate) fn analyse(
         }
     }
     let ecosystems = gates.ecosystems(|e| groups.get(e) == Some(&false));
+    let level_rules = (preset.phpstan_level()).map(|l| phpstan_level_rules(l, t.bleeding_edge));
     let mut on: BTreeMap<String, Value> = BTreeMap::new();
     for (id, e) in rules().iter().filter(|(id, _)| id.starts_with("analyse/")) {
         let group = group_of(id);
-        let enabled = match groups.get(group) {
-            Some(g) => *g,
-            None => {
-                (e.get("preset").and_then(toml::Value::as_str))
+        let enabled = if let Some(g) = groups.get(group) {
+            *g
+        } else {
+            let in_preset = match &level_rules {
+                Some(r) => r.contains(id),
+                None => (e.get("preset").and_then(toml::Value::as_str))
                     .and_then(AnalysePreset::parse)
-                    .is_some_and(|p| p <= preset)
-                    && gates.allows(group, &ecosystems)
-            }
+                    .is_some_and(|p| preset.includes(p)),
+            };
+            in_preset && gates.allows(group, &ecosystems)
         };
         if enabled {
             on.insert(id.clone(), Value::Null);
@@ -755,7 +859,13 @@ pub(crate) fn analyse(
                 t.explicit_mixed,
                 t.implicit_mixed,
             ])
-            .filter(|((p, _), on)| on.unwrap_or(*p <= preset))
+            .filter(|((p, s), on)| {
+                on.unwrap_or_else(|| match preset.phpstan_level() {
+                    Some(level) => (crate::phpstan_parameters::SWITCH_LEVELS.iter())
+                        .any(|(w, l)| w == s && level >= *l),
+                    None => preset.includes(*p),
+                })
+            })
             .map(|((_, s), _)| *s)
             .collect(),
         preset,
@@ -776,5 +886,64 @@ pub(crate) fn analyse(
             .collect(),
         bleeding_edge: t.bleeding_edge,
         report_unmatched: t.report_unmatched.unwrap_or(true),
+    })
+}
+
+/// `[analyse] preset`, or `recommended` without one. A number names the presets that hold that PHPStan level.
+pub(crate) fn analyse_preset(path: &Path, v: Option<&toml::Value>) -> Result<AnalysePreset> {
+    Ok(match v {
+        None => AnalysePreset::Recommended,
+        Some(v) if let Some(p) = v.as_str().and_then(AnalysePreset::parse) => p,
+        Some(toml::Value::Integer(l)) if let Ok(level @ 0..=10) = usize::try_from(*l) => bail!(
+            "{}: [analyse] preset = {l}: PHPStan level {l} is preset = \"phpstan/level_{l}\" (or Pun's \"{}\")",
+            path.display(),
+            AnalysePreset::of_level(level)
+        ),
+        Some(v) => bail!(
+            "{}: [analyse] preset = {v}: expected {}, or `phpstan/level_0` to `phpstan/level_10` or `phpstan/level_max`",
+            path.display(),
+            list(&AnalysePreset::ALL.map(AnalysePreset::name))
+        ),
+    })
+}
+
+/// The rules (analyse and lint IDs) `phpstan analyse --level <level>` runs with its default parameters, and with
+/// Larastan's defaults (its rules only run where the `laravel` extension is on): every PHPStan core rule class of
+/// that level or below, without the opt-in ones (a gate with no `default true`), the bleeding-edge ones only with
+/// `bleeding_edge`. phpstan-strict-rules and phpstan-deprecation-rules are separate packages, not levels: none of
+/// theirs.
+pub fn phpstan_level_rules(level: u8, bleeding_edge: bool) -> BTreeSet<String> {
+    let classes = crate::mapping::section(&["upstream", "phpstan-classes"]).table();
+    let mut out = BTreeSet::new();
+    for e in classes.values() {
+        let Some(id) = e.get("pun").and_then(toml::Value::as_str) else {
+            continue;
+        };
+        let package = e.get("package").and_then(toml::Value::as_str);
+        let in_level = match package {
+            Some("phpstan") => (e.get("level").and_then(toml::Value::as_integer))
+                .is_none_or(|l| l <= i64::from(level)),
+            Some("larastan") => true,
+            _ => false,
+        };
+        let gated = (e.get("gated_by").and_then(toml::Value::as_str))
+            .is_none_or(|g| default_on(g, bleeding_edge));
+        if in_level && gated {
+            out.insert(id.to_string());
+        }
+    }
+    out
+}
+
+/// Whether a `gated_by` condition holds with PHPStan's default parameters: a bleeding-edge toggle with
+/// `bleeding_edge`, a parameter whose note says `default true`.
+fn default_on(condition: &str, bleeding_edge: bool) -> bool {
+    condition.split(" + ").all(|part| {
+        let (name, note) = part.split_once(" (").unwrap_or((part, ""));
+        if name == "bleedingEdge" {
+            bleeding_edge
+        } else {
+            note.starts_with("default true")
+        }
     })
 }

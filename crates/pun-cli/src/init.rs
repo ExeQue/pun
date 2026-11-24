@@ -163,7 +163,12 @@ fn ask(
     let analyse = dialoguer::Select::with_theme(&theme)
         .with_prompt("Analysis preset")
         .items(names)
-        .default(analyse as usize)
+        .default(
+            AnalysePreset::ALL
+                .iter()
+                .position(|p| *p == analyse)
+                .unwrap_or(2),
+        )
         .interact_on(term)?;
     Ok((
         [Style::Laravel, Style::Psr12][style],
@@ -194,10 +199,10 @@ fn valid_sets(sets: Vec<String>) -> Result<Vec<String>> {
 
 /// `--analyse`, with schema.rs's wording for an unknown preset.
 fn preset(p: &str) -> Result<AnalysePreset> {
-    match AnalysePreset::ALL.into_iter().find(|a| a.name() == p) {
+    match AnalysePreset::parse(p) {
         Some(a) => Ok(a),
         None => bail!(
-            "--analyse {p}: expected {}",
+            "--analyse {p}: expected {}, or `phpstan/level_0` to `phpstan/level_10` or `phpstan/level_max`",
             quoted(&AnalysePreset::ALL.map(AnalysePreset::name))
         ),
     }

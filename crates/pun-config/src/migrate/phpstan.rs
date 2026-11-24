@@ -13,6 +13,8 @@ use std::path::Path;
 #[derive(Debug, Default)]
 pub struct Phpstan {
     pub level: u8,
+    /// `level: max` (and `level` is 10).
+    pub max: bool,
     pub no_rules: bool,
     pub paths: Vec<String>,
     pub exclude: Vec<String>,
@@ -137,8 +139,9 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
             .collect(),
         ..Phpstan::default()
     };
+    out.max = p.get_str("level").and_then(Value::to_php_string).as_deref() == Some("max");
     out.level = match p.get_str("level").and_then(Value::to_php_string).as_deref() {
-        Some("max") => 10,
+        Some("max") => crate::schema::PHPSTAN_MAX_LEVEL,
         l => l.and_then(|l| l.parse().ok()).unwrap_or(0),
     };
     out.no_rules = matches!(p.get_str("customRulesetUsed"), None | Some(Value::Null));
@@ -610,13 +613,7 @@ pub struct Analysed {
 /// paths, the stubs, scanned and bootstrap files, bleeding edge and `reportUnmatchedIgnoredErrors`.
 fn analyse_keys(analyse: &mut String, phpstan: &Phpstan, preset: AnalysePreset) {
     writeln!(analyse, "preset = \"{preset}\"").unwrap();
-    // the preset's type switches follow its highest level: a level below that turns the higher ones off
-    for (on_in, switch) in crate::schema::SWITCHES {
-        let on = (SWITCH_LEVELS.iter()).any(|(s, l)| *s == switch && phpstan.level >= *l);
-        if on != (on_in <= preset) {
-            writeln!(analyse, "{switch} = {on}").unwrap();
-        }
-    }
+    analyse.push_str(&switch_keys(phpstan.level, preset));
     let list = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
     if !phpstan.paths.is_empty() {
         writeln!(analyse, "paths = {}", list(&phpstan.paths)).unwrap();
@@ -641,8 +638,40 @@ fn analyse_keys(analyse: &mut String, phpstan: &Phpstan, preset: AnalysePreset) 
     }
 }
 
+/// The type switches `preset` gets wrong for PHPStan level `level`, as `[analyse]` lines. A PHPStan preset has its
+/// level's switches; one of Pun's presets follows its highest level, so a level below that turns the higher ones off.
+pub fn switch_keys(level: u8, preset: AnalysePreset) -> String {
+    let mut out = String::new();
+    if preset.phpstan_level().is_some() {
+        return out;
+    }
+    for (on_in, switch) in crate::schema::SWITCHES {
+        let on = (SWITCH_LEVELS.iter()).any(|(s, l)| *s == switch && level >= *l);
+        if on != preset.includes(on_in) {
+            writeln!(out, "{switch} = {on}").unwrap();
+        }
+    }
+    out
+}
+
+/// `[analyse]`'s first lines for Pun's own preset closest to PHPStan level `level`, in place of the PHPStan preset
+/// `parts` has (`pun migrate --offer-preset`).
+pub fn with_pun_preset(analyse: &str, level: u8) -> String {
+    let preset = AnalysePreset::of_level(usize::from(level));
+    let mut out = String::new();
+    for line in analyse.lines() {
+        if line.starts_with("preset = ") {
+            writeln!(out, "preset = \"{preset}\"").unwrap();
+            out.push_str(&switch_keys(level, preset));
+        } else {
+            writeln!(out, "{line}").unwrap();
+        }
+    }
+    out
+}
+
 pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Analysed> {
-    let preset = AnalysePreset::of_level(phpstan.level as usize);
+    let preset = AnalysePreset::phpstan_of(phpstan.level, phpstan.max);
     if let Some(v) = &phpstan.php_version {
         parts.php = format!("version = \"{v}\"\n");
     }
@@ -705,7 +734,12 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
             .iter()
             .any(|r| crate::rule_of(&r.name) == Some(id))
     };
-    let lint_on: BTreeSet<&str> = cfg.lint.rules.iter().map(|r| r.id.as_str()).collect();
+    // The lint rules on without the PHPStan preset (other configs, sets): the preset's own lint rules are scoped
+    // below like any other PHPStan check.
+    let mut plain = parts.clone();
+    plain.analyse = with_pun_preset(&parts.analyse, phpstan.level);
+    let base = resolve(root, &plain.render())?;
+    let lint_on: BTreeSet<&str> = base.lint.rules.iter().map(|r| r.id.as_str()).collect();
     let mut scoped = vec![];
     for id in run
         .iter()
@@ -723,7 +757,7 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
         done.unsupported
             .extend((!turned_on).then(|| (id.clone(), why.to_string())));
     }
-    scope_to_paths(parts, phpstan, &scoped);
+    scope_to_paths(parts, phpstan, &scoped, preset);
     options(root, parts, phpstan, &mut done)?;
     parts.analyse_ignores = phpstan.ignores.join("\n");
     Ok(done)
@@ -732,15 +766,23 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
 /// Turns on `scoped`, the lint rules PHPStan runs that nothing else turns on. PHPStan checks only its `paths`, so they
 /// run there alone: `[[lint.overrides]]` on in `paths` and off in `excludePaths` (a rule on already runs on every lint
 /// file and keeps its options).
-fn scope_to_paths(parts: &mut Parts, phpstan: &Phpstan, scoped: &[&str]) {
+///
+/// The PHPStan preset turns them on everywhere already: with PHPStan's paths, they are turned off in `[lint.rules]`
+/// first, so they run in the overrides alone.
+fn scope_to_paths(parts: &mut Parts, phpstan: &Phpstan, scoped: &[&str], preset: AnalysePreset) {
+    let by_preset = (preset.phpstan_level())
+        .map_or_default(|l| crate::schema::phpstan_level_rules(l, phpstan.bleeding_edge));
     if phpstan.paths.is_empty() || phpstan.paths.iter().any(|p| p == ".") {
-        for id in scoped {
+        for id in scoped.iter().filter(|id| !by_preset.contains(**id)) {
             super::require_lint(parts, id, "\"error\"");
         }
         return;
     }
     if scoped.is_empty() {
         return;
+    }
+    for id in scoped.iter().filter(|id| by_preset.contains(**id)) {
+        super::require_lint(parts, id, "\"off\"");
     }
     let list = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
     let rules = |level: &str| {

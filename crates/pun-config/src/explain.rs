@@ -72,6 +72,9 @@ fn text(id: &str) -> String {
         "lint" => row("sets", &opt_in(list("sets"))),
         _ => row("preset", &opt_in(str("preset").into_iter().collect())),
     }
+    if let Some(p) = phpstan_preset(id) {
+        row("phpstan", &p);
+    }
     if let Some(i) = str("intent") {
         row("intent", i);
     }
@@ -103,6 +106,21 @@ fn text(id: &str) -> String {
     }
     row("docs", &format!("{RULE_DOCS_URL}{id}"));
     out
+}
+
+/// The lowest PHPStan level preset that runs rule `id` (`phpstan/level_4`), marked when only bleeding edge does.
+fn phpstan_preset(id: &str) -> Option<String> {
+    let lowest = |bleeding_edge| {
+        (0..=crate::schema::PHPSTAN_MAX_LEVEL)
+            .find(|l| crate::phpstan_level_rules(*l, bleeding_edge).contains(id))
+    };
+    match (lowest(false), lowest(true)) {
+        (Some(l), _) => Some(format!("phpstan/level_{l} and up")),
+        (None, Some(l)) => Some(format!(
+            "phpstan/level_{l} and up, with bleeding-edge = true"
+        )),
+        (None, None) => None,
+    }
 }
 
 fn group_description(group: &str) -> String {

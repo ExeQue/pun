@@ -48,7 +48,7 @@ type switches and the enabled rules), and `pun analyse` runs from it.
 
 ```toml
 [analyse]
-preset = "recommended"          # basic | essential | recommended | strict | max
+preset = "recommended"          # basic | essential | recommended | strict | max | phpstan/level_0..10 | phpstan/level_max
 exclude = ["tests/**"]          # added to [files] exclude; not analysed and not scanned for symbols
 baseline = "pun-baseline.toml"
 
@@ -57,8 +57,13 @@ baseline = "pun-baseline.toml"
 "dead-code/if-always-constant" = { treat-php-doc-types-as-certain = false }   # PHPStan's treatPhpDocTypesAsCertain
 ```
 
-- **No levels.** `pun migrate` expands a PHPStan level into the exact rules it ran, each with its options. With
-  `--offer-preset` on a terminal it also offers the closest preset, with a count of the new problems it would report.
+- **PHPStan level presets** (2026-11-24): `phpstan/level_<n>` and `phpstan/level_max` run what PHPStan's level runs
+  with default parameters (`pun_config::phpstan_level_rules`, from mapping.toml's `[upstream.phpstan-classes]` levels
+  and `gated_by` defaults): no opt-in, strict-rules or deprecation-rules rules; bleeding-edge ones only with
+  `bleeding-edge = true`; Larastan's defaults with Laravel on; the level's switches; and the lint rules that are PHPStan
+  checks in `[lint]`. `pun migrate` writes the level's preset plus only what phpstan.neon changes; with
+  `--offer-preset` on a terminal it offers Pun's closest preset, with a count of the new problems it would report.
+- **No numeric levels:** `[analyse] level` and a number as preset are errors that name the PHPStan preset.
 - **Laravel** analysis (Larastan's knowledge and rules) runs when `[extensions] laravel = "on"`. `pun migrate` and
   `pun init` turn it on when composer.lock locks laravel/framework. Larastan's rules stay off for a Laravel version
   Larastan 3 does not support.
@@ -122,7 +127,9 @@ after config.md Build 1-3.
    descriptions. Everything from `essential` up depends on it.
 5. **Levels 1 to 10 as rules,** with the four switches, grouped into the presets basic, essential, recommended, strict,
    max. Then strict-rules and deprecation rules as plain rules.
-   *Done when* each preset reports the same errors as its PHPStan level band on the corpus.
+   *Done when* each `phpstan/level_<n>` preset reports the same errors as `phpstan analyse --level <n>` on the corpus
+   and on PHPStan's own rule tests, compared unfiltered (file, line, identifier). tests/levels.rs today compares only
+   the identifiers Pun reports at a level, and has no level-0 or level-10 fixtures.
 6. **Larastan built in** (§8): the Laravel knowledge and Larastan's 15 rules are in, with their differences in
    `tests/fixtures/larastan*/gaps.txt`. Left: the seven improvements.
 7. **Pest built in** (§9), with the PHPUnit typing it needs. **After 1.0**: until then test files are analysed as
@@ -223,7 +230,9 @@ Pushpak's answers:
 - **Engine:** Mago's analyser (§7, delegated to the assistant). The requirement is one Pun rule for every PHPStan rule.
 - **Messages:** Pun may reword them.
 - **Baseline:** its own feature (`pun analyse --generate-baseline`). Migrate never copies a PHPStan baseline.
-- **No levels. Five presets**, each including the one below, by the PHPStan levels each covers: `basic` (0-1),
+- **PHPStan level presets** beside Pun's own (2026-11-24): `phpstan/level_0`..`phpstan/level_10`, `phpstan/level_max`,
+  exact PHPStan levels; migrate writes them. Pun's presets stay its own picks.
+- **No numeric levels. Five presets**, each including the one below, by the PHPStan levels each covers: `basic` (0-1),
   `essential` (2-3: PHPDoc and return types), `recommended` (4-5: dead code and argument types; the default),
   `strict` (6-8: missing types, union types and nulls), `max` (9-10: mixed). Migrate writes exact rules and offers the
   closest preset. The rules' `preset` field in mapping.toml uses these names.

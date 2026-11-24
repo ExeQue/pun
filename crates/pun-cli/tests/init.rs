@@ -166,7 +166,7 @@ fn bad_flags_are_rejected() {
     assert_eq!(
         (err.as_str(), code),
         (
-            "✖ --analyse level5: expected `basic`, `essential`, `recommended`, `strict`, `max`\n",
+            "✖ --analyse level5: expected `basic`, `essential`, `recommended`, `strict`, `max`, or `phpstan/level_0` to `phpstan/level_10` or `phpstan/level_max`\n",
             Some(2)
         )
     );

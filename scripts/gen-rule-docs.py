@@ -295,6 +295,56 @@ def format_config(data: dict, preset: str) -> dict[str, object]:
     return result
 
 
+def phpstan_level_rules(data: dict, level: int, bleeding_edge: bool) -> set[str]:
+    """Mirrors pun-config's `phpstan_level_rules`: PHPStan core rule classes of `level` and below with their default
+    gates, and Larastan's default rules."""
+    def default_on(gate: str) -> bool:
+        for part in gate.split(" + "):
+            name, _, note = part.partition(" (")
+            if not (bleeding_edge if name == "bleedingEdge" else note.startswith("default true")):
+                return False
+        return True
+    out = set()
+    for entry in data["upstream"]["phpstan-classes"].values():
+        if not entry.get("pun"):
+            continue
+        package = entry.get("package")
+        in_level = (package == "phpstan" and int(entry.get("level", 0)) <= level) or package == "larastan"
+        gate = entry.get("gated_by")
+        if in_level and (gate is None or default_on(gate)):
+            out.add(entry["pun"])
+    return out
+
+
+def phpstan_levels_page(data: dict) -> str:
+    body = ("PHPStan's levels as analyse presets: `phpstan/level_<n>` runs what `phpstan analyse --level <n>` runs "
+            "with PHPStan's default parameters. Turn one on in `pun.toml`:\n\n")
+    body += code('[analyse]\npreset = "phpstan/level_5"', "toml")
+    body += ("\n`phpstan/level_max` is `phpstan/level_10`. PHPStan's opt-in checks, phpstan-strict-rules and "
+             "phpstan-deprecation-rules are not part of any level: turn their rules on in `[analyse.rules]`. "
+             "Larastan's default rules run when the `laravel` [extension](/docs/configuration/pun-toml#extensions) is on. "
+             "PHPStan checks that are lint rules in Pun are turned on in `[lint]` too. The few that are format rules "
+             "(such as `format/whitespace/encoding`) are not: turn them on in `[format.rules]`. Planned rules do not run. "
+             "[Presets and sets](/docs/configuration/presets#phpstan-level-presets) explains the rest.\n")
+    switch_text = {7: "`union-types = true`: checks each member of a union.", 8: "`nullables = true`: checks nullable values.",
+                   9: "`explicit-mixed = true`: checks explicit mixed.", 10: "`implicit-mixed = true`: checks implicit mixed."}
+    seen = set()
+    for level in range(11):
+        rules = {r for r in phpstan_level_rules(data, level, False) if not r.startswith("format/")}
+        with_be = {r for r in phpstan_level_rules(data, level, True) if not r.startswith("format/")}
+        added = sorted(rules - seen)
+        added_be = sorted(with_be - rules - seen)
+        seen |= with_be
+        body += f"\n## phpstan/level_{level}\n\n"
+        lines = [f"- {rule_link(r)}" for r in added]
+        lines += [f"- {rule_link(r)} (with `bleeding-edge = true`)" for r in added_be]
+        if level in switch_text:
+            lines.append(f"- {switch_text[level]}")
+        body += "\n".join(lines) or "No new rules."
+        body += "\n"
+    return page("PHPStan level presets", body)
+
+
 def selection_page(data: dict, command: str, name: str, on: dict) -> str:
     is_set = command == "lint"
     title = f"{name} {'set' if is_set else command + ' preset'}"
@@ -408,8 +458,8 @@ Layout-only Rector rules map to format rules. The migration reports any that `[f
 
 | phpstan.neon | pun.toml |
 | --- | --- |
-| `level: 5` | `[analyse] preset = \"recommended\"`, plus explicit on/off lines for exactly level 5 |
-| `level: 0..10` | The analyse preset that contains the level, with on/off differences. A type switch of a higher level in the preset is turned off, such as `nullables = false` for level 7 |
+| `level: 5` | `[analyse] preset = \"phpstan/level_5\"`, which runs exactly PHPStan's level 5 |
+| `level: 0..10`, `level: max` | `preset = \"phpstan/level_<n>\"` or `\"phpstan/level_max\"`, with on/off lines only for what the config changes, such as opt-in checks or strict-rules. `--offer-preset` offers Pun's closest preset instead |
 | `paths`, `excludePaths`, `stubFiles` | `[analyse] paths`, `exclude`, `stubs` |
 | `scanFiles`, `scanDirectories`, `bootstrapFiles` | `[analyse] scan` and `bootstrap`. Files under `vendor/` come back with their extension and aren't copied |
 | `ignoreErrors` identifiers, patterns, paths, count, `reportUnmatched` | `[[analyse.ignore]]` with Pun `rule`, original `identifier`, `message`, `paths`, `count`, `report-unmatched` |
@@ -435,7 +485,7 @@ The rule mapping lists PHPStan identifiers. An exact identifier wins over a patt
 | Rule booleans and changed parameters | Rule on and off settings, and kebab-case options |
 | `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs. `[[analyse.ignore]]` entries keep the original identifier |
 
-Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#what-happens).
+Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#limitations).
 """,
         "mago": """`pun migrate` does not translate `mago.toml` yet. It reports the file as unsupported and leaves it alone. Pick the Pun rules by hand from the table.
 
@@ -610,6 +660,8 @@ def generate(data: dict) -> dict[Path, str]:
                 f"analyse/{key}": True for key, rule in data["rules"]["analyse"].items()
                 if slug in memberships(data, "analyse", rule)}
             out[CONTENT / f"rules/presets/{slug}.mdx"] = selection_page(data, command, preset, on)
+    preset_names.append("analyse-phpstan")
+    out[CONTENT / "rules/presets/analyse-phpstan.mdx"] = phpstan_levels_page(data)
     out[CONTENT / "rules/presets/meta.ts"] = meta("Presets", preset_names)
     out[CONTENT / "rules/presets/index.mdx"] = page("Rule presets", "Each page lists the rules a format or analyse preset turns on. "
         "[Presets and sets](/docs/configuration/presets) explains how to pick one.\n\n" + "\n".join(

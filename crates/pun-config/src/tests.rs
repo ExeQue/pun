@@ -631,6 +631,99 @@ laravel = "on"
         (151 + 106 + 75 - 11, 0)
     );
 }
+/// `phpstan/level_<n>` runs what `phpstan analyse --level <n>` runs: PHPStan core's rules of that level and below
+/// (no opt-in, strict-rules or deprecation-rules ones), the level's type switches and level-tied parameters, and the
+/// PHPStan checks that are lint rules in Pun.
+#[test]
+fn phpstan_level_presets() {
+    let cfg = |body: &str| {
+        let toml = format!("[format]\npreset = \"empty\"\n\n{body}");
+        load(&dir(&[("pun.toml", toml.as_str())]), &Options::default()).unwrap()
+    };
+    let at = |p: &str| cfg(&format!("[analyse]\npreset = \"{p}\"\n"));
+    let ids = |c: &Config| -> std::collections::BTreeSet<String> {
+        c.analyse.rules.iter().map(|r| r.id.clone()).collect()
+    };
+    let classes = crate::mapping::section(&["upstream", "phpstan-classes"]).table();
+    let package_of = |id: &str| {
+        (classes.values())
+            .find(|e| e.get("pun").and_then(toml::Value::as_str) == Some(id))
+            .and_then(|e| e.get("package")?.as_str())
+    };
+    let mut below = std::collections::BTreeSet::new();
+    for level in 0..=10u8 {
+        let c = at(&format!("phpstan/level_{level}"));
+        assert_eq!(c.analyse.preset, AnalysePreset::PhpstanLevel(level));
+        assert_eq!(c.analyse.level(), level);
+        let want: Vec<&str> = [
+            ("union-types", 7),
+            ("nullables", 8),
+            ("explicit-mixed", 9),
+            ("implicit-mixed", 10),
+        ]
+        .into_iter()
+        .filter(|(_, l)| level >= *l)
+        .map(|(s, _)| s)
+        .collect();
+        assert_eq!(c.analyse.switches, want, "level {level}");
+        let on = ids(&c);
+        assert!(
+            below.is_subset(&on),
+            "level {level} drops rules of a lower level"
+        );
+        for id in &on {
+            assert_eq!(package_of(id), Some("phpstan"), "{id} at level {level}");
+        }
+        below = on;
+    }
+    assert_eq!(ids(&at("phpstan/level_max")), below);
+    assert_eq!(at("phpstan/level_max").analyse.level(), 10);
+    let l0 = ids(&at("phpstan/level_0"));
+    let l6 = ids(&at("phpstan/level_6"));
+    assert!(
+        l0.contains("analyse/undefined/method")
+            && !l0.contains("analyse/types/missing-return-type")
+    );
+    assert!(l6.contains("analyse/types/missing-return-type"));
+    // PHPStan's opt-ins stay off, though Pun's own presets turn some on.
+    for id in [
+        "analyse/classes/uninitialized-property",
+        "analyse/types/throws-not-covariant",
+        "analyse/types/missing-throws",
+    ] {
+        assert!(!below.contains(id), "{id}");
+    }
+    assert!(ids(&at("max")).contains("analyse/types/missing-throws"));
+    // Bleeding edge adds its toggled rules, as PHPStan's bleedingEdge.neon does.
+    let be = ids(&cfg(
+        "[analyse]\npreset = \"phpstan/level_5\"\nbleeding-edge = true\n",
+    ));
+    assert!(be.contains("analyse/types/printf-argument"));
+    assert!(!ids(&at("phpstan/level_5")).contains("analyse/types/printf-argument"));
+    // Explicit switches and rules still win.
+    let c = cfg(
+        "[analyse]\npreset = \"phpstan/level_8\"\nnullables = false\n\n[analyse.rules]\n\"undefined/method\" = \"off\"\n",
+    );
+    assert_eq!(c.analyse.switches, ["union-types"]);
+    assert!(!ids(&c).contains("analyse/undefined/method"));
+
+    // PHPStan checks that are lint rules in Pun come with the preset.
+    let lint = |c: &Config| -> Vec<String> { c.lint.rules.iter().map(|r| r.id.clone()).collect() };
+    let l3 = lint(&at("phpstan/level_3"));
+    let l4 = lint(&at("phpstan/level_4"));
+    assert!(l3.contains(&"lint/dead-code/no-duplicate-array-key".to_string()));
+    assert!(!l3.contains(&"lint/dead-code/no-unreachable-code".to_string()));
+    assert!(
+        l4.contains(&"lint/dead-code/no-unreachable-code".to_string()),
+        "{l4:?}"
+    );
+    assert!(lint(&at("recommended")).is_empty());
+    let c = cfg(
+        "[lint.rules]\n\"dead-code/no-unreachable-code\" = \"off\"\n\n[analyse]\npreset = \"phpstan/level_4\"\n",
+    );
+    assert!(!lint(&c).contains(&"lint/dead-code/no-unreachable-code".to_string()));
+}
+
 #[test]
 fn extensions() {
     let load_ = |files: &[(&str, &str)]| load(&dir(files), &Options::default());
@@ -884,6 +977,7 @@ upstream  no_alias_functions (php-cs-fixer)
 
 group     undefined: References to something declared nowhere
 preset    basic
+phpstan   phpstan/level_0 and up
 fix       none
 upstream  CallMethodsRule (phpstan-classes)
           method.nameNotString (phpstan)
@@ -920,7 +1014,7 @@ upstream  none (Pun's own rule)
     );
     assert!(
         out.contains(
-            "preset    strict\nfix       none\nfixed by  lint/types/add-void-return-type\n"
+            "preset    strict\nphpstan   phpstan/level_6 and up\nfix       none\nfixed by  lint/types/add-void-return-type\n"
         ),
         "{out}"
     );
@@ -1032,15 +1126,15 @@ fn pun_toml_errors() {
         ),
         (
             "[analyse]\nlevel = 5\n",
-            "[analyse] level: PHPStan's levels are presets in Pun; use preset = \"basic\" | \"essential\" | \"recommended\" | \"strict\" | \"max\": level 5 is preset = \"recommended\"",
+            "[analyse] level: PHPStan's levels are presets in Pun; use preset = \"basic\" | \"essential\" | \"recommended\" | \"strict\" | \"max\" or \"phpstan/level_<n>\": level 5 is preset = \"phpstan/level_5\" (or Pun's \"recommended\")",
         ),
         (
             "[analyse]\nlevel = \"max\"\n",
-            "[analyse] level: PHPStan's levels are presets in Pun; use preset = \"basic\" | \"essential\" | \"recommended\" | \"strict\" | \"max\"",
+            "[analyse] level: PHPStan's levels are presets in Pun; use preset = \"basic\" | \"essential\" | \"recommended\" | \"strict\" | \"max\" or \"phpstan/level_<n>\"",
         ),
         (
             "[analyse]\npreset = 8\n",
-            "[analyse] preset = 8: PHPStan level 8 is preset = \"strict\"",
+            "[analyse] preset = 8: PHPStan level 8 is preset = \"phpstan/level_8\" (or Pun's \"strict\")",
         ),
         (
             "[analyse.rules]\n\"undefined/method\" = \"warn\"\n",
@@ -1088,7 +1182,7 @@ fn pun_toml_errors() {
         ),
         (
             "[analyse]\npreset = \"level-5\"\n",
-            "[analyse] preset = \"level-5\": expected `basic`, `essential`, `recommended`, `strict`, `max`",
+            "[analyse] preset = \"level-5\": expected `basic`, `essential`, `recommended`, `strict`, `max`, or `phpstan/level_0` to `phpstan/level_10` or `phpstan/level_max`",
         ),
         (
             "[analyse.rules]\nlaravel = { magic = true }\n",
