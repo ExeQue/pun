@@ -41,6 +41,10 @@ impl Rule for RequireParentVisibility {
             let Some(known) = codebase.get_class_like(parent.as_bytes()) else {
                 break;
             };
+            // A cyclic hierarchy, which PHP refuses to load, has no visibility to follow.
+            if parents.contains(&parent) {
+                return;
+            }
             next = known.direct_parent_class;
             parents.push(parent);
         }

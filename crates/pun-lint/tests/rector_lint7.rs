@@ -310,6 +310,7 @@ fn remove_parent_call_without_parent() {
         &sources,
     );
     run(&linter, "RemoveParentCallWithoutParentRector/Oracle");
+    run(&linter, "RemoveParentCallWithoutParentRector/Pun");
 }
 
 #[test]
@@ -422,6 +423,7 @@ fn make_inherited_method_visibility_same_as_parent() {
     let sources: Vec<&str> = sources.iter().map(String::as_str).collect();
     run_with_sources(&linter, &format!("{dir}/Fixture"), &sources);
     run(&linter, &format!("{dir}/Oracle"));
+    run(&linter, &format!("{dir}/Pun"));
 }
 
 #[test]

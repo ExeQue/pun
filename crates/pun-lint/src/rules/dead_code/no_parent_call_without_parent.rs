@@ -35,10 +35,16 @@ impl Rule for NoParentCallWithoutParent {
             .and_then(|e| e.types.first())
             .map(|id| resolve_class_name(ancestors, id));
         let mut next = parent.clone();
+        let mut seen = Vec::new();
         while let Some(name) = next {
             let Some(known) = codebase.get_class_like(name.as_bytes()) else {
                 return;
             };
+            // A cyclic hierarchy, which PHP refuses to load, has no parent to check against.
+            if seen.contains(&name) {
+                return;
+            }
+            seen.push(name);
             next = known
                 .direct_parent_class
                 .as_ref()
