@@ -46,6 +46,7 @@ fn reads_sets_rules_and_skips() {
             at("vendor/rector/rector/src/Set/ValueObject/../../../config/set/php84.php"),
         ],
         php_sets: true,
+        settings: vec![],
     };
     let r = from_rector(&root, &config);
     assert_eq!(

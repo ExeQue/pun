@@ -23,6 +23,9 @@ pub struct RectorConfig {
     pub sets: Vec<String>,
     #[serde(default)]
     pub php_sets: bool,
+    /// The Rector settings (`Rector\Configuration\Option` names) rector.php changes from Rector's defaults.
+    #[serde(default)]
+    pub settings: Vec<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -173,6 +176,44 @@ pub(crate) fn as_rector_options(id: &str, classes: &BTreeSet<String>) -> toml::T
     out
 }
 
+/// What rector.php's settings become: none has a pun.toml equivalent, so each is listed as not migrated, by the
+/// `RectorConfig` method that sets it.
+const SETTINGS: [(&str, &str, &str); 10] = [
+    ("auto_import_names", "withImportNames()", IMPORT_NAMES),
+    (
+        "auto_import_doc_block_names",
+        "withImportNames()",
+        IMPORT_NAMES,
+    ),
+    ("remove-unused-imports", "withImportNames()", IMPORT_NAMES),
+    (
+        "treat_classes_as_final",
+        "withTreatClassesAsFinal()",
+        "no project-wide setting in Pun; `lint/types/add-param-type-method-call` and `lint/php-8.3/add-const-type` take it as their `treat-classes-as-final` option",
+    ),
+    (
+        "php_version_features",
+        "withPhpVersion()",
+        "Pun takes the PHP version from `require.php` in composer.json; set [php] version for another",
+    ),
+    ("file_extensions", "withFileExtensions()", NO_SETTING),
+    (
+        "new_line_on_fluent_call",
+        "withFluentCallNewLine()",
+        NO_SETTING,
+    ),
+    ("indent-char", "withIndent()", NO_SETTING),
+    ("indent-size", "withIndent()", NO_SETTING),
+    (
+        "type_guarded_classes",
+        "withTypeGuardedClasses()",
+        NO_SETTING,
+    ),
+];
+
+const IMPORT_NAMES: &str = "no project-wide setting in Pun: lint fixes write class names fully qualified, and `lint/imports/no-unused` removes unused imports";
+const NO_SETTING: &str = "no pun.toml setting for it";
+
 fn by_class() -> &'static BTreeMap<String, toml::Value> {
     static T: std::sync::LazyLock<BTreeMap<String, toml::Value>> = std::sync::LazyLock::new(|| {
         let mut out = BTreeMap::new();
@@ -285,6 +326,12 @@ pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
     for (id, classes) in &runs {
         if let Some((key, parts)) = only_these(id, classes) {
             (out.options.entry(id.clone()).or_default()).insert(key, parts);
+        }
+    }
+    for (option, method, why) in SETTINGS {
+        let item = (method.to_string(), why.to_string());
+        if r.settings.iter().any(|s| s == option) && !out.unsupported.contains(&item) {
+            out.unsupported.push(item);
         }
     }
     out.exclude = r.skip_paths.iter().map(|p| relative(root, p)).collect();

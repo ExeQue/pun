@@ -1087,6 +1087,40 @@ fn rector_warnings_on_stdout() {
     );
 }
 
+/// Issue #22: rector.php's settings that pun.toml has no equivalent for are listed under "Not migrated", by the
+/// `RectorConfig` method that sets them, and the ones left at Rector's defaults are not (`withIndent(' ', 4)`).
+#[test]
+fn rector_settings_without_an_equivalent_are_listed() {
+    let Some(vendor) = oracle("rector-bin/vendor") else {
+        return;
+    };
+    let rector = "<?php\n\nuse Rector\\Config\\RectorConfig;\n\nreturn RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withImportNames()\n    ->withTreatClassesAsFinal()\n    ->withPhpVersion(80200)\n    ->withIndent(' ', 4);\n";
+    let d = project(
+        "rector-settings",
+        &[
+            ("composer.json", "{\"require\":{\"php\":\"^8.4\"}}"),
+            ("rector.php", rector),
+            ("src/a.php", "<?php\n"),
+        ],
+    );
+    std::os::unix::fs::symlink(vendor, d.join("vendor")).unwrap();
+    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!((err.as_str(), code), ("", Some(0)), "{out}");
+    assert!(
+        out.contains("\n   no project-wide setting in Pun: lint fixes write class names fully qualified, and `lint/imports/no-unused` removes unused imports\n     withImportNames()\n"),
+        "{out}"
+    );
+    assert!(
+        out.contains("\n   no project-wide setting in Pun; `lint/types/add-param-type-method-call` and `lint/php-8.3/add-const-type` take it as their `treat-classes-as-final` option\n     withTreatClassesAsFinal()\n"),
+        "{out}"
+    );
+    assert!(
+        out.contains("\n   Pun takes the PHP version from `require.php` in composer.json; set [php] version for another\n     withPhpVersion()\n"),
+        "{out}"
+    );
+    assert!(!out.contains("withIndent()"), "{out}");
+}
+
 /// The PHP 8.2 set read through Rector 2.8.4 (`.oracle/rector-bin`): `SetList::PHP_82` lists the set's four rules
 /// (`rector list-rules`), which become `[lint.rules]`, and `->withPhpSets(php82: true)` the `modernize` set, which
 /// runs them. `pun lint --fix` then writes what `rector process` with `SetList::PHP_82` wrote for the same file.

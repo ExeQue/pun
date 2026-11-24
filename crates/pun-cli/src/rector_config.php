@@ -1,9 +1,10 @@
 // `pun migrate` reads a rector.php through the project's own Rector and prints what Rector resolves as JSON: every rule
 // it runs (sets included), the configured ones with their configuration and the rule class's string constants (its
-// option names), withSkip() split into rules (class => null or paths) and paths, the
-// paths, the set files and whether withPhpSets()/withPhpLevel() was used. Run as `php -r <this> -- <autoload> <config>`
-// in the project root (withPhpSets() reads composer.json there). Errors print their message and exit 1. The JSON or the
-// message follows the marker "\0pun-migrate\0": Rector's own warnings (a deprecated set) go to stdout before it.
+// option names), withSkip() split into rules (class => null or paths) and paths, the paths, the set files, whether
+// withPhpSets()/withPhpLevel() was used and the settings rector.php changes. Run as
+// `php -r <this> -- <autoload> <config>` in the project root (withPhpSets() reads composer.json there). Errors print
+// their message and exit 1. The JSON or the message follows the marker "\0pun-migrate\0": Rector's own warnings (a
+// deprecated set) go to stdout before it.
 error_reporting(E_ALL & ~E_DEPRECATED);
 try {
     require $argv[1];
@@ -66,6 +67,27 @@ try {
             'constants' => array_values(array_filter($constants, 'is_string')),
         ];
     }
+    // The settings (Rector\Configuration\Option values) that change what Rector writes and that rector.php sets away
+    // from Rector's defaults (its config/config.php): withImportNames(), withTreatClassesAsFinal(), withPhpVersion()...
+    $parameters = \Closure::bind(static fn () => self::$parameters, null, \Rector\Configuration\Parameter\SimpleParameterProvider::class)();
+    $defaults = [
+        'auto_import_names' => false,
+        'auto_import_doc_block_names' => false,
+        'remove-unused-imports' => false,
+        'treat_classes_as_final' => false,
+        'php_version_features' => null,
+        'file_extensions' => ['php'],
+        'new_line_on_fluent_call' => false,
+        'indent-char' => ' ',
+        'indent-size' => 4,
+        'type_guarded_classes' => [],
+    ];
+    $settings = [];
+    foreach ($defaults as $option => $default) {
+        if (array_key_exists($option, $parameters) && $parameters[$option] !== $default) {
+            $settings[] = $option;
+        }
+    }
     echo "\0pun-migrate\0", json_encode([
         'rules' => array_values($rector->getMainRectorClasses()),
         'configured' => (object) $configured,
@@ -74,6 +96,7 @@ try {
         'paths' => array_values($parameter(\Rector\Configuration\Option::PATHS)),
         'sets' => array_values(array_unique($field('sets') ?? [])),
         'php_sets' => (bool) ($field('isWithPhpSetsUsed') || $field('isWithPhpLevelUsed')),
+        'settings' => $settings,
     ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 } catch (\Throwable $e) {
     echo "\0pun-migrate\0", $e->getMessage();
