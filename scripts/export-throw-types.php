@@ -28,6 +28,28 @@ use PHPStan\Type\DynamicStaticMethodThrowTypeExtension;
 $root = dirname(__DIR__);
 Phar::loadPhar($root.'/.oracle/phpstan/vendor/phpstan/phpstan/phpstan.phar', 'phpstan.phar');
 
+/** A new owner-only directory for PHPStan's config and cache, removed at exit: a fixed name under a shared temporary
+ * directory could be another user's, holding a config of theirs that PHPStan would load. */
+function private_tmp(string $prefix): string
+{
+    $dir = sys_get_temp_dir().'/'.$prefix.'-'.bin2hex(random_bytes(8));
+    if (! @mkdir($dir, 0700)) {
+        fwrite(STDERR, "could not create $dir\n");
+        exit(1);
+    }
+    register_shutdown_function(fn () => exec('rm -rf '.escapeshellarg($dir)));
+
+    return $dir;
+}
+
+function write_neon(string $path, string $neon): void
+{
+    if (file_put_contents($path, $neon) !== strlen($neon)) {
+        fwrite(STDERR, "could not write $path\n");
+        exit(1);
+    }
+}
+
 /** PHPStan 2.3.4+ prints class names of toPhpDocNode() as name nodes (`\\Foo`); Pun's data keeps them bare, as the
  * PHPDoc parser reads them (the same type either way). */
 function phpdoc_string(PHPStan\PhpDocParser\Ast\Type\TypeNode $node): string
@@ -43,9 +65,8 @@ function phpdoc_string(PHPStan\PhpDocParser\Ast\Type\TypeNode $node): string
 }
 require 'phar://phpstan.phar/vendor/autoload.php';
 
-$tmp = sys_get_temp_dir().'/pun-throw-types';
-@mkdir($tmp);
-file_put_contents($tmp.'/v.neon', "parameters:\n\tphpVersion: 80500\n");
+$tmp = private_tmp('pun-throw-types');
+write_neon($tmp.'/v.neon', "parameters:\n\tphpVersion: 80500\n");
 $container = (new ContainerFactory($tmp))->create($tmp, [$tmp.'/v.neon'], []);
 $provider = $container->getByType(ReflectionProvider::class);
 $functionExtensions = $container->getServicesByTag('phpstan.dynamicFunctionThrowTypeExtension');

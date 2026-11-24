@@ -49,12 +49,34 @@ function phpdoc_string(PHPStan\PhpDocParser\Ast\Type\TypeNode $node): string
 }
 require 'phar://phpstan.phar/vendor/autoload.php';
 
+/** A new owner-only directory for PHPStan's config and cache, removed at exit: a fixed name under a shared temporary
+ * directory could be another user's, holding a config of theirs that PHPStan would load. */
+function private_tmp(string $prefix): string
+{
+    $dir = sys_get_temp_dir().'/'.$prefix.'-'.bin2hex(random_bytes(8));
+    if (! @mkdir($dir, 0700)) {
+        fwrite(STDERR, "could not create $dir\n");
+        exit(1);
+    }
+    register_shutdown_function(fn () => exec('rm -rf '.escapeshellarg($dir)));
+
+    return $dir;
+}
+
+function write_neon(string $path, string $neon): void
+{
+    if (file_put_contents($path, $neon) !== strlen($neon)) {
+        fwrite(STDERR, "could not write $path\n");
+        exit(1);
+    }
+}
+
 function container(int $phpVersion): PHPStan\DependencyInjection\Container
 {
-    $tmp = sys_get_temp_dir().'/pun-native-methods-'.$phpVersion;
-    @mkdir($tmp);
+    static $dirs = [];
+    $tmp = $dirs[$phpVersion] ??= private_tmp('pun-native-methods-'.$phpVersion); // one per version, so its compiled container is reused
     $neon = $tmp.'/v.neon';
-    file_put_contents($neon, "parameters:\n\tphpVersion: $phpVersion\n");
+    write_neon($neon, "parameters:\n\tphpVersion: $phpVersion\n");
 
     return (new ContainerFactory($tmp))->create($tmp, [$neon], []);
 }

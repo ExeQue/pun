@@ -36,12 +36,34 @@ Phar::loadPhar($root.'/.oracle/phpstan/vendor/phpstan/phpstan/phpstan.phar', 'ph
 require 'phar://phpstan.phar/vendor/autoload.php';
 require 'phar://phpstan.phar/vendor/phpstan/php-8-stubs/Php8StubsMap.php';
 
+/** A new owner-only directory for PHPStan's config and cache, removed at exit: a fixed name under a shared temporary
+ * directory could be another user's, holding a config of theirs that PHPStan would load. */
+function private_tmp(string $prefix): string
+{
+    $dir = sys_get_temp_dir().'/'.$prefix.'-'.bin2hex(random_bytes(8));
+    if (! @mkdir($dir, 0700)) {
+        fwrite(STDERR, "could not create $dir\n");
+        exit(1);
+    }
+    register_shutdown_function(fn () => exec('rm -rf '.escapeshellarg($dir)));
+
+    return $dir;
+}
+
+function write_neon(string $path, string $neon): void
+{
+    if (file_put_contents($path, $neon) !== strlen($neon)) {
+        fwrite(STDERR, "could not write $path\n");
+        exit(1);
+    }
+}
+
 function container(int $phpVersion): PHPStan\DependencyInjection\Container
 {
-    $tmp = sys_get_temp_dir().'/pun-symbols-'.$phpVersion;
-    @mkdir($tmp);
+    static $dirs = [];
+    $tmp = $dirs[$phpVersion] ??= private_tmp('pun-symbols-'.$phpVersion); // one per version, so its compiled container is reused
     $neon = $tmp.'/v.neon';
-    file_put_contents($neon, "parameters:\n\tphpVersion: $phpVersion\n");
+    write_neon($neon, "parameters:\n\tphpVersion: $phpVersion\n");
 
     return (new ContainerFactory($tmp))->create($tmp, [$neon], []);
 }
@@ -882,9 +904,8 @@ if (($argv[1] ?? '') === 'probes') {
     file_put_contents($root.'/crates/pun-phpstan/tests/fixtures/type-const-expr.json', json_encode($constants, $flags | JSON_PRETTY_PRINT)."\n");
     // the typeAliases parameter's global type aliases: [aliases, type, described in namespace PunProbe]
     $globalAliases = ['PunAlias' => 'int|string', 'PunNested' => 'list<PunAlias>', 'PunClass' => 'Countable'];
-    $tmp = sys_get_temp_dir().'/pun-symbols-aliases';
-    @mkdir($tmp);
-    file_put_contents($tmp.'/v.neon', "parameters:\n\tphpVersion: 80400\n\ttypeAliases:\n".implode('', array_map(fn ($k, $v) => "\t\t$k: '$v'\n", array_keys($globalAliases), $globalAliases)));
+    $tmp = private_tmp('pun-symbols-aliases');
+    write_neon($tmp.'/v.neon', "parameters:\n\tphpVersion: 80400\n\ttypeAliases:\n".implode('', array_map(fn ($k, $v) => "\t\t$k: '$v'\n", array_keys($globalAliases), $globalAliases)));
     $aliasResolver = (new ContainerFactory($tmp))->create($tmp, [$tmp.'/v.neon'], [])->getByType(TypeStringResolver::class);
     $aliased = [];
     foreach (['PunAlias', 'PunNested', 'array<PunAlias, PunClass>', 'punalias'] as $s) {
