@@ -44,10 +44,10 @@
 
 .pun-home .stage { position: relative; }
 .pun-home .video { position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden; border: var(--pun-stroke) solid var(--pun-outline); border-radius: 24px; background: #17121f; box-shadow: var(--pun-pop-lg); cursor: pointer; }
-.pun-home .video img, .pun-home .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
-.pun-home .video .play { position: absolute; left: 50%; bottom: 7%; width: 68px; height: 68px; margin-left: -34px; display: grid; place-items: center; border: var(--pun-stroke) solid var(--pun-outline); border-radius: 50%; background: var(--pun-zap); color: var(--pun-on-fill); box-shadow: var(--pun-pop); transition: transform .12s ease, box-shadow .12s ease; }
-.pun-home .video .play svg { width: 28px; height: 28px; margin-left: 4px; fill: currentColor; }
-.pun-home .video:hover .play { transform: translate(-2px, -2px) scale(1.05); box-shadow: var(--pun-pop-hover); }
+.pun-home .video img { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
+.pun-home .video .play { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; transform: translate(-50%, -50%); display: grid; place-items: center; border: var(--pun-stroke) solid var(--pun-outline); border-radius: 50%; background: var(--pun-zap); color: var(--pun-on-fill); box-shadow: var(--pun-pop); transition: transform .12s ease, box-shadow .12s ease; }
+.pun-home .video .play svg { display: block; width: 32px; height: 32px; fill: currentColor; }
+.pun-home .video:hover .play { transform: translate(calc(-50% - 2px), calc(-50% - 2px)); box-shadow: var(--pun-pop-hover); }
 .pun-home .video:focus-visible { outline: 3px solid var(--blume-accent); outline-offset: 4px; }
 .pun-home .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pun-home .burst { position: absolute; right: -22px; top: -26px; width: 132px; height: 132px; padding: 18px; display: grid; place-content: center; text-align: center; border: var(--pun-stroke) solid var(--pun-outline); border-radius: 50%; background: var(--pun-gum); color: var(--pun-on-fill); box-shadow: var(--pun-pop); transform: rotate(10deg); font: 700 30px/1 var(--blume-font-display); letter-spacing: -.015em; animation: pun-throb 2.4s ease-in-out infinite; }

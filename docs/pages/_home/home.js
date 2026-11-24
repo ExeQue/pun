@@ -1,4 +1,4 @@
-// Pun homepage behavior: the install copy button, the command switcher, the pun check run and the hero video.
+// Pun homepage behavior: the install copy button, the command switcher and the pun check run.
 // The page makes no speed figures or comparisons; it says Pun is fast in words only.
 
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -84,25 +84,6 @@ function commands(root) {
   box.classList.add("auto");
 }
 
-// The hero video loads only on click: until then it is a local poster image, so the page
-// makes no YouTube requests. The link still opens YouTube without JS or with a modifier key.
-function video(root) {
-  for (const box of root.querySelectorAll("[data-video]")) {
-    box.addEventListener("click", (e) => {
-      if (!box.hasAttribute("href") || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-      e.preventDefault();
-      const frame = document.createElement("iframe");
-      frame.src = `https://www.youtube-nocookie.com/embed/${box.dataset.video}?autoplay=1&rel=0`;
-      frame.title = box.dataset.videoTitle;
-      frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-      frame.allowFullscreen = true;
-      box.replaceChildren(frame);
-      box.removeAttribute("href");
-      frame.focus();
-    });
-  }
-}
-
 export function initHome(root = document) {
   const home = root.querySelector(".pun-home");
   if (!home || home.dataset.ready) return;
@@ -110,7 +91,6 @@ export function initHome(root = document) {
   installCopy(home);
   commands(home);
   run(home);
-  video(home);
 }
 
 initHome();
