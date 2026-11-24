@@ -120,6 +120,13 @@ Add known property and return MockObject types
 On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 
 </Card>
+<Card title="add-see-test-tag" href="/docs/rules/lint/phpunit/add-see-test-tag">
+
+Add @see annotation test of the class for faster jump to test. Make it FQN, so it stays in the annotation, not in the PHP source code.
+
+Off until you name it or its group. Safe fix.
+
+</Card>
 <Card title="add-stub-intersection-type" href="/docs/rules/lint/phpunit/add-stub-intersection-type">
 
 Add a Stub intersection @var docblock with the stubbed class to a native Stub property
@@ -393,6 +400,13 @@ PHPUnit attributes must be used over their respective PHPDoc-based annotations.
 Off until you name it or its group. Safe fix.
 
 </Card>
+<Card title="prefer-camel-case-test-names" href="/docs/rules/lint/phpunit/prefer-camel-case-test-names">
+
+Changes PHPUnit test methods to camel case
+
+Off until you name it or its group. Unsafe fix: it can change behavior.
+
+</Card>
 <Card title="prefer-comparison-assertion" href="/docs/rules/lint/phpunit/prefer-comparison-assertion">
 
 Replace assertTrue()/assertFalse() on a comparison, instanceof, isset, count or strpos with the specific assertion.
@@ -466,6 +480,13 @@ On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
 <Card title="prefer-depends-attribute" href="/docs/rules/lint/phpunit/prefer-depends-attribute">
 
 Change depends annotations with value to attribute
+
+Off until you name it or its group. Safe fix.
+
+</Card>
+<Card title="prefer-direct-assert" href="/docs/rules/lint/phpunit/prefer-direct-assert">
+
+Change $this->assertThat($value, $this->*()) to direct $this->assert*() method
 
 Off until you name it or its group. Safe fix.
 
@@ -547,6 +568,13 @@ Change Requires annotations with values to attributes
 Off until you name it or its group. Safe fix.
 
 </Card>
+<Card title="prefer-self-call" href="/docs/rules/lint/phpunit/prefer-self-call">
+
+Changes PHPUnit calls from $this->assert*() to self::assert*()
+
+Off until you name it or its group. Safe fix.
+
+</Card>
 <Card title="prefer-short-will-return" href="/docs/rules/lint/phpunit/prefer-short-will-return">
 
 Use willReturn() and similar instead of will($this->returnValue()).
@@ -573,6 +601,13 @@ On when the `phpunit` extension is on. Safe fix.
 Simplify ->with() matchers: plain values instead of equalTo(), isInstanceOf() instead of a callback.
 
 On when the `phpunit` extension is on. Safe fix.
+
+</Card>
+<Card title="prefer-snake-case-test-names" href="/docs/rules/lint/phpunit/prefer-snake-case-test-names">
+
+Changes PHPUnit test methods to snake case
+
+Off until you name it or its group. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-specific-assertions" href="/docs/rules/lint/phpunit/prefer-specific-assertions">
@@ -631,6 +666,13 @@ Change @testWith() annotation to #[TestWith] attribute
 Off until you name it or its group. Safe fix.
 
 </Card>
+<Card title="prefer-this-assert" href="/docs/rules/lint/phpunit/prefer-this-assert">
+
+Changes PHPUnit calls from Assert::assert*() to $this->assert*()
+
+Off until you name it or its group. Safe fix.
+
+</Card>
 <Card title="prefer-this-call" href="/docs/rules/lint/phpunit/prefer-this-call">
 
 Changes PHPUnit calls from self::assert*() to $this->assert*()
@@ -664,6 +706,13 @@ On when the `phpunit` extension is on. Safe fix.
 Turns array return to yield in data providers
 
 On when the `phpunit` extension is on. Safe fix.
+
+</Card>
+<Card title="require-array-key-assert" href="/docs/rules/lint/phpunit/require-array-key-assert">
+
+Add assertArrayHasKey() call for array access with string key, that was not validated before
+
+Off until you name it or its group. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-assertion-style" href="/docs/rules/lint/phpunit/require-assertion-style">
@@ -706,6 +755,13 @@ On when the `phpunit` extension is on. Safe fix.
 Correct expected type in setter of tests, if param type is strictly defined
 
 On when the `phpunit` extension is on. Safe fix.
+
+</Card>
+<Card title="require-explicit-mock-expects" href="/docs/rules/lint/phpunit/require-explicit-mock-expects">
+
+Add explicit expects() to method() mock calls, to make expectations count explicit
+
+Off until you name it or its group. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-final-test-case" href="/docs/rules/lint/phpunit/require-final-test-case">

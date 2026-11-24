@@ -98,7 +98,7 @@ fn format(pipeline: &Pipeline, code: &str) -> String {
     }
 }
 
-fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
+pub(crate) fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
     let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
     let preset = pun_config::rule_set(pun_config::preset_rules("laravel").unwrap()).unwrap();
     let pipeline = Pipeline::new(&preset, &pun_fixers::all).unwrap();

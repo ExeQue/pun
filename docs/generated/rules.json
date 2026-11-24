@@ -12471,6 +12471,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/add-see-test-tag",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Add @see annotation test of the class for faster jump to test. Make it FQN, so it stays in the annotation, not in the PHP source code.",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AddSeeTestAnnotation",
+        "AddSeeTestAnnotationRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\AddSeeTestAnnotationRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/add-stub-intersection-type",
       "command": "lint",
       "group": "phpunit",
@@ -13276,6 +13295,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/prefer-camel-case-test-names",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Changes PHPUnit test methods to camel case",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "PreferTestsWithCamelCase",
+        "PreferTestsWithCamelCaseRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\PreferTestsWithCamelCaseRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/prefer-comparison-assertion",
       "command": "lint",
       "group": "phpunit",
@@ -13493,6 +13531,25 @@
         "DependsAnnotationWithValueToAttribute",
         "DependsAnnotationWithValueToAttributeRector",
         "Rector\\PHPUnit\\AnnotationsToAttributes\\Rector\\ClassMethod\\DependsAnnotationWithValueToAttributeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/prefer-direct-assert",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Change $this->assertThat($value, $this->*()) to direct $this->assert*() method",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AssertThatToDirectAssert",
+        "AssertThatToDirectAssertRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\AssertThatToDirectAssertRector"
       ],
       "ported": true
     },
@@ -13718,6 +13775,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/prefer-self-call",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Changes PHPUnit calls from $this->assert*() to self::assert*()",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "PreferPHPUnitSelfCall",
+        "PreferPHPUnitSelfCallRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\PreferPHPUnitSelfCallRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/prefer-short-will-return",
       "command": "lint",
       "group": "phpunit",
@@ -13796,6 +13872,25 @@
         "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\UseSpecificWithMethodRector",
         "UseSpecificWithMethod",
         "UseSpecificWithMethodRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/prefer-snake-case-test-names",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Changes PHPUnit test methods to snake case",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "PreferTestsWithSnakeCase",
+        "PreferTestsWithSnakeCaseRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\PreferTestsWithSnakeCaseRector"
       ],
       "ported": true
     },
@@ -13963,6 +14058,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/prefer-this-assert",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Changes PHPUnit calls from Assert::assert*() to $this->assert*()",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AssertClassToThisAssert",
+        "AssertClassToThisAssertRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\ClassMethod\\AssertClassToThisAssertRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/prefer-this-call",
       "command": "lint",
       "group": "phpunit",
@@ -14065,6 +14179,25 @@
         "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\YieldDataProviderRector",
         "YieldDataProvider",
         "YieldDataProviderRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/require-array-key-assert",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Add assertArrayHasKey() call for array access with string key, that was not validated before",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AddKeysExistsAssertForKeyUse",
+        "AddKeysExistsAssertForKeyUseRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\ClassMethod\\AddKeysExistsAssertForKeyUseRector"
       ],
       "ported": true
     },
@@ -14181,6 +14314,25 @@
         "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\ScalarArgumentToExpectedParamTypeRector",
         "ScalarArgumentToExpectedParamType",
         "ScalarArgumentToExpectedParamTypeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/require-explicit-mock-expects",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Add explicit expects() to method() mock calls, to make expectations count explicit",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "ExplicitMockExpectsCall",
+        "ExplicitMockExpectsCallRector",
+        "Rector\\PHPUnit\\PHPUnit120\\Rector\\MethodCall\\ExplicitMockExpectsCallRector"
       ],
       "ported": true
     },

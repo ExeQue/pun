@@ -12860,9 +12860,11 @@
         "name": "AddKeysExistsAssertForKeyUse",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/add-keys-exists-assert-for-key-use-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/require-array-key-assert"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddParamTypeFromDepends",
@@ -12896,9 +12898,11 @@
         "name": "AddSeeTestAnnotation",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/add-see-test-annotation-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: rector-preset",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/add-see-test-tag"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddStubIntersectionVarToStubProperty",
@@ -12972,9 +12976,11 @@
         "name": "AssertClassToThisAssert",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/assert-class-to-this-assert-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-this-assert"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AssertCompareOnCountableWithMethodToAssertCount",
@@ -13136,9 +13142,11 @@
         "name": "AssertThatToDirectAssert",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/assert-that-to-direct-assert-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-direct-assert"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AssertTrueFalseToSpecificMethod",
@@ -13336,9 +13344,11 @@
         "name": "ExplicitMockExpectsCall",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/explicit-mock-expects-call-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/require-explicit-mock-expects"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ExplicitPhpErrorApi",
@@ -13498,9 +13508,11 @@
         "name": "PreferPHPUnitSelfCall",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/prefer-p-h-p-unit-self-call-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-self-call"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "PreferPHPUnitThisCall",
@@ -13516,17 +13528,21 @@
         "name": "PreferTestsWithCamelCase",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/prefer-tests-with-camel-case-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-camel-case-test-names"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "PreferTestsWithSnakeCase",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/prefer-tests-with-snake-case-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-snake-case-test-names"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "PropertyCreateMockToCreateStub",

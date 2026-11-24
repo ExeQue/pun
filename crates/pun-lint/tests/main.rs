@@ -33,6 +33,7 @@ mod rector_php81;
 mod rector_php82;
 mod rector_php83_calls;
 mod rector_phpunit;
+mod rector_phpunit_d;
 mod rector_quality;
 mod rector_refactor;
 mod rector_strict;

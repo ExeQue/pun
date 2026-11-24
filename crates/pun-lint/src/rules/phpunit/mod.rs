@@ -14,6 +14,7 @@ mod add_test_void_return;
 mod add_will_return_callback_false_fallback;
 mod add_will_return_callback_param_type;
 pub(crate) mod annotations;
+mod assert_calls;
 mod no_any_matcher;
 mod no_assert_contains_only;
 mod no_assert_is_type;
@@ -86,6 +87,7 @@ mod require_final_test_case;
 mod require_mock_expects;
 pub(crate) mod require_strict_types_in_tests;
 mod require_string_assert_argument;
+mod test_methods;
 
 pub(crate) use crate::rules::support::expressions::text;
 pub(crate) use crate::rules::support::names::resolve_class_name as resolve;
@@ -199,6 +201,14 @@ rules! {
         super::types::add_property_type_create_mock => AddPropertyTypeCreateMock,
         super::types::add_property_type_setup => AddPropertyTypeSetup,
         super::types::add_property_type_setup_docblock => AddPropertyTypeSetupDocblock,
+        assert_calls => PreferSelfCall,
+        assert_calls => PreferThisAssert,
+        assert_calls => PreferDirectAssert,
+        test_methods => PreferCamelCaseTestNames,
+        test_methods => PreferSnakeCaseTestNames,
+        test_methods => RequireExplicitMockExpects,
+        test_methods => RequireArrayKeyAssert,
+        test_methods => AddSeeTestTag,
     }
 }
 
