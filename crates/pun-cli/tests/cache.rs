@@ -167,6 +167,45 @@ fn a_result_that_reads_another_file_follows_that_file() {
     assert_eq!(code, Some(1));
 }
 
+/// The same, with Base in a Composer `path` package: `vendor/acme/base` links to `packages/base`, outside the linted
+/// paths, and editing it changes no Composer file.
+#[test]
+fn a_result_follows_a_linked_package() {
+    let base = |visibility: &str| {
+        format!(
+            "<?php\n\nnamespace Pkg;\n\nclass Base\n{{\n    {visibility} function run()\n    {{\n    }}\n}}\n"
+        )
+    };
+    let d = project(
+        "cache",
+        "linked",
+        &[
+            (
+                "pun.toml",
+                "[files]\npaths = [\"src\"]\n\n[lint.rules]\n\"style/require-parent-visibility\" = \"error\"\n",
+            ),
+            ("composer.json", "{}\n"),
+            (
+                "vendor/composer/autoload_classmap.php",
+                "<?php\n\nreturn array(\n    'Pkg\\\\Base' => $vendorDir . '/acme/base/src/Base.php',\n);\n",
+            ),
+            ("packages/base/src/Base.php", &base("public")),
+            (
+                "src/Child.php",
+                "<?php\n\nnamespace App;\n\nclass Child extends \\Pkg\\Base\n{\n    public function run()\n    {\n    }\n}\n",
+            ),
+        ],
+    );
+    std::fs::create_dir_all(d.join("vendor/acme")).unwrap();
+    std::os::unix::fs::symlink("../../packages/base", d.join("vendor/acme/base")).unwrap();
+    assert_eq!(code(&d, &["lint"]), Some(0));
+    assert_eq!(code(&d, &["lint"]), Some(0));
+    std::fs::write(d.join("packages/base/src/Base.php"), base("protected")).unwrap();
+    let (out, code) = pun(&d, &["lint"], &[]);
+    assert!(out.contains("src/Child.php"), "{out}");
+    assert_eq!(code, Some(1));
+}
+
 /// `--no-cache` and `PUN_NO_CACHE=1` neither read nor write the cache; a plain run writes it.
 #[test]
 fn no_cache_leaves_the_cache_alone() {

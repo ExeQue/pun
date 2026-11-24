@@ -436,6 +436,7 @@ const COMPOSER_FILES: [&str; 9] = [
 fn project_fingerprint(root: &Path, files: &[PathBuf]) -> cache::Digest {
     let mut paths = files.to_vec();
     paths.extend(autoloaded(root));
+    paths.extend(linked_packages(root));
     let stats: Vec<Vec<u8>> = paths.par_iter().map(|p| cache::stat(p)).collect();
     let mut key = cache::Key::default();
     for (p, s) in paths.iter().zip(stats) {
@@ -445,6 +446,39 @@ fn project_fingerprint(root: &Path, files: &[PathBuf]) -> cache::Digest {
         key.stat(&root.join(f));
     }
     key.digest()
+}
+
+/// The PHP files of the packages Composer linked into `vendor/` (`path` repositories): their source changes in place,
+/// without a change to Composer's files, and the project scan reads it.
+fn linked_packages(root: &Path) -> Vec<PathBuf> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        let mut entries: Vec<_> = (std::fs::read_dir(dir).into_iter().flatten())
+            .flatten()
+            .collect();
+        entries.sort_by_key(std::fs::DirEntry::file_name);
+        for e in entries {
+            let p = e.path();
+            // A linked package's own installed packages and assets aren't the package.
+            let skip = e.file_name() == "vendor" || e.file_name() == "node_modules";
+            match e.file_type() {
+                Ok(t) if t.is_dir() && !skip => walk(&p, out),
+                Ok(t) if t.is_file() && p.extension().is_some_and(|x| x == "php") => out.push(p),
+                _ => {}
+            }
+        }
+    }
+    let mut out = vec![];
+    let vendors = (std::fs::read_dir(root.join("vendor")).into_iter().flatten()).flatten();
+    let mut packages: Vec<PathBuf> = vendors
+        .flat_map(|v| (std::fs::read_dir(v.path()).into_iter().flatten()).flatten())
+        .filter(|p| p.file_type().is_ok_and(|t| t.is_symlink()))
+        .map(|p| p.path())
+        .collect();
+    packages.sort();
+    for p in packages {
+        walk(&p, &mut out);
+    }
+    out
 }
 
 /// The PHP files composer.json's `autoload` and `autoload-dev` name outside `vendor/`.
