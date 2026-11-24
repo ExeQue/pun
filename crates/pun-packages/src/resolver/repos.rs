@@ -196,7 +196,11 @@ pub fn path_packages(
     if !options.contains_key("relative") {
         options.insert("relative".into(), (!Path::new(&url).is_absolute()).into());
     }
-    let matches = glob_dirs(root, &url);
+    let Some(matches) = glob_dirs(root, &url) else {
+        bail!(
+            "The `url` supplied for the path ({spelled}) repository has more than {MAX_ALTERNATIVES} brace alternatives"
+        );
+    };
     if matches.is_empty() {
         let wild = |s: &str| s.contains(['*', '{', '}']);
         if wild(&url) {
@@ -305,9 +309,15 @@ fn head(dir: &Path) -> Option<String> {
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
-fn glob_dirs(root: &Path, pattern: &str) -> Vec<String> {
+/// The most paths a path repository's braces may spell out. A real `url` spells a handful; `{a,b}` repeated 20 times
+/// spells a million, held in memory before any directory is read.
+const MAX_ALTERNATIVES: usize = 10_000;
+
+/// The directories `pattern` matches; `None` when its braces spell more than `MAX_ALTERNATIVES` paths.
+fn glob_dirs(root: &Path, pattern: &str) -> Option<Vec<String>> {
     let mut out = vec![];
-    for alternative in braces(pattern) {
+    let mut budget = MAX_ALTERNATIVES;
+    for alternative in braces(pattern, &mut budget)? {
         let absolute = alternative.starts_with('/');
         let mut found: Vec<String> = vec![if absolute { "/".into() } else { String::new() }];
         for segment in alternative.split('/').filter(|s| !s.is_empty()) {
@@ -357,7 +367,7 @@ fn glob_dirs(root: &Path, pattern: &str) -> Vec<String> {
         dirs.sort();
         out.extend(dirs);
     }
-    out
+    Some(out)
 }
 
 fn segment_regex(segment: &str) -> String {
@@ -400,10 +410,12 @@ fn segment_regex(segment: &str) -> String {
     re
 }
 
-fn braces(pattern: &str) -> Vec<String> {
+/// The paths `pattern`'s braces spell, each taken from `budget`; `None` once it runs out.
+fn braces(pattern: &str, budget: &mut usize) -> Option<Vec<String>> {
     let bytes = pattern.as_bytes();
     let Some(open) = pattern.find('{') else {
-        return vec![pattern.to_string()];
+        *budget = budget.checked_sub(1)?;
+        return Some(vec![pattern.to_string()]);
     };
     let (mut depth, mut close, mut commas) = (0, None, vec![]);
     for (i, &b) in bytes.iter().enumerate().skip(open) {
@@ -421,16 +433,21 @@ fn braces(pattern: &str) -> Vec<String> {
         }
     }
     let Some(close) = close else {
-        return vec![pattern.to_string()];
+        *budget = budget.checked_sub(1)?;
+        return Some(vec![pattern.to_string()]);
     };
     let mut bounds = vec![open];
     bounds.extend(commas);
     bounds.push(close);
     let (head, tail) = (&pattern[..open], &pattern[close + 1..]);
-    bounds
-        .windows(2)
-        .flat_map(|w| braces(&format!("{head}{}{tail}", &pattern[w[0] + 1..w[1]])))
-        .collect()
+    let mut out = vec![];
+    for w in bounds.windows(2) {
+        out.extend(braces(
+            &format!("{head}{}{tail}", &pattern[w[0] + 1..w[1]]),
+            budget,
+        )?);
+    }
+    Some(out)
 }
 
 #[cfg(test)]
@@ -715,7 +732,7 @@ mod tests {
             read("", json!({"url": "arr"}), None).unwrap_err(),
             format!("Failed loading the package in {}", file("arr"))
         );
-        assert_eq!(glob_dirs(&d, "/"), ["/"]);
+        assert_eq!(glob_dirs(&d, "/"), Some(vec!["/".to_string()]));
         std::fs::remove_dir_all(&d).unwrap();
     }
 
@@ -763,8 +780,35 @@ mod tests {
 
     #[test]
     fn globs_as_php() {
+        let braces = |p: &str| braces(p, &mut MAX_ALTERNATIVES.clone()).unwrap();
         assert_eq!(braces("a{b,c{d,e}}f"), ["abf", "acdf", "acef"]);
         assert_eq!(braces("a{b"), ["a{b"]);
+        // 2^14 paths, over the limit: refused before any directory is read.
+        let config = json!({"url": "{a,b}".repeat(14)});
+        let error = path_packages(
+            Path::new("/nonexistent"),
+            config.as_object().unwrap(),
+            &|_| None,
+        );
+        assert_eq!(
+            error.unwrap_err().to_string(),
+            format!(
+                "The `url` supplied for the path ({}) repository has more than 10000 brace alternatives",
+                "{a,b}".repeat(14)
+            )
+        );
+        let config = json!({"url": "{a,b}".repeat(13)});
+        let error = path_packages(
+            Path::new("/nonexistent"),
+            config.as_object().unwrap(),
+            &|_| None,
+        );
+        assert!(
+            error
+                .unwrap_err()
+                .to_string()
+                .ends_with("repository does not exist")
+        );
         let re = Regex::new(&segment_regex("[!a-c]?.x*")).unwrap();
         assert!(re.is_match(b"dz.xyz").unwrap() && !re.is_match(b"bz.x").unwrap());
         assert!(
