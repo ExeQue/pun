@@ -147,7 +147,9 @@ Pushpak (../PLAN.md §2): pun.toml only, and stop without it; `group/name` with 
 lint sets; oxlint levels; `--fix` applies all, `fix = "off"`; five analyse presets with `max` on top; analyse on or
 off; ecosystems on only through `[extensions]`; PHP version from composer.json; no PHP fallback; `pun list-files`;
 the shared problem type. The `[files]` section with per-command `exclude` and the `[analyse] preset` key (instead of
-a top-level `preset`) are the assistant's defaults.
+a top-level `preset`) are the assistant's defaults. Since 2026-11-24 (Pushpak) a top-level `preset` =
+`essential | recommended | strict` is back as a shorthand: it defaults `[lint] preset` and `[analyse] preset` to the
+same name and `[format] preset` to `laravel` with the Laravel extension on, else `psr12`; each command's key wins.
 
 The assistant's calls where the plan is silent:
 
@@ -168,7 +170,7 @@ The assistant's calls where the plan is silent:
   admits, else 8.3 (the floor). The lock is read on every load.
 
 **Errors** (Build 3, 6). Config errors exit 2 (output.md).
-- Removed keys are errors that name the replacement: the top-level `preset`, `[format] preset = "per" | "symfony"`,
+- Removed keys are errors that name the replacement: `[format] preset = "per" | "symfony"`,
   `fix = "apply" | "safe-only"`, `"info"`, `severity`, `[format] paths` (names `[files] paths`), and `[analyse] level`
   or a number as `[analyse] preset` (names `phpstan/level_<n>` and Pun's preset that holds that level).
 - Rules Pun can't run: a rule a set or group turns on is skipped. A rule named in pun.toml or set by the preset stops

@@ -57,6 +57,7 @@ exclude = ["tests/**"]
 
 | Key | Meaning |
 | --- | --- |
+| `preset` | At the top level: `essential`, `recommended`, or `strict` for every command. See [one preset for every command](/docs/configuration/presets#one-preset-for-every-command). Each command's own `preset` wins |
 | `[php] version` | The target PHP version, as `major.minor`. Default: the lowest version that `require.php` in `composer.json` allows, otherwise 8.3. Rules for a newer PHP, such as the `php-8.4` lint group, run only when this version allows them. Without this key, `pun analyse` uses `config.platform.php`, otherwise 8.5 |
 | `[files] paths` | The paths to check when the command line gives none. A path outside the project, directly or through a symlink, is a config error |
 | `[files] exclude` | Exclusions for every command, added to each command's own `exclude` |

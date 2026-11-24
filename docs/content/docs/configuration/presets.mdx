@@ -3,7 +3,22 @@ title: Presets
 description: Pick the rules each command runs with format presets, lint presets, Rector sets, and analyse presets.
 ---
 
-Each command picks its rules on its own. `[format] preset`, `[lint] preset` and `sets`, and `[analyse] preset` set them. There is no top-level preset. To see the full rule list of one choice, open its page under [rule presets](/docs/rules/presets) or [Rector sets](/docs/rules/sets).
+Each command picks its rules with its own key: `[format] preset`, `[lint] preset` and `sets`, and `[analyse] preset`. A top-level `preset` sets all three at once. To see the full rule list of one choice, open its page under [rule presets](/docs/rules/presets) or [Rector sets](/docs/rules/sets).
+
+## One preset for every command
+
+```toml pun.toml
+preset = "recommended"
+```
+
+A top-level `preset` is `essential`, `recommended`, or `strict`. It becomes `[lint] preset` and `[analyse] preset` of the same name, and `[format] preset = "laravel"` when the Laravel extension is on, else `psr12`. A command's own key wins over it.
+
+```toml pun.toml
+preset = "strict"
+
+[analyse]
+preset = "recommended"
+```
 
 ## Format presets
 

@@ -328,6 +328,35 @@ fn analyse_php_version() {
 }
 
 #[test]
+fn top_level_preset() {
+    let load_with = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap();
+    let strict = load_with(&[("pun.toml", "preset = \"strict\"\n")]);
+    assert_eq!(strict.lint.preset, Some(LintPreset::Strict));
+    assert_eq!(strict.analyse.preset.to_string(), "strict");
+    assert_eq!(strict.preset, FormatPreset::Psr12);
+    // The Laravel extension makes the format preset `laravel`.
+    let laravel = "preset = \"essential\"\n[extensions]\nlaravel = \"on\"\n";
+    let lara = load_with(&[("pun.toml", laravel), ("composer.lock", LARAVEL_LOCK)]);
+    assert_eq!(lara.preset, FormatPreset::Laravel);
+    assert_eq!(lara.lint.preset, Some(LintPreset::Essential));
+    // Each command's own key wins.
+    let own = "preset = \"strict\"\n[format]\npreset = \"laravel\"\n[lint]\npreset = \"essential\"\n[analyse]\npreset = \"max\"\n";
+    let own_keys = load_with(&[("pun.toml", own)]);
+    assert_eq!(own_keys.preset, FormatPreset::Laravel);
+    assert_eq!(own_keys.lint.preset, Some(LintPreset::Essential));
+    assert_eq!(own_keys.analyse.preset.to_string(), "max");
+    let err = load(
+        &dir(&[("pun.toml", "preset = \"max\"\n")]),
+        &Options::default(),
+    );
+    let err = format!("{:#}", err.err().unwrap());
+    assert!(
+        err.contains("preset = \"max\": expected `essential`, `recommended` or `strict`"),
+        "{err}"
+    );
+}
+
+#[test]
 fn lint_presets() {
     let lint = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap().lint;
     let has = |l: &Lint, id: &str| ids(&l.rules).contains(&id);
@@ -1288,7 +1317,7 @@ fn pun_toml_errors() {
     }
     assert!(e("[format]\nexlude = [\"typo\"]\n").contains("unknown field `exlude`"));
     assert!(e("[lint]\nset = []\n").contains("unknown field `set`"));
-    assert!(e("preset = \"recommended\"\n").contains("unknown field `preset`"));
+    assert!(e("preset = \"basic\"\n").contains("expected `essential`, `recommended` or `strict`"));
     assert!(e("[format]\npaths = [\"app\"]\n").contains("unknown field `paths`"));
     assert!(e("[format]\nnot-name = [\"*.inc\"]\n").contains("unknown field `not-name`"));
     assert!(e("[[lint.overrides]]\nrules = {}\n").contains("missing field `files`"));

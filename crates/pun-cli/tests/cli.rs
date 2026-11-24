@@ -625,11 +625,10 @@ fn pun_only_behaviour() {
             Some(2)
         )
     );
-    // A named lint rule Pun can't run yet stops the run too; a set skips the rules Pun can't run yet (code-quality
-    // has unported rules, such as laravel/prefer-pivot-class).
+    // A named lint rule Pun can't run yet stops the run too; a preset skips the rules Pun can't run yet.
     std::fs::write(
         dir.join("pun.toml"),
-        "[format]\npreset = \"empty\"\n[lint]\nsets = [\"code-quality\"]\n[lint.rules]\n\"laravel/prefer-pivot-class\" = \"error\"\n",
+        "[format]\npreset = \"empty\"\n[lint]\npreset = \"strict\"\n[lint.rules]\n\"laravel/prefer-pivot-class\" = \"error\"\n",
     )
     .unwrap();
     let (_, err, code) = pun(&dir, &["lint"]);
@@ -646,7 +645,7 @@ fn pun_only_behaviour() {
 
     std::fs::write(
         dir.join("pun.toml"),
-        "[format]\npreset = \"empty\"\n[lint]\nsets = [\"code-quality\"]\n",
+        "[format]\npreset = \"empty\"\n[lint]\npreset = \"strict\"\n",
     )
     .unwrap();
     let (out, err, code) = pun_env(&dir, &["lint", "app/Clean.php"], &[("PUN_AGENT", "1")]);
@@ -1197,7 +1196,7 @@ fn explain_rule() {
 Master functions shall be used instead of aliases.
 
 group     style: One consistent way to write the same thing
-sets      coding-style
+preset    strict
 fix       unsafe
 upstream  no_alias_functions (php-cs-fixer)
           no-alias-function (mago-linter)

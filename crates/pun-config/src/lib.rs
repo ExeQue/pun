@@ -106,6 +106,9 @@ pub struct Options {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 struct PunToml {
+    /// The top-level preset: `[lint] preset` and `[analyse] preset` default to it, and `[format] preset` to
+    /// `laravel` with the Laravel extension on, else `psr12`.
+    preset: Option<String>,
     #[serde(default)]
     php: PunPhp,
     #[serde(default)]
@@ -219,6 +222,32 @@ fn blade_and_preset(at: &impl std::fmt::Display, f: &PunFormat) -> Result<bool> 
     })
 }
 
+/// The format preset: `--preset`, else `[format] preset`, else the top-level preset's pick (`laravel` with the
+/// Laravel extension on, else `psr12`), else `laravel`.
+fn format_preset(own: Option<&str>, top: bool, laravel: bool) -> Result<FormatPreset> {
+    Ok(match own {
+        Some(p) => FormatPreset::parse(p).context("Preset not found.")?,
+        None if top && !laravel => FormatPreset::Psr12,
+        None => FormatPreset::Laravel,
+    })
+}
+
+/// The top-level `preset`: fills in `[lint] preset` and `[analyse] preset` where pun.toml leaves them out.
+fn top_preset(
+    at: &impl std::fmt::Display,
+    top: Option<&str>,
+    lint: &mut schema::LintToml,
+    analyse: &mut schema::AnalyseToml,
+) -> Result<Option<LintPreset>> {
+    let Some(p) = top else { return Ok(None) };
+    let p = LintPreset::parse(p).with_context(|| {
+        format!("{at}: preset = \"{p}\": expected `essential`, `recommended` or `strict`")
+    })?;
+    lint.preset.get_or_insert_with(|| p.name().to_string());
+    (analyse.preset).get_or_insert_with(|| toml::Value::from(p.name()));
+    Ok(Some(p))
+}
+
 fn parse(
     root: &Path,
     path: &Path,
@@ -240,14 +269,16 @@ fn parse(
         .try_into()
         .with_context(|| format!("invalid {}", path.display()))?;
     let PunToml {
+        preset: top,
         php,
         files,
         format: f,
-        lint,
-        analyse,
+        mut lint,
+        mut analyse,
         extensions,
     } = toml;
     let at = path.display();
+    let top = top_preset(&at, top.as_deref(), &mut lint, &mut analyse)?;
     let native_blade = blade_and_preset(&at, &f)?;
     let explicit = php.version.is_some();
     let php = match php.version {
@@ -286,11 +317,12 @@ fn parse(
     if let Some(b) = analyse.baseline.as_deref().filter(escapes) {
         bail!("{at}: [analyse] baseline: \"{b}\" is outside the project");
     }
-    let preset = opts.preset.clone().or(f.preset);
-    let preset = match preset.as_deref() {
-        None => FormatPreset::Laravel,
-        Some(p) => FormatPreset::parse(p).context("Preset not found.")?,
-    };
+    let laravel = gates.switches.get(extensions::LARAVEL.id) == Some(&extensions::Switch::On);
+    let preset = format_preset(
+        opts.preset.as_deref().or(f.preset.as_deref()),
+        top.is_some(),
+        laravel,
+    )?;
     let mut rules = resolve_set(preset_rules(&preset).unwrap())?;
     for (name, v) in f.rules {
         let id = schema::rule_id(path, "format", &name)?;

@@ -520,7 +520,7 @@ pub(crate) struct FilesToml {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct LintToml {
-    preset: Option<String>,
+    pub(crate) preset: Option<String>,
     #[serde(default)]
     sets: Vec<String>,
     #[serde(default)]
@@ -544,7 +544,7 @@ struct OverrideToml {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct AnalyseToml {
-    preset: Option<toml::Value>,
+    pub(crate) preset: Option<toml::Value>,
     paths: Option<Vec<String>>,
     #[serde(default)]
     exclude: Vec<String>,
