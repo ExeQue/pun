@@ -42,10 +42,10 @@ fn diff_to_array<'a>(mut from: Vec<&'a [u8]>, mut to: Vec<&'a [u8]>) -> Vec<(&'a
     let head: Vec<&[u8]> = from.drain(..start).collect();
     to.drain(..start);
 
-    let common = if 144 * from.len().min(to.len()).pow(2) > 100 * 1024 * 1024 {
-        lcs_memory_efficient(&from, &to)
-    } else {
+    let common = if full_table(from.len(), to.len()) {
         lcs_time_efficient(&from, &to)
+    } else {
+        lcs_memory_efficient(&from, &to)
     };
 
     let mut diff: Vec<(&[u8], u8)> = head.into_iter().map(|l| (l, OLD)).collect();
@@ -74,6 +74,16 @@ fn diff_to_array<'a>(mut from: Vec<&'a [u8]>, mut to: Vec<&'a [u8]>) -> Vec<(&'a
         );
     }
     diff
+}
+
+/// Whether the LCS can take the full table, as sebastian/diff decides from the shorter side (144 bytes a cell, a 100 MiB
+/// limit). The table holds a cell for every pair of lines, so a short side against a very long one would still be
+/// huge: past 2^28 cells (1 GiB of `u32`), far beyond any real file's changed lines, the linear-memory LCS runs instead.
+fn full_table(from: usize, to: usize) -> bool {
+    let shorter = from.min(to);
+    let cells = (from + 1).saturating_mul(to + 1);
+    144usize.saturating_mul(shorter.saturating_mul(shorter)) <= 100 * 1024 * 1024
+        && cells <= 1 << 28
 }
 
 fn lcs_time_efficient<'a>(from: &[&'a [u8]], to: &[&'a [u8]]) -> Vec<&'a [u8]> {
@@ -332,5 +342,16 @@ mod tests {
             d(b"a\rb\r", b"a\rc\r"),
             "--- /f.php\n+++ /f.php\n@@ -1 +1 @@\n-a\rb\r\n\\ No newline at end of file\n+a\rc\r\n\\ No newline at end of file\n"
         );
+    }
+
+    /// sebastian/diff's bound on the shorter side (144 × 853² ≤ 100 MiB < 144 × 854²), plus a bound on the whole
+    /// table: 800 changed lines against 400,000 pass the first (92 MB) but would need 801 × 400,001 cells (1.2 GiB).
+    #[test]
+    fn the_full_table_is_bounded_on_both_sides() {
+        assert!(super::full_table(853, 853));
+        assert!(!super::full_table(854, 854));
+        assert!(super::full_table(800, 300_000));
+        assert!(!super::full_table(800, 400_000));
+        assert!(!super::full_table(400_000, 800));
     }
 }
