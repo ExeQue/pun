@@ -9,7 +9,7 @@ use pcre2::bytes::Regex;
 use pun_tokens::php_compat::{preg_quote, strnatcasecmp};
 use serde_json::{Map, Value};
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -181,26 +181,45 @@ impl Pkg<'_> {
 }
 
 fn sort_packages(packages: Vec<Pkg<'_>>) -> Vec<Pkg<'_>> {
-    fn importance(
-        name: &str,
-        usage: &HashMap<String, Vec<String>>,
-        computing: &mut Vec<String>,
+    /// Composer's `PackageSorter` weight: minus one, plus the user's weight, for each package that requires `root`;
+    /// a package already being weighed counts 0. The walk keeps its own stack, in the order Composer's recursion
+    /// takes, so a deep dependency chain can't overflow the thread's.
+    fn importance<'a>(
+        root: &'a str,
+        usage: &'a HashMap<String, Vec<String>>,
         computed: &mut HashMap<String, i64>,
     ) -> i64 {
-        if let Some(w) = computed.get(name) {
+        if let Some(w) = computed.get(root) {
             return *w;
         }
-        if computing.iter().any(|c| c == name) {
-            return 0;
+        // (package, index of its next user, weight so far)
+        let mut active: HashSet<&str> = HashSet::from([root]);
+        let mut stack: Vec<(&str, usize, i64)> = vec![(root, 0, 0)];
+        while let Some(top) = stack.last_mut() {
+            let users = usage.get(top.0).map_or(&[][..], Vec::as_slice);
+            if let Some(user) = users.get(top.1) {
+                top.1 += 1;
+                let user = user.as_str();
+                let known =
+                    (computed.get(user).copied()).or_else(|| active.contains(user).then_some(0));
+                if let Some(w) = known {
+                    top.2 -= 1 - w;
+                } else {
+                    active.insert(user);
+                    stack.push((user, 0, 0));
+                }
+                continue;
+            }
+            let (name, _, weight) = *top;
+            stack.pop();
+            active.remove(name);
+            computed.insert(name.to_string(), weight);
+            match stack.last_mut() {
+                Some(parent) => parent.2 -= 1 - weight,
+                None => return weight,
+            }
         }
-        computing.push(name.to_string());
-        let mut weight = 0;
-        for user in usage.get(name).into_iter().flatten() {
-            weight -= 1 - importance(user, usage, computing, computed);
-        }
-        computing.retain(|c| c != name);
-        computed.insert(name.to_string(), weight);
-        weight
+        unreachable!("the walk returns when it pops the root")
     }
     let mut usage: HashMap<String, Vec<String>> = HashMap::new();
     for p in &packages {
@@ -208,14 +227,9 @@ fn sort_packages(packages: Vec<Pkg<'_>>) -> Vec<Pkg<'_>> {
             usage.entry(target).or_default().push(p.name.clone());
         }
     }
-    let (mut computing, mut computed) = (vec![], HashMap::new());
+    let mut computed = HashMap::new();
     let mut weighted: Vec<(i64, Pkg)> = (packages.into_iter())
-        .map(|p| {
-            (
-                importance(&p.name, &usage, &mut computing, &mut computed),
-                p,
-            )
-        })
+        .map(|p| (importance(&p.name, &usage, &mut computed), p))
         .collect();
     weighted.sort_by(|a, b| {
         a.0.cmp(&b.0)
@@ -1029,4 +1043,63 @@ fn static_file(suffix: &str, target: &str, vendor: &str, base: &str, maps: &Stat
     }
     write!(out, "    public static function getInitializer(ClassLoader $loader)\n    {{\n        return \\Closure::bind(function () use ($loader) {{\n{init}\n        }}, null, ClassLoader::class);\n    }}\n}}\n").unwrap();
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn names(manifests: &[Map<String, Value>]) -> Vec<String> {
+        let packages = (manifests.iter())
+            .map(|json| Pkg {
+                name: json["name"].as_str().unwrap().to_string(),
+                json,
+                path: None,
+                root: false,
+                dev: false,
+            })
+            .collect();
+        sort_packages(packages)
+            .into_iter()
+            .map(|p| p.name)
+            .collect()
+    }
+
+    /// Weights worked by hand from Composer's `PackageSorter`, which weighs the packages in the order given: c = 0
+    /// (no users); b weighs its user a, whose users are c (0) and b (0, being weighed), so a = -2 and b = -3.
+    #[test]
+    fn sorts_by_weight_through_a_cycle() {
+        let m = |v: Value| v.as_object().unwrap().clone();
+        let manifests = [
+            m(json!({"name": "c", "require": {"a": "*"}})),
+            m(json!({"name": "b", "require": {"a": "*"}})),
+            m(json!({"name": "a", "require": {"b": "*"}})),
+        ];
+        assert_eq!(names(&manifests), ["b", "a", "c"]);
+    }
+
+    /// A chain of 100,000 packages, each required by the next, sorts on a test thread's 2 MiB stack: package k
+    /// weighs -(n - 1 - k), so the chain comes out in order.
+    #[test]
+    fn a_deep_chain_does_not_overflow_the_stack() {
+        let n = 100_000;
+        let manifests: Vec<Map<String, Value>> = (0..n)
+            .rev()
+            .map(|k| {
+                let mut m = json!({"name": format!("p/{k}")});
+                if k > 0 {
+                    m["require"] = json!({ format!("p/{}", k - 1): "*" });
+                }
+                m.as_object().unwrap().clone()
+            })
+            .collect();
+        let sorted = names(&manifests);
+        assert_eq!(sorted.len(), n);
+        assert!(
+            (sorted.iter())
+                .enumerate()
+                .all(|(k, name)| *name == format!("p/{k}"))
+        );
+    }
 }
