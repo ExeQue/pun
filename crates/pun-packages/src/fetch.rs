@@ -7,6 +7,7 @@ use std::io::Read;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 #[derive(Debug, Default, Clone)]
@@ -332,6 +333,10 @@ impl Fetcher {
             .and_then(Value::as_object)
             .context("no dist")?;
         let kind = dist.get("type").and_then(Value::as_str).unwrap_or("zip");
+        // The type names the cache file, so one `unpack` can't extract is refused before the cache is touched.
+        if !matches!(kind, "zip" | "tar") {
+            bail!("dist type `{kind}` is not supported yet");
+        }
         let raw = dist
             .get("url")
             .and_then(Value::as_str)
@@ -439,7 +444,9 @@ impl Fetcher {
             let error = match req.call() {
                 Ok(mut res) if res.status().is_success() => {
                     let mut body = vec![];
-                    res.body_mut().as_reader().read_to_end(&mut body)?;
+                    (res.body_mut().with_config().limit(MAX_DOWNLOAD))
+                        .reader()
+                        .read_to_end(&mut body)?;
                     return Ok(body);
                 }
                 Ok(res) => {
@@ -476,6 +483,32 @@ static METADATA: LazyLock<Regex> = LazyLock::new(|| {
         .expect("valid pattern")
 });
 
+/// The most bytes a download may hold, the most one archive may expand to, and the most entries it may hold. The
+/// largest Composer dists are a few hundred MB with some tens of thousands of files, so these only stop an archive
+/// made to fill the memory or the disk.
+const MAX_DOWNLOAD: u64 = 2 << 30;
+const MAX_EXPANDED: u64 = 8 << 30;
+const MAX_ENTRIES: usize = 1_000_000;
+
+/// Reads `inner`, failing once the readers sharing `used` have read more than `MAX_EXPANDED` bytes.
+struct Budget<'a, R> {
+    inner: R,
+    used: &'a AtomicU64,
+}
+
+impl<R: Read> Read for Budget<'_, R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = self.inner.read(buf)?;
+        if self.used.fetch_add(n as u64, Ordering::Relaxed) + n as u64 > MAX_EXPANDED {
+            return Err(std::io::Error::other(format!(
+                "the archive expands past {} GiB",
+                MAX_EXPANDED >> 30
+            )));
+        }
+        Ok(n)
+    }
+}
+
 pub fn unpack(kind: &str, bytes: &[u8], target: &Path) -> Result<()> {
     let parent = target.parent().context("target without a parent")?;
     std::fs::create_dir_all(parent)?;
@@ -486,20 +519,13 @@ pub fn unpack(kind: &str, bytes: &[u8], target: &Path) -> Result<()> {
     ));
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp)?;
+    let used = AtomicU64::new(0);
     let result = (|| -> Result<()> {
-        match kind {
-            "zip" => unzip(bytes, &tmp)?,
-            "tar" => {
-                let gz = bytes.starts_with(&[0x1f, 0x8b]);
-                let reader: Box<dyn Read> = if gz {
-                    Box::new(flate2::read::GzDecoder::new(bytes))
-                } else {
-                    Box::new(bytes)
-                };
-                tar::Archive::new(reader).unpack(&tmp)?;
-            }
+        let links = match kind {
+            "zip" => unzip(bytes, &tmp, &used)?,
+            "tar" => untar(bytes, &tmp, &used)?,
             other => bail!("dist type `{other}` is not supported yet"),
-        }
+        };
         let entries: Vec<PathBuf> = std::fs::read_dir(&tmp)?
             .filter_map(|e| e.ok().map(|e| e.path()))
             .collect();
@@ -509,10 +535,17 @@ pub fn unpack(kind: &str, bytes: &[u8], target: &Path) -> Result<()> {
                 content.push(p);
             }
         }
+        // A sole directory is the archive's wrapper; a sole symlink is not, so the package root is a directory.
         let from = match content.as_slice() {
-            [only] if only.is_dir() => (*only).clone(),
+            [only] if std::fs::symlink_metadata(only).is_ok_and(|m| m.is_dir()) => (*only).clone(),
             _ => tmp.clone(),
         };
+        // Links are checked against the package as installed, below the wrapper.
+        for link in links.iter().filter(|l| l.starts_with(&from)) {
+            if escapes(&from, link) {
+                let _ = std::fs::remove_file(link);
+            }
+        }
         remove(target)?;
         std::fs::rename(&from, target)?;
         Ok(())
@@ -521,10 +554,100 @@ pub fn unpack(kind: &str, bytes: &[u8], target: &Path) -> Result<()> {
     result
 }
 
-fn unzip(bytes: &[u8], dir: &Path) -> Result<()> {
+/// Whether the symlink `link` below `root` leads outside it, following each link on the way as the kernel would: an
+/// absolute target, or a `..` that climbs past `root`.
+fn escapes(root: &Path, link: &Path) -> bool {
+    use std::ffi::OsString;
+    use std::path::Component;
+    let Ok(rel) = link.strip_prefix(root) else {
+        return true;
+    };
+    let path = |at: &[OsString]| root.join(at.iter().collect::<PathBuf>());
+    let mut at: Vec<OsString> = rel.iter().map(Into::into).collect();
+    // The components still to walk, the next one last; `None` is a `..`.
+    let mut todo: Vec<Option<OsString>> = vec![];
+    // `at` is a symlink here; 40 is Linux's limit on the links one lookup follows.
+    for _ in 0..40 {
+        let Ok(target) = std::fs::read_link(path(&at)) else {
+            return true;
+        };
+        at.pop();
+        let mut parts = vec![];
+        for c in target.components() {
+            match c {
+                Component::Normal(n) => parts.push(Some(n.to_os_string())),
+                Component::ParentDir => parts.push(None),
+                Component::CurDir => {}
+                Component::RootDir | Component::Prefix(_) => return true,
+            }
+        }
+        todo.extend(parts.into_iter().rev());
+        loop {
+            match todo.pop() {
+                None => return false,
+                Some(None) => {
+                    if at.pop().is_none() {
+                        return true;
+                    }
+                }
+                Some(Some(name)) => {
+                    at.push(name);
+                    if std::fs::symlink_metadata(path(&at)).is_ok_and(|m| m.is_symlink()) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    true
+}
+
+/// Unpacks a tar into `dir` as `tar::Archive::unpack` does (directories last, so their modes don't stop their
+/// files); the symlinks it made.
+fn untar(bytes: &[u8], dir: &Path, used: &AtomicU64) -> Result<Vec<PathBuf>> {
+    let reader: Box<dyn Read> = if bytes.starts_with(&[0x1f, 0x8b]) {
+        Box::new(flate2::read::GzDecoder::new(bytes))
+    } else {
+        Box::new(bytes)
+    };
+    let mut archive = tar::Archive::new(Budget {
+        inner: reader,
+        used,
+    });
+    let mut directories = vec![];
+    let mut links = vec![];
+    for (n, entry) in archive.entries()?.enumerate() {
+        if n == MAX_ENTRIES {
+            bail!("the archive holds more than {MAX_ENTRIES} entries");
+        }
+        let mut entry = entry?;
+        let kind = entry.header().entry_type();
+        if kind == tar::EntryType::Directory {
+            directories.push(entry);
+            continue;
+        }
+        let path: PathBuf = (entry.path()?.components())
+            .filter(|c| matches!(c, std::path::Component::Normal(_)))
+            .collect();
+        if entry.unpack_in(dir)? && kind == tar::EntryType::Symlink {
+            links.push(dir.join(path));
+        }
+    }
+    directories.sort_by(|a, b| b.path_bytes().cmp(&a.path_bytes()));
+    for mut d in directories {
+        d.unpack_in(dir)?;
+    }
+    Ok(links)
+}
+
+/// Unpacks a zip into `dir`; the symlinks it made.
+fn unzip(bytes: &[u8], dir: &Path, used: &AtomicU64) -> Result<Vec<PathBuf>> {
     use rayon::prelude::*;
     use std::os::unix::fs::PermissionsExt;
     let archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))?;
+    if archive.len() > MAX_ENTRIES {
+        bail!("the archive holds more than {MAX_ENTRIES} entries");
+    }
     let links = std::sync::Mutex::new(vec![]);
     (0..archive.len()).into_par_iter().try_for_each_init(
         || archive.clone(),
@@ -541,16 +664,25 @@ fn unzip(bytes: &[u8], dir: &Path) -> Result<()> {
             std::fs::create_dir_all(path.parent().unwrap_or(dir))?;
             let mode = entry.unix_mode();
             if entry.is_symlink() {
+                // PATH_MAX: a longer target can't be followed.
                 let mut target = String::new();
-                entry.read_to_string(&mut target)?;
-                (links
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner))
-                .push((path, target));
+                (&mut entry).take(4097).read_to_string(&mut target)?;
+                if target.len() <= 4096 {
+                    (links
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner))
+                    .push((path, target));
+                }
                 return Ok(());
             }
             let mut out = std::fs::File::create(&path)?;
-            std::io::copy(&mut entry, &mut out)?;
+            std::io::copy(
+                &mut Budget {
+                    inner: &mut entry,
+                    used,
+                },
+                &mut out,
+            )?;
             if let Some(mode) = mode.filter(|m| m & 0o111 != 0) {
                 std::fs::set_permissions(
                     &path,
@@ -560,24 +692,21 @@ fn unzip(bytes: &[u8], dir: &Path) -> Result<()> {
             Ok(())
         },
     )?;
-    for (path, target) in links
+    // Last, so no file is written through a link.
+    Ok((links
         .into_inner()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-    {
-        let relative = path
-            .strip_prefix(dir)
-            .ok()
-            .and_then(Path::parent)
-            .unwrap_or(Path::new(""));
-        let resolved = crate::paths::normalize(&format!("{}/{target}", relative.to_string_lossy()));
-        if !target.starts_with('/') && !resolved.starts_with("..") && !resolved.contains("/../") {
-            let _ = std::os::unix::fs::symlink(&target, &path);
-        }
-    }
-    Ok(())
+        .unwrap_or_else(std::sync::PoisonError::into_inner))
+    .into_iter()
+    .filter(|(path, target)| {
+        !target.starts_with('/') && std::os::unix::fs::symlink(target, path).is_ok()
+    })
+    .map(|(path, _)| path)
+    .collect())
 }
 
-pub fn link_path(url: &str, base: &Path, target: &Path) -> Result<()> {
+/// Links the path repository `url` into `target`, or with `mirror` (its `symlink: false`) copies it there, as
+/// Composer's `PathDownloader` does.
+pub fn link_path(url: &str, base: &Path, target: &Path, mirror: bool) -> Result<()> {
     let source = if Path::new(url).is_absolute() {
         PathBuf::from(url)
     } else {
@@ -587,10 +716,49 @@ pub fn link_path(url: &str, base: &Path, target: &Path) -> Result<()> {
         .with_context(|| format!("path repository {url} does not exist"))?;
     remove(target)?;
     std::fs::create_dir_all(target.parent().context("target without a parent")?)?;
+    if mirror {
+        return Ok(copy_tree(&source, &source, target)?);
+    }
     let parent = std::fs::canonicalize(target.parent().unwrap_or(target))?;
     let relative =
         crate::paths::shortest(&parent.to_string_lossy(), &source.to_string_lossy(), true);
     std::os::unix::fs::symlink(format!("{}/", relative.trim_end_matches('/')), target)?;
+    Ok(())
+}
+
+/// Copies `from`, below the path repository `root`, to `to` as Composer's mirror does (Symfony's `mirror` over an
+/// `ArchivableFilesFinder`): without version control directories, and without a symlink that leads outside `root`.
+fn copy_tree(root: &Path, from: &Path, to: &Path) -> std::io::Result<()> {
+    const VCS: [&str; 9] = [
+        ".svn",
+        "_svn",
+        "CVS",
+        "_darcs",
+        ".arch-params",
+        ".monotone",
+        ".bzr",
+        ".git",
+        ".hg",
+    ];
+    std::fs::create_dir(to)?;
+    for e in std::fs::read_dir(from)? {
+        let e = e?;
+        let name = e.file_name();
+        if VCS.iter().any(|v| name == *v) {
+            continue;
+        }
+        let (src, dst) = (e.path(), to.join(&name));
+        let kind = e.file_type()?;
+        if kind.is_symlink() {
+            if std::fs::canonicalize(&src).is_ok_and(|real| real.starts_with(root)) {
+                std::os::unix::fs::symlink(std::fs::read_link(&src)?, &dst)?;
+            }
+        } else if kind.is_dir() {
+            copy_tree(root, &src, &dst)?;
+        } else {
+            std::fs::copy(&src, &dst)?;
+        }
+    }
     Ok(())
 }
 
@@ -1108,20 +1276,122 @@ mod tests {
         let package_dir = dir.join("packages/x");
         std::fs::create_dir_all(&package_dir).unwrap();
         let link = dir.join("vendor/acme/x");
-        link_path("packages/x", &dir, &link).unwrap();
+        link_path("packages/x", &dir, &link, false).unwrap();
         assert_eq!(
             std::fs::read_link(&link).unwrap(),
             Path::new("../../packages/x/")
         );
-        link_path(&package_dir.to_string_lossy(), Path::new("/"), &link).unwrap();
+        link_path(&package_dir.to_string_lossy(), Path::new("/"), &link, false).unwrap();
         assert_eq!(
             std::fs::read_link(&link).unwrap(),
             Path::new("../../packages/x/")
         );
-        let error = link_path("packages/gone", &dir, &link)
+        let error = link_path("packages/gone", &dir, &link, false)
             .unwrap_err()
             .to_string();
         assert_eq!(error, "path repository packages/gone does not exist");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_path_repository_without_symlinks_is_copied() {
+        let dir = scratch("mirror");
+        let package_dir = dir.join("packages/x");
+        let link = dir.join("vendor/acme/x");
+        std::fs::create_dir_all(&package_dir).unwrap();
+        link_path("packages/x", &dir, &link, false).unwrap();
+        // `symlink: false` copies the package, without its .git or a link out of it, and replaces the old link.
+        std::fs::create_dir_all(package_dir.join(".git")).unwrap();
+        std::fs::create_dir_all(package_dir.join("src")).unwrap();
+        std::fs::write(package_dir.join("src/A.php"), "a").unwrap();
+        std::os::unix::fs::symlink("src/A.php", package_dir.join("in")).unwrap();
+        std::os::unix::fs::symlink("../../vendor", package_dir.join("out")).unwrap();
+        link_path("packages/x", &dir, &link, true).unwrap();
+        assert!(std::fs::symlink_metadata(&link).unwrap().is_dir());
+        std::fs::write(package_dir.join("src/A.php"), "changed").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(link.join("src/A.php")).unwrap(),
+            "a"
+        );
+        assert_eq!(
+            std::fs::read_link(link.join("in")).unwrap(),
+            Path::new("src/A.php")
+        );
+        assert!(
+            !link.join(".git").exists() && std::fs::symlink_metadata(link.join("out")).is_err()
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Every link left in the package resolves inside it as installed: a root-level `..`, a link that only escapes
+    /// once the wrapper is stripped, and a chain whose parts each look inside are dropped; links within stay.
+    #[test]
+    fn links_stay_inside_the_installed_package() {
+        let dir = scratch("links");
+        let target = dir.join("vendor/acme/lib");
+        let zip = |links: &[(&str, &str)]| {
+            let mut w = zip::ZipWriter::new(std::io::Cursor::new(vec![]));
+            let file = zip::write::SimpleFileOptions::default();
+            w.start_file("w/src/A.php", file).unwrap();
+            w.write_all(b"a").unwrap();
+            w.add_directory("w/d/e/", file).unwrap();
+            for (name, to) in links {
+                w.add_symlink(*name, *to, file).unwrap();
+            }
+            w.finish().unwrap().into_inner()
+        };
+        let bytes = zip(&[
+            ("w/up", "../secret"),
+            ("w/ok", "src/A.php"),
+            ("w/d/e/ok", "../../src"),
+            ("w/d/hop", "e/.."),
+            ("w/d/chain", "hop/../../.."),
+            ("w/d/abs", "/etc/passwd"),
+        ]);
+        unpack("zip", &bytes, &target).unwrap();
+        let link = |n: &str| std::fs::symlink_metadata(target.join(n)).is_ok();
+        assert!(link("ok") && link("d/e/ok") && link("d/hop"));
+        assert!(!link("up") && !link("d/chain") && !link("d/abs"));
+        assert_eq!(
+            std::fs::read_to_string(target.join("d/e/ok/A.php")).unwrap(),
+            "a"
+        );
+
+        // Without a wrapper, a root-level `..` leaves the package.
+        let mut w = zip::ZipWriter::new(std::io::Cursor::new(vec![]));
+        let file = zip::write::SimpleFileOptions::default();
+        w.start_file("README", file).unwrap();
+        w.add_symlink("up", "../lib2", file).unwrap();
+        unpack("zip", &w.finish().unwrap().into_inner(), &target).unwrap();
+        assert!(target.join("README").exists() && !link("up"));
+
+        // A sole symlink is not a wrapper: the package root stays a directory.
+        std::fs::create_dir_all(dir.join("host")).unwrap();
+        std::fs::write(dir.join("host/private"), "p").unwrap();
+        let mut tar = tar::Builder::new(vec![]);
+        let mut h = tar::Header::new_gnu();
+        h.set_entry_type(tar::EntryType::Symlink);
+        h.set_size(0);
+        h.set_mode(0o777);
+        tar.append_link(&mut h, "root", dir.join("host")).unwrap();
+        unpack("tar", &tar.into_inner().unwrap(), &target).unwrap();
+        assert!(std::fs::symlink_metadata(&target).unwrap().is_dir());
+        assert!(!link("root") && !target.join("private").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A dist type `unpack` can't extract never reaches the cache, whose file name it would form.
+    #[test]
+    fn an_unsupported_dist_type_is_refused_before_the_cache() {
+        let dir = scratch("kind");
+        let fetcher = Fetcher::new(Some(dir.join("cache")), Auth::default(), true);
+        let package = json!({"name": "a/b", "dist": {"type": "zip/../../../evil", "url": "https://a.test/x"}});
+        let error = fetcher.archive(package.as_object().unwrap()).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "dist type `zip/../../../evil` is not supported yet"
+        );
+        assert!(!dir.join("cache").exists());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

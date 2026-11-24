@@ -112,8 +112,14 @@ impl Store {
         std::fs::create_dir(&tmp)?;
         // The entry's own modification time is when it was stored: a file modified later was edited through a
         // hardlink in some project's vendor/, as pnpm's `verify-store-integrity` finds it. Such an entry, or one
-        // that can't be read, is extracted again.
-        let stored = std::fs::metadata(&entry).and_then(|m| m.modified());
+        // that can't be read, or isn't a directory, is extracted again.
+        let stored = (std::fs::symlink_metadata(&entry)).and_then(|m| {
+            if m.is_dir() {
+                m.modified()
+            } else {
+                Err(std::io::ErrorKind::NotADirectory.into())
+            }
+        });
         let hit = stored.is_ok_and(|t| matches!(self.link_tree(&entry, &tmp, Some(t)), Ok(true)));
         if !hit {
             let _ = std::fs::remove_dir_all(&tmp);
@@ -132,7 +138,7 @@ impl Store {
     /// Extracts the entry with `fill`, setting aside the one there.
     fn fill(&self, entry: &Path, fill: impl FnOnce(&Path) -> Result<()>) -> Result<()> {
         std::fs::create_dir_all(entry.parent().unwrap_or(&self.root))?;
-        if entry.exists() {
+        if std::fs::symlink_metadata(entry).is_ok() {
             let aside = self.temp(&self.root);
             std::fs::rename(entry, &aside)?;
             let _ = std::fs::remove_dir_all(&aside);

@@ -909,7 +909,9 @@ fn place(
                 .and_then(|d| d.get("url"))
                 .and_then(Value::as_str)
                 .context("path dist without a url")?;
-            link_path(url, base, target)?;
+            let mirror = (package.get("transport-options")).and_then(|t| t.get("symlink"))
+                == Some(&Value::Bool(false));
+            link_path(url, base, target, mirror)?;
             Ok(false)
         }
         Some(kind) => {
