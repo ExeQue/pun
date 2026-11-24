@@ -182,6 +182,8 @@ pub fn path_packages(
     let Some(url) = config.get("url").and_then(Value::as_str) else {
         bail!("You must specify the `url` configuration for the path repository");
     };
+    // Errors name the path as the manifest spells it: the expanded one can hold an environment value.
+    let spelled = url;
     let url = expand_path(url, env);
     let root_version = root_version(env);
     let mut options = match config.get("options") {
@@ -206,7 +208,7 @@ pub fn path_packages(
                 return Ok(vec![]);
             }
         }
-        bail!("The `url` supplied for the path ({url}) repository does not exist");
+        bail!("The `url` supplied for the path ({spelled}) repository does not exist");
     }
     let reference = options
         .get("reference")
@@ -778,5 +780,11 @@ mod tests {
         assert_eq!(expand_path("$UNSET/a", &env), "/a");
         assert_eq!(expand_path("~/a", &env), "/home/me/a");
         assert_eq!(expand_path("a/~", &env), "a/~");
+        let config = json!({"url": "$PUN_TEST_DIR/missing"});
+        let error = path_packages(Path::new("/"), config.as_object().unwrap(), &env).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "The `url` supplied for the path ($PUN_TEST_DIR/missing) repository does not exist"
+        );
     }
 }
