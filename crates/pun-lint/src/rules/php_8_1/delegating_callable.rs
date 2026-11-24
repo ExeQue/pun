@@ -90,7 +90,6 @@ pub(super) fn refactor(
     ));
 }
 
-#[expect(clippy::too_many_arguments, reason = "the guard's inputs")]
 fn should_skip(
     ctx: &Context<'_>,
     node: Node<'_, '_>,

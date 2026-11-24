@@ -83,8 +83,9 @@ impl Rule for PreferCoalesceAssignOverIf {
             node_span(r#if.condition).end,
             node_span(only).start,
         )
-        .map(|c| format!("{}\n{indent}", &ctx.source[c.start..c.end]))
-        .unwrap_or_default();
+        .map_or_else(String::new, |c| {
+            format!("{}\n{indent}", &ctx.source[c.start..c.end])
+        });
         let code = format!(
             "{kept}{} ??= {};",
             text(ctx, assign.lhs),

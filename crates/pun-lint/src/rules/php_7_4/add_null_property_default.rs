@@ -52,7 +52,7 @@ impl Rule for AddNullPropertyDefault {
         let test_case = is_test_case(&facts, &view);
         let mut path = ancestors.to_vec();
         path.push(node);
-        for member in class.members.iter() {
+        for member in &class.members {
             // A hooked property has hooks.
             let ClassLikeMember::Property(Property::Plain(property)) = member else {
                 continue;

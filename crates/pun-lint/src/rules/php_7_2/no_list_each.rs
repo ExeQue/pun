@@ -131,7 +131,7 @@ fn items<'a>(
     elements: &'a TokenSeparatedSequence<'a, ArrayElement<'a>>,
 ) -> Option<Vec<Option<&'a Expression<'a>>>> {
     let mut items = Vec::new();
-    for element in elements.iter() {
+    for element in elements {
         items.push(match element {
             ArrayElement::Value(v) => Some(v.value),
             ArrayElement::KeyValue(kv) => Some(kv.value),

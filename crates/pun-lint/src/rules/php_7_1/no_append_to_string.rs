@@ -194,7 +194,7 @@ fn refactor_assign(
 
 /// `refactorClass`: a property whose default is `''` and which a method or property hook appends to.
 fn refactor_class(members: &Sequence<'_, ClassLikeMember<'_>>, out: &mut Vec<Report>) {
-    for member in members.iter() {
+    for member in members {
         let ClassLikeMember::Property(Property::Plain(property)) = member else {
             continue;
         };

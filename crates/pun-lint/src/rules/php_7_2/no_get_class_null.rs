@@ -47,7 +47,7 @@ impl Rule for NoGetClassNull {
             // `TypeCombinator::containsNull()`.
             if !facts
                 .full_type(node_span(arg))
-                .is_some_and(|t| t.has_null())
+                .is_some_and(mago_codex::ttype::union::TUnion::has_null)
             {
                 continue;
             }

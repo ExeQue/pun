@@ -63,11 +63,9 @@ fn merge(ctx: &Context<'_>, run: &[TryCatchClause<'_>]) -> Report {
     for catch in run {
         flatten(ctx, &catch.hint, &mut types);
     }
-    let variable = run[0]
-        .variable
-        .as_ref()
-        .map(|v| format!(" {}", String::from_utf8_lossy(v.name)))
-        .unwrap_or_default();
+    let variable = run[0].variable.as_ref().map_or_else(String::new, |v| {
+        format!(" {}", String::from_utf8_lossy(v.name))
+    });
     let last = &run[run.len() - 1];
     let edit = Span::new(
         span(run[0].r#catch.span).start,
