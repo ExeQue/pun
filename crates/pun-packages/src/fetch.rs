@@ -3,7 +3,7 @@ use crate::php::sha1;
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
-use std::io::Read;
+use std::io::{Read, Write as _};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -490,15 +490,33 @@ impl Fetcher {
     }
 }
 
-/// Writes `bytes` to `path` through a temporary file, so a reader never sees half a file.
-pub(crate) fn store(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+/// Writes `bytes` to `path` through a temporary file, so a reader never sees half a file. The temporary file is
+/// created new (`O_EXCL`), so an entry already at its name, such as a link to another file, is never written through.
+pub fn store(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     std::fs::create_dir_all(path.parent().unwrap_or(Path::new("/")))?;
-    let mut tmp = path.as_os_str().to_owned();
-    tmp.push(format!(".{}.tmp", std::process::id()));
-    std::fs::write(&tmp, bytes)?;
-    std::fs::rename(&tmp, path).inspect_err(|_| {
-        let _ = std::fs::remove_file(&tmp);
-    })
+    let mut attempt = 0;
+    let (tmp, mut file) = loop {
+        let mut tmp = path.as_os_str().to_owned();
+        tmp.push(format!(".{}-{attempt}.tmp", std::process::id()));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&tmp)
+        {
+            Ok(file) => break (PathBuf::from(tmp), file),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists && attempt < 100 => {
+                attempt += 1;
+            }
+            Err(e) => return Err(e),
+        }
+    };
+    let written = file.write_all(bytes);
+    drop(file);
+    written
+        .and_then(|()| std::fs::rename(&tmp, path))
+        .inspect_err(|_| {
+            let _ = std::fs::remove_file(&tmp);
+        })
 }
 
 static METADATA: LazyLock<Regex> = LazyLock::new(|| {
@@ -898,6 +916,28 @@ mod tests {
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    /// Links planted at the temporary names a write uses (the process id is no secret) are neither written
+    /// through nor removed; the file still lands.
+    #[test]
+    fn store_never_writes_through_a_planted_temporary_name() {
+        let d = scratch("store-planted");
+        let (sentinel, path) = (d.join("sentinel"), d.join("composer.lock"));
+        std::fs::write(&sentinel, "kept").unwrap();
+        let pid = std::process::id();
+        let planted = [
+            d.join(format!("composer.lock.{pid}.tmp")),
+            d.join(format!("composer.lock.{pid}-0.tmp")),
+        ];
+        for link in &planted {
+            std::os::unix::fs::symlink(&sentinel, link).unwrap();
+        }
+        store(&path, b"new").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "new");
+        assert_eq!(std::fs::read_to_string(&sentinel).unwrap(), "kept");
+        assert!(planted.iter().all(|l| l.is_symlink()));
+        std::fs::remove_dir_all(&d).unwrap();
     }
 
     /// A black hole (an attempt that never connects within the race) costs one attempt delay, not a connect

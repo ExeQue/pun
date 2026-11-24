@@ -296,11 +296,10 @@ fn finish(
     result
 }
 
-/// Writes `text` to `path` through a temporary file beside it, so a reader never sees half of it.
+/// Writes `text` to `path` through a new temporary file beside it, so a reader never sees half of it and a link at
+/// the temporary name is never written through.
 fn write(path: &Path, text: &str) -> Result<()> {
-    let tmp = path.with_extension(format!("pun-{}.tmp", std::process::id()));
-    std::fs::write(&tmp, text).with_context(|| format!("can't write {}", tmp.display()))?;
-    std::fs::rename(&tmp, path).with_context(|| format!("can't write {}", path.display()))
+    fetch::store(path, text.as_bytes()).with_context(|| format!("can't write {}", path.display()))
 }
 
 fn restore(path: &Path, original: Option<&str>) -> Result<()> {
