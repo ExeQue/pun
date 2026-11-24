@@ -11,7 +11,7 @@ It replaces three things:
 
 | Upstream | What moves into lint |
 | --- | --- |
-| Rector (+ rector-laravel, rector-phpunit, rector-symfony, rector-doctrine, rector-downgrade-php, pest-plugin-rector) | every rule except the ones upstream deprecates and Rector's post-processors (../PLAN.md §2, 2026-11-23) |
+| Rector (+ rector-laravel, rector-phpunit, pest-plugin-rector) | every rule except the Symfony, Doctrine and downgrade ones, the ones upstream deprecates and Rector's post-processors (../PLAN.md §2) |
 | PHP-CS-Fixer / Pint | the risky fixers (risky rules are lint, format.md §4) and the code rules moved from format |
 | Mago's linter | its rules, as normal lint rules under Pun names |
 
@@ -65,11 +65,10 @@ The 821 lint rules (`python3 -I scripts/check-rule-mapping.py`; a merged rule co
 
 The groups are the topic groups shared with format (format.md §8, config.md Build 1); intent stays as data.
 
-Not ported yet, though in scope since 2026-11-23: the rector-symfony, rector-doctrine and rector-downgrade-php rules,
-and about 40 Rector core rules still marked `unsupported` in mapping.toml with an older reason (in no set, below
-php82, outside the eight prepared sets, Symfony/Doctrine/JMS/Behat). Until they are ported, `pun migrate` names each
-one as unsupported and skips it (migrate.md §3). Unsupported on purpose: deprecated rules, post-processors, rules
-whose input does not compile on PHP 8.4, and rules upstream registers in no set by mistake.
+Unsupported on purpose (../PLAN.md §2, 2026-11-24): the rector-symfony, rector-doctrine and rector-downgrade-php
+rules, the Symfony, Doctrine, JMS and Behat rules of Rector core, deprecated rules, post-processors, rules whose input
+does not compile on PHP 8.4, and rules upstream registers in no set by mistake. `pun migrate` names each one as
+unsupported and skips it (migrate.md §3). The other Rector rules still marked `unsupported` are being ported.
 
 ## 5. Rector's CLI, flag for flag
 
@@ -197,10 +196,9 @@ Pushpak's answers:
   - `--deny-warnings` makes warnings fail the run, and `--max-warnings <n>` fails above n warnings.
   - `-A` / `-W` / `-D <rule or group>` (allow / warn / deny) set a level for one run.
   - `[[lint.overrides]]` with `files = ["tests/**"]` changes levels for some paths.
-- **Every lint rule for 1.0 runs natively before 1.0.** Since 2026-11-23 that covers every
-  non-deprecated rule of Rector, rector-laravel, rector-phpunit, rector-symfony, rector-doctrine, rector-downgrade-php
-  and the Pest plugin, upgrade sets below the floor included (../PLAN.md §2); only deprecated rules and Rector's
-  post-processors stay unsupported. Porting order follows usage (Build 7), but 1.0 waits for all of them.
+- **Every lint rule for 1.0 runs natively before 1.0.** That covers every
+  non-deprecated rule of Rector, rector-laravel, rector-phpunit and the Pest plugin, upgrade sets below the floor
+  included, except the Symfony, Doctrine and downgrade rules and Rector's post-processors (../PLAN.md §2). Porting order follows usage (Build 7), but 1.0 waits for all of them.
 - **Mago's rules become normal lint rules**; `pun lint --mago` is gone.
 - **`pun lint --fix` doesn't format**; `pun check --fix` does lint, then format (commands.md §3).
 - **Unported rules are never delegated.** `pun migrate` names and skips them; a hand-written pun.toml that names one

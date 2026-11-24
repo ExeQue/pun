@@ -168,6 +168,10 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   with no Pest plugin or PHPUnit typing (analyse 7 moves after 1.0). A project that doesn't want them analysed
   excludes them by glob: `[analyse] exclude = ["tests/**"]` removes matching files from both the analysis and the
   symbol scan (PHPStan's `excludePaths.analyseAndScan`); vendor/ is still read for symbols.
+- **Symfony, Doctrine and downgrade rules stay out** (Pushpak, 2026-11-24; narrows "All of Rector but its deprecated
+  rules" of 2026-11-23): rector-symfony, rector-doctrine and rector-downgrade-php, and the Symfony/Doctrine/JMS/Behat
+  rules of Rector core, are not ported; `pun migrate` names them as unsupported. The other unported Rector rules
+  are being ported in another thread. `laravel/prefer-pivot-class` is undecided.
 - **Lint gets a ladder plus exact Rector sets** (Pushpak, 2026-11-24; replaces "lint presets are sets you tick" of
   2026-10-17): `[lint] preset` is one of Pun's own tiers, each including the one below (names and contents are the
   assistant's call), and `[lint] sets` takes `rector/<set>` sets that match the Rector set exactly. `pun migrate` writes
