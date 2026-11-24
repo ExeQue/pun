@@ -20,6 +20,10 @@ import tempfile
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "crates/pun-packages/tests/fixtures/resolver.json"
+RESOLVER_FLAGS = (
+    r"--(no-dev|no-install|prefer-lowest|prefer-stable|minimal-changes|with-dependencies|with-all-dependencies"
+    r"|ignore-platform-reqs|ignore-platform-req=[A-Za-z0-9_.*+-]+)"
+)
 
 
 def sections(text):
@@ -58,6 +62,9 @@ def main():
                 if lock is not None:
                     Path(project, "composer.lock").write_text(json.dumps(lock, indent=4))
                 flags = [a for a in args if a.startswith("-") and a != "-v"]
+                # Only resolver options: one like --working-dir would point Composer at another project.
+                if any(not re.fullmatch(RESOLVER_FLAGS, a) for a in flags):
+                    sys.exit(f"{path.name}: not a resolver option: {' '.join(flags)}")
                 names = [a for a in args if not a.startswith("-")]
                 result = composer(
                     ["update", *names, *flags, "--no-install", "--no-scripts", "--no-plugins", "--no-audit"],
