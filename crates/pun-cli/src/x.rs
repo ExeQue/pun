@@ -55,8 +55,16 @@ pub(crate) fn run(a: &XArgs) -> Result<Exit> {
     guard.lock().context("can't lock the tool's directory")?;
     ensure_installed(&dir, &name, &constraint)?;
     drop(guard);
-    let commands = commands(&dir, &name)?;
+    let (commands, others) = commands(&dir, &name)?;
     let (command, args) = pick(&name, &commands, alias_command, rest)?;
+    // vendor/bin is shared: a dependency that declares the same name gets the proxy first (Composer installs
+    // dependencies first), so running it would run the dependency's command, not the package's.
+    if let Some(other) = others.iter().find(|(_, c)| c == command) {
+        bail!(
+            "{} also declares the command {command}, so vendor/bin/{command} may not be {name}'s; not running it",
+            other.0
+        );
+    }
     exec(&dir.join("vendor/bin").join(command), args)
 }
 
@@ -72,8 +80,10 @@ fn package(spec: &str) -> Result<(String, String, Option<&'static str>)> {
         return Ok((package.to_string(), constraint.to_string(), Some(command)));
     }
     let valid = name.split_once('/').is_some_and(|(vendor, package)| {
+        // As Composer's name pattern, each part starts with a letter or digit, so `.` and `..` can't lead the
+        // tool's directory out of the cache.
         let part = |s: &str| {
-            !s.is_empty()
+            s.bytes().next().is_some_and(|c| c.is_ascii_alphanumeric())
                 && s.bytes()
                     .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.'))
         };
@@ -93,17 +103,19 @@ pub(crate) fn cache_dir() -> Result<PathBuf> {
     pun_config::cache_dir().context("HOME is not set; set PUN_CACHE_DIR")
 }
 
-/// The directory a package installs into for one constraint, which is percent-encoded into the name.
+/// The directory a package installs into for one constraint, which is percent-encoded into the name. A leading `.`
+/// is encoded too, so a constraint of `.` or `..` names a directory of its own, not this one or its parent.
 fn tool_dir(name: &str, constraint: &str) -> Result<PathBuf> {
     let mut version = String::new();
-    for b in (if constraint == "*" {
+    for (i, b) in (if constraint == "*" {
         "latest"
     } else {
         constraint
     })
     .bytes()
+    .enumerate()
     {
-        if b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_') {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_') || (b == b'.' && i > 0) {
             version.push(char::from(b));
         } else {
             let _ = write!(version, "%{b:02X}");
@@ -274,9 +286,18 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
                 .and_then(|f| f.set_modified(SystemTime::now()));
             Ok(())
         }
-        Ok(_) | Err(_) if installed => {
+        // Only a refresh that couldn't run (no network, a repository gone) falls back on the install. One the
+        // solver refused may have refused the installed version too, such as a release on a malware list, so the
+        // install isn't run.
+        Err(_) if installed => {
             eprintln!(" ! couldn't look for a newer {name}, so this run uses the one installed");
             Ok(())
+        }
+        Ok(code) if installed => {
+            bail!(
+                "{name} can't be refreshed (exit {}), so the one installed isn't run",
+                code as u8
+            )
         }
         result => {
             let _ = std::fs::remove_dir_all(dir);
@@ -289,18 +310,30 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
     }
 }
 
-/// The commands the installed package declares (its `bin` entries, by file name).
-fn commands(dir: &Path, name: &str) -> Result<Vec<String>> {
+/// The commands the installed package declares (its `bin` entries, by file name), and the (package, command) pairs
+/// the other installed packages declare.
+#[expect(
+    clippy::type_complexity,
+    reason = "the package's commands and the others'"
+)]
+fn commands(dir: &Path, name: &str) -> Result<(Vec<String>, Vec<(String, String)>)> {
     let path = dir.join("vendor/composer/installed.json");
     let text =
         std::fs::read_to_string(&path).with_context(|| format!("can't read {}", path.display()))?;
     let installed: Installed = serde_json::from_str(&text).context("invalid installed.json")?;
+    let names = |p: &InstalledPackage| -> Vec<String> {
+        (p.bin.iter())
+            .filter_map(|b| Path::new(b).file_name())
+            .map(|b| b.to_string_lossy().into_owned())
+            .collect()
+    };
+    let others = (installed.packages.iter())
+        .filter(|p| p.name != name)
+        .flat_map(|p| names(p).into_iter().map(|c| (p.name.clone(), c)))
+        .collect();
     let package = (installed.into_package(name))
         .with_context(|| format!("{name} is not in {}", path.display()))?;
-    Ok((package.bin.iter())
-        .filter_map(|b| Path::new(b).file_name())
-        .map(|b| b.to_string_lossy().into_owned())
-        .collect())
+    Ok((names(&package), others))
 }
 
 /// The command to run and its arguments, as cpx picks it: a first argument naming one of the commands, the

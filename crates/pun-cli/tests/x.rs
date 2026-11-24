@@ -130,6 +130,22 @@ fn runs_a_packages_command() {
     assert_eq!(out, "No packages are installed.\n");
     let (out, err, code) = run(&punx, &work, &home, &["clean", "not-a-package"]);
     assert_eq!((out.as_str(), code), ("", Some(2)), "{err}");
+
+    // `..` as a name part is refused; as a constraint it gets a directory of its own, so the failed install it
+    // removes is not the package's directory (here holding a sentinel).
+    for spec in ["../..", "acme/..", "../tool"] {
+        let (out, err, code) = run(&punx, &work, &home, &[spec]);
+        assert_eq!((out.as_str(), code), ("", Some(2)), "{err}");
+        assert!(err.contains("is not a package name"), "{err}");
+    }
+    write_files(&home, &[("cache/x/acme/missing/sentinel", "kept")]);
+    let (_, err, code) = run(&punx, &work, &home, &["acme/missing:.."]);
+    assert_eq!(code, Some(2), "{err}");
+    assert_eq!(
+        std::fs::read_to_string(home.join("cache/x/acme/missing/sentinel")).unwrap(),
+        "kept"
+    );
+    assert!(!home.join("cache/x/acme/missing/composer.json").exists());
 }
 
 #[test]
@@ -195,6 +211,19 @@ fn refreshes_a_day_old_install() {
     assert!(err.contains("acme/nobin has no commands to run"), "{err}");
     assert!(age() > 2 * day && dir.join("vendor/composer/installed.json").is_file());
 
+    // A refresh the solver refuses, here because the installed release is now on a malware list, doesn't fall back
+    // on the install: that release is the one refused.
+    let listed = r#"{"repositories": [{"type": "package", "package": [{"name": "acme/nobin", "version": "1.0.0"}],
+        "filter": {"malware": [{"package": "acme/nobin", "constraint": "*"}]}}, {"packagist.org": false}]}"#;
+    write_files(&home, &[("composer/config.json", listed)]);
+    let (_, err, code) = run(&punx, &work, &home, &["acme/nobin"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains("acme/nobin can't be refreshed (exit 2), so the one installed isn't run"),
+        "{err}"
+    );
+    assert!(!err.contains("has no commands to run"), "{err}");
+
     // A broken install that the run can't repair is removed, so the next run starts over.
     write_files(
         &home,
@@ -258,6 +287,23 @@ fn picks_the_command_to_run() {
     let err = error(&["acme/multi@^1.0 || >=9"]);
     assert!(
         err.contains("acme/multi has 2 commands (alpha, beta): name one after the package, as in `punx acme/multi alpha`"),
+        "{err}"
+    );
+
+    // A dependency declaring the same command has vendor/bin/<command>: it is not run in the package's place.
+    let shadowed = installed(&cache, "acme/shadowed", "latest", &["bin/tool"]);
+    let json = serde_json::json!({"packages": [
+        {"name": "evil/dep", "version": "1.0.0", "bin": ["bin/tool"]},
+        {"name": "acme/shadowed", "version": "1.0.0", "bin": ["bin/tool"]},
+    ]});
+    std::fs::write(
+        shadowed.join("vendor/composer/installed.json"),
+        json.to_string(),
+    )
+    .unwrap();
+    let err = error(&["acme/shadowed"]);
+    assert!(
+        err.contains("evil/dep also declares the command tool, so vendor/bin/tool may not be acme/shadowed's; not running it"),
         "{err}"
     );
 
