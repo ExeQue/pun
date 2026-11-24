@@ -21,6 +21,11 @@ pub struct ComposerRepository<'a> {
     cache: Option<PathBuf>,
     metadata_url: String,
     notify: Option<String>,
+    /// Whether the root advertises policy data in its per-package files (`filter.metadata` and
+    /// `security-advisories.metadata`): Composer then reads those files for every package in the pool, not only the
+    /// ones this repository supplied.
+    filter_metadata: bool,
+    advisory_metadata: bool,
     files: HashMap<String, Option<File>>,
 }
 
@@ -123,6 +128,8 @@ impl<'a> ComposerRepository<'a> {
             cache,
             metadata_url: String::new(),
             notify: None,
+            filter_metadata: false,
+            advisory_metadata: false,
             files: HashMap::new(),
         }
     }
@@ -145,6 +152,39 @@ impl<'a> ComposerRepository<'a> {
             .and_then(Value::as_str)
             .filter(|s| !s.is_empty())
             .map(|n| canonical(&url, n));
+        let flag = |key: &str| root.get(key).and_then(|f| f.get("metadata")) == Some(&Value::Bool(true));
+        self.filter_metadata = flag("filter");
+        self.advisory_metadata = flag("security-advisories");
+        Ok(())
+    }
+
+    /// Fetches the per-package files of `names` not read yet, as Composer's `getFilter` and
+    /// `getSecurityAdvisories` do for the packages in the pool: a package locked by a partial update, or supplied by
+    /// another repository, is still checked against this repository's lists.
+    fn fetch_missing(&mut self, names: &[String]) -> Result<()> {
+        let jobs: Vec<(String, String, Option<PathBuf>)> = (names.iter())
+            .filter(|n| !is_platform(n) && *n != "__root__" && !self.files.contains_key(*n))
+            .map(|name| {
+                let url = self.metadata_url.replace("%package%", name);
+                let key = format!("provider-{}.json", name.replace('/', "~"));
+                (name.clone(), url, self.cache_path(&key))
+            })
+            .collect();
+        for (file, data) in fetch_all(self.fetcher, jobs) {
+            self.files.insert(file, data?);
+        }
+        Ok(())
+    }
+
+    /// Reads the root and the files of `names` when the root says its files carry `which` policy data.
+    fn policy_files(&mut self, names: &[String], which: fn(&Self) -> bool) -> Result<()> {
+        if names.is_empty() {
+            return Ok(());
+        }
+        self.root()?;
+        if which(self) {
+            self.fetch_missing(names)?;
+        }
         Ok(())
     }
 
@@ -535,6 +575,7 @@ impl Repository for ComposerRepository<'_> {
     }
 
     fn advisories(&mut self, names: &[String]) -> Result<Vec<Advisory>> {
+        self.policy_files(names, |r| r.advisory_metadata)?;
         let mut out = vec![];
         for name in names {
             let Some(Some(data)) = self.files.get(name) else {
@@ -555,6 +596,7 @@ impl Repository for ComposerRepository<'_> {
     }
 
     fn list_entries(&mut self, names: &[String]) -> Result<Vec<ListEntry>> {
+        self.policy_files(names, |r| r.filter_metadata)?;
         let mut out = vec![];
         for name in names {
             let Some(Some(data)) = self.files.get(name) else {
@@ -794,6 +836,66 @@ mod tests {
             Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
         };
         run().map_err(|e| format!("{e:#}"))
+    }
+
+    fn resolve_with(
+        fetcher: &Fetcher,
+        manifest: &Map<String, Value>,
+        lock: Option<&Value>,
+        allow: &[&str],
+    ) -> Result<String, String> {
+        use super::super::{Options, locker, repos, resolve};
+        let options = Options {
+            allow_list: allow.iter().map(|a| (*a).to_string()).collect(),
+            ..Options::default()
+        };
+        let lock = lock.map(|l| crate::lock::Lock::from_composer_lock(&l.to_string()).unwrap());
+        let no_env = |_: &str| None;
+        let run = || -> Result<String> {
+            let repositories =
+                repos::open(std::path::Path::new("."), manifest, None, fetcher, &no_env)?;
+            let php = json!({"name": "php", "version": "8.5.0"});
+            let platform = vec![php.as_object().unwrap().clone()];
+            let resolved =
+                resolve(manifest, platform, repositories, lock.as_ref(), &options, &no_env)?;
+            let resolution = resolved.map_err(|_| crate::error::Error::msg("no solution"))?;
+            Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
+        };
+        run().map_err(|e| format!("{e:#}"))
+    }
+
+    /// The repository's malware list reaches a package the update keeps from the lock, and one another repository
+    /// supplies, as Composer's `FilterListPoolFilter` asks every repository about every package in the pool.
+    #[test]
+    fn lists_cover_kept_and_foreign_packages() {
+        let (base, seen, _) = serve(&[]);
+        let fetcher = Fetcher::new(None, crate::fetch::Auth::default(), false);
+        let manifest = manifest(&base, json!({"acme/insecure": "^1.0", "acme/listed": "^1.0"}));
+        let lock = |listed: &str| {
+            json!({"content-hash": "x", "packages-dev": [], "packages": [
+                {"name": "acme/insecure", "version": "1.0.0", "type": "library"},
+                {"name": "acme/listed", "version": listed, "type": "library"}
+            ]})
+        };
+        assert_eq!(
+            resolve_with(&fetcher, &manifest, Some(&lock("1.0.1")), &["acme/insecure"]).unwrap_err(),
+            "no solution"
+        );
+        assert!(requests(&seen).contains(&("/p2/acme/listed.json".into(), None)));
+        let kept = resolve_with(&fetcher, &manifest, Some(&lock("1.0.0")), &["acme/insecure"]).unwrap();
+        assert!(kept.contains("\"version\": \"1.0.0\""), "{kept}");
+
+        let mut foreign = manifest.clone();
+        foreign["repositories"] = json!([
+            {"type": "package", "package": [{"name": "acme/listed", "version": "1.0.1"}]},
+            {"type": "composer", "url": base}, {"packagist.org": false}
+        ]);
+        foreign["require"] = json!({"acme/listed": "1.0.1"});
+        assert_eq!(
+            resolve_with(&fetcher, &foreign, None, &[]).unwrap_err(),
+            "no solution"
+        );
+        requests(&seen);
     }
 
     fn requests(seen: &Seen) -> Vec<(String, Option<String>)> {

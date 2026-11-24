@@ -213,6 +213,16 @@ pub fn filtered<'a>(
     }))
 }
 
+impl Filtered<'_> {
+    fn allowed(&self, name: &str) -> bool {
+        match (&self.only, &self.exclude) {
+            (Some(only), _) => only.iter().any(|p| name_matches(p, name)),
+            (_, Some(exclude)) => !exclude.iter().any(|p| name_matches(p, name)),
+            _ => true,
+        }
+    }
+}
+
 impl Repository for Filtered<'_> {
     fn load(
         &mut self,
@@ -222,13 +232,8 @@ impl Repository for Filtered<'_> {
         stabilities: &Stabilities,
         loaded: &Loaded,
     ) -> Result<Found> {
-        let allowed = |name: &str| match (&self.only, &self.exclude) {
-            (Some(only), _) => only.iter().any(|p| name_matches(p, name)),
-            (_, Some(exclude)) => !exclude.iter().any(|p| name_matches(p, name)),
-            _ => true,
-        };
         let batch: Vec<(String, Constraint)> =
-            batch.iter().filter(|(n, _)| allowed(n)).cloned().collect();
+            batch.iter().filter(|(n, _)| self.allowed(n)).cloned().collect();
         if batch.is_empty() {
             return Ok(Found {
                 names: vec![],
@@ -242,12 +247,18 @@ impl Repository for Filtered<'_> {
         Ok(found)
     }
 
+    /// As Composer's `FilterRepository`, only the names the repository may supply are asked for, and an entry for
+    /// another name cannot remove a package another repository supplies.
     fn advisories(&mut self, names: &[String]) -> Result<Vec<Advisory>> {
-        self.inner.advisories(names)
+        let names: Vec<String> = names.iter().filter(|n| self.allowed(n)).cloned().collect();
+        let found = self.inner.advisories(&names)?;
+        Ok(found.into_iter().filter(|a| self.allowed(&a.package)).collect())
     }
 
     fn list_entries(&mut self, names: &[String]) -> Result<Vec<ListEntry>> {
-        self.inner.list_entries(names)
+        let names: Vec<String> = names.iter().filter(|n| self.allowed(n)).cloned().collect();
+        let found = self.inner.list_entries(&names)?;
+        Ok(found.into_iter().filter(|e| self.allowed(&e.package)).collect())
     }
 }
 
@@ -545,7 +556,12 @@ impl<'a> PoolBuilder<'a> {
         let f = self.filters;
         let mut names = indexmap::IndexSet::new();
         for &p in &packages {
-            names.extend(arena[p].names(false).into_iter().map(String::from));
+            // As Composer's pool filters, the repositories are asked about the name of each package in the pool,
+            // except the root and platform packages.
+            if matches!(arena[p].origin, Origin::Root | Origin::Platform) || is_platform(&arena[p].name) {
+                continue;
+            }
+            names.insert(arena[p].name.clone());
         }
         let names: Vec<String> = names.into_iter().collect();
         let (mut advisories, mut entries) = (vec![], vec![]);

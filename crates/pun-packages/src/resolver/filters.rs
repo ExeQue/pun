@@ -384,8 +384,10 @@ impl Filters {
         self.advisories
     }
 
+    /// Whether an update reads list entries: an update-scoped list checks the new packages, and an install-scoped
+    /// one the packages the lock keeps, as Composer's `createFilterListPoolFilter` and `FilterListPoolFilter`.
     pub fn wants_lists(&self) -> bool {
-        self.lists.iter().any(|l| l.block && l.scope != "install")
+        self.lists.iter().any(|l| l.block)
     }
 
     fn advisory_ignored(&self, a: &Advisory) -> bool {

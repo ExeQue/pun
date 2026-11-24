@@ -675,6 +675,66 @@ mod tests {
         );
     }
 
+    /// An install-scoped list still checks the packages a partial update keeps from the lock, as Composer's
+    /// `FilterListPoolFilter` does in the update scope.
+    #[test]
+    fn install_scoped_lists_check_the_kept_packages() {
+        let m = |scope: &str| {
+            json!({"require": {"a/a": "*", "b/b": "*"},
+                "config": {"policy": {"malware": {"block-scope": scope}}},
+                "repositories": [{"type": "package", "package": [
+                    {"name": "a/a", "version": "1.0.0"}, {"name": "b/b", "version": "1.0.0"}],
+                    "filter": {"malware": [{"package": "a/a", "constraint": "1.0.0"}]}},
+                    {"packagist.org": false}]})
+        };
+        let lock = json!({"content-hash": "x", "packages-dev": [], "packages": [
+            {"name": "a/a", "version": "1.0.0", "type": "library"},
+            {"name": "b/b", "version": "1.0.0", "type": "library"}
+        ]});
+        let options = Options {
+            allow_list: vec!["b/b".into()],
+            ..Options::default()
+        };
+        for scope in ["install", "all"] {
+            assert_eq!(
+                update(m(scope), Some(lock.clone()), &options).unwrap_err(),
+                "no solution",
+                "{scope}"
+            );
+        }
+        assert_eq!(
+            update(m("update"), Some(lock), &options).unwrap()[0],
+            json!([["a/a", "1.0.0"], ["b/b", "1.0.0"]])
+        );
+    }
+
+    /// A repository limited by `only` cannot list a package outside those names, as Composer's `FilterRepository`.
+    #[test]
+    fn restricted_repositories_list_only_their_names() {
+        let m = |name: &str| {
+            json!({"require": {"a/a": "*"}, "repositories": [
+                {"type": "package", "package": [{"name": "x/x", "version": "1.0.0"}], "only": ["x/*"],
+                 "filter": {"malware": [{"package": name, "constraint": "*"}]}},
+                {"type": "package", "package": [{"name": "a/a", "version": "1.0.0"}],
+                 "filter": {"malware": [{"package": "a/a", "constraint": "2.0.0"}]}},
+                {"packagist.org": false}
+            ]})
+        };
+        assert_eq!(
+            update(m("a/a"), None, &Options::default()).unwrap()[0],
+            json!([["a/a", "1.0.0"]])
+        );
+        let m = json!({"require": {"x/x": "*"}, "repositories": [
+            {"type": "package", "package": [{"name": "x/x", "version": "1.0.0"}], "only": ["x/*"],
+             "filter": {"malware": [{"package": "x/x", "constraint": "*"}]}},
+            {"packagist.org": false}
+        ]});
+        assert_eq!(
+            update(m, None, &Options::default()).unwrap_err(),
+            "no solution"
+        );
+    }
+
     #[test]
     fn sets_root_references_as_composer() {
         let m = json!({"minimum-stability": "dev", "require": {"a/a": "dev-main#abc", "b/b": "dev-main#def"},
