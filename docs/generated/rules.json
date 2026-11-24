@@ -6930,6 +6930,25 @@
       "ported": true
     },
     {
+      "id": "lint/laravel-8/prefer-factory-classes",
+      "command": "lint",
+      "group": "laravel-8",
+      "summary": "Upgrade legacy factories to support classes.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "FactoryDefinition",
+        "FactoryDefinitionRector",
+        "RectorLaravel\\Rector\\Namespace_\\FactoryDefinitionRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel-8/prefer-factory-state-methods",
       "command": "lint",
       "group": "laravel-8",

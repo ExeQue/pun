@@ -4,7 +4,9 @@
 //! (tests/rector-laravel-stubs) known beside them. Oracle/ holds extra inputs with what Rector 2.8.4 and
 //! rector-laravel 2.7.3 (`.oracle/rector-ecosystem`, the rule alone, `phpVersion(80400)`, the stubs and Source/ on
 //! `withAutoloadPaths`, laravel/framework 13 in `vendor/composer/installed.json`) wrote for them. A fixture is
-//! `input -----\n expected`, or only the input when the rule must not change it.
+//! `input -----\n expected`, or only the input when the rule must not change it. FactoryDefinitionRector's
+//! Fixture/WithoutConfiguration and Fixture/Configured are Fixture and FixtureConfigured here, the second run with the
+//! configuration of its configured_rule_with_configuration.php.
 //!
 //! Pun/ holds the documented cases where Pun differs. UnifyModelDatesWithCastsRector/Pun/skip_constant_date: Pun reads
 //! only string literals in `$dates` and leaves a model that names a class constant alone, where Rector resolves the
@@ -12,14 +14,14 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::common::run_class_paths;
+use crate::common::{run_class_paths, run_dirs};
 use pun_lint::Rule;
 use pun_lint::rules::{
     AddArgumentDefault, AddLoginEventGuard, AddMockConsoleOutputFalse, AddParentBootCall,
     AddParentRegisterCall, AddWhereTime, NoExpressionStringCast, NoExpressionToString,
     NoFakerPropertyAccess, PreferAssertSeeHtml, PreferAssertSentTimes, PreferAttributeAccessor,
     PreferCastsMethodFix, PreferComputedAttribute, PreferDateCasts, PreferDeferrableProvider,
-    PreferDispatchSync, PreferFacadeFake, PreferFactoryStateMethods,
+    PreferDispatchSync, PreferFacadeFake, PreferFactoryClasses, PreferFactoryStateMethods,
     PreferFakeHelper, PreferFakeOverExpects, PreferGeometryColumn, PreferMiddlewareArray,
     PreferModelFactoryMethod, PreferPermanentRedirect, PreferQueueableTrait, PreferStripeMethod,
     PreferUrlAttribute, PreferUsesArray, ReplaceEventStringWithConstant,
@@ -256,5 +258,26 @@ fn event_string_to_class_constant() {
             {"string": "auth.logout", "class": "Illuminate\\Auth\\Events\\Logout", "constant": "class"},
         ]}),
         "EventStringToClassConstantRector",
+    );
+}
+
+#[test]
+fn factory_definition() {
+    check(PreferFactoryClasses::default(), "FactoryDefinitionRector");
+    let mut configured = PreferFactoryClasses::default();
+    configured
+        .configure(&serde_json::json!({"items": [
+            "RectorLaravel\\Tests\\Rector\\Namespace_\\FactoryDefinitionRector\\Fixture\\Configured\\Model",
+            "App\\User",
+            "RectorLaravel\\Tests\\Rector\\Namespace_\\FactoryDefinitionRector\\Fixture\\Configured\\Account",
+            "RectorLaravel\\Tests\\Rector\\Namespace_\\FactoryDefinitionRector\\Source\\Model",
+        ]}))
+        .unwrap();
+    run_dirs(
+        vec![Box::new(configured)],
+        "FactoryDefinitionRector",
+        &["FixtureConfigured"],
+        80400,
+        &[&stubs()],
     );
 }
