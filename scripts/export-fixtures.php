@@ -48,6 +48,11 @@ foreach (json_decode(file_get_contents($effective), true)['fixers'] as $fixer) {
         fwrite(STDERR, "skip {$fixer['name']}: no upstream test class\n");
         continue;
     }
+    // The name becomes a file name in $outDir; PHP-CS-Fixer's names are snake_case.
+    if (! preg_match('/^[a-z0-9_]+$/', $fixer['name'])) {
+        fwrite(STDERR, "not a fixer name: {$fixer['name']}\n");
+        exit(1);
+    }
     $rc = new ReflectionClass($testClass);
     $tests = [];
     $total = 0;
