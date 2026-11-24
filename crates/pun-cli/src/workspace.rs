@@ -59,10 +59,21 @@ fn globs(root: &Path) -> Result<Option<Vec<String>>> {
 /// repository fails on a glob whose directory doesn't exist.
 fn load(root: &Path, globs: Vec<String>) -> Result<Workspace> {
     let (mut members, mut matching): (Vec<Member>, Vec<String>) = (vec![], vec![]);
+    let real_root =
+        std::fs::canonicalize(root).with_context(|| format!("can't open {}", root.display()))?;
     for glob in globs {
         let mut matches = false;
         for dir in expand(root, &glob) {
             let Some(name) = name_of(&dir)? else { continue };
+            // A member is a folder of this repo: one reached through `..` or a link elsewhere would let a member's
+            // `require -p` edit another checkout's composer.json.
+            if !std::fs::canonicalize(&dir).is_ok_and(|real| real.starts_with(&real_root)) {
+                bail!(
+                    "the workspace member {name} in {} is outside the workspace root {}",
+                    dir.display(),
+                    root.display()
+                );
+            }
             matches = true;
             if let Some(other) = members.iter().find(|m| m.name == name && m.dir != dir) {
                 bail!(
@@ -128,19 +139,32 @@ fn expand(root: &Path, glob: &str) -> Vec<PathBuf> {
     dirs
 }
 
+/// Whether `name` matches `pattern`, where `*` is any run of bytes and `?` any one byte. On a mismatch only the
+/// last `*` takes one more byte, so a match costs at most `pattern.len() * name.len()` steps, however many stars.
 fn wildcard(pattern: &[u8], name: &[u8]) -> bool {
-    match (pattern.split_first(), name.split_first()) {
-        (None, None) => true,
-        (Some((b'*', rest)), _) => {
-            wildcard(rest, name)
-                || name
-                    .split_first()
-                    .is_some_and(|(_, n)| wildcard(pattern, n))
+    let (mut p, mut n) = (0, 0);
+    let mut star: Option<(usize, usize)> = None;
+    while n < name.len() {
+        match pattern.get(p) {
+            Some(b'*') => {
+                star = Some((p, n));
+                p += 1;
+            }
+            Some(&c) if c == b'?' || c == name[n] => {
+                p += 1;
+                n += 1;
+            }
+            _ => match star {
+                Some((sp, sn)) => {
+                    star = Some((sp, sn + 1));
+                    p = sp + 1;
+                    n = sn + 1;
+                }
+                None => return false,
+            },
         }
-        (Some((b'?', rest)), Some((_, n))) => wildcard(rest, n),
-        (Some((p, rest)), Some((c, n))) => p == c && wildcard(rest, n),
-        _ => false,
     }
+    pattern[p..].iter().all(|&c| c == b'*')
 }
 
 impl Workspace {
@@ -211,6 +235,12 @@ mod tests {
             ("b?lling", "blling", false),
             ("*x*", "billing", false),
             ("billing", "billings", false),
+            ("", "", true),
+            ("**", "", true),
+            ("?", "", false),
+            ("b*l*g", "billing", true),
+            ("*l?n*", "billing", true),
+            ("b*?", "b", false),
         ] {
             assert_eq!(
                 wildcard(pattern.as_bytes(), name.as_bytes()),
@@ -218,5 +248,17 @@ mod tests {
                 "{pattern} {name}"
             );
         }
+    }
+
+    /// A segment with many stars against a long name that misses at the end: backtracking into every star took
+    /// exponential time; this returns at once.
+    #[test]
+    fn many_stars_match_in_polynomial_time() {
+        let pattern = "*a".repeat(30) + "b";
+        let name = "a".repeat(200);
+        let started = std::time::Instant::now();
+        assert!(!wildcard(pattern.as_bytes(), name.as_bytes()));
+        assert!(wildcard(pattern.as_bytes(), (name + "b").as_bytes()));
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
     }
 }

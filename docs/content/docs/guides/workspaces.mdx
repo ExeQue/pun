@@ -34,6 +34,7 @@ That's it. Pun links each member into `vendor/`, so members can require each oth
 - A folder without a `composer.json` is skipped.
 - Every member needs a `name`, and no two can share one.
 - `*` in a glob matches one folder name, not nested ones.
+- Members must live inside the workspace root. A glob such as `../other/*`, or a symlink to a folder outside the root, is an error.
 - The root doesn't need its own `composer.json`. Add one only for root-level requirements.
 
 ## Working inside a member

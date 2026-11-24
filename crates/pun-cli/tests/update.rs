@@ -770,6 +770,14 @@ fn workspaces_follow_the_guide() {
                 root.join("packages/twin").display()
             ),
         ),
+        (
+            &[("pun.toml", "[workspace]\nmembers = [\"packages/*\", \"../ext/*\"]\n")],
+            format!(
+                "the workspace member ext/log in {} is outside the workspace root {}",
+                root.join("../ext/log").display(),
+                root.display()
+            ),
+        ),
     ] {
         let before: Vec<(String, Option<String>)> = (files.iter())
             .map(|(f, _)| (f.to_string(), std::fs::read_to_string(root.join(f)).ok()))
@@ -785,6 +793,25 @@ fn workspaces_follow_the_guide() {
             }
         }
     }
+
+    // A member linked in from outside the repo is refused too, so `require -p` can't edit its composer.json.
+    let ext = read(&root, "../ext/log/composer.json");
+    std::os::unix::fs::symlink(d.join("ext/log"), root.join("packages/log")).unwrap();
+    let (_, err, code) = pun(
+        &root,
+        &["require", "-p", "ext/log", "acme/core", "--no-install"],
+    );
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains(&format!(
+            "the workspace member ext/log in {} is outside the workspace root {}",
+            root.join("packages/log").display(),
+            root.display()
+        )),
+        "{err}"
+    );
+    assert_eq!(read(&root, "../ext/log/composer.json"), ext);
+    std::fs::remove_file(root.join("packages/log")).unwrap();
 
     // The root needs no composer.json; one whose `require` isn't an object (Composer's schema rejects it) holds no
     // requirements, as without one.
