@@ -124,7 +124,7 @@ fn fake_gh(home: &Path, verify_exit: u8) -> PathBuf {
     std::fs::create_dir_all(&bin).unwrap();
     let log = home.join(format!("gh-{verify_exit}.log"));
     let script = format!(
-        "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nprintf '%s\\n' \"$@\" > '{log}'\n/bin/cp \"$3\" '{log}.archive'\nexit {verify_exit}\n",
+        "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nprintf '%s\\n' \"$@\" > '{log}'\n/bin/cp \"$3\" '{log}.archive'\n/bin/ls -ld \"${{3%/*}}\" > '{log}.dir'\nexit {verify_exit}\n",
         log = log.display()
     );
     let gh = bin.join("gh");
@@ -447,5 +447,8 @@ fn installs_a_verified_release() {
     );
     assert!(file.starts_with(&tmp.display().to_string()), "{file}");
     assert_eq!(std::fs::read(home.join("gh-0.log.archive")).unwrap(), new);
+    // The archive gh reads sits in a directory only this user can enter, new for this run.
+    let dir = std::fs::read_to_string(home.join("gh-0.log.dir")).unwrap();
+    assert!(dir.starts_with("drwx------"), "{dir}");
     assert_eq!(files(&tmp), Vec::<String>::new());
 }

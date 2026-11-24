@@ -1086,20 +1086,64 @@ fn process_file(
     })
 }
 
+/// Swaps `bytes` in for the file at `path` through a private sibling that takes the file's group and mode before the
+/// rename. Without such a sibling (a read-only directory, or a group the sibling can't take) the file is rewritten in
+/// place, which keeps its inode and so its owner, group and mode.
 fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
+    use std::os::unix::fs::MetadataExt;
     let target = std::fs::OpenOptions::new().write(true).open(path)?;
-    let mode = target.metadata()?.permissions();
+    let meta = target.metadata()?;
     drop(target);
-    let name = path.file_name().unwrap_or_default().to_string_lossy();
-    let tmp = path.with_file_name(format!(".{name}.pun-{}", std::process::id()));
-    let Ok(mut file) = std::fs::File::create(&tmp) else {
+    let Ok((tmp, mut file)) = private_sibling(path) else {
         return std::fs::write(path, bytes);
     };
+    let grouped = file.metadata().is_ok_and(|m| m.gid() == meta.gid())
+        || std::os::unix::fs::fchown(&file, None, Some(meta.gid())).is_ok();
+    if !grouped {
+        drop(file);
+        drop(std::fs::remove_file(&tmp));
+        return std::fs::write(path, bytes);
+    }
     let written = (file.write_all(bytes))
-        .and_then(|()| file.set_permissions(mode))
+        .and_then(|()| file.set_permissions(meta.permissions()))
         .and_then(|()| std::fs::rename(&tmp, path));
     written.inspect_err(|_| drop(std::fs::remove_file(&tmp)))
+}
+
+/// Writes a file Pun generates (a report, a baseline) at `path`, unless `path` is a symlink in the project (the
+/// current directory) that leads out of it, or nowhere: a checkout can carry such a link to aim the write elsewhere.
+/// A link outside the project, such as `/dev/stdout`, is the caller's own choice and is written through.
+pub(crate) fn write_generated(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let root = std::env::current_dir()?.canonicalize()?;
+    let abs = root.join(path);
+    let linked = abs
+        .symlink_metadata()
+        .is_ok_and(|m| m.file_type().is_symlink());
+    let in_project =
+        (abs.parent().and_then(|p| p.canonicalize().ok())).is_some_and(|p| p.starts_with(&root));
+    if linked && in_project && crate::finder::leaves(&root, &abs) {
+        return Err(std::io::Error::other(
+            "it is a symlink that leads outside the project",
+        ));
+    }
+    std::fs::write(path, bytes)
+}
+
+/// A new file beside `path` that only its owner can open, under a random name. It is created exclusively, so an entry
+/// already at that name (a planted symlink included) fails the call instead of receiving the write.
+pub(crate) fn private_sibling(path: &Path) -> std::io::Result<(PathBuf, std::fs::File)> {
+    use std::hash::{BuildHasher, Hasher};
+    use std::os::unix::fs::OpenOptionsExt;
+    let name = path.file_name().unwrap_or_default().to_string_lossy();
+    let random = std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish();
+    let tmp = path.with_file_name(format!(".{name}.pun-{}-{random:016x}", std::process::id()));
+    let file = (std::fs::OpenOptions::new().write(true).create_new(true))
+        .mode(0o600)
+        .open(&tmp)?;
+    Ok((tmp, file))
 }
 
 fn add_findings(results: &mut Vec<FileResult>, analysed: &crate::analyse::Analysed, root: &Path) {
@@ -1299,6 +1343,67 @@ mod tests {
         assert!(super::replace(&file, b"refused").is_err());
         assert_eq!(std::fs::read(&file).unwrap(), b"in place");
         assert_eq!(names(), ["a.php"]);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// The staging file is new, owner-only and never an entry that was already there: a symlink planted at the name
+    /// staging once used (`.a.php.pun-<pid>`) leaves its target alone, and the sibling starts at 0600 whatever the mode
+    /// of the file it stands in for.
+    #[test]
+    fn replace_stages_in_a_new_private_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("pun-stage-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let (file, outside) = (dir.join("a.php"), dir.join("outside"));
+        std::fs::write(&file, "old").unwrap();
+        std::fs::write(&outside, "keep").unwrap();
+        std::fs::set_permissions(&outside, std::fs::Permissions::from_mode(0o600)).unwrap();
+        let planted = dir.join(format!(".a.php.pun-{}", std::process::id()));
+        std::os::unix::fs::symlink(&outside, &planted).unwrap();
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+        super::replace(&file, b"new").unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), b"new");
+        assert_eq!(std::fs::read(&outside).unwrap(), b"keep");
+        let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&outside), 0o600);
+        assert_eq!(mode(&file), 0o644);
+        let (tmp, _file) = super::private_sibling(&file).unwrap();
+        assert_eq!(mode(&tmp), 0o600);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// In a setgid directory a new file takes the directory's group; the replacement keeps the old file's group, so
+    /// the mode bits it copies still apply to the group they applied to. Needs a second group to put the directory in.
+    #[test]
+    fn replace_keeps_the_group_in_a_setgid_directory() {
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        let dir = std::env::temp_dir().join(format!("pun-group-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.php");
+        std::fs::write(&file, "old").unwrap();
+        let own = std::fs::metadata(&file).unwrap().gid();
+        let ids = std::process::Command::new("id").arg("-G").output().unwrap();
+        let other = String::from_utf8_lossy(&ids.stdout)
+            .split_whitespace()
+            .filter_map(|g| g.parse::<u32>().ok())
+            .find(|&g| g != own);
+        let Some(other) = other else {
+            std::fs::remove_dir_all(&dir).unwrap();
+            return;
+        };
+        std::os::unix::fs::chown(&dir, None, Some(other)).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o2755)).unwrap();
+        assert_eq!(std::fs::metadata(dir.join(".")).unwrap().gid(), other);
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o640)).unwrap();
+        super::replace(&file, b"new").unwrap();
+        let meta = std::fs::metadata(&file).unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), b"new");
+        assert_eq!(
+            (meta.gid(), meta.permissions().mode() & 0o7777),
+            (own, 0o640)
+        );
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

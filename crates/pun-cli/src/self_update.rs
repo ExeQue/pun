@@ -2,8 +2,9 @@ use crate::Exit;
 use anyhow::{Context, Result, bail};
 use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
+use std::hash::{BuildHasher, Hasher};
 use std::io::Read;
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::path::{Component, Path};
 use std::process::Command;
 
@@ -228,8 +229,18 @@ fn attestation(bytes: &[u8], archive: &str, tag: &str) -> Result<()> {
         eprintln!(" · skipped the build attestation (needs a signed-in gh)");
         return Ok(());
     }
-    let file = std::env::temp_dir().join(format!("pun-{}-{archive}", std::process::id()));
-    std::fs::write(&file, bytes)?;
+    // In a new directory only this user can enter: an entry another account plants in the shared temp directory can't
+    // take the write, or swap the archive before gh reads it.
+    let random = std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish();
+    let dir = std::env::temp_dir().join(format!("pun-{}-{random:016x}", std::process::id()));
+    std::fs::DirBuilder::new().mode(0o700).create(&dir)?;
+    let file = dir.join(archive);
+    if let Err(e) = std::fs::write(&file, bytes) {
+        let _ = std::fs::remove_dir_all(&dir);
+        return Err(e.into());
+    }
     let status = Command::new("gh")
         .args(["attestation", "verify"])
         .arg(&file)
@@ -245,7 +256,7 @@ fn attestation(bytes: &[u8], archive: &str, tag: &str) -> Result<()> {
             "--deny-self-hosted-runners",
         ])
         .output();
-    let _ = std::fs::remove_file(&file);
+    let _ = std::fs::remove_dir_all(&dir);
     if !status.is_ok_and(|o| o.status.success()) {
         bail!(
             "the build attestation of {archive} does not verify; the download may have been tampered with"

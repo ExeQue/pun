@@ -419,6 +419,46 @@ fn diffs_like_pint() {
     );
 }
 
+/// A report or baseline path that is a symlink in the project leading out of it is refused, and the file it leads to
+/// keeps its content; a link outside the project (`/dev/stdout`) is the user's own and is written through.
+#[test]
+fn generated_files_are_not_written_through_a_link_out_of_the_project() {
+    let dir = scratch("cli", "links");
+    let outside = scratch("cli", "outside");
+    write_files(
+        &dir,
+        &[
+            ("pun.toml", "[format]\npreset = \"empty\"\n"),
+            ("app/A.php", "<?php\n\n$a = 1;\n"),
+        ],
+    );
+    std::fs::write(outside.join("keep"), "keep\n").unwrap();
+    for name in ["pun.xml", "pun-baseline.toml"] {
+        std::os::unix::fs::symlink(outside.join("keep"), dir.join(name)).unwrap();
+    }
+    let report = ["--output-to-file=pun.xml", "--output-format=checkstyle"];
+    let (out, err, code) = pun(&dir, &[&["format", "--test"][..], &report].concat());
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert!(
+        err.contains("it is a symlink that leads outside the project"),
+        "{err}"
+    );
+    let (out, err, code) = pun(&dir, &["analyse", "--generate-baseline"]);
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert!(
+        err.contains("it is a symlink that leads outside the project"),
+        "{err}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(outside.join("keep")).unwrap(),
+        "keep\n"
+    );
+    let to_stdout = ["--output-to-file=/dev/stdout", "--output-format=checkstyle"];
+    let (out, err, code) = pun(&dir, &[&["format", "--test"][..], &to_stdout].concat());
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(out.contains("<checkstyle"), "{out}");
+}
+
 fn pun(dir: &Path, args: &[&str]) -> (String, String, Option<i32>) {
     pun_env(dir, args, &[])
 }

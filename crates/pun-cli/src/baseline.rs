@@ -71,7 +71,7 @@ impl Baseline {
 
     pub(crate) fn write(&self, path: &Path) -> Result<()> {
         let text = format!("{HEADER}{}", toml::to_string(self)?);
-        std::fs::write(path, text).map_err(|e| {
+        crate::run::write_generated(path, text.as_bytes()).map_err(|e| {
             let message = format!("can't write the baseline to {}: {e}", path.display());
             Abort::plain(message, None).into()
         })

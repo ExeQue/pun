@@ -207,12 +207,18 @@ impl Cache {
     }
 }
 
+/// Writes the cache owner-only: it holds diffs and fixed source of the checked files, which their own permissions may
+/// keep from other accounts.
 fn write(file: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::DirBuilderExt;
     let dir = file.parent().unwrap_or(Path::new("."));
-    std::fs::create_dir_all(dir)?;
-    let name = file.file_name().unwrap_or_default().to_string_lossy();
-    let tmp = dir.join(format!(".{name}.{}.tmp", std::process::id()));
-    std::fs::write(&tmp, bytes)
+    std::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)?;
+    let (tmp, mut out) = crate::run::private_sibling(file)?;
+    (out.write_all(bytes))
         .and_then(|()| std::fs::rename(&tmp, file))
         .inspect_err(|_| drop(std::fs::remove_file(&tmp)))
 }
@@ -497,6 +503,28 @@ mod tests {
                     .is_none()
             );
         }
+        std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    /// The cache holds diffs and fixed source, so it is owner-only under a umask that lets others read (022): a new
+    /// cache, its new directory, and a save over a cache another version left readable.
+    #[test]
+    fn the_cache_is_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = dir("private");
+        let file = d.join("results/x.bin");
+        let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        let run = Key::default().add("stage", "format").digest();
+        let c = Cache::open(file.clone(), &d, run, None);
+        c.keep("a.php", &hash(b"a"), false, b"-old\n+new\n".to_vec());
+        c.save(&HashSet::new());
+        assert_eq!((mode(&file), mode(&d.join("results"))), (0o600, 0o700));
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+        let c = Cache::open(file.clone(), &d, run, None);
+        c.keep("b.php", &hash(b"b"), false, vec![]);
+        c.save(&HashSet::new());
+        assert_eq!(mode(&file), 0o600);
+        assert_eq!(std::fs::read_dir(d.join("results")).unwrap().count(), 1);
         std::fs::remove_dir_all(&d).unwrap();
     }
 }

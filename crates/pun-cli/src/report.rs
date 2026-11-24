@@ -284,9 +284,9 @@ pub(crate) fn emit(
     console::print_raw(&fmt(&out, out_dec))?;
     std::io::Write::flush(&mut std::io::stdout())?;
     if let (Some(path), Some(f)) = (to_file, file_format.or(format))
-        && let Err(e) = std::fs::write(
+        && let Err(e) = crate::run::write_generated(
             path,
-            console::raw(&reporter(
+            &console::raw(&reporter(
                 ctx,
                 results,
                 f.parse().map_err(unsupported)?,
