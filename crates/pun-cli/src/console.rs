@@ -3,20 +3,32 @@ use pcre2::bytes::Regex;
 use std::io::IsTerminal;
 use std::sync::LazyLock;
 
+/// Bytes that aren't UTF-8 travel through Pun's strings as the characters `CARRIED + byte`, and `raw` writes them back
+/// as the byte. Only bytes from 0x80 are ever invalid, so only those are carried: a character below that (a genuine
+/// one, from a file name) never turns into an ASCII byte such as `"` or `<` in a report.
 const CARRIED: u32 = 0x10_FF00;
+const FIRST: u32 = CARRIED + 0x80;
+const LAST: u32 = CARRIED + 0xFF;
 
 pub(crate) fn carry(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len());
+    let carried = |s: &mut String, b: u8| s.extend(char::from_u32(CARRIED + u32::from(b)));
     for chunk in bytes.utf8_chunks() {
-        s.push_str(chunk.valid());
-        s.extend((chunk.invalid().iter()).filter_map(|&b| char::from_u32(CARRIED + u32::from(b))));
+        for c in chunk.valid().chars() {
+            // A genuine character in the carried range is carried as its own bytes, so `raw` gives it back.
+            if (FIRST..=LAST).contains(&u32::from(c)) {
+                (c.encode_utf8(&mut [0; 4]).bytes()).for_each(|b| carried(&mut s, b));
+            } else {
+                s.push(c);
+            }
+        }
+        chunk.invalid().iter().for_each(|&b| carried(&mut s, b));
     }
     s
 }
 
 pub(crate) fn carries_bytes(text: &str) -> bool {
-    text.chars()
-        .any(|c| (CARRIED..=CARRIED + 0xFF).contains(&u32::from(c)))
+    std::str::from_utf8(&raw(text)).is_err()
 }
 
 pub(crate) fn raw(text: &str) -> Vec<u8> {
@@ -24,7 +36,7 @@ pub(crate) fn raw(text: &str) -> Vec<u8> {
     let mut buf = [0; 4];
     for c in text.chars() {
         match (u32::from(c).checked_sub(CARRIED)).and_then(|b| u8::try_from(b).ok()) {
-            Some(b) => out.push(b),
+            Some(b @ 0x80..) => out.push(b),
             _ => out.extend_from_slice(c.encode_utf8(&mut buf).as_bytes()),
         }
     }
@@ -302,6 +314,19 @@ fn strtr(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Carried bytes come back as they were; a genuine character from a file name never becomes an ASCII byte.
+    #[test]
+    fn carried_bytes_round_trip_and_genuine_characters_stay() {
+        let bytes = b"a\xff\"<\xc3\xa9\xf4\x8f\xbf\xbf\xf4\x8f\xbe\xa2";
+        assert_eq!(raw(&carry(bytes)), bytes);
+        assert!(carries_bytes(&carry(bytes)));
+        assert!(!carries_bytes(&carry("\u{10FFFF}é".as_bytes())));
+        assert_eq!(
+            raw("x\u{10FF22}\u{10FF3C}.php"),
+            "x\u{10FF22}\u{10FF3C}.php".as_bytes()
+        );
+    }
 
     // Expectations: Symfony Console 7 (`.oracle/pint/vendor/symfony/console`) run on the same input, e.g.
     // php -r 'require ".oracle/pint/vendor/autoload.php"; echo (new Symfony\Component\Console\Formatter\OutputFormatter(true))->format("…");'
