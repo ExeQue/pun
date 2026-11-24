@@ -113,6 +113,42 @@
 .rule-reference :focus-visible, .rule-copy:focus-visible { outline: 2px solid var(--blume-accent); outline-offset: 3px; }
 @media (max-width: 640px) { .rule-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+/* Migration mapping tables: Blume's bordered table, two columns, IDs wrap only at separators. */
+.migration-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; }
+.migration-table .migration-toolbar input[type="search"] {
+  flex: 1 1 16rem; width: auto; height: 2.25rem; padding: 0 .75rem; font-size: .875rem; border-radius: var(--blume-radius);
+}
+.migration-table .migration-toolbar input[type="search"]:focus { outline: none; border-color: var(--blume-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blume-accent) 20%, transparent); }
+.migration-table .rule-check { margin: 0; font-size: .875rem; white-space: nowrap; }
+.migration-count { margin: .75rem 0 0; font-size: .8125rem; color: var(--blume-muted-foreground); }
+.migration-table .blume-table-scroll { margin-top: .75rem; }
+.migration-table table { width: 100%; table-layout: fixed; font-size: .875rem; }
+.migration-table .migration-col-upstream { width: 40%; }
+.migration-table th { background: var(--blume-muted); text-align: left; }
+.migration-table td { vertical-align: top; overflow-wrap: break-word; }
+.migration-table tbody tr:hover { background: color-mix(in srgb, var(--blume-muted) 55%, transparent); }
+:root .prose .migration-table td code, :root .prose .migration-table td:first-child code {
+  white-space: normal; overflow-wrap: break-word; word-break: normal; font-size: .75rem; line-height: 1.7;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.migration-table td a { display: block; width: fit-content; max-width: 100%; text-decoration: none; }
+.migration-table td a + a { margin-top: .35rem; }
+.migration-table td a:hover code { color: var(--blume-accent); }
+.migration-tool { display: block; margin-top: .25rem; font-size: .75rem; color: var(--blume-muted-foreground); }
+.migration-note { margin: .4rem 0 0; font-size: .8125rem; line-height: 1.5; color: var(--blume-muted-foreground); }
+.migration-badge { display: inline-block; padding: .05rem .5rem; border: 1px solid color-mix(in srgb, var(--pun-gum) 60%, var(--blume-border));
+  border-radius: 999px; background: color-mix(in srgb, var(--pun-gum) 16%, transparent); font-size: .75rem; font-weight: 500; }
+.migration-empty { margin: 0; padding: 1rem .75rem; color: var(--blume-muted-foreground); }
+@media (max-width: 640px) {
+  .migration-table table, .migration-table tbody, .migration-table tr, .migration-table td { display: block; width: auto; }
+  .migration-table thead, .migration-table colgroup { display: none; }
+  .migration-table tr + tr { border-top: 1px solid var(--blume-border); }
+  .migration-table td { border: 0; padding: .2rem .85rem; }
+  .migration-table td:first-child { padding-top: .8rem; }
+  .migration-table td:last-child { padding-bottom: .8rem; }
+  .migration-table td[data-label="Pun rule"]::before { content: "Pun rule"; display: block; margin: .35rem 0 .15rem; font-size: .6875rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--blume-muted-foreground); }
+}
+
 /* A table's first column names a command or rule: keep it on one line so narrow screens wrap the description instead. */
 .prose td:first-child code {
   white-space: nowrap;
