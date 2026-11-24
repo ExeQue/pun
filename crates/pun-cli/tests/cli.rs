@@ -1146,6 +1146,7 @@ carbon = "off"
 preset = "empty"
 exclude = ["storage/**", "app/Generated/**"]
 not-path = ["app/Legacy.php"]
+not-name = []
 
 [format.rules]
 "arrays/syntax" = true
