@@ -12028,9 +12028,11 @@
         "name": "RouteActionCallable",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/route-action-callable-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-callable-route-action"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "RouteKeyMethodToRouteKeyAttribute",

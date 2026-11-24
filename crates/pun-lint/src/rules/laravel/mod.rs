@@ -27,6 +27,7 @@ mod object_type;
 mod prefer_abort_if;
 mod prefer_anonymous_migration;
 mod prefer_back_helper;
+mod prefer_callable_route_action;
 mod prefer_casts_method;
 mod prefer_class_container_key;
 mod prefer_closure_only_bind;
@@ -212,6 +213,7 @@ rules! {
         upgrade_models => PreferModelFactoryMethod::default(),
         factory_classes => PreferFactoryClasses::default(),
         forwards_calls => PreferForwardsCalls,
+        prefer_callable_route_action => PreferCallableRouteAction::default(),
     }
 }
 

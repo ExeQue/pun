@@ -8416,6 +8416,25 @@
       "ported": true
     },
     {
+      "id": "lint/laravel/prefer-callable-route-action",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Use PHP callable syntax instead of string syntax for controller route declarations.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\StaticCall\\RouteActionCallableRector",
+        "RouteActionCallable",
+        "RouteActionCallableRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel/prefer-casts-method",
       "command": "lint",
       "group": "laravel",
