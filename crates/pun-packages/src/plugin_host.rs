@@ -9,7 +9,7 @@ use crate::fetch::{Auth, Fetcher, store};
 use crate::install::dirs;
 use crate::php::sha256;
 use crate::plugins::{NATIVE, allowed};
-use crate::scripts::Runner;
+use crate::scripts::{Helper, Runner};
 use serde_json::{Map, Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -19,9 +19,11 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 const COMPOSER: &str = "2.11.2";
 const COMPOSER_SHA256: &str = "dd158c0afd41d15fac89e1b4e47b5d42911fe316c3687cd5edac98319b25d028";
 
-/// The pinned composer.phar in Composer's cache (`cache`), downloaded and checked the first time.
-fn phar(cache: Option<&Path>) -> Result<PathBuf> {
-    let dir = cache.map_or_else(|| std::env::temp_dir().join("pun"), |c| c.join("pun"));
+/// The pinned composer.phar in Composer's cache (`cache`), downloaded and checked the first time. Without a cache it
+/// goes in the host's own directory (`private`), not a shared one where another account could swap it after the
+/// check.
+fn phar(cache: Option<&Path>, private: &Path) -> Result<PathBuf> {
+    let dir = cache.map_or_else(|| private.to_path_buf(), |c| c.join("pun"));
     let path = dir.join(format!("composer-{COMPOSER}.phar"));
     if std::fs::read(&path).is_ok_and(|b| sha256(&b) == COMPOSER_SHA256) {
         return Ok(path);
@@ -45,20 +47,21 @@ struct Host {
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
     token: String,
+    /// The host script's directory, kept while PHP runs (and reads the phar when it has no cache).
+    _helper: Helper,
 }
 
 impl Host {
     /// Starts the host; `late` when this command installed the plugins (see the host's header).
-    fn start(root: &Path, php: &str, phar: &Path, late: bool) -> Result<Host> {
-        let script =
-            std::env::temp_dir().join(format!("pun-plugin-host-{}.php", std::process::id()));
-        std::fs::write(&script, include_str!("../assets/plugin-host.php"))?;
+    fn start(root: &Path, php: &str, cache: Option<&Path>, late: bool) -> Result<Host> {
+        let helper = Helper::new("plugin-host.php", include_str!("../assets/plugin-host.php"))?;
+        let phar = phar(cache, helper.dir())?;
         let nanos = (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH))
             .map_or(0, |d| d.as_nanos());
         let token = format!("\u{1e}pun-plugin-host-{}-{nanos}:", std::process::id());
         let child = Command::new(php)
-            .arg(&script)
-            .arg(phar)
+            .arg(&helper.path)
+            .arg(&phar)
             .arg(if late { "late" } else { "init" })
             .args(NATIVE)
             .current_dir(root)
@@ -66,9 +69,6 @@ impl Host {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn();
-        if child.is_err() {
-            let _ = std::fs::remove_file(&script);
-        }
         let mut child =
             child.with_context(|| format!("can't run {php} for the Composer plugins"))?;
         let pipes = child.stdin.take().zip(child.stdout.take());
@@ -78,10 +78,10 @@ impl Host {
             stdin,
             stdout: BufReader::new(stdout),
             token,
+            _helper: helper,
         };
-        let started = host.answer();
-        let _ = std::fs::remove_file(&script);
-        started.context("Composer couldn't load the project's plugins")?;
+        host.answer()
+            .context("Composer couldn't load the project's plugins")?;
         Ok(host)
     }
 
@@ -186,9 +186,8 @@ impl Plugins {
             if let Some(host) = &mut self.host {
                 host.request(&json!({"op": "sync"}))?;
             } else if needs_host(&self.vendor, &self.config) {
-                let phar = phar(self.cache.as_deref())?;
                 let late = state != self.initial;
-                self.host = Some(Host::start(&self.root, php, &phar, late)?);
+                self.host = Some(Host::start(&self.root, php, self.cache.as_deref(), late)?);
             }
         }
         Ok(self.host.as_mut())

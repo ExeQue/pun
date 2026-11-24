@@ -36,7 +36,10 @@ impl Runner {
             bin_dir: bin_dir.to_string(),
             manifest: manifest.clone(),
             dev_mode,
-            php: php_binary(env("PHP_BINARY")),
+            php: which(
+                &php_binary(env("PHP_BINARY")),
+                &env("PATH").unwrap_or_default(),
+            ),
             path: env("PATH").unwrap_or_default(),
             env: vec![],
             stack: vec![],
@@ -137,7 +140,8 @@ impl Runner {
             with_args(&callable)
         };
         eprintln!("> {}", with_args(&callable));
-        let status = self.command("sh").arg("-c").arg(&exec).status()?;
+        // `/bin/sh`, as Symfony's Process starts it for Composer: the child's PATH puts the bin dir first.
+        let status = self.command("/bin/sh").arg("-c").arg(&exec).status()?;
         if !status.success() {
             bail!(
                 "Script {callable} handling the {event} event returned with error code {}",
@@ -149,10 +153,12 @@ impl Runner {
 
     fn callback(&mut self, event: &str, callable: &str, args: &[String]) -> Result<()> {
         eprintln!("> {callable}");
-        let runner = std::env::temp_dir().join(format!("pun-script-{}.php", std::process::id()));
-        std::fs::write(&runner, include_str!("../assets/script-callback.php"))?;
+        let runner = Helper::new(
+            "script-callback.php",
+            include_str!("../assets/script-callback.php"),
+        )?;
         let status = (self.command(&self.php.clone()))
-            .arg(&runner)
+            .arg(&runner.path)
             .arg(&self.vendor)
             .arg(event)
             .arg(if self.dev_mode { "1" } else { "0" })
@@ -163,7 +169,7 @@ impl Runner {
                 Value::Object(self.manifest.clone()).to_string(),
             )
             .status();
-        let _ = std::fs::remove_file(&runner);
+        drop(runner);
         let status = status.with_context(|| format!("can't run {} for {callable}", self.php))?;
         if !status.success() {
             bail!(
@@ -191,6 +197,69 @@ impl Runner {
         }
         c
     }
+}
+
+/// A PHP helper pun writes for one run, in a directory made for it alone and readable only by this user, so no other
+/// account can put its own code at the path PHP opens. The directory goes when the helper is dropped.
+pub(crate) struct Helper {
+    dir: PathBuf,
+    pub path: PathBuf,
+}
+
+impl Helper {
+    pub(crate) fn new(name: &str, source: &str) -> std::io::Result<Helper> {
+        use std::io::Write;
+        use std::os::unix::fs::DirBuilderExt;
+        let nanos = (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH))
+            .map_or(0, |d| d.as_nanos());
+        let mut attempt = 0;
+        loop {
+            let dir = std::env::temp_dir()
+                .join(format!("pun-{}-{nanos:x}-{attempt}", std::process::id()));
+            // `mkdir` fails on any existing entry, a link included, so the directory is new and ours.
+            match std::fs::DirBuilder::new().mode(0o700).create(&dir) {
+                Ok(()) => {
+                    let helper = Helper {
+                        path: dir.join(name),
+                        dir,
+                    };
+                    (std::fs::OpenOptions::new().write(true).create_new(true))
+                        .open(&helper.path)?
+                        .write_all(source.as_bytes())?;
+                    return Ok(helper);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists && attempt < 100 => {
+                    attempt += 1;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    pub(crate) fn dir(&self) -> &Path {
+        &self.dir
+    }
+}
+
+impl Drop for Helper {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.dir);
+    }
+}
+
+/// `program`'s path in `path`, the PATH pun started with, so a bin the scripts' PATH puts first can't stand in for
+/// PHP (Composer runs its own `PHP_BINARY`); `program` itself when it has a slash or isn't found.
+fn which(program: &str, path: &str) -> String {
+    use std::os::unix::fs::PermissionsExt;
+    if program.contains('/') {
+        return program.to_string();
+    }
+    (path.split(':').filter(|d| !d.is_empty()))
+        .map(|d| Path::new(d).join(program))
+        .find(|p| {
+            std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+        })
+        .map_or_else(|| program.to_string(), |p| p.to_string_lossy().into_owned())
 }
 
 fn php_binary(env: Option<String>) -> String {
@@ -335,6 +404,60 @@ mod tests {
         );
         run(&d, json!({"a": ""}), "a").unwrap();
         run(&d, json!({}), "post-install-cmd").unwrap();
+        std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    /// Composer runs scripts with `/bin/sh` and its own PHP; a dependency's `sh` or `php` in the bin dir, which the
+    /// scripts' PATH puts first, runs neither.
+    #[test]
+    fn the_bin_dir_does_not_supply_the_interpreters() {
+        let d = project("interpreters");
+        for bin in ["sh", "php"] {
+            let path = d.join("vendor/bin").join(bin);
+            std::fs::write(&path, "#!/bin/sh\necho impostor >> out.txt\n").unwrap();
+            std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(0o755))
+                .unwrap();
+        }
+        let scripts =
+            json!({"a": ["echo shell >> out.txt", "@php -r 'echo \"php\\n\";' >> out.txt"]});
+        run(&d, scripts, "a").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(d.join("out.txt")).unwrap(),
+            "shell\nphp\n"
+        );
+        assert_eq!(which("sh", "/nowhere"), "sh");
+        assert_eq!(which("./php", "/bin"), "./php");
+        std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    /// The callback runner goes in a new private directory: a link at a guessable name in the shared temporary
+    /// directory is neither written through nor run.
+    #[test]
+    fn helpers_are_private_and_new() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = project("helper");
+        let sentinel = d.join("sentinel");
+        std::fs::write(&sentinel, "kept").unwrap();
+        let old = std::env::temp_dir().join(format!("pun-script-{}.php", std::process::id()));
+        let _ = std::fs::remove_file(&old);
+        std::os::unix::fs::symlink(&sentinel, &old).unwrap();
+        std::fs::write(d.join("vendor/autoload.php"), "<?php\nfinal class Hook { public static function run() { file_put_contents('out.txt', 'ran'); } }\n").unwrap();
+        run(&d, json!({"x": "Hook::run"}), "x").unwrap();
+        std::fs::remove_file(&old).unwrap();
+        assert_eq!(std::fs::read_to_string(&sentinel).unwrap(), "kept");
+        assert_eq!(std::fs::read_to_string(d.join("out.txt")).unwrap(), "ran");
+
+        let (a, b) = (
+            Helper::new("a.php", "<?php").unwrap(),
+            Helper::new("a.php", "<?php").unwrap(),
+        );
+        assert_ne!(a.dir(), b.dir());
+        let mode = std::fs::metadata(a.dir()).unwrap().permissions().mode();
+        assert_eq!(mode & 0o077, 0);
+        assert_eq!(std::fs::read_to_string(&a.path).unwrap(), "<?php");
+        let dir = a.dir().to_path_buf();
+        drop(a);
+        assert!(!dir.exists());
         std::fs::remove_dir_all(&d).unwrap();
     }
 
