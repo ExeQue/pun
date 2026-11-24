@@ -578,12 +578,13 @@ fn remove_redundant_pest_uses() {
     assert_eq!(count, 34);
 }
 
-const DIRECTORIES: [&str; 62] = [
+const DIRECTORIES: [&str; 63] = [
     "ChainExpectCallsAndMatchers",
     "ChainExpectCallsAndUseEachModifier",
     "ChainExpectCallsRector",
     "ChainExpectCallsRectorAndUseToBeEmpty",
     "ChainExpectCallsRectorWithoutMergeDifferentVariables",
+    "ConvertAndToExpectRector",
     "ConvertAssertToExpectRector",
     "ConvertBeforeAllInDescribeRector",
     "ConvertExpectExceptionToThrowRector",
@@ -668,7 +669,7 @@ fn pest_rules_ignore_nodes_outside_their_targets() {
             .into_iter()
             .filter(|r| r.id().starts_with("lint/pest/"))
     };
-    assert_eq!(pest().count(), 55);
+    assert_eq!(pest().count(), 56);
     let targeted = Linter::new(pest().collect(), pun_lint::PhpVersion::from_id(80400));
     let everywhere = Linter::new(
         pest()
