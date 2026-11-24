@@ -56,7 +56,7 @@ pub fn normalize(version: &str) -> Result<String> {
     if matches!(v.as_str(), "master" | "trunk" | "default") {
         v = format!("dev-{v}");
     }
-    if v.len() >= 4 && v[..4].eq_ignore_ascii_case("dev-") {
+    if v.get(..4).is_some_and(|p| p.eq_ignore_ascii_case("dev-")) {
         return Ok(format!("dev-{}", &v[4..]));
     }
     if let Some(c) = META.captures(v.as_bytes())? {
@@ -449,6 +449,7 @@ mod tests {
             "1.0.1-SNAPSHOT",
             "foo bar-dev",
             "^1",
+            "abc\u{e9}",
         ] {
             assert!(normalize(bad).is_err(), "{bad}");
         }
