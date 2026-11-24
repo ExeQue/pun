@@ -408,7 +408,11 @@ fn raw_versions<'a>(
     mut each: impl FnMut(&RawVersion<'a>) -> Result<()>,
 ) -> Option<Result<()>> {
     let all: HashMap<String, &'a RawValue> = serde_json::from_str(packages.get()).ok()?;
-    let listed: Vec<&'a RawValue> = serde_json::from_str(all.get(name)?.get()).ok()?;
+    // A name the file has stays found even when its list is not one, so no other repository supplies it: Composer
+    // marks the name found before it reads the versions.
+    let Ok(listed) = serde_json::from_str::<Vec<&'a RawValue>>(all.get(name)?.get()) else {
+        return Some(Ok(()));
+    };
     let mut current: Option<RawVersion<'a>> = None;
     for v in listed {
         let Ok(v) = serde_json::from_str::<RawVersion<'a>>(v.get()) else {
@@ -1013,6 +1017,7 @@ mod tests {
                 "/bad/acme/empty.json",
                 r#"{"packages": {"acme/other": []}}"#,
             ),
+            ("/bad/acme/wrong.json", r#"{"packages": {"acme/wrong": "oops"}}"#),
             (
                 "/bad/acme/both.json",
                 r#"{"packages": {"acme/both": [{"name": "acme/both", "version": "1.0.0"}]}}"#,
@@ -1089,6 +1094,10 @@ mod tests {
         );
         assert_eq!(requests(&seen).len(), 3);
         assert_eq!(fails("bad", "acme/empty"), "no solution");
+        let mut m = manifest(&format!("{base}/bad"), json!({"acme/wrong": "*"}));
+        m["repositories"] = json!([{"type": "composer", "url": format!("{base}/bad")},
+            {"type": "package", "package": {"name": "acme/wrong", "version": "1.0.0"}}, {"packagist.org": false}]);
+        assert_eq!(update(&fetcher, &m).unwrap_err(), "no solution");
         let m = manifest(&format!("{base}/bad"), json!({"acme/both": "*@dev"}));
         let locked = update(&fetcher, &m).unwrap();
         assert!(locked.contains("\"version\": \"1.0.0\""), "{locked}");
