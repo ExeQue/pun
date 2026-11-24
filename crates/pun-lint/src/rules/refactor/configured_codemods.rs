@@ -415,7 +415,7 @@ impl Rule for ChangeMethodVisibility {
             return;
         };
         let parent = parent.trim_start_matches('\\');
-        for member in class.members.iter() {
+        for member in &class.members {
             let ClassLikeMember::Method(method) = member else {
                 continue;
             };
@@ -492,7 +492,7 @@ impl Rule for WrapReturn {
     ) {
         let Node::Class(class) = node else { return };
         let name = qualified(ancestors, class.name.value);
-        for member in class.members.iter() {
+        for member in &class.members {
             let ClassLikeMember::Method(method) = member else {
                 continue;
             };
@@ -508,7 +508,7 @@ impl Rule for WrapReturn {
                 continue;
             }
             // the method's own statements only
-            for statement in body.statements.iter() {
+            for statement in &body.statements {
                 let Statement::Return(r#return) = statement else {
                     continue;
                 };

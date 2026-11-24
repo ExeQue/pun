@@ -2,6 +2,7 @@
 //! (one rule: the second rewrites the `new` that the first rewrites everywhere), with `CarbonCallFactory`, and
 //! `TimeFuncCallToCarbonRector`.
 
+use std::fmt::Write as _;
 use std::sync::LazyLock;
 
 use crate::problem::{Edit, Safety};
@@ -59,7 +60,7 @@ fn carbon_call(class: &str, value: &str) -> String {
         } else {
             "sub"
         };
-        chain.push_str(&format!("->{operator}{unit}({count})"));
+        let _ = write!(chain, "->{operator}{unit}({count})");
         let whole = caps.get(0).unwrap();
         rest.drain(whole.start()..whole.end());
     }

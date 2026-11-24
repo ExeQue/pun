@@ -237,7 +237,7 @@ impl Rule for PreferDirectAssert {
                     let first = chars.next().map(|c| c.to_ascii_uppercase());
                     format!(
                         "assertIs{}{}",
-                        first.map(String::from).unwrap_or_default(),
+                        first.map_or_else(String::new, String::from),
                         chars.as_str()
                     )
                 }

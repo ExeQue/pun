@@ -2,6 +2,7 @@
 //! `WhereNullComparisonToWhereNullRector`, `DateWhereClauseToShorthandRector`, `WhereToWhereLikeRector` and
 //! `MinutesToSecondsInCacheRector`.
 
+use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
     Argument, ArgumentList, Call, ClassLikeMemberSelector, Expression, Literal, Node, NodeKind,
 };
@@ -93,8 +94,8 @@ impl Rule for PreferWhereNull {
         let args: Vec<&Argument<'_>> = call.argument_list.arguments.iter().collect();
         let mut method = "whereNull";
         let null = match args[..] {
-            [first] => type_of(first).is_some_and(|t| t.is_string()),
-            [_, value] => type_of(value).is_some_and(|t| t.is_null()),
+            [first] => type_of(first).is_some_and(TUnion::is_string),
+            [_, value] => type_of(value).is_some_and(TUnion::is_null),
             [_, operator, value] => {
                 if type_of(operator)
                     .and_then(|t| t.get_single_literal_string_value())
@@ -102,7 +103,7 @@ impl Rule for PreferWhereNull {
                 {
                     method = "whereNotNull";
                 }
-                type_of(value).is_some_and(|t| t.is_null())
+                type_of(value).is_some_and(TUnion::is_null)
             }
             _ => false,
         };
