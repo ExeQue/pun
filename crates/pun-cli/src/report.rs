@@ -2,8 +2,8 @@ use crate::Exit;
 use crate::console::{self, format as fmt};
 use crate::fix_report::{self, Change};
 use crate::render::{
-    CheckItem, ColorChoice, FileLine, FileStatus, FormatSummary, Look, Renderer, RunError, Step,
-    StepLine, Summary,
+    CheckItem, ColorChoice, FileLine, FileStatus, FormatSummary, Look, Renderer, Role, RunError,
+    Step, StepLine, Summary,
 };
 use crate::{github, pint_error};
 use anyhow::{Result, bail};
@@ -76,6 +76,8 @@ pub(crate) struct Ctx<'a> {
     pub(crate) github: bool,
     pub(crate) concise: bool,
     pub(crate) unmatched_baseline: usize,
+    /// `pun check`: the analysis's errors that belong to no file (`[[analyse.ignore]]` entries nothing matched).
+    pub(crate) general: &'a [String],
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -98,7 +100,7 @@ fn lint_fixers(f: &FileResult) -> (usize, usize) {
 
 pub(crate) fn counts(ctx: &Ctx, results: &[FileResult]) -> Counts {
     let mut c = Counts {
-        errors: results.iter().filter(|f| f.is_error()).count(),
+        errors: results.iter().filter(|f| f.is_error()).count() + ctx.general.len(),
         ..Counts::default()
     };
     for f in results {
@@ -635,9 +637,16 @@ fn check_human(ctx: &Ctx, results: &[FileResult]) -> String {
     } else {
         Some("All files formatted".into())
     };
+    analyse.errors += ctx.general.len();
+    let analyse_text = (analyse.files.is_empty() && analyse.errors > 0)
+        .then(|| crate::render::plural(analyse.errors, "error", "errors"));
     let mut out = r.check_step(&step(Step::Format, &format, format_text, need > 0));
     out.push_str(&r.check_step(&step(Step::Lint, &lint, None, false)));
-    out.push_str(&r.check_step(&step(Step::Analyse, &analyse, None, false)));
+    out.push_str(&r.check_step(&step(Step::Analyse, &analyse, analyse_text, false)));
+    let glyph = r.look.paint(Role::Error, r.look.glyph("✖", "x"));
+    for g in ctx.general {
+        let _ = writeln!(out, "   {glyph} {g}");
+    }
     for f in sorted
         .iter()
         .filter(|f| f.is_error() && f.status != Status::Invalid)
@@ -775,6 +784,10 @@ fn agent(ctx: &Ctx, results: &[FileResult]) -> String {
             }
             items.push(item);
         }
+    }
+    for g in ctx.general {
+        errors += 1;
+        items.push(format!("unmatched-ignore {g}"));
     }
     let cmd = crate::agent::cmd();
     let mut detail = vec![];

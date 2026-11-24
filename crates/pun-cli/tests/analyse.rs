@@ -881,6 +881,45 @@ fn check_reports_analyse_findings() {
     );
 }
 
+/// An `[[analyse.ignore]]` entry without a path that nothing matched fails `pun check` as it fails `pun analyse`.
+#[test]
+fn check_fails_on_unmatched_ignores_without_a_file() {
+    let d = project(
+        "analyse",
+        "check-general",
+        &[
+            (
+                "pun.toml",
+                "[format]\npreset = \"empty\"\n\n[analyse]\npaths = [\"src\"]\n\n[[analyse.ignore]]\nraw-message = \"Not here\"\n",
+            ),
+            ("src/a.php", CLEAN),
+        ],
+    );
+    let message = "Ignored error \"Not here\" was not matched in reported errors.";
+    assert_eq!(pun(&d, &["--format=raw"], &[]).2, Some(1));
+    let check = |env: &[(&str, &str)]| {
+        let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+            .current_dir(&d)
+            .env("PUN_AGENT", "0")
+            .envs(env.iter().copied())
+            .args(["check", "--color=never"])
+            .output()
+            .unwrap();
+        (String::from_utf8(out.stdout).unwrap(), out.status.code())
+    };
+    let (out, code) = check(&[]);
+    assert_eq!(code, Some(1), "{out}");
+    assert!(out.contains(&format!("   x {message}\n")), "{out}");
+    let (out, code) = check(&[("PUN_AGENT", "1")]);
+    assert_eq!(code, Some(1), "{out}");
+    assert_eq!(
+        out.lines().skip(1).collect::<Vec<_>>(),
+        [format!("unmatched-ignore {message}")],
+        "{out}"
+    );
+    std::fs::remove_dir_all(d).unwrap();
+}
+
 #[test]
 fn ignores_match_phpstan() {
     let neon = "parameters:\n    level: 0\n    paths:\n        - src\n    ignoreErrors:\n        - message: '#^Function undefined_fn not found\\.$#'\n          path: src/a.php\n        - identifier: method.notFound\n          path: src/a.php\n          count: 2\n        - message: '#^Never$#'\n          path: src/a.php\n        - rawMessage: 'Nope'\n          paths: [src/*, lib/*]\n        - message: '#^Never again$#'\n          path: src/a.php\n          reportUnmatched: false\n        - rawMessage: 'Not here'\n          reportUnmatched: false\n";

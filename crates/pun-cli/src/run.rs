@@ -234,6 +234,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     }
 
     let mut unmatched_baseline = 0;
+    let mut general = vec![];
     let mut total = files.len();
     if let Stage::Check { .. } = stage
         && selected.as_ref().is_none_or(|(_, s)| !s.is_empty())
@@ -241,6 +242,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         let paths = selected.as_ref().map_or(&a.paths, |(_, s)| s);
         let analysed = crate::analyse::analyse(&cfg, paths, true)?;
         unmatched_baseline = analysed.unmatched_baseline;
+        general.clone_from(&analysed.general);
         total = total.max(analysed.files);
         add_findings(&mut results, &analysed, &root);
     }
@@ -257,6 +259,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         github: a.github_actions && human,
         concise: lint.concise,
         unmatched_baseline,
+        general: &general,
     };
     report::emit(
         &ctx,
