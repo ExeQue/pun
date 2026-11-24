@@ -254,3 +254,70 @@ fn missing_pieces() {
     assert_eq!(code, Some(1));
     fs::remove_dir_all(&r).unwrap();
 }
+
+/// The scratch copies live in a new owner-only directory, and a manifest name that leaves `corpus/` (and with it the
+/// scratch directory, which the run deletes) is refused before anything is copied or removed.
+#[test]
+fn scratch_is_private_and_names_stay_inside_it() {
+    let r = root("scratch");
+    let tmp = r.join("tmp");
+    fs::create_dir(&tmp).unwrap();
+    let pun = r.join("fake-pun");
+    let log = r.join("mode.log");
+    // Pun runs in <scratch>/<project>/pun.
+    script(&pun, &format!("stat -c %a ../.. >> {}", log.display()));
+    let run = || {
+        Command::new(env!("CARGO_BIN_EXE_pun-harness"))
+            .args(["format", "--corpus", "b", "--fixer", "array_syntax"])
+            .env("PUN_HARNESS_ROOT", &r)
+            .env("PUN_BIN", &pun)
+            .env("TMPDIR", &tmp)
+            .output()
+            .unwrap()
+    };
+    assert_eq!(run().status.code(), Some(1));
+    assert_eq!(
+        fs::read_to_string(&log).unwrap().lines().next(),
+        Some("700")
+    );
+    let out = Command::new(env!("CARGO_BIN_EXE_pun-harness"))
+        .arg("format")
+        .env("PUN_HARNESS_ROOT", &r)
+        .env("PUN_BIN", &pun)
+        .env("TMPDIR", r.join("no-such-dir"))
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.starts_with(&format!(
+            "Error: creating {}/pun-harness-",
+            r.join("no-such-dir").display()
+        )),
+        "{err}"
+    );
+
+    // `../victim` resolves to a checkout beside corpus/, and from the scratch directory to tmp/victim.
+    write(
+        &r.join("corpus/manifest.toml"),
+        "[[project]]\nname = \"../victim\"\n",
+    );
+    fs::create_dir_all(r.join("victim/.git")).unwrap();
+    write(&tmp.join("victim/keep.txt"), "mine\n");
+    let out = Command::new(env!("CARGO_BIN_EXE_pun-harness"))
+        .arg("format")
+        .env("PUN_HARNESS_ROOT", &r)
+        .env("PUN_BIN", &pun)
+        .env("TMPDIR", &tmp)
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&out.stderr),
+        "Error: corpus/manifest.toml: not a corpus name: ../victim\n"
+    );
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(
+        fs::read_to_string(tmp.join("victim/keep.txt")).unwrap(),
+        "mine\n"
+    );
+    fs::remove_dir_all(&r).unwrap();
+}

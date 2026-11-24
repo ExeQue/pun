@@ -95,7 +95,7 @@ fn main() -> Result<ExitCode> {
         eprintln!("note: {} missing, treating pun as identity", pun.display());
     }
 
-    let scratch = Scratch(std::env::temp_dir().join(format!("pun-harness-{}", std::process::id())));
+    let scratch = Scratch(private_dir(&std::env::temp_dir())?);
     let tmp = &scratch.0;
     let mut outcomes = vec![];
     for p in manifest
@@ -103,6 +103,13 @@ fn main() -> Result<ExitCode> {
         .iter()
         .filter(|p| corpus.is_empty() || corpus.contains(&p.name))
     {
+        // One directory under corpus/ and under the scratch directory, which is removed after the comparison.
+        if !matches!(
+            Path::new(&p.name).components().collect::<Vec<_>>()[..],
+            [std::path::Component::Normal(_)]
+        ) {
+            bail!("corpus/manifest.toml: not a corpus name: {}", p.name);
+        }
         let src = root.join("corpus").join(&p.name);
         if !src.join(".git").exists() {
             bail!("{} missing: run scripts/corpus.sh", src.display());
@@ -204,6 +211,19 @@ fn main() -> Result<ExitCode> {
     } else {
         ExitCode::SUCCESS
     })
+}
+
+/// A new directory under `parent` that only this user can open. Creating it fails if the name exists, so it is never a
+/// directory another user sharing the temporary directory made and filled with links.
+fn private_dir(parent: &Path) -> Result<PathBuf> {
+    use std::os::unix::fs::DirBuilderExt;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .subsec_nanos();
+    let dir = parent.join(format!("pun-harness-{}-{nanos}", std::process::id()));
+    (fs::DirBuilder::new().mode(0o700).create(&dir))
+        .with_context(|| format!("creating {}", dir.display()))?;
+    Ok(dir)
 }
 
 fn run(cmd: &mut Command, what: &str) -> Result<()> {
