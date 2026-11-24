@@ -11,6 +11,7 @@
 use crate::fetch::store;
 use crate::php::sha1;
 use serde_json::{Value, json};
+use std::collections::HashSet;
 use std::fmt::Write as _;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -106,16 +107,19 @@ fn identity(m: &std::fs::Metadata) -> String {
 
 /// Appends the stamp of `path` and of everything below it, in name order, following symlinks as the class map
 /// scan follows them; a directory reached twice (by device and inode) is listed once.
-pub fn tree(path: &Path, out: &mut String, seen: &mut Vec<(u64, u64)>) {
+pub fn tree<S: std::hash::BuildHasher>(
+    path: &Path,
+    out: &mut String,
+    seen: &mut HashSet<(u64, u64), S>,
+) {
     let Ok(m) = std::fs::metadata(path) else {
         let _ = writeln!(out, "{}\tnull", path.display());
         return;
     };
     let _ = writeln!(out, "{}\t{}", path.display(), identity(&m));
-    if !m.is_dir() || seen.contains(&(m.dev(), m.ino())) {
+    if !m.is_dir() || !seen.insert((m.dev(), m.ino())) {
         return;
     }
-    seen.push((m.dev(), m.ino()));
     let mut names: Vec<_> = (std::fs::read_dir(path).into_iter().flatten().flatten())
         .map(|e| e.file_name())
         .collect();
@@ -165,7 +169,7 @@ mod tests {
 
         let listing = |t: &Path| {
             let mut out = String::new();
-            tree(&t.join("src"), &mut out, &mut vec![]);
+            tree(&t.join("src"), &mut out, &mut HashSet::new());
             out
         };
         std::os::unix::fs::symlink(t.join("src"), t.join("src/sub/loop")).unwrap();

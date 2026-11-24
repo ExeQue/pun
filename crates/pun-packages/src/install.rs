@@ -339,7 +339,7 @@ fn fingerprint_inputs(
     let _ = writeln!(s, "{}", probe.map_or_else(String::new, Value::to_string));
     let root_version = env("COMPOSER_ROOT_VERSION");
     let _ = writeln!(s, "{root_version:?}");
-    let mut seen = vec![];
+    let mut seen = HashSet::new();
     if manifest.get("version").is_none() && root_version.is_none_or(|v| v.is_empty()) {
         let git = project
             .dir
@@ -358,7 +358,7 @@ fn fingerprint_inputs(
     let mut roots: Vec<PathBuf> = vec![];
     let kinds = ["autoload", "autoload-dev"];
     for kind in &kinds[..if o.no_dev { 1 } else { 2 }] {
-        leaves(manifest.get(*kind), &mut |path| {
+        autoload_paths(manifest.get(*kind), &mut |path| {
             roots.push(project.dir.join(path));
         });
     }
@@ -375,6 +375,16 @@ fn fingerprint_inputs(
         fingerprint::tree(&root, &mut s, &mut seen);
     }
     Some(sha1(s.as_bytes()))
+}
+
+/// Calls `f` with each path an `autoload` section reads. `exclude-from-classmap` holds patterns, not paths (the
+/// manifest, hashed whole, covers them), so a pattern such as `/` doesn't send the walk through the whole disk.
+fn autoload_paths(section: Option<&Value>, f: &mut dyn FnMut(&str)) {
+    for (kind, value) in section.and_then(Value::as_object).into_iter().flatten() {
+        if kind != "exclude-from-classmap" {
+            leaves(Some(value), f);
+        }
+    }
 }
 
 /// Calls `f` with every string in `value`, however deep.
@@ -679,10 +689,24 @@ fn autoload_options(
             .map(|caps| String::from_utf8_lossy(&caps[1]).into_owned()),
         Err(_) => None,
     };
-    let suffix = config_str(config, "autoloader-suffix")
+    // The suffix ends PHP class names, so only identifier characters (ASCII letters, digits, `_`, and bytes from
+    // 0x80, as PHP reads them) can go in; Composer pastes any text in and writes an autoloader PHP can't parse.
+    let identifier = |s: &str| {
+        !s.is_empty()
+            && s.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || !c.is_ascii())
+    };
+    // Composer reads an empty suffix as none (`Config::get`).
+    let configured = config_str(config, "autoloader-suffix").filter(|s| !s.is_empty());
+    if let Some(s) = configured.filter(|s| !identifier(s)) {
+        bail!(
+            "config.autoloader-suffix \"{s}\" can't end a PHP class name: use letters, digits and _"
+        );
+    }
+    let suffix = configured
         .map(String::from)
-        .or(existing)
-        .or_else(|| content_hash.map(String::from))
+        .or(existing.filter(|s| identifier(s)))
+        .or_else(|| content_hash.filter(|s| identifier(s)).map(String::from))
         .unwrap_or_else(|| {
             // Composer's `bin2hex(random_bytes(16))` for a project without a lock.
             md5(format!("{:?}{}", std::time::SystemTime::now(), std::process::id()).as_bytes())
@@ -828,7 +852,7 @@ fn dump_key(
     );
     let json = |v: &Map<String, Value>| serde_json::to_string(v).expect("JSON values serialize");
     let _ = writeln!(s, "{}", json(project.manifest));
-    let mut seen = vec![];
+    let mut seen = HashSet::new();
     let mut trees: Vec<PathBuf> = vec![];
     for p in packages {
         let _ = writeln!(s, "{:?} {} {}", p.path, p.dev, json(&p.package.0));
@@ -840,7 +864,7 @@ fn dump_key(
     }
     let kinds = ["autoload", "autoload-dev"];
     for kind in &kinds[..if options.dev_mode { 2 } else { 1 }] {
-        leaves(project.manifest.get(*kind), &mut |path| {
+        autoload_paths(project.manifest.get(*kind), &mut |path| {
             trees.push(project.dir.join(path));
         });
     }
@@ -1023,6 +1047,22 @@ fn write_if_changed(path: &Path, bytes: &[u8]) -> Result<()> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    /// The fingerprint walks the paths autoload reads, not the exclusion patterns: `/` there excludes nothing outside
+    /// the project and must not be walked as the filesystem root.
+    #[test]
+    fn fingerprints_walk_autoload_paths_not_exclusions() {
+        let section = json!({
+            "psr-4": {"App\\": "src/", "Lib\\": ["lib/", "more/"]},
+            "classmap": ["classes/"],
+            "files": ["helpers.php"],
+            "exclude-from-classmap": ["/", "/Tests/"],
+        });
+        let mut paths = vec![];
+        autoload_paths(Some(&section), &mut |p| paths.push(p.to_string()));
+        paths.sort();
+        assert_eq!(paths, ["classes/", "helpers.php", "lib/", "more/", "src/"]);
+    }
 
     #[test]
     fn download_threads_follow_composer_max_parallel_http() {

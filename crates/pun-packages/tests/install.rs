@@ -1145,3 +1145,70 @@ fn private_use_names_do_not_change_the_generated_php() {
     std::fs::remove_dir_all(&tmp).unwrap();
 }
 
+/// The autoloader's class names end in a suffix: a lock hash or an old autoload.php that isn't one is passed over (the
+/// next source picks it), and a configured one is an error, so a hand-edited lock can't write PHP that doesn't parse.
+#[test]
+fn a_suffix_that_isnt_an_identifier_is_not_written() {
+    let tmp = std::env::temp_dir().join(format!("pun-dump-suffix-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let mut lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    lock.content_hash = "x{}; system('id'); //".into();
+    run(&tmp, &lock, &Options::default());
+    let suffix = |tmp: &Path| {
+        let autoload = std::fs::read_to_string(tmp.join("vendor/autoload.php")).unwrap();
+        let s = autoload.split("ComposerAutoloaderInit").nth(1).unwrap();
+        s.split("::").next().unwrap().to_string()
+    };
+    let random = suffix(&tmp);
+    assert!(
+        random.len() == 32 && random.bytes().all(|b| b.is_ascii_hexdigit()),
+        "{random}"
+    );
+
+    std::fs::write(
+        tmp.join("vendor/autoload.php"),
+        "<?php\nreturn ComposerAutoloaderInitbad-one::getLoader();\n",
+    )
+    .unwrap();
+    let mut manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    let dump = |manifest: &Map<String, Value>| {
+        dump_autoload(
+            &tmp,
+            manifest,
+            Some(&lock),
+            &Options::default(),
+            None,
+            &mut |_, _| Ok(()),
+        )
+    };
+    dump(&manifest).unwrap();
+    let again = suffix(&tmp);
+    assert!(again.len() == 32 && again != "bad-one", "{again}");
+
+    manifest.insert(
+        "config".into(),
+        serde_json::json!({"autoloader-suffix": ""}),
+    );
+    dump(&manifest).unwrap();
+    assert_eq!(suffix(&tmp), again, "an empty suffix is none");
+    manifest.insert(
+        "config".into(),
+        serde_json::json!({"autoloader-suffix": "Mine_2"}),
+    );
+    dump(&manifest).unwrap();
+    assert_eq!(suffix(&tmp), "Mine_2");
+    manifest.insert(
+        "config".into(),
+        serde_json::json!({"autoloader-suffix": "a::b"}),
+    );
+    assert_eq!(
+        dump(&manifest).unwrap_err().to_string(),
+        "config.autoloader-suffix \"a::b\" can't end a PHP class name: use letters, digits and _"
+    );
+    assert_eq!(suffix(&tmp), "Mine_2", "the autoloader is left as it was");
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
