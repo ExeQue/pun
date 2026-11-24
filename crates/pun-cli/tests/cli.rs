@@ -562,6 +562,17 @@ fn list_files() {
         )
     );
     assert_eq!(pun(&dir, &["format", "--list-files"]).2, Some(2));
+    // `-0` keeps a name that isn't UTF-8 byte for byte, so `xargs -0` gets the file and not a lookalike.
+    let latin1 =
+        <std::ffi::OsStr as std::os::unix::ffi::OsStrExt>::from_bytes(b"tests/caf\xe9.php");
+    std::fs::write(dir.join(latin1), "<?php\n").unwrap();
+    let out = common::clean_env(&mut Command::new(PUN), &["PATH"])
+        .args(["list-files", "-0", "tests"])
+        .current_dir(&dir)
+        .env("PUN_AGENT", "0")
+        .output()
+        .unwrap();
+    assert_eq!(out.stdout, b"tests/T.php\0tests/caf\xe9.php\0");
 }
 
 #[test]

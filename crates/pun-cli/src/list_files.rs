@@ -6,7 +6,7 @@ use clap::Args;
 use pun_config::Options;
 use std::fmt::Write as _;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Args)]
 pub(crate) struct ListFilesArgs {
@@ -53,17 +53,22 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<Exit> {
         CommandArg::Lint => (Command::Lint, "lint"),
         CommandArg::Analyse => (Command::Analyse, "analyse"),
     });
-    let files: Vec<String> = crate::finder::files(&cfg, command.map(|c| c.0), &a.paths)?
-        .iter()
-        .map(|f| f.strip_prefix(&root).unwrap_or(f).display().to_string())
+    let paths = crate::finder::files(&cfg, command.map(|c| c.0), &a.paths)?;
+    let paths: Vec<&Path> = (paths.iter())
+        .map(|f| f.strip_prefix(&root).unwrap_or(f))
         .collect();
+    if a.zero_terminate && !json {
+        // The names as they are on disk, for `xargs -0`: a name that isn't UTF-8 must not change.
+        let mut out = std::io::stdout().lock();
+        for p in paths {
+            out.write_all(p.as_os_str().as_encoded_bytes())?;
+            out.write_all(b"\0")?;
+        }
+        return Ok(Exit::Success);
+    }
+    let files: Vec<String> = paths.iter().map(|f| f.display().to_string()).collect();
     let out = if json {
         serde_json::to_string(&files)? + "\n"
-    } else if a.zero_terminate {
-        files.iter().fold(String::new(), |mut out, f| {
-            let _ = write!(out, "{f}\0");
-            out
-        })
     } else {
         let list: String = files.iter().fold(String::new(), |mut out, f| {
             let _ = writeln!(out, "{f}");
