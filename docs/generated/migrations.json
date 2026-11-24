@@ -7996,9 +7996,11 @@
         "name": "MyCLabsConstructorCallToEnumFrom",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/my-c-labs-constructor-call-to-enum-from-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.1/prefer-enum-from"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "MyCLabsMethodCallToEnumConst",

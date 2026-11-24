@@ -6,7 +6,7 @@ use crate::common::run_class;
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
-    NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible,
+    NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible, PreferEnumFrom,
     PreferFirstClassCallableArgument, PreferFirstClassCallableOverArray,
     PreferFirstClassCallableOverArrowFunction, PreferFirstClassCallableOverClosure,
 };
@@ -69,5 +69,13 @@ fn closure_delegating_call_to_first_class_callable() {
     check(
         || Box::new(PreferFirstClassCallableOverClosure),
         "ClosureDelegatingCallToFirstClassCallableRector",
+    );
+}
+
+#[test]
+fn my_c_labs_constructor_call_to_enum_from() {
+    check(
+        || Box::new(PreferEnumFrom),
+        "MyCLabsConstructorCallToEnumFromRector",
     );
 }
