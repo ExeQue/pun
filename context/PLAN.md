@@ -6,7 +6,7 @@ open questions. Finished work is not listed; `git log` has it.
 ## 0. Resume here
 
 One lead agent works on `main` and spawns subagents for independent slices in worktrees (AGENTS.md "How work runs").
-The latest release is v0.3.1.
+The latest release is v0.3.2.
 
 - **Counts** (mapping.toml `ported = true`): format 164 of 164, lint 833 of 834, analyse 364 of 370. Pending: lint 1
   (`laravel/prefer-pivot-class`, §3 Foundations), analyse 6 (`classes/invalid-new`,
