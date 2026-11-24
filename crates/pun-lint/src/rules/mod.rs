@@ -66,6 +66,7 @@ pub fn all() -> Vec<Box<dyn Rule>> {
 pub fn core() -> Vec<Box<dyn Rule>> {
     let mut rules = types::all();
     rules.extend(refactor::all());
+    rules.extend(laravel::outside());
     rules.extend(ungrouped());
     rules
 }

@@ -10896,9 +10896,11 @@
         "name": "AddArgumentDefaultValue",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/add-argument-default-value-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/add-argument-default"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "AddExtendsAnnotationToModelFactories",
@@ -10934,9 +10936,11 @@
         "name": "AddGuardToLoginEvent",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/add-guard-to-login-event-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-5.7/add-login-event-guard"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddHasFactoryToModels",
@@ -10962,9 +10966,11 @@
         "name": "AddMockConsoleOutputFalseToConsoleTests",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/add-mock-console-output-false-to-console-tests-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-5.7/add-mock-console-output-false"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddNewGenericReturnTypeToRelations",
@@ -10980,17 +10986,21 @@
         "name": "AddParentBootToModelClassMethod",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/add-parent-boot-to-model-class-method-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-5.7/add-parent-boot-call"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddParentRegisterToEventServiceProvider",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/add-parent-register-to-event-service-provider-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-8/add-parent-register-call"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AliasesPropertyToAliasesAttribute",
@@ -11074,9 +11084,11 @@
         "name": "AssertSeeToAssertSeeHtml",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/assert-see-to-assert-see-html-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-11/prefer-assert-see-html"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AssertStatusToAssertMethod",
@@ -11162,17 +11174,21 @@
         "name": "CashierStripeOptionsToStripe",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/cashier-stripe-options-to-stripe-rector",
-        "rules": [],
-        "note": "package upgrade set below the current major (cashier-13)",
-        "unsupported": true
+        "rules": [
+          "lint/cashier-13/prefer-stripe-method"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ChangeQueryWhereDateValueWithCarbon",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/change-query-where-date-value-with-carbon-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-5.7/add-where-time"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "CollectedByPropertyToCollectedByAttribute",
@@ -11276,17 +11292,21 @@
         "name": "DatabaseExpressionCastsToMethodCall",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/database-expression-casts-to-method-call-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-10/no-expression-string-cast"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "DatabaseExpressionToStringToMethodCall",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/database-expression-to-string-to-method-call-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-10/no-expression-to-string"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "DateFormatPropertyToDateFormatAttribute",
@@ -11342,9 +11362,11 @@
         "name": "DispatchNonShouldQueueToDispatchSync",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/dispatch-non-should-queue-to-dispatch-sync-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-10/prefer-dispatch-sync"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "DispatchToHelperFunctions",
@@ -11440,17 +11462,21 @@
         "name": "EventStringToClassConstant",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/event-string-to-class-constant-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/replace-event-string-with-constant"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "FactoryApplyingStates",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/factory-applying-states-rector",
-        "rules": [],
-        "note": "legacy-factories migration (Laravel 7 to 8 upgrade), below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-8/prefer-factory-state-methods"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "FactoryDefinition",
@@ -11464,9 +11490,11 @@
         "name": "FactoryFuncCallToStaticCall",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/factory-func-call-to-static-call-rector",
-        "rules": [],
-        "note": "legacy-factories migration (Laravel 7 to 8 upgrade), below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-8/prefer-model-factory-method"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (the model list under `items`).",
+        "unsupported": false
       },
       {
         "name": "FailOnTimeoutPropertyToFailOnTimeoutAttribute",
@@ -11572,33 +11600,41 @@
         "name": "LivewireComponentComputedMethodToComputedAttribute",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/livewire-component-computed-method-to-computed-attribute-rector",
-        "rules": [],
-        "note": "package upgrade set below the current major (livewire-30)",
-        "unsupported": true
+        "rules": [
+          "lint/livewire-3/prefer-computed-attribute"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "LivewireComponentQueryStringToUrlAttribute",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/livewire-component-query-string-to-url-attribute-rector",
-        "rules": [],
-        "note": "package upgrade set below the current major (livewire-30)",
-        "unsupported": true
+        "rules": [
+          "lint/livewire-3/prefer-url-attribute"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "LumenRoutesStringActionToUsesArray",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/lumen-routes-string-action-to-uses-array-rector",
-        "rules": [],
-        "note": "lumen set (Lumen framework only)",
-        "unsupported": true
+        "rules": [
+          "lint/lumen/prefer-uses-array"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "LumenRoutesStringMiddlewareToArray",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/lumen-routes-string-middleware-to-array-rector",
-        "rules": [],
-        "note": "lumen set (Lumen framework only)",
-        "unsupported": true
+        "rules": [
+          "lint/lumen/prefer-middleware-array"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "MakeModelAttributesAndScopesProtected",
@@ -11624,9 +11660,11 @@
         "name": "MigrateToSimplifiedAttribute",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/migrate-to-simplified-attribute-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-9/prefer-attribute-accessor"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "MinutesToSecondsInCache",
@@ -11642,9 +11680,11 @@
         "name": "ModelCastsPropertyToCastsMethod",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/model-casts-property-to-casts-method-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-11/prefer-casts-method"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "NotFilledBlankFuncCallToBlankFilledFuncCall",
@@ -11690,9 +11730,11 @@
         "name": "PropertyDeferToDeferrableProviderTo",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/property-defer-to-deferrable-provider-to-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-5.8/prefer-deferrable-provider"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "QueuePropertyToQueueAttribute",
@@ -11708,9 +11750,11 @@
         "name": "Redirect301ToPermanentRedirect",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/redirect301-to-permanent-redirect-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-5.7/prefer-permanent-redirect"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RedirectBackToBackHelper",
@@ -11736,9 +11780,11 @@
         "name": "RefactorBlueprintGeometryColumns",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/refactor-blueprint-geometry-columns-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-11/prefer-geometry-column"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RelationTableStringToPivotClass",
@@ -11820,41 +11866,51 @@
         "name": "ReplaceAssertTimesSendWithAssertSentTimes",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/replace-assert-times-send-with-assert-sent-times-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-10/prefer-assert-sent-times"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReplaceExpectsMethodsInTests",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/replace-expects-methods-in-tests-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-10/prefer-fake-over-expects"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReplaceFakerInstanceWithHelper",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/replace-faker-instance-with-helper-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-9/prefer-fake-helper"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReplaceFakerPropertyFetchWithMethodCall",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/replace-faker-property-fetch-with-method-call-rector",
-        "rules": [],
-        "note": "package upgrade set below the current major (faker-10)",
-        "unsupported": true
+        "rules": [
+          "lint/faker-1/no-faker-property-access"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReplaceQueueTraitsWithQueueable",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/replace-queue-traits-with-queueable-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-11/prefer-queueable-trait"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReplaceServiceContainerCallArg",
@@ -11870,9 +11926,11 @@
         "name": "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFake",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/replace-without-jobs-events-and-notifications-with-facade-fake-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-10/prefer-facade-fake"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReportIf",
@@ -12116,9 +12174,11 @@
         "name": "UnifyModelDatesWithCasts",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/unify-model-dates-with-casts-rector",
-        "rules": [],
-        "note": "laravel upgrade set below laravel-12",
-        "unsupported": true
+        "rules": [
+          "lint/laravel-10/prefer-date-casts"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "UniqueForPropertyToUniqueForAttribute",

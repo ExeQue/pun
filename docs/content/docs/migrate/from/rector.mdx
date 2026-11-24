@@ -104,15 +104,11 @@ Layout-only Rector rules map to format rules. The migration reports any that `[f
 
 ### laravel upgrade set below laravel-12
 
-[`AddArgumentDefaultValue`](https://getrector.com/rule-detail/add-argument-default-value-rector), [`AddGuardToLoginEvent`](https://getrector.com/rule-detail/add-guard-to-login-event-rector), [`AddMockConsoleOutputFalseToConsoleTests`](https://getrector.com/rule-detail/add-mock-console-output-false-to-console-tests-rector), [`AddParentBootToModelClassMethod`](https://getrector.com/rule-detail/add-parent-boot-to-model-class-method-rector), [`AddParentRegisterToEventServiceProvider`](https://getrector.com/rule-detail/add-parent-register-to-event-service-provider-rector), [`AssertSeeToAssertSeeHtml`](https://getrector.com/rule-detail/assert-see-to-assert-see-html-rector), [`ChangeQueryWhereDateValueWithCarbon`](https://getrector.com/rule-detail/change-query-where-date-value-with-carbon-rector), [`DatabaseExpressionCastsToMethodCall`](https://getrector.com/rule-detail/database-expression-casts-to-method-call-rector), [`DatabaseExpressionToStringToMethodCall`](https://getrector.com/rule-detail/database-expression-to-string-to-method-call-rector), [`DispatchNonShouldQueueToDispatchSync`](https://getrector.com/rule-detail/dispatch-non-should-queue-to-dispatch-sync-rector), [`EventStringToClassConstant`](https://getrector.com/rule-detail/event-string-to-class-constant-rector), [`MigrateToSimplifiedAttribute`](https://getrector.com/rule-detail/migrate-to-simplified-attribute-rector), [`ModelCastsPropertyToCastsMethod`](https://getrector.com/rule-detail/model-casts-property-to-casts-method-rector), [`PropertyDeferToDeferrableProviderTo`](https://getrector.com/rule-detail/property-defer-to-deferrable-provider-to-rector), [`Redirect301ToPermanentRedirect`](https://getrector.com/rule-detail/redirect301-to-permanent-redirect-rector), [`RefactorBlueprintGeometryColumns`](https://getrector.com/rule-detail/refactor-blueprint-geometry-columns-rector), [`RemoveTraitUse`](https://getrector.com/rule-detail/remove-trait-use-rector), [`RenameStaticMethod`](https://getrector.com/rule-detail/rename-static-method-rector), [`ReplaceAssertTimesSendWithAssertSentTimes`](https://getrector.com/rule-detail/replace-assert-times-send-with-assert-sent-times-rector), [`ReplaceExpectsMethodsInTests`](https://getrector.com/rule-detail/replace-expects-methods-in-tests-rector), [`ReplaceFakerInstanceWithHelper`](https://getrector.com/rule-detail/replace-faker-instance-with-helper-rector), [`ReplaceQueueTraitsWithQueueable`](https://getrector.com/rule-detail/replace-queue-traits-with-queueable-rector), [`ReplaceWithoutJobsEventsAndNotificationsWithFacadeFake`](https://getrector.com/rule-detail/replace-without-jobs-events-and-notifications-with-facade-fake-rector), [`UnifyModelDatesWithCasts`](https://getrector.com/rule-detail/unify-model-dates-with-casts-rector).
+[`RemoveTraitUse`](https://getrector.com/rule-detail/remove-trait-use-rector), [`RenameStaticMethod`](https://getrector.com/rule-detail/rename-static-method-rector).
 
 ### legacy-factories migration (Laravel 7 to 8 upgrade), below laravel-12
 
-[`FactoryApplyingStates`](https://getrector.com/rule-detail/factory-applying-states-rector), [`FactoryDefinition`](https://getrector.com/rule-detail/factory-definition-rector), [`FactoryFuncCallToStaticCall`](https://getrector.com/rule-detail/factory-func-call-to-static-call-rector).
-
-### lumen set (Lumen framework only)
-
-[`LumenRoutesStringActionToUsesArray`](https://getrector.com/rule-detail/lumen-routes-string-action-to-uses-array-rector), [`LumenRoutesStringMiddlewareToArray`](https://getrector.com/rule-detail/lumen-routes-string-middleware-to-array-rector).
+[`FactoryDefinition`](https://getrector.com/rule-detail/factory-definition-rector).
 
 ### not correctly added upstream (registered in no set)
 
@@ -141,18 +137,6 @@ Layout-only Rector rules map to format rules. The migration reports any that `[f
 ### only in sets outside the eight prepared sets: rector-preset
 
 [`AddParamTypeToRefactorMethod`](https://getrector.com/rule-detail/add-param-type-to-refactor-method-rector), [`RemoveRefactorDuplicatedNodeInstanceCheck`](https://getrector.com/rule-detail/remove-refactor-duplicated-node-instance-check-rector).
-
-### package upgrade set below the current major (cashier-13)
-
-[`CashierStripeOptionsToStripe`](https://getrector.com/rule-detail/cashier-stripe-options-to-stripe-rector).
-
-### package upgrade set below the current major (faker-10)
-
-[`ReplaceFakerPropertyFetchWithMethodCall`](https://getrector.com/rule-detail/replace-faker-property-fetch-with-method-call-rector).
-
-### package upgrade set below the current major (livewire-30)
-
-[`LivewireComponentComputedMethodToComputedAttribute`](https://getrector.com/rule-detail/livewire-component-computed-method-to-computed-attribute-rector), [`LivewireComponentQueryStringToUrlAttribute`](https://getrector.com/rule-detail/livewire-component-query-string-to-url-attribute-rector).
 
 ### the code it rewrites does not compile on PHP 8.4 (`break 0` and `break $x` are fatal errors since PHP 5.4)
 

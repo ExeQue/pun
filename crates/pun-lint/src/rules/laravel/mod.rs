@@ -65,6 +65,10 @@ pub(crate) mod property_attribute;
 mod property_rules;
 mod query_builder;
 mod query_calls;
+mod upgrade_calls;
+mod upgrade_classes;
+mod upgrade_models;
+mod upgrade_packages;
 
 pub use prefer_class_container_key::ContainerService;
 pub use prefer_constructor_injection::Injection;
@@ -182,6 +186,42 @@ rules! {
         query_calls => PreferDateShorthand,
         query_calls => PreferWhereLike::default(),
         query_calls => PreferCacheSeconds,
+        upgrade_calls => PreferPermanentRedirect,
+        upgrade_calls => PreferAssertSeeHtml,
+        upgrade_calls => PreferAssertSentTimes,
+        upgrade_calls => NoExpressionStringCast,
+        upgrade_calls => NoExpressionToString,
+        upgrade_calls => PreferGeometryColumn,
+        upgrade_calls => PreferFacadeFake,
+        upgrade_calls => PreferDispatchSync,
+        upgrade_calls => PreferFakeHelper,
+        upgrade_classes => AddParentBootCall,
+        upgrade_classes => AddParentRegisterCall,
+        upgrade_classes => PreferDeferrableProvider,
+        upgrade_classes => PreferQueueableTrait,
+        upgrade_classes => PreferDateCasts,
+        upgrade_classes => PreferCastsMethodFix,
+        upgrade_classes => AddMockConsoleOutputFalse,
+        upgrade_classes => AddLoginEventGuard,
+        upgrade_classes => AddWhereTime,
+        upgrade_packages => PreferFakeOverExpects,
+        upgrade_models => PreferAttributeAccessor,
+        upgrade_models => PreferFactoryStateMethods,
+        upgrade_models => PreferModelFactoryMethod::default(),
+    }
+}
+
+// rector-laravel's rules in groups no extension owns: the package upgrade groups, `lumen` and `refactor`.
+rules! {
+    pub(super) fn outside {
+        upgrade_packages => PreferStripeMethod,
+        upgrade_packages => NoFakerPropertyAccess,
+        upgrade_packages => PreferComputedAttribute,
+        upgrade_packages => PreferUrlAttribute,
+        upgrade_packages => PreferUsesArray,
+        upgrade_packages => PreferMiddlewareArray,
+        upgrade_models => AddArgumentDefault::default(),
+        upgrade_models => ReplaceEventStringWithConstant::default(),
     }
 }
 

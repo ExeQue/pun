@@ -3273,6 +3273,25 @@
       "ported": true
     },
     {
+      "id": "lint/cashier-13/prefer-stripe-method",
+      "command": "lint",
+      "group": "cashier-13",
+      "summary": "Renames the Billable stripeOptions() to stripe().",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "CashierStripeOptionsToStripe",
+        "CashierStripeOptionsToStripeRector",
+        "RectorLaravel\\Rector\\Class_\\CashierStripeOptionsToStripeRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/classes/add-stringable",
       "command": "lint",
       "group": "classes",
@@ -6227,6 +6246,25 @@
       "ported": true
     },
     {
+      "id": "lint/faker-1/no-faker-property-access",
+      "command": "lint",
+      "group": "faker-1",
+      "summary": "Replace deprecated faker property fetch with method call",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\PropertyFetch\\ReplaceFakerPropertyFetchWithMethodCallRector",
+        "ReplaceFakerPropertyFetchWithMethodCall",
+        "ReplaceFakerPropertyFetchWithMethodCallRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/functions/no-assign-in-argument",
       "command": "lint",
       "group": "functions",
@@ -6531,6 +6569,215 @@
       "ported": true
     },
     {
+      "id": "lint/laravel-10/no-expression-string-cast",
+      "command": "lint",
+      "group": "laravel-10",
+      "summary": "Convert DB Expression string casts to getValue() method calls.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "DatabaseExpressionCastsToMethodCall",
+        "DatabaseExpressionCastsToMethodCallRector",
+        "RectorLaravel\\Rector\\Cast\\DatabaseExpressionCastsToMethodCallRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-10/no-expression-to-string",
+      "command": "lint",
+      "group": "laravel-10",
+      "summary": "Convert DB Expression __toString() calls to getValue() method calls.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "DatabaseExpressionToStringToMethodCall",
+        "DatabaseExpressionToStringToMethodCallRector",
+        "RectorLaravel\\Rector\\MethodCall\\DatabaseExpressionToStringToMethodCallRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-10/prefer-assert-sent-times",
+      "command": "lint",
+      "group": "laravel-10",
+      "summary": "Replace assertTimesSent with assertSentTimes",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\StaticCall\\ReplaceAssertTimesSendWithAssertSentTimesRector",
+        "ReplaceAssertTimesSendWithAssertSentTimes",
+        "ReplaceAssertTimesSendWithAssertSentTimesRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-10/prefer-date-casts",
+      "command": "lint",
+      "group": "laravel-10",
+      "summary": "Unify Model $dates property with $casts",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\Class_\\UnifyModelDatesWithCastsRector",
+        "UnifyModelDatesWithCasts",
+        "UnifyModelDatesWithCastsRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-10/prefer-dispatch-sync",
+      "command": "lint",
+      "group": "laravel-10",
+      "summary": "Dispatch non ShouldQueue jobs to dispatchSync",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "DispatchNonShouldQueueToDispatchSync",
+        "DispatchNonShouldQueueToDispatchSyncRector",
+        "RectorLaravel\\Rector\\FuncCall\\DispatchNonShouldQueueToDispatchSyncRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-10/prefer-facade-fake",
+      "command": "lint",
+      "group": "laravel-10",
+      "summary": "Replace withoutJobs, withoutEvents and withoutNotifications with Facade fake",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\MethodCall\\ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector",
+        "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFake",
+        "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-10/prefer-fake-over-expects",
+      "command": "lint",
+      "group": "laravel-10",
+      "summary": "Replace expectJobs and expectEvents methods in tests",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\Class_\\ReplaceExpectsMethodsInTestsRector",
+        "ReplaceExpectsMethodsInTests",
+        "ReplaceExpectsMethodsInTestsRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-11/prefer-assert-see-html",
+      "command": "lint",
+      "group": "laravel-11",
+      "summary": "Replace assertSee with assertSeeHtml when testing HTML with escape set to false",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "AssertSeeToAssertSeeHtml",
+        "AssertSeeToAssertSeeHtmlRector",
+        "RectorLaravel\\Rector\\MethodCall\\AssertSeeToAssertSeeHtmlRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-11/prefer-casts-method",
+      "command": "lint",
+      "group": "laravel-11",
+      "summary": "Refactor Model $casts property with casts() method",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "ModelCastsPropertyToCastsMethod",
+        "ModelCastsPropertyToCastsMethodRector",
+        "RectorLaravel\\Rector\\Class_\\ModelCastsPropertyToCastsMethodRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-11/prefer-geometry-column",
+      "command": "lint",
+      "group": "laravel-11",
+      "summary": "refactors calls with the pre Laravel 11 methods for blueprint geometry columns",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\MethodCall\\RefactorBlueprintGeometryColumnsRector",
+        "RefactorBlueprintGeometryColumns",
+        "RefactorBlueprintGeometryColumnsRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-11/prefer-queueable-trait",
+      "command": "lint",
+      "group": "laravel-11",
+      "summary": "Replace Dispatchable, InteractsWithQueue, Queueable, and SerializesModels traits with the Queueable trait",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\Class_\\ReplaceQueueTraitsWithQueueableRector",
+        "ReplaceQueueTraitsWithQueueable",
+        "ReplaceQueueTraitsWithQueueableRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel-12/prefer-scope-attribute",
       "command": "lint",
       "group": "laravel-12",
@@ -6546,6 +6793,215 @@
         "RectorLaravel\\Rector\\ClassMethod\\ScopeNamedClassMethodToScopeAttributedClassMethodRector",
         "ScopeNamedClassMethodToScopeAttributedClassMethod",
         "ScopeNamedClassMethodToScopeAttributedClassMethodRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-5.7/add-login-event-guard",
+      "command": "lint",
+      "group": "laravel-5.7",
+      "summary": "Add new $guard argument to Illuminate\\Auth\\Events\\Login",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "AddGuardToLoginEvent",
+        "AddGuardToLoginEventRector",
+        "RectorLaravel\\Rector\\New_\\AddGuardToLoginEventRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-5.7/add-mock-console-output-false",
+      "command": "lint",
+      "group": "laravel-5.7",
+      "summary": "Add \"$this->mockConsoleOutput = false\"; to console tests that work with output content",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "AddMockConsoleOutputFalseToConsoleTests",
+        "AddMockConsoleOutputFalseToConsoleTestsRector",
+        "RectorLaravel\\Rector\\Class_\\AddMockConsoleOutputFalseToConsoleTestsRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-5.7/add-parent-boot-call",
+      "command": "lint",
+      "group": "laravel-5.7",
+      "summary": "Add parent::boot(); call to boot() class method in child of Illuminate\\Database\\Eloquent\\Model",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "AddParentBootToModelClassMethod",
+        "AddParentBootToModelClassMethodRector",
+        "RectorLaravel\\Rector\\ClassMethod\\AddParentBootToModelClassMethodRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-5.7/add-where-time",
+      "command": "lint",
+      "group": "laravel-5.7",
+      "summary": "Refactor whereDate() queries to include both date and time comparisons with Carbon",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "ChangeQueryWhereDateValueWithCarbon",
+        "ChangeQueryWhereDateValueWithCarbonRector",
+        "RectorLaravel\\Rector\\MethodCall\\ChangeQueryWhereDateValueWithCarbonRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-5.7/prefer-permanent-redirect",
+      "command": "lint",
+      "group": "laravel-5.7",
+      "summary": "Change \"redirect\" call with 301 to \"permanentRedirect\"",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\StaticCall\\Redirect301ToPermanentRedirectRector",
+        "Redirect301ToPermanentRedirect",
+        "Redirect301ToPermanentRedirectRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-5.8/prefer-deferrable-provider",
+      "command": "lint",
+      "group": "laravel-5.8",
+      "summary": "Change deprecated $defer = true; to Illuminate\\Contracts\\Support\\DeferrableProvider interface",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "PropertyDeferToDeferrableProviderTo",
+        "PropertyDeferToDeferrableProviderToRector",
+        "RectorLaravel\\Rector\\Class_\\PropertyDeferToDeferrableProviderToRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-8/add-parent-register-call",
+      "command": "lint",
+      "group": "laravel-8",
+      "summary": "Add parent::register(); call to register() class method in child of Illuminate\\Foundation\\Support\\Providers\\EventServiceProvider",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "AddParentRegisterToEventServiceProvider",
+        "AddParentRegisterToEventServiceProviderRector",
+        "RectorLaravel\\Rector\\ClassMethod\\AddParentRegisterToEventServiceProviderRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-8/prefer-factory-state-methods",
+      "command": "lint",
+      "group": "laravel-8",
+      "summary": "Call the state methods directly instead of specify the name of state.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "FactoryApplyingStates",
+        "FactoryApplyingStatesRector",
+        "RectorLaravel\\Rector\\MethodCall\\FactoryApplyingStatesRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-8/prefer-model-factory-method",
+      "command": "lint",
+      "group": "laravel-8",
+      "summary": "Use the static factory method instead of global factory function.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "FactoryFuncCallToStaticCall",
+        "FactoryFuncCallToStaticCallRector",
+        "RectorLaravel\\Rector\\FuncCall\\FactoryFuncCallToStaticCallRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-9/prefer-attribute-accessor",
+      "command": "lint",
+      "group": "laravel-9",
+      "summary": "Migrate to the new Model attributes syntax",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "MigrateToSimplifiedAttribute",
+        "MigrateToSimplifiedAttributeRector",
+        "RectorLaravel\\Rector\\ClassMethod\\MigrateToSimplifiedAttributeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/laravel-9/prefer-fake-helper",
+      "command": "lint",
+      "group": "laravel-9",
+      "summary": "Replace $this->faker with the fake() helper function in Factories",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\PropertyFetch\\ReplaceFakerInstanceWithHelperRector",
+        "ReplaceFakerInstanceWithHelper",
+        "ReplaceFakerInstanceWithHelperRector"
       ],
       "ported": true
     },
@@ -8680,6 +9136,82 @@
       ],
       "upstream": [
         "Pint/phpdoc_type_annotations_only"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/livewire-3/prefer-computed-attribute",
+      "command": "lint",
+      "group": "livewire-3",
+      "summary": "Converts the computed methods of a Livewire component to use the Computed Attribute",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "LivewireComponentComputedMethodToComputedAttribute",
+        "LivewireComponentComputedMethodToComputedAttributeRector",
+        "RectorLaravel\\Rector\\Class_\\LivewireComponentComputedMethodToComputedAttributeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/livewire-3/prefer-url-attribute",
+      "command": "lint",
+      "group": "livewire-3",
+      "summary": "Converts the $queryString property of a Livewire component to use the Url Attribute",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "LivewireComponentQueryStringToUrlAttribute",
+        "LivewireComponentQueryStringToUrlAttributeRector",
+        "RectorLaravel\\Rector\\Class_\\LivewireComponentQueryStringToUrlAttributeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/lumen/prefer-middleware-array",
+      "command": "lint",
+      "group": "lumen",
+      "summary": "Changes middlewares from rule definitions from string to array notation.",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "LumenRoutesStringMiddlewareToArray",
+        "LumenRoutesStringMiddlewareToArrayRector",
+        "RectorLaravel\\Rector\\MethodCall\\LumenRoutesStringMiddlewareToArrayRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/lumen/prefer-uses-array",
+      "command": "lint",
+      "group": "lumen",
+      "summary": "Changes action in rule definitions from string to array notation.",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "LumenRoutesStringActionToUsesArray",
+        "LumenRoutesStringActionToUsesArrayRector",
+        "RectorLaravel\\Rector\\MethodCall\\LumenRoutesStringActionToUsesArrayRector"
       ],
       "ported": true
     },
@@ -14819,6 +15351,25 @@
       "ported": true
     },
     {
+      "id": "lint/refactor/add-argument-default",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Adds default value for arguments in defined methods.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "AddArgumentDefaultValue",
+        "AddArgumentDefaultValueRector",
+        "RectorLaravel\\Rector\\ClassMethod\\AddArgumentDefaultValueRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/refactor/add-override-attribute",
       "command": "lint",
       "group": "refactor",
@@ -15157,6 +15708,25 @@
         "Rector\\Renaming\\Rector\\String_\\RenameStringRector",
         "RenameString",
         "RenameStringRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/refactor/replace-event-string-with-constant",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Turns a string event name into a class constant, but only where the event dispatcher is used",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "EventStringToClassConstant",
+        "EventStringToClassConstantRector",
+        "RectorLaravel\\Rector\\StaticCall\\EventStringToClassConstantRector"
       ],
       "ported": true
     },

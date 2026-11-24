@@ -8,6 +8,13 @@ pagination: false
 Configurable codemods: they do nothing until configured.
 
 <CardGroup cols={2}>
+<Card title="add-argument-default" href="/docs/rules/lint/refactor/add-argument-default">
+
+Adds default value for arguments in defined methods.
+
+Not in any set. Unsafe fix: it can change behavior.
+
+</Card>
 <Card title="add-override-attribute" href="/docs/rules/lint/refactor/add-override-attribute">
 
 Add #[Override] to properties that override a parent class's property (PHP 8.5).
@@ -137,6 +144,13 @@ Not in any set. Safe fix.
 <Card title="rename-string" href="/docs/rules/lint/refactor/rename-string">
 
 Change string value
+
+Not in any set. Unsafe fix: it can change behavior.
+
+</Card>
+<Card title="replace-event-string-with-constant" href="/docs/rules/lint/refactor/replace-event-string-with-constant">
+
+Turns a string event name into a class constant, but only where the event dispatcher is used
 
 Not in any set. Unsafe fix: it can change behavior.
 
