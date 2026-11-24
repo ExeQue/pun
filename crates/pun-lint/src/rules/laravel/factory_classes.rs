@@ -6,6 +6,7 @@ use mago_syntax::cst::{
     Access, Argument, Call, Expression, FunctionLikeParameterList, Literal, NamespaceBody, Node,
     NodeKind, Sequence, Statement, Variable,
 };
+use std::fmt::Write as _;
 
 use super::member_name;
 use super::upgrade_models::allow_list;
@@ -76,7 +77,7 @@ fn without_param(
     arrow: bool,
     index: usize,
 ) -> Option<Vec<(Span, String)>> {
-    let params: Vec<Span> = list.parameters.iter().map(|p| node_span(p)).collect();
+    let params: Vec<Span> = list.parameters.iter().map(node_span).collect();
     let span = *params.get(index)?;
     if params.len() == 1 {
         // php-parser reprints a callable that lost its only parameter: `function () {`, `fn() =>`.
@@ -379,9 +380,9 @@ impl Rule for PreferFactoryClasses {
                             calls.join("->")
                         ),
                     };
-                    class.push_str(&format!("\n{indent}    {code}"));
+                    let _ = write!(class, "\n{indent}    {code}");
                 }
-                class.push_str(&format!("\n{indent}}}"));
+                let _ = write!(class, "\n{indent}}}");
                 class
             })
             .collect();

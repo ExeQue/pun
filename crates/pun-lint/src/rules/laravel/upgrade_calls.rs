@@ -535,7 +535,7 @@ impl Rule for PreferFakeHelper {
             let mut parts = Vec::new();
             let mut literal = String::new();
             let mut changed = false;
-            for part in string.parts.iter() {
+            for part in &string.parts {
                 if let StringPart::BracedExpression(braced) = part
                     && let Some(code) = faker_reference(ctx, braced.expression)
                 {

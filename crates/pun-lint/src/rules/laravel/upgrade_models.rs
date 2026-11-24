@@ -7,6 +7,7 @@ use mago_syntax::cst::{
     ClassLikeMemberSelector, Expression, Literal, Method, MethodBody, Node, NodeKind, Statement,
     Variable,
 };
+use std::fmt::Write as _;
 
 use super::helper_calls::is_function;
 use super::member_name;
@@ -81,7 +82,7 @@ impl PreferAttributeAccessor {
         let mut lines = Vec::new();
         let mut items = Vec::new();
         let mut previous = block.left_brace.end.offset as usize;
-        for statement in block.statements.iter() {
+        for statement in &block.statements {
             let span = node_span(statement);
             let start = first_comment(source, previous, span.start).unwrap_or(span.start);
             previous = span.end;
@@ -133,7 +134,7 @@ impl PreferAttributeAccessor {
             out.push_str(&inner);
             out.push_str(line);
         }
-        out.push_str(&format!("\n{indent}    }}"));
+        let _ = write!(out, "\n{indent}    }}");
         out
     }
 }
@@ -217,15 +218,16 @@ impl Rule for PreferAttributeAccessor {
             };
             let mut code = String::new();
             if accessor.is_none() || mutator.is_none() {
-                for list in method.attribute_lists.iter() {
+                for list in &method.attribute_lists {
                     code.push_str(text(ctx, list));
                     code.push('\n');
                     code.push_str(indent);
                 }
             }
-            code.push_str(&format!(
+            let _ = write!(
+                code,
                 "protected function {attribute}(): {ATTRIBUTE}\n{indent}{{\n{indent}    return {ATTRIBUTE}::make({arguments});\n{indent}}}"
-            ));
+            );
             edits.push(Edit::new(span, code));
         }
         if removed.contains(&true) {
@@ -289,7 +291,7 @@ impl Rule for PreferFactoryStateMethods {
         if let [only] = &args[..]
             && let Some(elements) = array_elements(unparenthesize(only.value()))
         {
-            for e in elements.iter() {
+            for e in elements {
                 let ArrayElement::Value(v) = e else { return };
                 let Some(s) = string(v.value) else { return };
                 states.push(s);
@@ -483,7 +485,7 @@ impl Rule for AddArgumentDefault {
             if !super::is_a(ctx, &name, &[target]) {
                 continue;
             }
-            for member in class.members.iter() {
+            for member in class.members {
                 let ClassLikeMember::Method(method) = member else {
                     continue;
                 };

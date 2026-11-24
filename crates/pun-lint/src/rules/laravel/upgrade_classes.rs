@@ -10,6 +10,7 @@ use mago_syntax::cst::{
     Expression, Identifier, Literal, Method, MethodBody, Node, NodeKind, Property, PropertyItem,
     Statement, Variable,
 };
+use std::fmt::Write as _;
 
 use super::object_type::is_object_type;
 use super::property_attribute::{ClassView, Kind, MODEL, array_elements, report};
@@ -316,9 +317,9 @@ impl Rule for PreferQueueableTrait {
             QUEUE_TRAITS.iter().any(|t| t.eq_ignore_ascii_case(&name))
         };
         let mut seen = [false; 4];
-        for m in class.members.iter() {
+        for m in class.members {
             if let ClassLikeMember::TraitUse(t) = m {
-                for id in t.trait_names.iter() {
+                for id in &t.trait_names {
                     let name = resolve_class_name(&scope, id);
                     if let Some(i) = QUEUE_TRAITS
                         .iter()
@@ -422,7 +423,7 @@ impl Rule for PreferDateCasts {
             return;
         };
         let mut names = Vec::new();
-        for e in elements.iter() {
+        for e in elements {
             let v = match e {
                 ArrayElement::KeyValue(kv) => kv.value,
                 ArrayElement::Value(v) => v.value,
@@ -442,7 +443,7 @@ impl Rule for PreferDateCasts {
                     return;
                 };
                 let mut keys = Vec::new();
-                for e in elements.iter() {
+                for e in elements {
                     match e {
                         ArrayElement::KeyValue(kv) => match value(kv.key) {
                             Some(Value::Str(s)) => keys.push(s),
@@ -573,9 +574,10 @@ impl Rule for PreferCastsMethodFix {
             method.push('\n');
             method.push_str(indent);
         }
-        method.push_str(&format!(
+        let _ = write!(
+            method,
             "protected function casts(): array\n{indent}{{\n{indent}    return {body};\n{indent}}}"
-        ));
+        );
         let last = class.members.len() - 1;
         let edits = if index == last {
             let at = doc.map_or(span.start, |_| {
@@ -788,14 +790,14 @@ impl Rule for AddLoginEventGuard {
         let Node::ExpressionStatement(statement) = node else {
             return;
         };
-        let new = match statement.expression {
-            Expression::Assignment(Assignment {
-                operator: AssignmentOperator::Assign(_),
-                rhs: Expression::Instantiation(new),
-                ..
-            })
-            | Expression::Instantiation(new) => new,
-            _ => return,
+        let (Expression::Assignment(Assignment {
+            operator: AssignmentOperator::Assign(_),
+            rhs: Expression::Instantiation(new),
+            ..
+        })
+        | Expression::Instantiation(new)) = statement.expression
+        else {
+            return;
         };
         let Expression::Identifier(id) = new.class else {
             return;

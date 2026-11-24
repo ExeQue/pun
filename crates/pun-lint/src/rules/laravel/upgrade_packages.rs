@@ -146,7 +146,7 @@ impl Rule for PreferComputedAttribute {
         let mut scope = ancestors.to_vec();
         scope.push(node);
         let mut edits = Vec::new();
-        for member in class.members.iter() {
+        for member in class.members {
             let ClassLikeMember::Method(method) = member else {
                 continue;
             };
@@ -244,7 +244,7 @@ impl Rule for PreferUrlAttribute {
             Property::Plain(p) => p.items.first().map(|i| i.variable().name[1..].to_vec()),
             Property::Hooked(p) => Some(p.item.variable().name[1..].to_vec()),
         };
-        let found = class
+        let mut found = class
             .members
             .iter()
             .enumerate()
@@ -254,7 +254,7 @@ impl Rule for PreferUrlAttribute {
                 }
                 _ => None,
             });
-        let Some((query_index, Property::Plain(query))) = found.last() else {
+        let Some((query_index, Property::Plain(query))) = found.next_back() else {
             return;
         };
         let Some(mago_syntax::cst::PropertyItem::Concrete(item)) = query.items.first() else {
@@ -296,7 +296,7 @@ impl Rule for PreferUrlAttribute {
         scope.push(node);
         let source = ctx.source;
         let mut edits = Vec::new();
-        for member in class.members.iter() {
+        for member in class.members {
             let ClassLikeMember::Property(p) = member else {
                 continue;
             };
@@ -408,7 +408,7 @@ impl Rule for PreferFakeOverExpects {
         let mut scope = ancestors.to_vec();
         scope.push(node);
         let mut edits = Vec::new();
-        for member in class.members.iter() {
+        for member in class.members {
             let ClassLikeMember::Method(method) = member else {
                 continue;
             };
