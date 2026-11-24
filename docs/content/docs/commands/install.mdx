@@ -44,11 +44,11 @@ pun install --ignore-platform-req=ext-imagick
 - Runs the install scripts and the plugins in `config.allow-plugins`.
 - Skips the work when nothing changed since the last install.
 
-With `hardlink`, editing a file in `vendor/` also changes it in other projects. Use `clone` or `copy` if you edit `vendor/` by hand.
+With `hardlink`, editing a file in `vendor/` also changes it in other projects. Use `clone` or `copy` if you edit `vendor/` by hand. Switching an install to `clone` or `copy` gives the packages still hardlinked their own files.
 
 ## Limitations
 
-- Installs `zip` and `tar` archives and path repositories. A package locked with only a VCS source fails.
+- Installs `zip` and `tar` archives and path repositories. A path repository is symlinked, or copied when its options set `symlink: false`. A package locked with only a VCS source fails.
 - Plugins don't get package events, `pre-operations-exec`, `pre-pool-create` or download events.
 - No custom installer paths, such as `composer/installers`, and no plugin commands.
 - A class added by hand to a package in `vendor/` reaches the class map only after that package is installed again.

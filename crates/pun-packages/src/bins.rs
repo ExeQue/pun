@@ -204,8 +204,11 @@ exec "${{dir}}/"{file} "$@"
 pub fn write(proxy: &Proxy, bin_dir: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(bin_dir)?;
     let link = bin_dir.join(&proxy.name);
-    if std::fs::read(&link).ok().as_deref() != Some(proxy.text.as_bytes()) {
-        std::fs::write(&link, &proxy.text)?;
+    // A symlink in the proxy's place is replaced, not written through.
+    if std::fs::symlink_metadata(&link).is_ok_and(|m| m.is_symlink())
+        || std::fs::read(&link).ok().as_deref() != Some(proxy.text.as_bytes())
+    {
+        crate::fetch::store(&link, proxy.text.as_bytes())?;
     }
     // Only a mode that differs is changed, so an unchanged install leaves the files' change times alone (the
     // no-op fingerprint reads them).

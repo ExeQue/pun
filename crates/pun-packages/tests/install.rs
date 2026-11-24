@@ -895,6 +895,16 @@ fn packages_come_from_the_store_and_their_classes_from_the_class_cache() {
     assert!(classmap().contains("'FromCache' => $vendorDir . '/acme/zipped/src/Z.php'"));
     assert!(classmap().contains("'One' => $vendorDir . '/acme/zipped/lib/One.php'"));
 
+    // Switched to the copy mode, the kept package stops sharing its files with the store.
+    let copied = Options {
+        link: pun_packages::store::LinkMode::Copy,
+        ..o.clone()
+    };
+    let third = run(&tmp, &zipped, &copied);
+    assert!(!third.fresh);
+    assert_eq!(std::fs::metadata(&z).unwrap().nlink(), 1);
+    assert_eq!(std::fs::read_to_string(&z).unwrap(), "<?php class Z {}\n");
+
     // A source install is a checkout, which the class cache can't vouch for: it is scanned.
     let installed = tmp.join("vendor/composer/installed.json");
     let json = std::fs::read_to_string(&installed).unwrap().replace(
@@ -907,6 +917,59 @@ fn packages_come_from_the_store_and_their_classes_from_the_class_cache() {
     dump_autoload(&tmp, &manifest, None, &o, None, &mut |_, _| Ok(())).unwrap();
     assert!(classmap().contains("'Z' => $vendorDir . '/acme/zipped/src/Z.php'"));
     assert!(!classmap().contains("FromCache"));
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// A symlink planted in vendor/ never takes a write or a removal outside it: a stale package below a linked
+/// directory is refused, and a link in place of a generated file or a bin proxy is replaced, not written through.
+#[test]
+fn vendor_symlinks_do_not_redirect_writes_or_removals() {
+    let tmp = std::env::temp_dir().join(format!("pun-install-confined-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    run(&tmp, &lock, &Options::default());
+    let outside = tmp.join("outside");
+    std::fs::create_dir_all(outside.join("gone")).unwrap();
+    std::fs::write(outside.join("gone/keep.php"), "keep").unwrap();
+    std::fs::write(outside.join("file"), "keep").unwrap();
+    std::os::unix::fs::symlink(&outside, tmp.join("vendor/evil")).unwrap();
+    let installed = tmp.join("vendor/composer/installed.json");
+    let original = std::fs::read_to_string(&installed).unwrap();
+    let mut json: Value = serde_json::from_str(&original).unwrap();
+    json["packages"].as_array_mut().unwrap().push(
+        serde_json::json!({"name": "evil/gone", "version": "1.0.0", "install-path": "../evil/gone"}),
+    );
+    std::fs::write(&installed, json.to_string()).unwrap();
+    let error = format!(
+        "{:#}",
+        try_run(&tmp, &lock, &Options::default()).unwrap_err()
+    );
+    assert!(error.contains("is a symlink that leads outside"), "{error}");
+    assert!(outside.join("gone/keep.php").exists());
+
+    std::fs::write(&installed, &original).unwrap();
+    for file in ["vendor/composer/installed.php", "vendor/bin/lib"] {
+        std::fs::remove_file(tmp.join(file)).unwrap();
+        std::os::unix::fs::symlink(outside.join("file"), tmp.join(file)).unwrap();
+    }
+    run(&tmp, &lock, &Options::default());
+    assert_eq!(
+        std::fs::read_to_string(outside.join("file")).unwrap(),
+        "keep"
+    );
+    assert_eq!(
+        std::fs::metadata(outside.join("file")).unwrap().mode() & 0o777,
+        std::fs::metadata(outside.join("gone/keep.php"))
+            .unwrap()
+            .mode()
+            & 0o777
+    );
+    for file in ["vendor/composer/installed.php", "vendor/bin/lib"] {
+        assert!(std::fs::symlink_metadata(tmp.join(file)).unwrap().is_file());
+    }
     std::fs::remove_dir_all(&tmp).unwrap();
 }
 

@@ -162,8 +162,15 @@ pub fn install(
         return Ok(report);
     }
     let before = previous(Path::new(&project.dirs.vendor))?;
-    let todo = compare(&packages, &before, &mut report);
+    let isolate = o.cache.is_some() && o.link != LinkMode::Hardlink;
+    let todo = compare(&packages, &before, isolate, &mut report);
     remove_stale(&before, &packages, &todo, &project.dirs, &mut report)?;
+    for p in todo.iter().map(|&i| &packages[i]) {
+        if let Some(path) = &p.path {
+            confined(&project.dirs.vendor, Path::new(path))
+                .with_context(|| format!("installing {}", p.name()))?;
+        }
+    }
     let store = (o.cache.as_deref()).map(|c| Store::new(c, o.link));
     download(
         fetcher,
@@ -326,8 +333,8 @@ fn fingerprint_inputs(
     );
     let _ = writeln!(
         s,
-        "{} {:?} {:?} {} {} {:?}",
-        o.no_dev, o.scan, o.apcu, o.no_autoloader, o.no_plugins, o.ignore_platform
+        "{} {:?} {:?} {} {} {:?} {:?}",
+        o.no_dev, o.scan, o.apcu, o.no_autoloader, o.no_plugins, o.ignore_platform, o.link
     );
     let _ = writeln!(s, "{}", probe.map_or_else(String::new, Value::to_string));
     let root_version = env("COMPOSER_ROOT_VERSION");
@@ -438,10 +445,13 @@ fn previous(vendor: &Path) -> Result<IndexMap<String, LockedPackage>> {
         .collect())
 }
 
-/// Counts each package as kept, updated or added; the indexes of the ones to place.
+/// Counts each package as kept, updated or added; the indexes of the ones to place. With `isolate` (the clone and
+/// copy link modes), a kept package whose files are still hardlinked, from an install in the hardlink mode, is
+/// placed again so that its files stop being shared.
 fn compare(
     packages: &[Installed],
     before: &IndexMap<String, LockedPackage>,
+    isolate: bool,
     report: &mut Report,
 ) -> Vec<usize> {
     let mut todo = vec![];
@@ -455,6 +465,13 @@ fn compare(
                     && old.version() == p.package.version() =>
             {
                 report.kept += 1;
+                if isolate
+                    && p.path
+                        .as_ref()
+                        .is_some_and(|path| hardlinked(Path::new(path)))
+                {
+                    todo.push(i);
+                }
             }
             Some(old) => {
                 report.updated.push(Updated {
@@ -474,6 +491,52 @@ fn compare(
         }
     }
     todo
+}
+
+/// Whether the first file found below `dir` has another hardlink: the store links every file of a package the same
+/// way. A symlinked `dir` (a path repository's) is not a store's.
+fn hardlinked(dir: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    if !std::fs::symlink_metadata(dir).is_ok_and(|m| m.is_dir()) {
+        return false;
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    let mut dirs = vec![];
+    for e in entries.flatten() {
+        match e.file_type() {
+            Ok(t) if t.is_file() => return e.metadata().is_ok_and(|m| m.nlink() > 1),
+            Ok(t) if t.is_dir() => dirs.push(e.path()),
+            _ => {}
+        }
+    }
+    dirs.iter().any(|d| hardlinked(d))
+}
+
+/// Refuses `dir`, below `vendor`, when an existing directory on the way to it is a symlink that leads outside
+/// `vendor`, so that placing or removing a package never reaches another directory. `dir` itself may be a symlink
+/// (a path repository's): it is replaced or unlinked, not followed.
+fn confined(vendor: &str, dir: &Path) -> Result<()> {
+    let Ok(root) = std::fs::canonicalize(vendor) else {
+        return Ok(());
+    };
+    for at in dir.ancestors().skip(1) {
+        if at == Path::new(vendor) || !at.starts_with(vendor) {
+            break;
+        }
+        if std::fs::symlink_metadata(at).is_ok() {
+            if !std::fs::canonicalize(at).is_ok_and(|real| real.starts_with(&root)) {
+                bail!(
+                    "{} is a symlink that leads outside {vendor}, so Pun won't write or remove {} through it",
+                    at.display(),
+                    dir.display()
+                );
+            }
+            break;
+        }
+    }
+    Ok(())
 }
 
 /// Removes the binaries of the packages that change or go, and the directories of the ones that go.
@@ -497,6 +560,7 @@ fn remove_stale(
             if let Some(dir) = old.get("install-path").and_then(Value::as_str) {
                 let dir = normalize(&format!("{}/composer/{dir}", dirs.vendor));
                 if dir.starts_with(&format!("{}/", dirs.vendor)) {
+                    confined(&dirs.vendor, Path::new(&dir))?;
                     remove(Path::new(&dir))?;
                 }
             }
@@ -554,6 +618,7 @@ fn write_repository(
 ) -> Result<()> {
     let vendor = &project.dirs.vendor;
     let repo = format!("{vendor}/composer");
+    confined(vendor, Path::new(&format!("{repo}/installed.json")))?;
     std::fs::create_dir_all(&repo)?;
     write_if_changed(
         Path::new(&format!("{repo}/installed.json")),
@@ -950,8 +1015,8 @@ fn write_if_changed(path: &Path, bytes: &[u8]) -> Result<()> {
     if std::fs::read(path).ok().as_deref() == Some(bytes) {
         return Ok(());
     }
-    std::fs::create_dir_all(path.parent().unwrap_or(Path::new("/")))?;
-    std::fs::write(path, bytes).with_context(|| format!("can't write {}", path.display()))
+    // Through a temporary file, so a symlink in the file's place is replaced, not written through.
+    crate::fetch::store(path, bytes).with_context(|| format!("can't write {}", path.display()))
 }
 
 #[cfg(test)]
