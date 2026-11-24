@@ -32,6 +32,7 @@ Check also takes the options of [`pun format`](/docs/commands/format#options) an
 - Runs format, then lint, then analyse.
 - Prints the results grouped by command, then one summary line.
 - Without `--fix`, changes nothing.
+- Reads standard input (`-` or `--stdin-filename`) only with `--fix`. Without `--fix`, standard input is a run error (exit 2).
 
 ```text
 $ pun check

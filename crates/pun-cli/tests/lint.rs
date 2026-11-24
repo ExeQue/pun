@@ -64,6 +64,54 @@ fn levels_overrides_and_ignores() {
     assert_eq!(code, Some(1));
 }
 
+/// Lint and check read standard input only to fix it: a run that would only check it is a run error, not a pass.
+#[test]
+fn stdin_is_not_passed_unchecked() {
+    use std::io::Write as _;
+    let d = sample();
+    let pipe = |args: &[&str]| {
+        let mut child = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+            .current_dir(&d)
+            .env("PUN_AGENT", "0")
+            .args(args)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        // A run that refuses standard input may exit before reading it.
+        let _ = child.stdin.take().unwrap().write_all(LEGACY.as_bytes());
+        let out = child.wait_with_output().unwrap();
+        (String::from_utf8(out.stdout).unwrap(), out.status.code())
+    };
+    for args in [
+        &["lint", "-"][..],
+        &["lint", "--stdin-filename=src/a.php"],
+        &["check", "-"],
+        &["check", "--test", "--stdin-filename=src/a.php", "-"],
+    ] {
+        assert_eq!(pipe(args), (String::new(), Some(2)), "{args:?}");
+    }
+    assert_eq!(pipe(&["lint", "--fix", "-"]), (LEGACY.to_string(), Some(0)));
+}
+
+/// A file that isn't UTF-8 still gets its native rules (on its lossy text), without a fix that would rewrite it.
+#[test]
+fn files_that_are_not_utf8_are_still_linted() {
+    let d = project("lint", "latin1", &[("pun.toml", TOML)]);
+    let latin1 = b"<?php\n\n// caf\xe9\neval('1;');\n";
+    std::fs::write(d.join("a.php"), latin1).unwrap();
+    let (lines, _, code) = agent(&d, &["lint"]);
+    assert_eq!(
+        lines,
+        ["a.php:4:1 lint/security/no-eval Unsafe use of `eval` construct."]
+    );
+    assert_eq!(code, Some(1));
+    let (_, _, code) = agent(&d, &["lint", "--fix"]);
+    assert_eq!(code, Some(1));
+    assert_eq!(std::fs::read(d.join("a.php")).unwrap(), latin1);
+}
+
 #[test]
 fn command_line_levels_apply_in_order() {
     let d = sample();

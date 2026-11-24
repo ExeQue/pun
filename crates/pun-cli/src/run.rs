@@ -168,6 +168,17 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
 
     let stdin_path = a.paths.first().is_some_and(|p| p.as_os_str() == "-");
     if stdin_path || a.stdin_filename.is_some() {
+        // Standard input is only fixed, never checked: without `--fix`, lint and check would pass it unread.
+        if lints && !stage.fix() {
+            let cmd = crate::agent::cmd();
+            return Err(Abort::plain(
+                format!("`pun {cmd}` can't check standard input"),
+                Some(format!(
+                    "pass the files to check, or `pun {cmd} --fix -` to fix the input"
+                )),
+            )
+            .into());
+        }
         if !a.stdin_filename.as_ref().is_some_and(|f| is_blade(f)) || a.test {
             pun_fixers::prettier::stop();
         }
@@ -949,6 +960,26 @@ fn process_file(
         let format = in_format && round != 2;
         let mut native_syntax_error = false;
         let text = std::str::from_utf8(&now).ok().map(str::to_owned);
+        if let (Some(linter), None, true) = (&e.linter, &text, native_on) {
+            // A file that isn't UTF-8 is still checked, on its lossy text, so its rules can't pass it unread. Their
+            // fixes would write that text back, so none is offered.
+            let lossy = String::from_utf8_lossy(&now);
+            match linter.check(rel_path, &lossy) {
+                Ok(mut ps) => {
+                    filter_problems(&on, &rel, &lossy, &mut ps);
+                    for p in &mut ps {
+                        p.fix = None;
+                    }
+                    problems = ps;
+                }
+                Err(pun_lint::LintError::Syntax { .. }) => native_syntax_error = true,
+                Err(err) => {
+                    r.status = Status::Lint;
+                    r.message = err.to_string();
+                    return Ok(done(r));
+                }
+            }
+        }
         if let (Some(linter), Some(text), true) = (&e.linter, text.as_deref(), native_on) {
             let filter = |src: &str, ps: &mut Vec<Problem>| filter_problems(&on, &rel, src, ps);
             let outcome = if fix {
