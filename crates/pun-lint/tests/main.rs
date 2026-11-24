@@ -41,6 +41,7 @@ mod rector_phpunit_upgrade;
 mod rector_quality;
 mod rector_refactor;
 mod rector_refactor_d;
+mod rector_refactor_e;
 mod rector_strict;
 mod rector_typecmp;
 mod rector_types;

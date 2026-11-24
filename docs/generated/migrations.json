@@ -6478,9 +6478,11 @@
         "name": "ArgumentRemover",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/argument-remover-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/remove-method-argument"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "ArrayDimFetchToMethodCall",
@@ -6620,9 +6622,11 @@
         "name": "AttributeKeyToClassConstFetch",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/attribute-key-to-class-const-fetch-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/replace-attribute-value-with-constant"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "BinaryOpBetweenNumberAndString",
@@ -9488,9 +9492,11 @@
         "name": "RenameProperty",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/rename-property-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/rename-property"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "RenamePropertyToMatchType",
