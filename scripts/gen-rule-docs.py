@@ -3,6 +3,7 @@
 import argparse
 import json
 import re
+import sys
 import tomllib
 from collections import defaultdict
 from pathlib import Path
@@ -734,6 +735,12 @@ def generate(data: dict) -> dict[Path, str]:
 
 
 def sync(output: dict[Path, str], check: bool) -> int:
+    # Every page is a regular file in the checkout: a link (to it or to a directory above it) would make the write
+    # land outside.
+    for path in output:
+        link = next((p for p in [path, *path.parents] if p.is_relative_to(ROOT) and p != ROOT and p.is_symlink()), None)
+        if link is not None:
+            sys.exit(f"{link.relative_to(ROOT)} is a symlink; remove it and run again")
     # Only files carrying our marker belong to the generator. Never remove handwritten content.
     owned = {p for p in CONTENT.rglob("*")
              if p.suffix in (".mdx", ".ts") and MARKER in p.read_text()}
