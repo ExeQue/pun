@@ -6,7 +6,10 @@
 use crate::common::run_class;
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
-use pun_lint::rules::NoConstantDefineName;
+use pun_lint::rules::{
+    NoConstantDefineName, NoEach, NoGetClassNull, NoListEach, NoStringAssert,
+    PreferForeachOverEach, RequireParseStrResult,
+};
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
     run_class(vec![make()], class);
@@ -16,4 +19,43 @@ fn check(make: fn() -> Box<dyn Rule>, class: &str) {
 #[test]
 fn stringify_define() {
     check(|| Box::new(NoConstantDefineName), "StringifyDefineRector");
+}
+
+#[test]
+fn get_class_on_null() {
+    check(|| Box::new(NoGetClassNull), "GetClassOnNullRector");
+}
+
+#[test]
+fn list_each() {
+    check(|| Box::new(NoListEach), "ListEachRector");
+}
+
+#[test]
+fn parse_str_with_result_argument() {
+    check(
+        || Box::new(RequireParseStrResult),
+        "ParseStrWithResultArgumentRector",
+    );
+}
+
+#[test]
+fn replace_each_assignment_with_key_current() {
+    check(
+        || Box::new(NoEach),
+        "ReplaceEachAssignmentWithKeyCurrentRector",
+    );
+}
+
+#[test]
+fn strings_assert_naked() {
+    check(|| Box::new(NoStringAssert), "StringsAssertNakedRector");
+}
+
+#[test]
+fn while_each_to_foreach() {
+    check(
+        || Box::new(PreferForeachOverEach),
+        "WhileEachToForeachRector",
+    );
 }

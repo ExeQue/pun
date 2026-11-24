@@ -8,7 +8,7 @@ open questions. Finished work is not listed; `git log` has it.
 One lead agent works on `main` and spawns subagents for independent slices in worktrees (AGENTS.md "How work runs").
 The latest release is v0.3.1.
 
-- **Counts** (mapping.toml `ported = true`): format 164 of 164, lint 716 of 717, analyse 364 of 370. Pending: lint 1
+- **Counts** (mapping.toml `ported = true`): format 164 of 164, lint 722 of 723, analyse 364 of 370. Pending: lint 1
   (`laravel/prefer-pivot-class`, §3 Foundations), analyse 6 (`classes/invalid-new`,
   `debug/dump-native-type`, `debug/dump-scope`, `types/return-by-ref-finally`, `undefined/compact-variable`,
   `undefined/variable`). Ported rules keep their parity gaps in the test gap lists

@@ -7592,9 +7592,11 @@
         "name": "GetClassOnNull",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-class-on-null-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.2/no-get-class-null"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "GetDebugType",
@@ -7782,9 +7784,11 @@
         "name": "ListEach",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/list-each-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.2/no-list-each"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ListSplitString",
@@ -8302,9 +8306,11 @@
         "name": "ParseStrWithResultArgument",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/parse-str-with-result-argument-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.2/require-parse-str-result"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "Php4Constructor",
@@ -9528,9 +9534,11 @@
         "name": "ReplaceEachAssignmentWithKeyCurrent",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/replace-each-assignment-with-key-current-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.2/no-each"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReplaceHttpServerVarsByServer",
@@ -10376,9 +10384,11 @@
         "name": "StringsAssertNaked",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/strings-assert-naked-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.2/no-string-assert"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "StrlenZeroToIdenticalEmptyString",
@@ -10770,9 +10780,11 @@
         "name": "WhileEachToForeach",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/while-each-to-foreach-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.2/prefer-foreach-over-each"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "WhileNullableToInstanceof",

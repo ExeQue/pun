@@ -10323,6 +10323,126 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.2/no-each",
+      "command": "lint",
+      "group": "php-7.2",
+      "summary": "Replace each() assign outside loop",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php72\\Rector\\Assign\\ReplaceEachAssignmentWithKeyCurrentRector",
+        "ReplaceEachAssignmentWithKeyCurrent",
+        "ReplaceEachAssignmentWithKeyCurrentRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.2/no-get-class-null",
+      "command": "lint",
+      "group": "php-7.2",
+      "summary": "Null is no more allowed in get_class()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "GetClassOnNull",
+        "GetClassOnNullRector",
+        "Rector\\Php72\\Rector\\FuncCall\\GetClassOnNullRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.2/no-list-each",
+      "command": "lint",
+      "group": "php-7.2",
+      "summary": "each() function is deprecated, use key() and current() instead",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ListEach",
+        "ListEachRector",
+        "Rector\\Php72\\Rector\\Assign\\ListEachRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.2/no-string-assert",
+      "command": "lint",
+      "group": "php-7.2",
+      "summary": "String asserts must be passed directly to assert()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php72\\Rector\\FuncCall\\StringsAssertNakedRector",
+        "StringsAssertNaked",
+        "StringsAssertNakedRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.2/prefer-foreach-over-each",
+      "command": "lint",
+      "group": "php-7.2",
+      "summary": "Use foreach() instead of deprecated each()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php72\\Rector\\While_\\WhileEachToForeachRector",
+        "WhileEachToForeach",
+        "WhileEachToForeachRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.2/require-parse-str-result",
+      "command": "lint",
+      "group": "php-7.2",
+      "summary": "Use $result argument in parse_str() function",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ParseStrWithResultArgument",
+        "ParseStrWithResultArgumentRector",
+        "Rector\\Php72\\Rector\\FuncCall\\ParseStrWithResultArgumentRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.3/no-case-insensitive-define",
       "command": "lint",
       "group": "php-7.3",
