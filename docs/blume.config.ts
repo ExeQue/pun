@@ -2,6 +2,14 @@ import { defineConfig } from "blume";
 import { devAgentation } from "./dev-agentation.ts";
 import { devModulePreload } from "./dev-modulepreload.ts";
 import { ruleTables } from "./rule-tables.ts";
+import rules from "./generated/rules.json" with { type: "json" };
+
+// Rule URLs use dashes for dots (lint/php-8.4 is at lint/php-8-4): the static
+// host treats a dotted last segment as a file and 404s. Old dotted URLs
+// (printed by earlier pun builds) redirect to the new ones.
+const dotted = [...new Set(rules.rules.flatMap((rule) => [rule.id, `${rule.command}/${rule.group}`]))]
+  .filter((path) => path.includes("."))
+  .map((path) => ({ from: `/docs/rules/${path}`, to: `/docs/rules/${path.replaceAll(".", "-")}` }));
 
 export default defineConfig({
   title: "Pun",
@@ -23,6 +31,7 @@ export default defineConfig({
   redirects: [
     { from: "/docs/quickstart", to: "/docs#get-started" },
     { from: "/docs/why-three-commands", to: "/docs/vision" },
+    ...dotted,
   ],
 
   github: {

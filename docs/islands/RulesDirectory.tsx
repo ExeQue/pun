@@ -81,7 +81,7 @@ export default function RulesDirectory() {
         <table>
           <thead><tr><th>ID</th><th>Summary</th><th>Enabled by</th><th>Fix</th></tr></thead>
           <tbody>{matches.map(rule => <tr key={rule.id}>
-            <td><a href={`/docs/rules/${rule.id}`}><code>{rule.id}</code></a>
+            <td><a href={`/docs/rules/${rule.id.replaceAll(".", "-")}`}><code>{rule.id}</code></a>
               {!rule.ported && <small className="rule-planned">Planned</small>}</td>
             <td>{rule.summary}</td>
             <td>{rule.enabled.length ? rule.enabled.map(name =>

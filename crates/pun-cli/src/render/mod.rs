@@ -422,7 +422,7 @@ impl Renderer {
         if !self.look.links || pun_config::rule(id).is_none() {
             return painted;
         }
-        (self.look).link(&format!("{}{id}", pun_config::RULE_DOCS_URL), &painted)
+        (self.look).link(&pun_config::rule_docs_url(id), &painted)
     }
 
     pub(crate) fn path_link(&self, path: &Path, shown: &str) -> String {

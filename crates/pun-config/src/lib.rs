@@ -10,7 +10,7 @@ pub mod options;
 mod phpstan_parameters;
 mod schema;
 
-pub use explain::{RULE_DOCS_URL, explain};
+pub use explain::{RULE_DOCS_URL, explain, rule_docs_url};
 pub use identifiers::{identifiers_of_rules, rule_of_identifier};
 pub use schema::{
     Analyse, AnalysePreset, AnalyseRule, Files, FixSafety, FormatPreset, Ignore, Level, Lint,

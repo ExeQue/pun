@@ -44,7 +44,7 @@ export default function MigrationTable({ tool }: { tool: keyof typeof mapping.to
             </td>
             <td data-label="Pun rule">
               {row.rules.length
-                ? row.rules.map(rule => <a key={rule} href={`/docs/rules/${rule}`}><code><Breakable text={rule} /></code></a>)
+                ? row.rules.map(rule => <a key={rule} href={`/docs/rules/${rule.replaceAll(".", "-")}`}><code><Breakable text={rule} /></code></a>)
                 : <span className="migration-badge">Not supported</span>}
               {row.note && <p className="migration-note">{row.note}</p>}
             </td>

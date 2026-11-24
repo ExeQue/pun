@@ -91,9 +91,11 @@ def main() -> None:
         migration = output[docs.CONTENT / f"migrate/from/{tool}.mdx"]
         assert "## Config translation" in migration and "## Rule mapping" in migration
         assert docs.rule_link("lint/comments/no-unused-ignore") in migration
+    assert docs.rule_link("lint/php-8.4/foo") == "[`lint/php-8.4/foo`](/docs/rules/lint/php-8-4/foo)"
+    assert docs.CONTENT / "rules/lint/php-8-4/index.mdx" in output
     for command, rules in data["rules"].items():
         for key in rules:
-            assert docs.CONTENT / f"rules/{command}/{key}.mdx" in output
+            assert docs.CONTENT / f"rules/{command}/{docs.url_path(key)}.mdx" in output
     for command, rules in data["rules"].items():
         for key, rule in rules.items():
             rid = f"{command}/{key}"

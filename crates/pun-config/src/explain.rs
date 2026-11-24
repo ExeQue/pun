@@ -4,6 +4,13 @@ use std::fmt::Write;
 
 pub const RULE_DOCS_URL: &str = "https://punphp.com/docs/rules/";
 
+/// The docs page for a rule ID. Dots become dashes (`lint/php-8.4/x` is at
+/// `lint/php-8-4/x`): the static host treats a dotted last segment as a file
+/// name and 404s. Keep in sync with `url_path` in scripts/gen-rule-docs.py.
+pub fn rule_docs_url(id: &str) -> String {
+    format!("{RULE_DOCS_URL}{}", id.replace('.', "-"))
+}
+
 pub fn explain(name: &str) -> Result<String> {
     let exact = rules()
         .iter()
@@ -113,7 +120,7 @@ fn text(id: &str) -> String {
             &format!("{k} ({tool})"),
         );
     }
-    row("docs", &format!("{RULE_DOCS_URL}{id}"));
+    row("docs", &rule_docs_url(id));
     out
 }
 

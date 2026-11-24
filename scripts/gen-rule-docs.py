@@ -41,8 +41,22 @@ def code(text: str, language: str = "php") -> str:
     return f"{fence}{language}\n{text.rstrip()}\n{fence}\n"
 
 
+def url_path(path: str) -> str:
+    """URL path for a rule ID or group: dots become dashes (php-8.4 -> php-8-4).
+
+    The static host treats a last path segment with a dot as a file name, so
+    /docs/rules/lint/php-8.4 would 404 instead of serving php-8.4/index.html.
+    Keep in sync with `pun_config::rule_docs_url` and docs/islands.
+    """
+    return path.replace(".", "-")
+
+
+def rule_url(rid: str) -> str:
+    return f"/docs/rules/{url_path(rid)}"
+
+
 def rule_link(rid: str) -> str:
-    return f"[`{rid}`](/docs/rules/{rid})"
+    return f"[`{rid}`]({rule_url(rid)})"
 
 
 def table_code(value: str) -> str:
@@ -250,7 +264,7 @@ def rule_page(data: dict, rid: str, rule: dict, sources: list[dict], urls: dict,
         body += "\n\n## Linked rules\n\n" + "\n".join(
             [f"- Fixed by {rule_link(r)}." for r in fixed] + [f"- Fixes reports from {rule_link(r)}." for r in fixes]
             + [f"- Conflicts with {rule_link(r)}. You cannot enable both." for r in conflicts])
-    body += f"\n\n[More {command}/{group} rules](/docs/rules/{command}/{group}) · [Edit this page]({EDIT})"
+    body += f"\n\n[More {command}/{group} rules]({rule_url(f"{command}/{group}")}) · [Edit this page]({EDIT})"
     return page(rid, body)
 
 
@@ -631,7 +645,7 @@ def directory(data: dict, sources: dict) -> dict[Path, str]:
         for group in names:
             members = [r for r in rows if r["group"] == group]
             body += f'<Card title="{group} · {len(members)} rules">\n\n{prose(groups[group])}.\n\n'
-            body += " · ".join(f"[{command}: {sum(r['command'] == command for r in members)}](/docs/rules/{command}/{group})"
+            body += " · ".join(f"[{command}: {sum(r['command'] == command for r in members)}]({rule_url(f'{command}/{group}')})"
                                for command in COMMANDS if any(r["command"] == command for r in members))
             body += "\n\n</Card>\n"
         body += "</CardGroup>\n\n"
@@ -660,11 +674,11 @@ def generate(data: dict) -> dict[Path, str]:
             group, name = key.split("/")
             groups.setdefault(group, []).append(name)
             rid = f"{command}/{key}"
-            out[CONTENT / f"rules/{command}/{key}.mdx"] = rule_page(data, rid, rule, sources[rid], urls, defaults)
-        out[CONTENT / f"rules/{command}/meta.ts"] = meta(command, list(groups))
+            out[CONTENT / f"rules/{command}/{url_path(key)}.mdx"] = rule_page(data, rid, rule, sources[rid], urls, defaults)
+        out[CONTENT / f"rules/{command}/meta.ts"] = meta(command, [url_path(g) for g in groups])
         for group, names in groups.items():
-            out[CONTENT / f"rules/{command}/{group}/meta.ts"] = meta(group, names)
-            others = [f"[{cmd}](/docs/rules/{cmd}/{group}) ({count})" for cmd, rules in data["rules"].items()
+            out[CONTENT / f"rules/{command}/{url_path(group)}/meta.ts"] = meta(group, names)
+            others = [f"[{cmd}]({rule_url(f'{cmd}/{group}')}) ({count})" for cmd, rules in data["rules"].items()
                       if cmd != command and (count := sum(key.startswith(group + "/") for key in rules))]
             body = prose(data["meta"]["groups"][group]) + "."
             body += f" Also in {' and '.join(others)}." if others else ""
@@ -673,10 +687,10 @@ def generate(data: dict) -> dict[Path, str]:
                 rid = f"{command}/{group}/{name}"
                 rule = data["rules"][command][f"{group}/{name}"]
                 summary = prose(rule["summary"]) + "\n\n" if rule.get("summary") else ""
-                body += f'<Card title="{name}" href="/docs/rules/{rid}">\n\n{summary}'
+                body += f'<Card title="{name}" href="{rule_url(rid)}">\n\n{summary}'
                 body += badges(data, rid, rule, sources[rid], links=False) + "\n\n</Card>\n"
-            out[CONTENT / f"rules/{command}/{group}/index.mdx"] = page(f"{command}/{group}", body + "</CardGroup>")
-        links = "\n".join(f"- [{g}](/docs/rules/{command}/{g}) ({len(ns)} rule{'s' * (len(ns) != 1)})" for g, ns in groups.items())
+            out[CONTENT / f"rules/{command}/{url_path(group)}/index.mdx"] = page(f"{command}/{group}", body + "</CardGroup>")
+        links = "\n".join(f"- [{g}]({rule_url(f'{command}/{g}')}) ({len(ns)} rule{'s' * (len(ns) != 1)})" for g, ns in groups.items())
         intro = {"format": "Format rules change layout only. [`pun format`](/docs/commands/format) applies them.",
                  "lint": "Lint rules report code problems, and many fix them. [`pun lint`](/docs/commands/lint) runs them.",
                  "analyse": "Analyse rules report type errors and never edit files. [`pun analyse`](/docs/commands/analyse) runs them."}

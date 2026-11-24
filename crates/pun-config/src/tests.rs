@@ -999,7 +999,7 @@ fn presets() {
 fn explained(name: &str, id: &str) -> String {
     let out = explain(name).unwrap();
     let (head, docs) = out.rsplit_once("docs      ").unwrap();
-    assert_eq!(docs, format!("https://punphp.com/docs/rules/{id}\n"));
+    assert_eq!(docs, format!("https://punphp.com/docs/rules/{}\n", id.replace('.', "-")));
     head.to_string()
 }
 
@@ -2198,5 +2198,17 @@ fn native_blade_engine() {
     assert!(
         e.contains("[format] blade = \"node\": expected `prettier` or `native`"),
         "{e}"
+    );
+}
+
+#[test]
+fn rule_docs_url_has_no_dots() {
+    assert_eq!(
+        crate::rule_docs_url("lint/laravel-5.8/prefer-deferrable-provider"),
+        "https://punphp.com/docs/rules/lint/laravel-5-8/prefer-deferrable-provider"
+    );
+    assert_eq!(
+        crate::rule_docs_url("format/arrays/syntax"),
+        "https://punphp.com/docs/rules/format/arrays/syntax"
     );
 }
