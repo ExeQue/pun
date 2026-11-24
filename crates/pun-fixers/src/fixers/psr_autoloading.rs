@@ -127,7 +127,7 @@ impl Fixer for PsrAutoloadingFixer {
         let ns = namespace.as_ref().map(|(n, _, _)| n.as_str());
         let expected =
             self.calculate_classy_name(&real, file, ns, &String::from_utf8_lossy(&classy_name));
-        if classy_name != expected.as_bytes() {
+        if classy_name != expected.as_bytes() && !names_class(tokens, classy_index) {
             tokens.set(classy_index, Token::new(T_STRING, expected));
         }
         let (Some(dir), Some((namespace, start, end))) = (&self.dir, namespace) else {
@@ -158,6 +158,26 @@ impl Fixer for PsrAutoloadingFixer {
             tokens.insert_at(start, new_tokens.iter().cloned().collect());
         }
     }
+}
+
+/// Not in PHP-CS-Fixer: whether the file names the class it declares at `index` anywhere else
+/// (`Foo::class`, `new Foo`, a type). Renaming only the declaration would leave those names dangling.
+fn names_class(tokens: &Tokens, index: usize) -> bool {
+    let name = tokens[index].get_content();
+    (0..tokens.count()).any(|i| {
+        i != index
+            && tokens[i].is_kind(T_STRING)
+            && tokens[i].get_content().eq_ignore_ascii_case(name)
+            && tokens.get_prev_meaningful_token(i).is_none_or(|p| {
+                !tokens[p].is_given_kind(&[
+                    T_OBJECT_OPERATOR,
+                    T_NULLSAFE_OBJECT_OPERATOR,
+                    T_DOUBLE_COLON,
+                    T_FUNCTION,
+                    T_CONST,
+                ])
+            })
+    })
 }
 
 const TRIM: &[char] = &[' ', '\t', '\n', '\r', '\0', '\x0B'];
@@ -216,5 +236,34 @@ impl PsrAutoloadingFixer {
         location_parts_reversed.drain(..removed);
         location_parts_reversed.reverse();
         location_parts_reversed.join("\\")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pun_tokens::Tokens;
+
+    fn fix(dir: &std::path::Path, code: &str) -> String {
+        let file = dir.join("Pest.php");
+        std::fs::write(&file, code).unwrap();
+        let mut tokens = Tokens::from_code(code.as_bytes());
+        super::fixer().apply(&file, &mut tokens);
+        String::from_utf8(tokens.generate_code()).unwrap()
+    }
+
+    #[test]
+    fn keeps_a_class_the_file_names() {
+        let dir = std::env::temp_dir().join(format!("pun-psr-autoloading-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // PHP-CS-Fixer 3.95.25 renames this declaration to `Pest` and leaves `PreventStraySaloonSends::class`
+        // naming no class; Pun keeps the name.
+        let same = "<?php\n\nuse Saloon\\Contracts\\Sender;\n\nfinal readonly class PreventStraySaloonSends implements Sender\n{\n}\n\nconfig()->set('saloon.default_sender', PreventStraySaloonSends::class);\n";
+        assert_eq!(fix(&dir, same), same);
+        // PHP-CS-Fixer's output where the file names the class nowhere else, or only as a member name.
+        assert_eq!(
+            fix(&dir, "<?php\n\nfinal class PreventStraySaloonSends\n{\n    public function x() { $this->PreventStraySaloonSends(); }\n}\n"),
+            "<?php\n\nfinal class Pest\n{\n    public function x() { $this->PreventStraySaloonSends(); }\n}\n"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
