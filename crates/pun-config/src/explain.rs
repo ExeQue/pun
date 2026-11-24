@@ -2,7 +2,7 @@ use crate::{mapping, renamed, rules};
 use anyhow::{Result, bail};
 use std::fmt::Write;
 
-pub const RULE_DOCS_URL: &str = "https://pun.laravel.cloud/docs/rules/";
+pub const RULE_DOCS_URL: &str = "https://punphp.com/docs/rules/";
 
 pub fn explain(name: &str) -> Result<String> {
     let exact = rules()

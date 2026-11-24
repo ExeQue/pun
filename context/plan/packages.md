@@ -166,7 +166,7 @@ teammates run, and it needs no resolver.
   Composer installed is updated by Composer (Pushpak).
 - Composer 2.11.2 is the pinned oracle, and the plugin host runs that same phar; Pun follows Composer's minor releases
   as it follows PHPStan's (Pushpak).
-- A fresh clone needs no Composer: the standalone installer (`curl -fsSL https://pun.laravel.cloud/install | sh`,
+- A fresh clone needs no Composer: the standalone installer (`curl -fsSL https://punphp.com/install | sh`,
   foundations.md §4) gives a global `pun` that runs `pun install` (Pushpak). `pun install` in a project that requires
   `shipfastlabs/pun` rewrites the `vendor/shipfastlabs/pun` shim but not the binary it runs, which the shim keeps beside it; no
   test covers it yet.

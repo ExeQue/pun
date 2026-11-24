@@ -2,7 +2,7 @@
 
 Pun is one Rust binary for the PHP toolchain. `pun format` produces the same bytes as Laravel Pint. `pun analyse` (parity with PHPStan and Larastan) is in progress.
 
-Pun ships as the Composer package `shipfastlabs/pun` (`composer.json` at the root and the shim `composer/bin/pun`, which downloads the release binary) and through the standalone installer `docs/public/install`, served as `https://pun.laravel.cloud/install`. No crate, npm package or Homebrew tap is published (`context/plan/foundations.md` §4).
+Pun ships as the Composer package `shipfastlabs/pun` (`composer.json` at the root and the shim `composer/bin/pun`, which downloads the release binary) and through the standalone installer `docs/public/install`, served as `https://punphp.com/install`. No crate, npm package or Homebrew tap is published (`context/plan/foundations.md` §4).
 
 Read these for more:
 
@@ -135,7 +135,7 @@ Release only when Pushpak asks. Pushing a `vX.Y.Z` tag runs `.github/workflows/r
 3. Commit the three files as `chore(release): version X.Y.Z` and push it to `origin/main`.
 4. Tag that commit with a lightweight tag, `git tag vX.Y.Z`, and push only the tag: `git push origin vX.Y.Z`.
 5. Watch the Release workflow (`gh run watch`). When it finishes, `gh release view vX.Y.Z` lists the four `punphp-<target>.tar.gz` archives, their `.sha256` files, `sha256.sum` and `dist-manifest.json`.
-6. Check the installed binary: `curl -fsSL https://pun.laravel.cloud/install | sh -s -- vX.Y.Z`, then `pun --version`.
+6. Check the installed binary: `curl -fsSL https://punphp.com/install | sh -s -- vX.Y.Z`, then `pun --version`.
 
 Never move or delete a published tag. If a release is broken, fix it on main and release the next patch version.
 

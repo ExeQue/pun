@@ -239,7 +239,7 @@ The assistant's calls where the plan is silent:
   (`none` without one), `fixed by` for analyse rules that have it, `upstream` (every `[upstream.*]` row mapping to the
   ID, as `name (tool)` in file order; `none (Pun's own rule)`), and `docs`.
 - `docs` is the rule's page, `pun_config::RULE_DOCS_URL` followed by the ID
-  (`https://pun.laravel.cloud/docs/rules/format/arrays/syntax`).
+  (`https://punphp.com/docs/rules/format/arrays/syntax`).
 
 **The problem type** (Build 9).
 - Columns count bytes, 1-based, as PHP's `strlen` does: `é` advances the column by 2. Lines are 1-based and end at

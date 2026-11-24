@@ -42,7 +42,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 ### Product
 
 - **Home and licence:** github.com/shipfastlabs/pun, public, MIT (LICENSE, licenses/THIRD_PARTY_NOTICES.md). Not a
-  shipfastlabs project. The docs site is https://pun.laravel.cloud.
+  shipfastlabs project. The docs site is https://punphp.com.
 - **Positioning:** Pun is to PHP what Bun is to JavaScript: one native binary that formats, lints and analyses PHP and
   installs Composer packages. Each command gives the same answers as the tool it replaces (Pint and PHP-CS-Fixer,
   Rector, PHPStan and Larastan, Composer), so a project can switch one command at a time. Laravel first, PHP 8.3+
@@ -54,7 +54,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   and strict-rules as plain rules. Speed and memory come first in every command.
 - **Shipping** (2026-11-14, plan/foundations.md §4): the Composer package `shipfastlabs/pun` (`composer.json` at the root;
   the shim `composer/bin/pun` downloads the release archive for the platform, checks its SHA-256 and runs it) and the
-  standalone installer `curl -fsSL https://pun.laravel.cloud/install | sh`. Release archives carry GitHub build
+  standalone installer `curl -fsSL https://punphp.com/install | sh`. Release archives carry GitHub build
   attestations. No crate, npm package or Homebrew tap (`publish = false` in every crate).
 - **Package manager** (2026-11-15, plan/packages.md): composer.json and composer.lock hold the dependencies, as
   package.json and bun.lock do for Bun; pun.toml holds only `[workspace]` and Pun's own settings. `pun migrate` leaves
@@ -442,7 +442,7 @@ Left for 1.0: the rule docs content (below), name checks, signing and publishing
 | Work | Status |
 | --- | --- |
 | release: the Composer package is renamed to shipfastlabs/pun (2026-11-24). Submit https://github.com/shipfastlabs/pun on Packagist as shipfastlabs/pun, turn on its GitHub hook, mark punphp/pun abandoned with shipfastlabs/pun as the replacement, and confirm new tags publish | needs Pushpak |
-| release: on macOS, check the archive's attestation, `curl -fsSL https://pun.laravel.cloud/install \| sh` and `pun --version`; on Linux and macOS, `composer require --dev shipfastlabs/pun` once Packagist has the latest tag (Linux x86_64: the v0.2.7 installer verifies the attestation, Composer installs v0.2.0) | needs Pushpak |
+| release: on macOS, check the archive's attestation, `curl -fsSL https://punphp.com/install \| sh` and `pun --version`; on Linux and macOS, `composer require --dev shipfastlabs/pun` once Packagist has the latest tag (Linux x86_64: the v0.2.7 installer verifies the attestation, Composer installs v0.2.0) | needs Pushpak |
 | docs content: 361 of the 370 analyse rules have no summary; only format/casts/no-short-bool has a why, and no rule has examples. Add prose and oracle-backed examples in mapping.toml in batches | todo |
 | release notices: licenses/THIRD_PARTY_NOTICES.md carries the Zend Engine acknowledgment the Zend sorting port requires; advertising materials that mention its features or use need it too (Zend Engine License clauses 5 and 6); check those materials before publication | todo |
 

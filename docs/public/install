@@ -1,8 +1,8 @@
 #!/bin/sh
 # Installs the latest Pun release, or the one you name:
 #
-#   curl -fsSL https://pun.laravel.cloud/install | sh
-#   curl -fsSL https://pun.laravel.cloud/install | sh -s -- v0.1.0
+#   curl -fsSL https://punphp.com/install | sh
+#   curl -fsSL https://punphp.com/install | sh -s -- v0.1.0
 #
 # The docs site serves this file from docs/public/install. Everything runs inside main(), called on the last line:
 # a download cut short defines a partial function or none, and runs nothing.

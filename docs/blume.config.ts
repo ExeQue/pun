@@ -14,7 +14,7 @@ export default defineConfig({
   },
 
   deployment: {
-    site: "https://pun.laravel.cloud",
+    site: "https://punphp.com",
   },
 
   integrations: [devModulePreload(), devAgentation(), ruleTables()],

@@ -173,7 +173,7 @@ The assistant's calls where the plan is silent:
 - Links (OSC 8): only on a terminal (or `--color=always`), never under `--color=never`, and only in terminals known to
   support them (iTerm2, WezTerm, VS Code, Ghostty, Hyper, Windows Terminal, Konsole, VTE ≥ 0.50, kitty, Alacritty,
   foot); `FORCE_HYPERLINK` overrides. Paths link to `file://<root>/<path>` (percent-encoded). Rule IDs link to
-  `pun_config::RULE_DOCS_URL` (`https://pun.laravel.cloud/docs/rules/`) plus the ID.
+  `pun_config::RULE_DOCS_URL` (`https://punphp.com/docs/rules/`) plus the ID.
 - Spinner: on stderr, braille frames (`|/-\` in ASCII), `⠋ 120/412 files` every 80 ms after one second; dropping it
   clears the line. It runs during the file walk for human output only (no `--format`, no `-q`, no agent), and is
   dropped before the report prints.

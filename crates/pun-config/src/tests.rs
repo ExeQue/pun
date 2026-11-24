@@ -999,7 +999,7 @@ fn presets() {
 fn explained(name: &str, id: &str) -> String {
     let out = explain(name).unwrap();
     let (head, docs) = out.rsplit_once("docs      ").unwrap();
-    assert_eq!(docs, format!("https://pun.laravel.cloud/docs/rules/{id}\n"));
+    assert_eq!(docs, format!("https://punphp.com/docs/rules/{id}\n"));
     head.to_string()
 }
 

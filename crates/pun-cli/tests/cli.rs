@@ -1200,7 +1200,7 @@ preset    strict
 fix       unsafe
 upstream  no_alias_functions (php-cs-fixer)
           no-alias-function (mago-linter)
-docs      https://pun.laravel.cloud/docs/rules/lint/style/no-alias-function
+docs      https://punphp.com/docs/rules/lint/style/no-alias-function
 ";
     let (out, err, code) = pun(&dir, &["explain", "lint/style/no-alias-function"]);
     assert_eq!(out, text);

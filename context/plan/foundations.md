@@ -45,8 +45,8 @@ use the brand colours. The rule pages and "Coming from" pages are plan/docs.md.
   LICENSE and the Laravel Boost guideline and skill (`resources/boost/`). On first run the shim downloads
   `punphp-<target>.tar.gz` from the tag's GitHub release, checks its `.sha256` and caches the binary in Composer's
   bin directory (`vendor/bin/pun-<version>-<target>`). The shim's `PUN_VERSION` follows the workspace version.
-- **Standalone installer** `docs/public/install`, served as `https://pun.laravel.cloud/install` (Pushpak).
-  `curl -fsSL https://pun.laravel.cloud/install | sh` installs the latest stable release, and `sh -s -- v0.1.0` a
+- **Standalone installer** `docs/public/install`, served as `https://punphp.com/install` (Pushpak).
+  `curl -fsSL https://punphp.com/install | sh` installs the latest stable release, and `sh -s -- v0.1.0` a
   named one. It installs `punx` beside `pun`, checks the archive's `.sha256` and, with a signed-in `gh`, the GitHub
   artifact attestation the host job makes for every archive. `pun self-update` replaces the binary and verifies it
   the same way.

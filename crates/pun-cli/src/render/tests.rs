@@ -533,7 +533,7 @@ fn links_wrap_paths_and_rule_ids() {
         rules: vec!["format/arrays/syntax".into(), "syntax".into()],
     }];
     let path = "\x1b]8;;file:///my%20project/a.php\x1b\\a.php\x1b]8;;\x1b\\";
-    let rule = "\x1b]8;;https://pun.laravel.cloud/docs/rules/format/arrays/syntax\x1b\\format/arrays/syntax\x1b]8;;\x1b\\, syntax";
+    let rule = "\x1b]8;;https://punphp.com/docs/rules/format/arrays/syntax\x1b\\format/arrays/syntax\x1b]8;;\x1b\\, syntax";
     assert_eq!(
         r.file_lines(&files).concat(),
         format!(" ✔ {path}{}{rule}\n", " ".repeat(22))

@@ -13,7 +13,7 @@ Pun is one native binary for projects that target PHP 8.3 or later. It formats, 
 Install the binary on Linux or macOS (x86_64 or arm64):
 
 ```sh
-curl -fsSL https://pun.laravel.cloud/install | sh
+curl -fsSL https://punphp.com/install | sh
 ```
 
 Or add it to a project with Composer:
@@ -27,7 +27,7 @@ vendor/bin/pun check --fix
 
 ## Official Documentation
 
-The documentation is on the [Pun website](https://pun.laravel.cloud/docs).
+The documentation is on the [Pun website](https://punphp.com/docs).
 
 ## Contributing
 

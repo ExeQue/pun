@@ -92,4 +92,4 @@ These are separate rows in PLAN.md §3. Generation does not invent placeholder p
 | 3. Groups, presets and sets | built | Every command group, preset and set has a page |
 | 4. Migration mapping | built | Six tool pages and the overview |
 | 5. Rules directory | built | Generated JSON with every upstream spelling; URL-kept filters checked in a browser |
-| 6. CLI links | built | `pun_config::RULE_DOCS_URL` (`https://pun.laravel.cloud/docs/rules/`) plus the rule ID, in `pun explain`'s `docs` row and the terminal hyperlink on each rule ID; `deployment.site` in `docs/blume.config.ts` is the same origin |
+| 6. CLI links | built | `pun_config::RULE_DOCS_URL` (`https://punphp.com/docs/rules/`) plus the rule ID, in `pun explain`'s `docs` row and the terminal hyperlink on each rule ID; `deployment.site` in `docs/blume.config.ts` is the same origin |
