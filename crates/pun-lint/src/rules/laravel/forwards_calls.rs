@@ -207,7 +207,7 @@ impl Rule for PreferForwardsCalls {
                 _ => return,
             };
         let (mut found, mut calls) = (false, Vec::new());
-        for member in members.iter() {
+        for member in members {
             collect(Node::ClassLikeMember(member), &mut found, &mut calls);
         }
         if !found {
@@ -232,7 +232,7 @@ impl Rule for PreferForwardsCalls {
                 let end = first
                     .trait_names
                     .iter()
-                    .last()
+                    .next_back()
                     .map_or(0, |t| node_span(t).end);
                 edits.push(Edit::new(
                     Span::new(end, end),
