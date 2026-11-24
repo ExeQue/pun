@@ -8,6 +8,10 @@ manifest="$root/corpus/manifest.toml"
 awk -F' = ' '/^name/{n=$2} /^url/{u=$2} /^commit/{gsub(/"/,"",n); gsub(/"/,"",u); gsub(/"/,"",$2); print n, u, $2}' "$manifest" |
 while read -r name url commit; do
   if [ $# -gt 0 ] && [[ ! " $* " =~ " $name " ]]; then continue; fi
+  # A name (and a derived entry's source) is one directory under corpus/, so cleanup never leaves it.
+  for part in "$name" $([ "$commit" = derived ] && echo "$url"); do
+    if [[ ! "$part" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then echo "corpus/manifest.toml: not a corpus name: $part" >&2; exit 2; fi
+  done
   dir="$root/corpus/$name"
   if [ "$commit" = derived ]; then
     if [ -d "$dir/.git" ]; then echo "ok   $name (derived; rm -rf corpus/$name to rebuild)"; continue; fi
