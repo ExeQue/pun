@@ -94,7 +94,7 @@ impl El {
         let pad = "  ".repeat(depth);
         let _ = write!(o, "{pad}<{}", self.name);
         for (k, v) in &self.attrs {
-            let v = v
+            let v = xml_chars(v)
                 .replace('&', "&amp;")
                 .replace('<', "&lt;")
                 .replace('>', "&gt;")
@@ -111,7 +111,7 @@ impl El {
             let _ = writeln!(
                 o,
                 "><![CDATA[{}]]></{}>",
-                c.replace("]]>", "]]]]><![CDATA[>"),
+                xml_chars(c).replace("]]>", "]]]]><![CDATA[>"),
                 self.name
             );
         } else if self.children.is_empty() {
@@ -124,6 +124,18 @@ impl El {
             let _ = writeln!(o, "{pad}</{}>", self.name);
         }
     }
+}
+
+/// `text` with each character XML 1.0 forbids (a control character other than tab and the line breaks, U+FFFE,
+/// U+FFFF) as U+FFFD: one in a file name or a diff would make the whole report unreadable.
+pub(crate) fn xml_chars(text: &str) -> String {
+    text.chars()
+        .map(|c| match c {
+            '\t' | '\n' | '\r' => c,
+            '\0'..='\x1f' | '\u{FFFE}' | '\u{FFFF}' => '\u{FFFD}',
+            c => c,
+        })
+        .collect()
 }
 
 fn xml(root: &El, decorated: bool) -> String {
@@ -304,6 +316,22 @@ fn md5(input: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A control character XML forbids, in a file name or a diff, doesn't reach the report.
+    #[test]
+    fn xml_reports_drop_forbidden_characters() {
+        let fixers = ["array_syntax"];
+        let changes = [Change {
+            file: "a\x01\"b.php",
+            fixers: &fixers,
+            diff: "-\x1b[0m\n+x\u{FFFF}\n",
+        }];
+        assert!(checkstyle(&changes, false).contains("<file name=\"a\u{FFFD}&quot;b.php\">"));
+        let junit = junit(&changes, true, false);
+        assert!(junit.contains(" file=\"a\u{FFFD}&quot;b.php\""), "{junit}");
+        assert!(junit.contains("-\u{FFFD}[0m\n+x\u{FFFD}]]>"), "{junit}");
+        assert!(!junit.contains(['\x01', '\x1b', '\u{FFFF}']), "{junit}");
+    }
 
     #[test]
     fn md5_like_php() {

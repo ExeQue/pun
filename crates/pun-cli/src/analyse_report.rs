@@ -109,7 +109,8 @@ fn json(findings: &[Finding], general: &[String]) -> String {
 }
 
 fn xml(text: &str) -> String {
-    text.replace('&', "&amp;")
+    crate::fix_report::xml_chars(text)
+        .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
@@ -277,4 +278,13 @@ fn teamcity(findings: &[Finding], general: &[String], config: Option<&str>) -> S
         );
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    /// A control character XML forbids, in a file name or a message, doesn't reach the Checkstyle or `JUnit` report.
+    #[test]
+    fn xml_drops_forbidden_characters() {
+        assert_eq!(super::xml("a\x0c<\tb\u{FFFE}"), "a\u{FFFD}&lt;\tb\u{FFFD}");
+    }
 }
