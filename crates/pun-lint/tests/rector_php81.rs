@@ -6,7 +6,7 @@ use crate::common::{run_class, run_dirs};
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
-    NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible,
+    NoClosureFromCallable, NoNullPregSplitLimit, NoNullStringArgument, NoReflectionSetAccessible,
     PreferEnumCaseOverMyCLabsCall, PreferEnumCaseOverSpatieCall, PreferEnumFrom,
     PreferFirstClassCallableArgument, PreferFirstClassCallableOverArray,
     PreferFirstClassCallableOverArrowFunction, PreferFirstClassCallableOverClosure,
@@ -47,6 +47,14 @@ fn null_to_strict_int_preg_split_limit_arg() {
     check(
         || Box::new(NoNullPregSplitLimit),
         "NullToStrictIntPregSlitFuncCallLimitArgRector",
+    );
+}
+
+#[test]
+fn null_to_strict_string_func_call_arg() {
+    check(
+        || Box::new(NoNullStringArgument),
+        "NullToStrictStringFuncCallArgRector",
     );
 }
 

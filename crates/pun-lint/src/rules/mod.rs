@@ -220,6 +220,7 @@ rules! {
         php_8_0::prefer_str_starts_with => PreferStartsWithFunction,
         php_8_1::no_closure_from_callable => NoClosureFromCallable,
         php_8_1::no_null_preg_split_limit => NoNullPregSplitLimit,
+        php_8_1::no_null_string_argument => NoNullStringArgument,
         php_8_1::no_reflection_set_accessible => NoReflectionSetAccessible,
         php_8_1::prefer_enum_case_over_myclabs_call => PreferEnumCaseOverMyCLabsCall,
         php_8_1::prefer_enum_case_over_spatie_call => PreferEnumCaseOverSpatieCall,

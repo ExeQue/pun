@@ -2,6 +2,7 @@ mod delegating_callable;
 mod enum_factory;
 pub(super) mod no_closure_from_callable;
 pub(super) mod no_null_preg_split_limit;
+pub(super) mod no_null_string_argument;
 pub(super) mod no_reflection_set_accessible;
 pub(super) mod prefer_enum_case_over_myclabs_call;
 pub(super) mod prefer_enum_case_over_spatie_call;
