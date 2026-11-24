@@ -6256,9 +6256,11 @@
         "name": "AddParamTypeToRefactorMethod",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/add-param-type-to-refactor-method-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: rector-preset",
-        "unsupported": true
+        "rules": [
+          "lint/types/add-refactor-param-phpdoc"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddPropertyTypeDeclaration",
@@ -9038,9 +9040,11 @@
         "name": "RemoveRefactorDuplicatedNodeInstanceCheck",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-refactor-duplicated-node-instance-check-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: rector-preset",
-        "unsupported": true
+        "rules": [
+          "lint/dead-code/no-redundant-node-instanceof"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveReferenceFromCall",

@@ -5579,6 +5579,24 @@
       "ported": true
     },
     {
+      "id": "lint/dead-code/no-redundant-node-instanceof",
+      "command": "lint",
+      "group": "dead-code",
+      "summary": "Remove refactor() method of Rector rule double check of $classMethod instance, if already defined in @param type",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\DeadCode\\Rector\\Class_\\RemoveRefactorDuplicatedNodeInstanceCheckRector",
+        "RemoveRefactorDuplicatedNodeInstanceCheck",
+        "RemoveRefactorDuplicatedNodeInstanceCheckRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/dead-code/no-redundant-promoted-assign",
       "command": "lint",
       "group": "dead-code",
@@ -19138,6 +19156,24 @@
         "PropertyTypeFromStrictSetterGetter",
         "PropertyTypeFromStrictSetterGetterRector",
         "Rector\\TypeDeclaration\\Rector\\Class_\\PropertyTypeFromStrictSetterGetterRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/types/add-refactor-param-phpdoc",
+      "command": "lint",
+      "group": "types",
+      "summary": "Add @param node type to refactor() method based on getNodeTypes() of a Rector rule, to avoid instanceof checks and unknown types reported by PHPStan",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "AddParamTypeToRefactorMethod",
+        "AddParamTypeToRefactorMethodRector",
+        "Rector\\TypeDeclarationDocblocks\\Rector\\Class_\\AddParamTypeToRefactorMethodRector"
       ],
       "ported": true
     },

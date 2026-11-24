@@ -387,6 +387,7 @@ rules! {
         complexity::require_previous_exception => RequirePreviousException,
         dead_code::no_useless_filter_var => NoUselessFilterVar,
         dead_code::no_useless_math => NoUselessMath,
+        dead_code::no_redundant_node_instanceof => NoRedundantNodeInstanceof,
         dead_code::no_useless_cast => NoUselessCast,
         dead_code::no_always_true_instanceof => NoAlwaysTrueInstanceof::default(),
         dead_code::no_typed_property_instanceof => NoTypedPropertyInstanceof,

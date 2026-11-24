@@ -38,6 +38,7 @@ mod rector_php83_calls;
 mod rector_phpunit;
 mod rector_phpunit_d;
 mod rector_phpunit_upgrade;
+mod rector_preset;
 mod rector_quality;
 mod rector_refactor;
 mod rector_refactor_d;

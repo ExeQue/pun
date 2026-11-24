@@ -43,6 +43,7 @@ mod add_property_type_setter_getter;
 pub(super) mod add_property_type_setup;
 // The PHPUnit extension registers its rule.
 pub(super) mod add_property_type_setup_docblock;
+mod add_refactor_param_phpdoc;
 mod add_return_phpdoc_common_object;
 mod add_return_phpdoc_dim_assigned_object;
 mod add_return_phpdoc_direct_array;
@@ -160,6 +161,7 @@ rules! {
         add_return_phpdoc_json_array => AddReturnPhpdocJsonArray,
         add_var_phpdoc_from_constructor_param => AddVarPhpdocFromConstructorParam,
         add_var_phpdoc_from_getter => AddVarPhpdocFromGetter,
+        add_refactor_param_phpdoc => AddRefactorParamPhpdoc,
         add_var_phpdoc_from_dim_fetch => AddVarPhpdocFromDimFetch,
         add_getter_return_phpdoc => AddGetterReturnPhpdoc,
         prefer_generic_collection_phpdoc => PreferGenericCollectionPhpdoc,

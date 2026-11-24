@@ -28,6 +28,7 @@ pub(super) mod no_parent_call_without_parent;
 pub(super) mod no_redundant_condition;
 pub(super) mod no_redundant_default_argument;
 pub(super) mod no_redundant_foreach_guard;
+pub(super) mod no_redundant_node_instanceof;
 pub(super) mod no_redundant_promoted_assign;
 pub(super) mod no_redundant_property_default;
 pub(super) mod no_redundant_type_check;
