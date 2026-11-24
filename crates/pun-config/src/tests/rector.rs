@@ -58,6 +58,23 @@ fn reads_sets_rules_and_skips() {
             "rector/php-sets"
         ]
     );
+    // On PHP 8.4 (composer.json), `rector/php-sets` holds php83 and php84 already; php85, named on its own, stays.
+    let root84 = dir(&[("composer.json", "{\"require\":{\"php\":\"^8.4\"}}")]);
+    let level = |v: &str| {
+        format!(
+            "{}/vendor/rector/rector/src/Set/ValueObject/../../../config/set/{v}.php",
+            root84.display()
+        )
+    };
+    let config84 = RectorConfig {
+        sets: vec![level("php83"), level("php84"), level("php85")],
+        php_sets: true,
+        ..RectorConfig::default()
+    };
+    assert_eq!(
+        from_rector(&root84, &config84).sets,
+        ["rector/php85", "rector/php-sets"]
+    );
     let want: Vec<(&str, &str)> = r
         .want
         .iter()

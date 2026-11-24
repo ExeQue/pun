@@ -214,6 +214,20 @@ pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
         }
     }
     if r.php_sets {
+        // `rector/php-sets` holds every PHP level set up to the PHP version pun.toml resolves from composer.json, so
+        // the level sets Rector loaded for withPhpSets() (`rector/php52` to `rector/php84`) would only repeat it. A
+        // level above that version, named on its own in withSets(), stays.
+        let php = crate::composer::detect(root)
+            .ok()
+            .and_then(|c| c.php_version())
+            .unwrap_or(crate::PhpVersion::FLOOR);
+        let target = php.major() * 10 + php.minor();
+        let covered = |s: &String| {
+            (s.strip_prefix("rector/php"))
+                .and_then(|v| v.parse::<u32>().ok())
+                .is_some_and(|v| v <= target)
+        };
+        out.sets.retain(|s| !covered(s));
         out.sets.push(crate::schema::PHP_SETS.to_string());
     }
     let mut seen = HashSet::new();
