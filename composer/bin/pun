@@ -51,6 +51,40 @@ function pun_download(string $url): string
     return $data;
 }
 
+/** The exit code of a command run without a shell, its output discarded; -1 when it cannot start. */
+function pun_exec(array $command): int
+{
+    $null = ['file', '/dev/null', 'w'];
+    $process = @proc_open($command, [['file', '/dev/null', 'r'], $null, $null], $pipes);
+
+    return is_resource($process) ? proc_close($process) : -1;
+}
+
+/**
+ * GitHub's build attestation: proof the archive came from Pun's release workflow for this tag on a GitHub-hosted
+ * runner, which the checksum (published beside the archive) cannot give. Like docs/public/install and
+ * `pun self-update`, it needs a signed-in gh, so without one it is skipped unless PUN_REQUIRE_ATTESTATION=1.
+ */
+function pun_attest(string $file, string $archive, string $version): void
+{
+    if (pun_exec(['gh', 'auth', 'status']) !== 0) {
+        if (getenv('PUN_REQUIRE_ATTESTATION') === '1') {
+            pun_fail('PUN_REQUIRE_ATTESTATION=1 needs the GitHub CLI (gh), signed in');
+        }
+
+        return;
+    }
+    $verify = pun_exec([
+        'gh', 'attestation', 'verify', $file, '--repo', 'shipfastlabs/pun',
+        '--signer-workflow', 'github.com/shipfastlabs/pun/.github/workflows/release.yml',
+        '--source-ref', "refs/tags/v$version", '--deny-self-hosted-runners',
+    ]);
+    if ($verify !== 0) {
+        pun_fail("the build attestation of $archive does not verify; the download may have been tampered with");
+    }
+    fwrite(STDERR, "pun: verified the GitHub build attestation\n");
+}
+
 $version = PUN_VERSION;
 $target = pun_target();
 $binDir = $GLOBALS['_composer_bin_dir'] ?? __DIR__;
@@ -59,7 +93,9 @@ $binary = "$binDir/pun-$version-$target";
 
 if (! is_file($binary)) {
     $archive = "punphp-$target.tar.gz";
-    $url = "https://github.com/shipfastlabs/pun/releases/download/v$version/$archive";
+    // Pun's tests serve the release from a local server.
+    $github = getenv('PUN_GITHUB_URL') ?: 'https://github.com';
+    $url = "$github/shipfastlabs/pun/releases/download/v$version/$archive";
     fwrite(STDERR, "pun: downloading $url\n");
     $data = pun_download($url);
     $expected = strtok(pun_download("$url.sha256"), " \n");
@@ -74,6 +110,7 @@ if (! is_file($binary)) {
     }
     register_shutdown_function(fn () => exec('rm -rf '.escapeshellarg($tmp)));
     file_put_contents("$tmp/$archive", $data);
+    pun_attest("$tmp/$archive", $archive, $version);
     exec('tar xzf '.escapeshellarg("$tmp/$archive").' -C '.escapeshellarg($tmp).' 2>&1', $_, $code);
     $found = glob("$tmp/*/pun") ?: glob("$tmp/pun");
     if ($code !== 0 || ! $found || is_link($found[0])) {
