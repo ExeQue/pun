@@ -7,9 +7,11 @@
 //! the expected code is the oracle's output run through the oracle again until it stops changing. The one other Pun/
 //! case, RemoveRedundantPestUsesRector/Pun/InlineHtmlProject, is a file with inline HTML whose statement list
 //! php-parser gives up on: Rector prints the whole file again (`<?php\n\n?>\nhtml\n<?php `), which Pun does not port,
-//! so Pun leaves the file alone. A fixture is `input -----\n expected`, or only the input when the rule must not change
-//! it. Each one must pass as `pun lint --fix == expected` and `format(pun lint --fix) == format(expected)`, format
-//! being the laravel preset.
+//! so Pun leaves the file alone. UseToThrowRector/Pun/skip_longer_message_chain is where Rector moves the last `toBe()`
+//! of a longer `expect($e->getMessage())` chain into `toThrow()` (`->toBe('m')->and($e->context())->toBe([...])` gives
+//! `toThrow(E::class, [...])`, a `TypeError`, and drops the other assertions); Pun leaves the `try` alone. A fixture
+//! is `input -----\n expected`, or only the input when the rule must not change it. Each one must pass as
+//! `pun lint --fix == expected` and `format(pun lint --fix) == format(expected)`, format being the laravel preset.
 
 use std::path::{Path, PathBuf};
 

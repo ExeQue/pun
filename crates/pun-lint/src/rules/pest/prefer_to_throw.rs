@@ -1,7 +1,7 @@
 use crate::problem::{Edit, Safety, Span};
 use mago_syntax::cst::{
-    ArrayElement, Assignment, AssignmentOperator, Block, Expression, ForeachTarget, Hint, Node,
-    NodeKind, Statement, Try, UnaryPrefixOperator, Variable,
+    ArrayElement, Assignment, AssignmentOperator, Block, Call, Expression, ForeachTarget, Hint,
+    Node, NodeKind, Statement, Try, UnaryPrefixOperator, Variable,
 };
 
 use super::{
@@ -168,6 +168,15 @@ fn message_assertion<'a>(
     };
     let call = method_call(statement_expression(statement)?)?;
     if !is_expect_chain(call) || !is_name(&call.method, "toBe") {
+        return None;
+    }
+    // Only `expect($e->getMessage())->toBe(...)` itself. Rector also takes the last `toBe()` of a longer chain
+    // (`->toBe('m')->and($e->code())->toBe([...])`, `->not->toBe('m')`), which drops the other assertions and can
+    // pass a value `toThrow()` does not accept.
+    if !matches!(
+        unparenthesize(call.object),
+        Expression::Call(Call::Function(_))
+    ) {
         return None;
     }
     let [argument] = call.argument_list.arguments.as_slice() else {
