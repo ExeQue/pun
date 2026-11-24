@@ -248,6 +248,18 @@ fn top_preset(
     Ok(Some(p))
 }
 
+/// `[analyse] baseline` and its directory must stay inside the project.
+fn baseline_inside(root: &Path, at: &impl std::fmt::Display, baseline: Option<&str>) -> Result<()> {
+    let escapes = |b: &&str| {
+        let dir = Path::new(b).parent().unwrap_or(Path::new(""));
+        !inside(root, b) || !inside(root, &dir.to_string_lossy())
+    };
+    if let Some(b) = baseline.filter(escapes) {
+        bail!("{at}: [analyse] baseline: \"{b}\" is outside the project");
+    }
+    Ok(())
+}
+
 fn parse(
     root: &Path,
     path: &Path,
@@ -310,13 +322,7 @@ fn parse(
     let phpstan_lint = analyse.phpstan_lint(path)?;
     let lint = schema::lint(path, lint, &files, &gates, &phpstan_lint)?;
     let analyse = schema::analyse(path, analyse, &files, &gates)?;
-    let escapes = |b: &&str| {
-        let dir = Path::new(b).parent().unwrap_or(Path::new(""));
-        !inside(root, b) || !inside(root, &dir.to_string_lossy())
-    };
-    if let Some(b) = analyse.baseline.as_deref().filter(escapes) {
-        bail!("{at}: [analyse] baseline: \"{b}\" is outside the project");
-    }
+    baseline_inside(root, &at, analyse.baseline.as_deref())?;
     let laravel = gates.switches.get(extensions::LARAVEL.id) == Some(&extensions::Switch::On);
     let preset = format_preset(
         opts.preset.as_deref().or(f.preset.as_deref()),
