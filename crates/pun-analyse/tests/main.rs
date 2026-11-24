@@ -8,6 +8,7 @@ mod array_metadata;
 mod array_mutation_states;
 mod array_rand;
 mod array_slice;
+mod array_sum;
 mod assignment_derived_conditions;
 mod assignment_error_values;
 mod assignment_target_reads;
