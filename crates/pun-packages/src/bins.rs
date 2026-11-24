@@ -57,7 +57,12 @@ pub fn proxies(
         }
         let name = bin.rsplit('/').next().unwrap_or(bin).to_string();
         let link = format!("{bin_dir}/{name}");
-        let head = std::fs::read(file).map_or_default(|b| b[..b.len().min(500)].to_vec());
+        // The first 500 bytes, as Composer reads them (`file_get_contents($bin, false, null, 0, 500)`), not the
+        // whole file once per time a package lists it.
+        let mut head = vec![];
+        if let Ok(f) = std::fs::File::open(file) {
+            let _ = std::io::Read::read_to_end(&mut std::io::Read::take(f, 500), &mut head);
+        }
         out.push(Proxy {
             bin: bin.clone(),
             text: proxy(&path, &link, &head, vendor),
@@ -218,4 +223,43 @@ pub fn write(proxy: &Proxy, bin_dir: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A bin that is a terabyte (sparse) file, listed twice, makes its proxy from its first 500 bytes: reading the
+    /// whole file can't even allocate.
+    #[test]
+    fn reads_only_a_bins_header() {
+        let d = std::env::temp_dir().join(format!("pun-bins-header-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("pkg/bin")).unwrap();
+        let bin = d.join("pkg/bin/tool");
+        std::fs::write(&bin, "#!/usr/bin/env php\n<?php\n").unwrap();
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&bin)
+            .unwrap()
+            .set_len(1 << 40)
+            .unwrap();
+        let s = |p: &Path| p.to_string_lossy().into_owned();
+        let bins = ["bin/tool".to_string(), "bin/tool".to_string()];
+        let (proxies, warnings) = proxies(
+            "acme/tool",
+            &s(&d.join("pkg")),
+            &bins,
+            &s(&d.join("vendor/bin")),
+            &s(&d.join("vendor")),
+        );
+        assert!(warnings.is_empty());
+        assert_eq!(proxies.len(), 2);
+        assert!(
+            proxies[0]
+                .text
+                .starts_with("#!/usr/bin/env php\n<?php\n\n/**\n * Proxy PHP file")
+        );
+        std::fs::remove_dir_all(&d).unwrap();
+    }
 }
