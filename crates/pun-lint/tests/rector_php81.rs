@@ -2,13 +2,14 @@
 //! rules-tests/CodingStyle/...) into tests/rector/<Rector class>/Fixture. Each rule also runs on every node of its
 //! fixtures (`everywhere`) and must report what it reports on its target nodes.
 
-use crate::common::run_class;
+use crate::common::{run_class, run_dirs};
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible, PreferEnumFrom,
     PreferFirstClassCallableArgument, PreferFirstClassCallableOverArray,
     PreferFirstClassCallableOverArrowFunction, PreferFirstClassCallableOverClosure,
+    PreferNativeEnumOverMyCLabs, PreferNativeEnumOverSpatie,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -77,5 +78,39 @@ fn my_c_labs_constructor_call_to_enum_from() {
     check(
         || Box::new(PreferEnumFrom),
         "MyCLabsConstructorCallToEnumFromRector",
+    );
+}
+
+#[test]
+fn my_c_labs_class_to_enum() {
+    check(
+        || Box::new(PreferNativeEnumOverMyCLabs),
+        "MyCLabsClassToEnumRector",
+    );
+}
+
+#[test]
+fn spatie_enum_class_to_enum() {
+    check(
+        || Box::new(PreferNativeEnumOverSpatie::default()),
+        "SpatieEnumClassToEnumRector",
+    );
+    let mut snake = PreferNativeEnumOverSpatie::default();
+    snake
+        .configure(&serde_json::json!({"to-upper-snake-case": true}))
+        .unwrap();
+    run_dirs(
+        vec![Box::new(snake)],
+        "SpatieEnumClassToEnumRector",
+        &["FixtureUpperCaseSnakeCase"],
+        80400,
+        &[],
+    );
+    assert_eq!(
+        PreferNativeEnumOverSpatie::default()
+            .configure(&serde_json::json!({"toUpperSnakeCase": true}))
+            .unwrap_err()
+            .to_string(),
+        "unknown option `toUpperSnakeCase` or a value of the wrong type"
     );
 }

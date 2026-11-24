@@ -11180,6 +11180,46 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.1/prefer-native-enum-over-myclabs",
+      "command": "lint",
+      "group": "php-8.1",
+      "summary": "Refactor MyCLabs enum class to native Enum",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "MyCLabsClassToEnum",
+        "MyCLabsClassToEnumRector",
+        "Rector\\Php81\\Rector\\Class_\\MyCLabsClassToEnumRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.1/prefer-native-enum-over-spatie",
+      "command": "lint",
+      "group": "php-8.1",
+      "summary": "Refactor Spatie enum class to native Enum",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php81\\Rector\\Class_\\SpatieEnumClassToEnumRector",
+        "SpatieEnumClassToEnum",
+        "SpatieEnumClassToEnumRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.2/add-skip-dots-flag",
       "command": "lint",
       "group": "php-8.2",

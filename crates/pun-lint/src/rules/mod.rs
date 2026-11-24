@@ -224,6 +224,8 @@ rules! {
         php_8_1::prefer_first_class_callable_over_array => PreferFirstClassCallableOverArray,
         php_8_1::prefer_first_class_callable_over_arrow_function => PreferFirstClassCallableOverArrowFunction,
         php_8_1::prefer_first_class_callable_over_closure => PreferFirstClassCallableOverClosure,
+        php_8_1::prefer_native_enum_over_myclabs => PreferNativeEnumOverMyCLabs,
+        php_8_1::prefer_native_enum_over_spatie => PreferNativeEnumOverSpatie::default(),
         php_8_2::add_skip_dots_flag => AddSkipDotsFlag,
         php_8_2::no_dollar_brace_interpolation => NoDollarBraceInterpolation,
         php_8_2::no_utf8_encode_decode => NoUtf8EncodeDecode,
