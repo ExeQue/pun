@@ -53,7 +53,7 @@ fn shim_runs_the_workspace_version_with_its_arguments() {
     // A new file at the same path, not a write into the old one: Linux refuses to write to a binary any process still
     // executes (ETXTBSY), and a just-exited run can hold it for a moment.
     std::fs::remove_file(&binary).unwrap();
-    std::fs::write(&binary, "not a binary").unwrap();
+    std::fs::write(&binary, b"\x7fELF not a binary").unwrap();
     let broken = run(Command::new("php").arg(dir.join("pun")).current_dir(&dir));
     assert_eq!(broken.status.code(), Some(2));
     assert_eq!(
@@ -167,7 +167,7 @@ fn shim_checks_the_build_attestation_before_it_unpacks_a_download() {
     let env = [("PUN_REQUIRE_ATTESTATION", "1")];
     assert_eq!(
         outcome(shim("required", &tools, &env)),
-        ((Some(2), String::new(), false), required)
+        ((Some(2), String::new(), false), required.clone())
     );
     let verified = format!("{downloading}pun: verified the GitHub build attestation\n");
     assert_eq!(
@@ -175,7 +175,29 @@ fn shim_checks_the_build_attestation_before_it_unpacks_a_download() {
         (ran.clone(), verified)
     );
     // Without gh the download installs as it always has.
-    assert_eq!(outcome(shim("no-gh", &tools, &[])), (ran, downloading));
+    assert_eq!(
+        outcome(shim("no-gh", &tools, &[])),
+        (ran.clone(), downloading.clone())
+    );
+
+    // A dependency's bin proxy at the binary's name in the shared vendor/bin is a script, not Pun: it is downloaded over.
+    let claimed = dir.join("claimed");
+    std::fs::create_dir_all(&claimed).unwrap();
+    std::fs::write(
+        claimed.join(format!("pun-{version}-{target}")),
+        "#!/usr/bin/env php\n<?php\necho \"impostor\\n\";\n",
+    )
+    .unwrap();
+    assert_eq!(outcome(shim("claimed", &tools, &[])), (ran, downloading));
+    // Composer scripts put vendor/bin first in PATH; a dependency's `gh` there does not vouch for the download.
+    let with_gh = dir.join("bin-gh");
+    std::fs::create_dir_all(&with_gh).unwrap();
+    std::fs::copy(dir.join("gh-0/gh"), with_gh.join("gh")).unwrap();
+    let path = format!("{}:{tools}", with_gh.display());
+    assert_eq!(
+        outcome(shim("bin-gh", &path, &env)),
+        ((Some(2), String::new(), false), required)
+    );
 }
 
 /// A local release `v<version>` holding a `pun` script for `target` and its checksum, as cargo-dist writes it:

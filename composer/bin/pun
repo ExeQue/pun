@@ -85,13 +85,47 @@ function pun_attest(string $file, string $archive, string $version): void
     fwrite(STDERR, "pun: verified the GitHub build attestation\n");
 }
 
+/**
+ * Whether $file is a native executable, not a link or a script. Every package's bins share vendor/bin, and Composer
+ * fills it only with script proxies, so a dependency that claims Pun's binary name is downloaded over.
+ */
+function pun_native(string $file): bool
+{
+    if (is_link($file) || ! is_file($file)) {
+        return false;
+    }
+    $magic = (string) @file_get_contents($file, false, null, 0, 4);
+
+    return $magic === "\x7fELF" || $magic === "\xcf\xfa\xed\xfe" || $magic === "\xca\xfe\xba\xbe";
+}
+
+/** Removes the shim's temporary directory: PHP's own calls, not a command a bin in PATH could stand in for. */
+function pun_remove(string $path): void
+{
+    if (is_dir($path) && ! is_link($path)) {
+        foreach (scandir($path) ?: [] as $entry) {
+            if ($entry !== '.' && $entry !== '..') {
+                pun_remove("$path/$entry");
+            }
+        }
+        @rmdir($path);
+    } else {
+        @unlink($path);
+    }
+}
+
 $version = PUN_VERSION;
 $target = pun_target();
 $binDir = $GLOBALS['_composer_bin_dir'] ?? __DIR__;
 // Named by platform too: a project shared between a Mac and its Linux container needs one binary for each.
 $binary = "$binDir/pun-$version-$target";
 
-if (! is_file($binary)) {
+if (! pun_native($binary)) {
+    // Composer scripts put the bin directory first in PATH, where a dependency's bin could answer for gh or tar.
+    $path = getenv('PATH');
+    $real = realpath($binDir);
+    $dirs = array_filter(explode(PATH_SEPARATOR, (string) $path), fn ($d) => $d !== '' && realpath($d) !== $real);
+    putenv('PATH='.implode(PATH_SEPARATOR, $dirs));
     $archive = "punphp-$target.tar.gz";
     // Pun's tests serve the release from a local server.
     $github = getenv('PUN_GITHUB_URL') ?: 'https://github.com';
@@ -108,7 +142,7 @@ if (! is_file($binary)) {
     if (! @mkdir($tmp, 0700, true)) {
         pun_fail("could not write to $binDir");
     }
-    register_shutdown_function(fn () => exec('rm -rf '.escapeshellarg($tmp)));
+    register_shutdown_function(fn () => pun_remove($tmp));
     file_put_contents("$tmp/$archive", $data);
     pun_attest("$tmp/$archive", $archive, $version);
     exec('tar xzf '.escapeshellarg("$tmp/$archive").' -C '.escapeshellarg($tmp).' 2>&1', $_, $code);
@@ -118,6 +152,7 @@ if (! is_file($binary)) {
     }
     chmod($found[0], 0755);
     rename($found[0], $binary) || pun_fail("could not write $binary");
+    $path === false ? putenv('PATH') : putenv("PATH=$path");
 }
 
 $process = @proc_open([$binary, ...array_slice($argv, 1)], [STDIN, STDOUT, STDERR], $pipes);
