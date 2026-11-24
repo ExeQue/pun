@@ -226,14 +226,14 @@ PHPUnit 11 register it, when only other sets (`named-args`, `if`, `datetime-to-c
 package majors) register it, or when no set does. A PHPStan class is in scope when a config registers it (O9 keeps
 `phpstanApi.*` out). The inventories are crates/pun-config/rules/upstream/*.json.
 
-The PHP sets start at `php82`, below Pun's PHP 8.4 floor (Pushpak, 2026-11-18): their rules still change code on a
-PHP 8.4 project, and a rector.php that uses them would otherwise lose them in `pun migrate`. Their rules sit in the
+The PHP sets start at `php82`, below Pun's PHP 8.3 floor (Pushpak, 2026-11-18): their rules still change code on a
+PHP 8.3+ project, and a rector.php that uses them would otherwise lose them in `pun migrate`. Their rules sit in the
 `php-8.2` and `php-8.3` groups.
 
 Rector's PHP upgrade rules below `php82` and its `php-polyfills` rules are being ported too ("Upgrades below the
 floor too", PLAN.md §2, 2026-11-23) into the `php-5.3` ... `php-8.1` groups. The inventories still mark them out of
 scope, so the checker allows a Pun rule for them and does not yet require one. A rule whose input no longer parses or
-compiles on PHP 8.4 (`$s{0}`, an unparenthesized nested ternary) stays `unsupported` with that reason.
+compiles on PHP 8.3+ (`$s{0}`, an unparenthesized nested ternary) stays `unsupported` with that reason.
 
 Rules removed for being out of scope keep their Rust code until the perf rounds end.
 
