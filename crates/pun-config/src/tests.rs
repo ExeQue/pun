@@ -405,7 +405,7 @@ fn lint_groups() {
     };
     let level = |l: &Lint, id: &str| l.rules.iter().find(|r| r.id == id).map(|r| r.level);
     let l = lint("[lint]\nsets = [\"early-return\"]\n[lint.groups]\nstyle = \"warn\"\n");
-    assert_eq!(l.rules.len(), 91);
+    assert_eq!(l.rules.len(), 92);
     assert!(
         l.rules
             .iter()
