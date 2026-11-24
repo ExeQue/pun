@@ -168,6 +168,9 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   with no Pest plugin or PHPUnit typing (analyse 7 moves after 1.0). A project that doesn't want them analysed
   excludes them by glob: `[analyse] exclude = ["tests/**"]` removes matching files from both the analysis and the
   symbol scan (PHPStan's `excludePaths.analyseAndScan`); vendor/ is still read for symbols.
+- **Rector rules that Pun has as format rules stay format rules** (Pushpak, 2026-11-24): the Rector rules mapped to a
+  `format/` rule (11 across dead-code, code-quality and coding-style, plus a few PHP-set rules) get no lint copy, and
+  format and lint rules are not combined.
 - **Duplicate lint rules are merged** (2026-11-15, plan/rules.md §3): rules that duplicated another (usually a
   PHP-CS-Fixer fixer and its Rector port) are merged into one; the keeper's `merged` and `replaces` fields record the
   upstream names and old IDs, `pun migrate` maps every upstream name to the keeper, and old IDs error with the new one.

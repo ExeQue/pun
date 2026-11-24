@@ -11,7 +11,7 @@ It replaces three things:
 
 | Upstream | What moves into lint |
 | --- | --- |
-| Rector (+ rector-laravel, rector-phpunit, pest-plugin-rector) | every rule except the Symfony, Doctrine and downgrade sets, which are unsupported |
+| Rector (+ rector-laravel, rector-phpunit, rector-symfony, rector-doctrine, rector-downgrade-php, pest-plugin-rector) | every rule except the ones upstream deprecates and Rector's post-processors (../PLAN.md §2, 2026-11-23) |
 | PHP-CS-Fixer / Pint | the risky fixers (risky rules are lint, format.md §4) and the code rules moved from format |
 | Mago's linter | its rules, as normal lint rules under Pun names |
 
@@ -51,23 +51,25 @@ All lint rules in crates/pun-config/rules/mapping.toml are for 1.0. Each has its
 source: one in-scope upstream rule (Rector, a risky or moved PHP-CS-Fixer fixer, or a PHPStan rule class), several
 listed in `merged`, or Mago (`origin = "mago"`). rules.md §7 has the reasons for what is in and out.
 
-The 680 lint rules (`python3 -I scripts/check-rule-mapping.py`; a merged rule counts once per source):
+The 821 lint rules (`python3 -I scripts/check-rule-mapping.py`; a merged rule counts once per source):
 
 | | Count |
 | --- | ---: |
-| Upstream source: Rector core / rector-laravel / rector-phpunit / pest-plugin-rector | 269 / 94 / 81 / 59 |
+| Upstream source: Rector core / rector-laravel / rector-phpunit / pest-plugin-rector | 360 / 136 / 109 / 60 |
 | Upstream source: PHP-CS-Fixer fixer (76 risky, 39 moved from format) / Pint / PHPStan rule classes | 115 / 1 / 31 |
 | Mago only / Pun only | 81 / 1 |
-| Also carrying a Mago mapping | 56 |
-| Fix safety: safe / unsafe / mixed / report only | 284 / 308 / 8 / 80 |
-| Sets: dead-code / modernize / code-quality / types / early-return / privatization / naming / coding-style / none | 72 / 43 / 224 / 86 / 2 / 5 / 0 / 105 / 148 |
-| Ecosystem groups: laravel (+ laravel-12) / phpunit / pest | 97 (+1) / 111 / 58 |
+| Also carrying a Mago mapping | 62 |
+| Fix safety: safe / unsafe / mixed / report only | 337 / 396 / 8 / 80 |
+| Sets: dead-code / modernize / code-quality / types / early-return / privatization / naming / coding-style / none | 72 / 107 / 224 / 86 / 2 / 5 / 0 / 105 / 225 |
+| Ecosystem groups: laravel / phpunit / pest (upgrade groups such as `laravel-11` and `php-7.4` not counted) | 108 / 134 / 59 |
 
 The groups are the topic groups shared with format (format.md §8, config.md Build 1); intent stays as data.
 
-Unsupported on purpose: the rector-symfony, rector-doctrine and rector-downgrade-php rules, and the Doctrine, Symfony,
-Behat and JMS rules of Rector core (rules.md O9). `pun migrate` names each one as unsupported and skips it
-(migrate.md §3).
+Not ported yet, though in scope since 2026-11-23: the rector-symfony, rector-doctrine and rector-downgrade-php rules,
+and about 40 Rector core rules still marked `unsupported` in mapping.toml with an older reason (in no set, below
+php82, outside the eight prepared sets, Symfony/Doctrine/JMS/Behat). Until they are ported, `pun migrate` names each
+one as unsupported and skips it (migrate.md §3). Unsupported on purpose: deprecated rules, post-processors, rules
+whose input does not compile on PHP 8.4, and rules upstream registers in no set by mistake.
 
 ## 5. Rector's CLI, flag for flag
 
@@ -195,9 +197,10 @@ Pushpak's answers:
   - `--deny-warnings` makes warnings fail the run, and `--max-warnings <n>` fails above n warnings.
   - `-A` / `-W` / `-D <rule or group>` (allow / warn / deny) set a level for one run.
   - `[[lint.overrides]]` with `files = ["tests/**"]` changes levels for some paths.
-- **Every lint rule for 1.0 runs natively before 1.0.** Symfony, Doctrine and downgrade sets, upgrade sets below PHP
-  8.2 and Laravel 12, and rules Rector deprecated stay unsupported; the `php82` and `php83` sets are in (rules.md §7).
-  Porting order follows usage (Build 7), but 1.0 waits for all of them.
+- **Every lint rule for 1.0 runs natively before 1.0.** Since 2026-11-23 that covers every
+  non-deprecated rule of Rector, rector-laravel, rector-phpunit, rector-symfony, rector-doctrine, rector-downgrade-php
+  and the Pest plugin, upgrade sets below the floor included (../PLAN.md §2); only deprecated rules and Rector's
+  post-processors stay unsupported. Porting order follows usage (Build 7), but 1.0 waits for all of them.
 - **Mago's rules become normal lint rules**; `pun lint --mago` is gone.
 - **`pun lint --fix` doesn't format**; `pun check --fix` does lint, then format (commands.md §3).
 - **Unported rules are never delegated.** `pun migrate` names and skips them; a hand-written pun.toml that names one
