@@ -1,18 +1,21 @@
 //! Rector 2.8.4's datetime-to-carbon rules: `DateTimeInstanceToCarbonRector` and `DateTimeMethodCallToCarbonRector`
-//! (one rule: the second rewrites the `new` that the first rewrites everywhere), with `CarbonCallFactory`, and
-//! `TimeFuncCallToCarbonRector`.
+//! (one rule: the second rewrites the `new` that the first rewrites everywhere), with `CarbonCallFactory`,
+//! `TimeFuncCallToCarbonRector` and `DateFuncCallToCarbonRector`.
 
 use std::fmt::Write as _;
 use std::sync::LazyLock;
 
 use crate::problem::{Edit, Safety};
-use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
+use mago_syntax::cst::{
+    Argument, BinaryOperator, Call, Expression, FunctionCall, Literal, Node, NodeKind,
+};
 use pcre2::bytes::Regex;
 
 use crate::rules::refactor::configured_codemods::single_quoted;
 use crate::rules::refactor::{called, function_name};
+use crate::rules::support::expressions::text;
 use crate::rules::support::names::resolve_class_name;
-use crate::syntax::node_span;
+use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
 static PLUS_MINUS_COUNT: LazyLock<Regex> = LazyLock::new(|| {
@@ -183,5 +186,170 @@ impl Rule for PreferCarbonTimestamp {
             Safety::Unsafe,
             vec![Edit::new(node_span(&node), code)],
         ));
+    }
+}
+
+/// `DateFuncCallToCarbonRector`'s `TIME_UNITS`.
+const TIME_UNITS: [(&str, u64); 5] = [
+    ("Weeks", 604_800),
+    ("Days", 86_400),
+    ("Hours", 3_600),
+    ("Minutes", 60),
+    ("Seconds", 1),
+];
+
+/// `DateFuncCallToCarbonRector`.
+///
+/// Where Rector's rewrite drops part of the code, Pun leaves it alone: an unpacked argument (Rector writes the array as
+/// the one argument), a named argument out of its parameter's place (Rector reads arguments by position), an operand of
+/// `time() - ...` that is not an integer, and the base timestamp of `date($format, strtotime($date, $base))` (Rector
+/// drops it; Pun takes the timestamp path).
+pub struct PreferCarbonDate;
+
+impl Rule for PreferCarbonDate {
+    fn id(&self) -> &'static str {
+        "lint/style/prefer-carbon-date"
+    }
+
+    fn targets(&self) -> Option<&'static [NodeKind]> {
+        Some(&[NodeKind::Binary, NodeKind::FunctionCall])
+    }
+
+    fn visit<'ast, 'arena>(
+        &self,
+        node: Node<'ast, 'arena>,
+        ancestors: &[Node<'ast, 'arena>],
+        ctx: &Context<'_>,
+        out: &mut Vec<Report>,
+    ) {
+        let code = match node {
+            Node::Binary(binary) => {
+                if !matches!(binary.operator, BinaryOperator::Subtraction(_)) {
+                    return;
+                }
+                let Expression::Call(Call::Function(left)) = unparenthesize(binary.lhs) else {
+                    return;
+                };
+                if !is_function(ctx, ancestors, left, "time") {
+                    return;
+                }
+                let Some(product) = product(binary.rhs) else {
+                    return;
+                };
+                let Some((unit, seconds)) = TIME_UNITS.iter().find(|(_, s)| product % s == 0)
+                else {
+                    return;
+                };
+                format!(
+                    "\\Carbon\\Carbon::now()->sub{unit}({})->getTimestamp()",
+                    product / seconds
+                )
+            }
+            Node::FunctionCall(call) => {
+                let args: Vec<&Argument<'_>> = call.argument_list.arguments.iter().collect();
+                if is_function(ctx, ancestors, call, "date") {
+                    if !readable(&args, &["format", "timestamp"]) {
+                        return;
+                    }
+                    match args.as_slice() {
+                        [format, timestamp, ..] => {
+                            let format = text(ctx, format.value());
+                            match strtotime_date(ctx, ancestors, timestamp.value()) {
+                                Some(date) => {
+                                    format!("\\Carbon\\Carbon::parse({date})->format({format})")
+                                }
+                                None => format!(
+                                    "\\Carbon\\Carbon::createFromTimestamp({})->format({format})",
+                                    text(ctx, timestamp.value())
+                                ),
+                            }
+                        }
+                        [format] => {
+                            if !matches!(format.value(), Expression::Literal(Literal::String(_))) {
+                                return;
+                            }
+                            format!(
+                                "\\Carbon\\Carbon::now()->format({})",
+                                text(ctx, format.value())
+                            )
+                        }
+                        [] => return,
+                    }
+                } else if is_function(ctx, ancestors, call, "strtotime") {
+                    if !readable(&args, &["datetime", "baseTimestamp"]) {
+                        return;
+                    }
+                    let [date] = args.as_slice() else {
+                        return;
+                    };
+                    format!(
+                        "\\Carbon\\Carbon::parse({})->getTimestamp()",
+                        text(ctx, date.value())
+                    )
+                } else {
+                    return;
+                }
+            }
+            _ => return,
+        };
+        out.push(Report::fixed(
+            node_span(&node),
+            "Use Carbon instead of `date()`, `strtotime()` or `time()` arithmetic.",
+            Safety::Unsafe,
+            vec![Edit::new(node_span(&node), code)],
+        ));
+    }
+}
+
+fn is_function(
+    ctx: &Context<'_>,
+    ancestors: &[Node<'_, '_>],
+    call: &FunctionCall<'_>,
+    name: &str,
+) -> bool {
+    let Expression::Identifier(id) = call.function else {
+        return false;
+    };
+    function_name(ctx, ancestors, id).eq_ignore_ascii_case(name)
+}
+
+/// No unpacked argument, and every named argument in its parameter's place.
+fn readable(args: &[&Argument<'_>], parameters: &[&str]) -> bool {
+    args.iter().enumerate().all(|(i, arg)| match arg {
+        Argument::Positional(a) => a.ellipsis.is_none(),
+        Argument::Named(a) => parameters
+            .get(i)
+            .is_some_and(|p| p.as_bytes() == a.name.value),
+    })
+}
+
+/// The `$date` of a `strtotime($date)` timestamp.
+fn strtotime_date<'s>(
+    ctx: &Context<'s>,
+    ancestors: &[Node<'_, '_>],
+    timestamp: &Expression<'_>,
+) -> Option<&'s str> {
+    let Expression::Call(Call::Function(call)) = unparenthesize(timestamp) else {
+        return None;
+    };
+    if !is_function(ctx, ancestors, call, "strtotime") {
+        return None;
+    }
+    let args: Vec<&Argument<'_>> = call.argument_list.arguments.iter().collect();
+    match args.as_slice() {
+        [date] if readable(&args, &["datetime"]) => Some(text(ctx, date.value())),
+        _ => None,
+    }
+}
+
+/// `calculateProduct()`: an integer, or the product of a multiplication of integers. Rector skips an operand of the
+/// multiplication that is not an integer (`60 * $x` is 60); Pun leaves such a subtraction alone.
+fn product(expr: &Expression<'_>) -> Option<u64> {
+    match unparenthesize(expr) {
+        Expression::Literal(Literal::Integer(int)) => int.value,
+        Expression::Binary(b) if matches!(b.operator, BinaryOperator::Multiplication(_)) => {
+            product(b.lhs)?.checked_mul(product(b.rhs)?)
+        }
+        _ => None,
     }
 }

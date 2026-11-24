@@ -7126,9 +7126,11 @@
         "name": "DateFuncCallToCarbon",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/date-func-call-to-carbon-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: datetime-to-carbon",
-        "unsupported": true
+        "rules": [
+          "lint/style/prefer-carbon-date"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "DateTimeInstanceToCarbon",

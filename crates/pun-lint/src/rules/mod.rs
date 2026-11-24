@@ -268,6 +268,7 @@ rules! {
         style::no_variable_variable => NoVariableVariable,
         style::prefer_carbon => PreferCarbon,
         style::prefer_carbon => PreferCarbonTimestamp,
+        style::prefer_carbon => PreferCarbonDate,
         classes::no_explicit_constructor_call => NoExplicitConstructorCall,
         functions::no_assign_in_argument => NoAssignInArgument,
         functions::no_swapped_explode_arguments => NoSwappedExplodeArguments,
