@@ -1,22 +1,22 @@
 ---
 title: Migrating from Pint
-description: Convert your Pint config, compare the results, and update your scripts and CI.
+description: Move a project from Pint to Pun in three steps.
 ---
 
-Switch a project from Pint to Pun. Begin with a clean Git working tree, and keep Pint installed until the results match.
+Start with a clean Git tree, and keep Pint around until you've compared the two.
 
 <Steps>
   <Step title="Convert the config">
 
 ```bash
-pun migrate --from pint --dry-run   # preview
+pun migrate --from pint --dry-run   # see what it would write
 pun migrate --from pint
 ```
 
-Unsupported rules are skipped, with a warning for each.
+This writes `pun.toml`. If a rule isn't supported yet, Pun tells you and skips it.
 
   </Step>
-  <Step title="Compare the results">
+  <Step title="Compare">
 
 ```bash
 vendor/bin/pint
@@ -26,9 +26,7 @@ pun check
 git diff
 ```
 
-- `vendor/bin/pint --test` and the format part of `pun check` should both pass.
-- If they differ, check why before you switch.
-- `pun check` can also report lint and analyse problems that Pint doesn't check.
+Both checks should pass and the diff should be empty. If not, look at what's different before you switch. `pun check` may also find lint and analyse problems Pint never looked for. That's expected.
 
   </Step>
   <Step title="Update scripts and CI">
@@ -42,26 +40,22 @@ git diff
 }
 ```
 
-In CI, replace `vendor/bin/pint --test` with `pun check`. See [CI](/docs/guides/ci).
-
-| Pint | Pun |
-| --- | --- |
-| `--bail`, `--cache-file` | Not supported |
-| `--ansi` / `--no-ansi` | `--color=always` / `--color=never` |
-| `txt`, `xml` formats | One of the [other formats](/docs/commands/format#options) |
+In CI, swap `vendor/bin/pint --test` for `pun check`. See [CI](/docs/guides/ci).
 
   </Step>
 </Steps>
 
-## What moved where
+## Good to know
 
-- Layout rules become format rules.
-- Risky and code-deleting rules become lint rules. So `pun format` alone doesn't apply your full Pint config.
-- The [Pint mapping](/docs/migrate/from/pint) lists every fixer and its Pun rule.
+- Pint's risky fixers are lint rules in Pun. So use `pun check --fix`, not just `pun format`, to get everything your Pint config did.
+- The [Pint mapping](/docs/migrate/from/pint) shows where each Pint rule went.
+- `--ansi` and `--no-ansi` are `--color=always` and `--color=never`. `--bail`, `--cache-file` and the `txt` and `xml` formats aren't supported.
 
-## Roll back or clean up
+## Done with Pint?
 
-Migration keeps `pint.json` and the Pint package.
+```bash
+pun remove laravel/pint
+rm pint.json
+```
 
-- To roll back, restore your scripts and CI commands, and check any rewritten ignore comments.
-- To remove Pint, run `pun remove laravel/pint` and delete `pint.json`.
+Changed your mind? Put your old scripts and CI back. Migration never deletes `pint.json`.

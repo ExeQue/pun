@@ -1,43 +1,41 @@
 ---
 title: CI
-description: Check a project in CI, publish reports, and add a pre-commit hook.
+description: Run Pun in CI and before each commit.
 ---
 
-In CI, run [`pun check`](/docs/commands/check) without `--fix`. It reports problems and changes nothing.
+In CI, just run [`pun check`](/docs/commands/check). Without `--fix` it only reports, it never touches your files.
 
-| Exit code | Meaning |
-| --- | --- |
-| `0` | No problems |
-| `1` | Problems found |
-| `2` | Pun could not run |
+- `0` means all good.
+- `1` means it found problems.
+- `2` means Pun itself couldn't run.
 
-Warnings fail the run only with `--deny-warnings`, or when there are more than `--max-warnings`.
+Warnings don't fail the build, unless you pass `--deny-warnings` or set `--max-warnings`.
 
 ## GitHub Actions
 
-With Pun in `require-dev`, `composer install` (or `pun install`) puts it in `vendor/bin`. Add a step after the install:
+If Pun is in your `require-dev`, it's already in `vendor/bin` after `composer install`. Add one step:
 
 ```yaml .github/workflows/style.yml
 - name: Check
   run: vendor/bin/pun check
 ```
 
-- On GitHub Actions, Pun adds annotations to its normal output.
-- `--format=github` prints only the annotations.
+On GitHub Actions, problems show up as annotations on your PR. Nothing to set up.
 
 ## Report files
+
+Need a file for another tool? Write one:
 
 ```bash
 pun format --test --output-to-file=pun.xml --output-format=checkstyle
 ```
 
-- `--output-format` takes `checkstyle`, `junit`, `gitlab`, `json`, `agent` or `github`.
-- `--format` sets what Pun prints on stdout.
+You can pick `checkstyle`, `junit`, `gitlab`, `json`, `agent` or `github`.
 
-## Pre-commit hook
+## Before each commit
 
 ```bash
 pun check --staged
 ```
 
-`--staged` checks files with staged changes. Pun reads the file on disk, so unstaged edits are checked too.
+This checks only the files you staged. It reads them from disk, so unstaged edits in those files count too.
