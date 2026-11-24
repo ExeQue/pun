@@ -10,6 +10,7 @@ use pun_lint::rules::{
     PreferEnumCaseOverSpatieCall, PreferEnumFrom, PreferFirstClassCallableArgument,
     PreferFirstClassCallableOverArray, PreferFirstClassCallableOverArrowFunction,
     PreferFirstClassCallableOverClosure, PreferNativeEnumOverMyCLabs, PreferNativeEnumOverSpatie,
+    PreferReadonlyProperty,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -120,5 +121,13 @@ fn spatie_enum_method_call_to_enum_const() {
     check(
         || Box::new(PreferEnumCaseOverSpatieCall),
         "SpatieEnumMethodCallToEnumConstRector",
+    );
+}
+
+#[test]
+fn read_only_property() {
+    check(
+        || Box::new(PreferReadonlyProperty),
+        "ReadOnlyPropertyRector",
     );
 }

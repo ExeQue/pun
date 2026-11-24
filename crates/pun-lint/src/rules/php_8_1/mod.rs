@@ -11,3 +11,4 @@ pub(super) mod prefer_first_class_callable_over_arrow_function;
 pub(super) mod prefer_first_class_callable_over_closure;
 pub(super) mod prefer_native_enum_over_myclabs;
 pub(super) mod prefer_native_enum_over_spatie;
+pub(super) mod prefer_readonly_property;

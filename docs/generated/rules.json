@@ -12039,6 +12039,26 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.1/prefer-readonly-property",
+      "command": "lint",
+      "group": "php-8.1",
+      "summary": "Decorate read-only property with readonly attribute",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ReadOnlyProperty",
+        "ReadOnlyPropertyRector",
+        "Rector\\Php81\\Rector\\Property\\ReadOnlyPropertyRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.2/add-skip-dots-flag",
       "command": "lint",
       "group": "php-8.2",
