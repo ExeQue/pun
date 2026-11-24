@@ -618,6 +618,39 @@ fn composes_the_difference_with_the_sets() {
     }
 }
 
+/// Issue #15: `RemoveDeadInstanceOfRector` and `RemoveDeadInstanceOfAssertRector` are both
+/// `lint/dead-code/no-always-true-instanceof`; skipped for the same paths, the override names it once, or pun.toml has
+/// a duplicate key and doesn't parse.
+#[test]
+fn rules_merged_into_one_are_skipped_once_per_override() {
+    let root = dir(&[]);
+    let tests = format!("{}/tests/*", root.display());
+    let config = RectorConfig {
+        rules: strings(&[
+            "Rector\\DeadCode\\Rector\\If_\\RemoveDeadInstanceOfRector",
+            "Rector\\DeadCode\\Rector\\StmtsAwareInterface\\RemoveDeadInstanceOfAssertRector",
+        ]),
+        skip_rules: serde_json::from_value(json!({
+            "Rector\\DeadCode\\Rector\\If_\\RemoveDeadInstanceOfRector": [tests],
+            "Rector\\DeadCode\\Rector\\StmtsAwareInterface\\RemoveDeadInstanceOfAssertRector": [tests],
+        }))
+        .unwrap(),
+        ..RectorConfig::default()
+    };
+    let rector = from_rector(&root, &config);
+    let mut parts = Parts {
+        format: "preset = \"empty\"\n".into(),
+        ..Parts::default()
+    };
+    compose(&root, &mut parts, &rector).unwrap();
+    assert_eq!(
+        parts.overrides,
+        "[[lint.overrides]]\nfiles = [\"tests/*\"]\nrules = { \"dead-code/no-always-true-instanceof\" = \"off\" }\n"
+    );
+    let cfg = from_toml(&root, &parts.render()).unwrap();
+    assert_eq!(cfg.lint.overrides.len(), 1);
+}
+
 fn rule_meta_ported(id: &str) -> bool {
     (rules().iter().find(|(r, _)| r == id))
         .and_then(|(_, e)| e.get("ported"))

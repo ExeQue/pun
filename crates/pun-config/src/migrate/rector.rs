@@ -348,9 +348,11 @@ pub fn compose(root: &Path, parts: &mut Parts, rector: &Rector) -> Result<Reconc
             out.off += 1;
         }
     }
+    // Rector rules merged into one Pun rule can be skipped for the same paths: the rule is named once per override.
     let mut by_paths: Vec<(&Vec<String>, Vec<&str>)> = vec![];
     for (paths, id) in &rector.overrides {
         match by_paths.iter_mut().find(|(p, _)| *p == paths) {
+            Some((_, ids)) if ids.contains(&&id[5..]) => {}
             Some((_, ids)) => ids.push(&id[5..]),
             None => by_paths.push((paths, vec![&id[5..]])),
         }
