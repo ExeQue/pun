@@ -11682,6 +11682,26 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.0/prefer-match",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Change switch() to match()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ChangeSwitchToMatch",
+        "ChangeSwitchToMatchRector",
+        "Rector\\Php80\\Rector\\Switch_\\ChangeSwitchToMatchRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.0/prefer-nullsafe-over-ternary",
       "command": "lint",
       "group": "php-8.0",

@@ -2,6 +2,7 @@ pub(super) mod no_int_get_headers_format;
 pub(super) mod no_unused_catch_variable;
 pub(super) mod no_version_compare_operator_alias;
 pub(super) mod prefer_get_debug_type;
+pub(super) mod prefer_match;
 pub(super) mod prefer_nullsafe_over_ternary;
 pub(super) mod prefer_static_class;
 pub(super) mod prefer_str_contains_over_mb_strpos;

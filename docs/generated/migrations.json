@@ -6808,9 +6808,11 @@
         "name": "ChangeSwitchToMatch",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/change-switch-to-match-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/prefer-match"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ChildDoctrineRepositoryClassType",

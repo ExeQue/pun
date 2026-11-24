@@ -212,6 +212,7 @@ rules! {
         php_8_0::no_unused_catch_variable => NoUnusedCatchVariable,
         php_8_0::no_version_compare_operator_alias => NoVersionCompareOperatorAlias,
         php_8_0::prefer_get_debug_type => PreferGetDebugType,
+        php_8_0::prefer_match => PreferMatch,
         php_8_0::prefer_nullsafe_over_ternary => PreferNullsafeOverTernary,
         php_8_0::prefer_static_class => PreferStaticClass,
         php_8_0::prefer_str_contains_over_mb_strpos => PreferStrContainsOverMbStrpos,

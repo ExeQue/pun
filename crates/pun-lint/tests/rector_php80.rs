@@ -3,12 +3,12 @@
 //! rule alone, `withPhpVersion(80400)`) wrote for them. Each rule also runs on every node of its fixtures
 //! (`everywhere`) and must report what it reports on its target nodes.
 
-use crate::common::run_class;
+use crate::common::{run_class, run_dirs};
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoIntGetHeadersFormat, NoUnusedCatchVariable, NoVersionCompareOperatorAlias,
-    PreferEndsWithFunction, PreferGetDebugType, PreferNullsafeOverTernary,
+    PreferEndsWithFunction, PreferGetDebugType, PreferMatch, PreferNullsafeOverTernary,
     PreferStartsWithFunction, PreferStaticClass, PreferStrContainsOverMbStrpos,
 };
 
@@ -77,5 +77,18 @@ fn ternary_to_nullsafe_coalesce() {
     check(
         || Box::new(PreferNullsafeOverTernary),
         "TernaryToNullsafeCoalesceRector",
+    );
+}
+
+#[test]
+fn change_switch_to_match() {
+    check(|| Box::new(PreferMatch), "ChangeSwitchToMatchRector");
+    // config/configured_rule_php_version_74.php
+    run_dirs(
+        vec![Box::new(PreferMatch)],
+        "ChangeSwitchToMatchRector",
+        &["FixtureSkipped"],
+        70400,
+        &[],
     );
 }

@@ -371,7 +371,7 @@ fn lint_sets() {
         "pun.toml",
         &format!("[php]\nversion = \"8.4\"\n{modernize}"),
     )]);
-    assert_eq!(l.rules.len(), 99);
+    assert_eq!(l.rules.len(), 100);
     assert!(ids(&l.rules).contains(&"lint/php-7.4/prefer-arrow-function"));
     assert!(ids(&l.rules).contains(&"lint/php-8.3/prefer-json-validate"));
     assert!(ids(&l.rules).contains(&"lint/php-8.2/prefer-readonly-class"));
@@ -389,7 +389,7 @@ fn lint_sets() {
         "pun.toml",
         &format!("[php]\nversion = \"8.5\"\n{modernize}"),
     )]);
-    assert_eq!(l.rules.len(), 105);
+    assert_eq!(l.rules.len(), 106);
     assert!(ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.1/prefer-first-class-callable"));
     let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\", \"types\"]\n")]);
