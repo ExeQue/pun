@@ -12,392 +12,392 @@ Code that can be written more simply, and size and complexity limits.
 
 Split 2 assigns with "and" to separate lines
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-boolean-flag-parameter" href="/docs/rules/lint/complexity/no-boolean-flag-parameter">
 
 Flags function-like parameters that use a boolean type and drive the function's behavior.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-compact" href="/docs/rules/lint/complexity/no-compact">
 
 Change `compact()` call to own array
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-concat-assign-new-item" href="/docs/rules/lint/complexity/no-concat-assign-new-item">
 
 Change concat assign on a new array item to plain assign, as the new item is always null
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-constant-condition" href="/docs/rules/lint/complexity/no-constant-condition">
 
 Detects `if` statements whose condition is a constant that is always true or always false.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-constant-via-variable" href="/docs/rules/lint/complexity/no-constant-via-variable">
 
 Change variable class constant fetch to direct class constant fetch when class or constant target is final
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-dirname-dir-concat" href="/docs/rules/lint/complexity/no-dirname-dir-concat">
 
 Change dirname() and string concat, to __DIR__ and direct string path
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-duplicate-match-arm" href="/docs/rules/lint/complexity/no-duplicate-match-arm">
 
 Detects `match` arms that produce the same result as an earlier arm.
 
-In the `code-quality` set. Report only.
+In the `lint-recommended` preset and every stricter one. Report only.
 
 </Card>
 <Card title="no-else-clause" href="/docs/rules/lint/complexity/no-else-clause">
 
 Flags `if` statements that include an `else` or `elseif` branch.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-empty-file" href="/docs/rules/lint/complexity/no-empty-file">
 
 Detects redundant files that contain no executable code or declarations.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-cyclomatic" href="/docs/rules/lint/complexity/no-excessive-cyclomatic">
 
 Checks the cyclomatic complexity of classes, traits, enums, interfaces, functions, and closures.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-enum-cases" href="/docs/rules/lint/complexity/no-excessive-enum-cases">
 
 Detects enums with too many cases.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-halstead" href="/docs/rules/lint/complexity/no-excessive-halstead">
 
 Computes Halstead metrics (volume, difficulty, effort) and reports if they exceed configured thresholds.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-kan-defect" href="/docs/rules/lint/complexity/no-excessive-kan-defect">
 
 Detects classes, traits, interfaces, functions, and closures with high kan defect.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-methods" href="/docs/rules/lint/complexity/no-excessive-methods">
 
 Detects class-like structures with too many methods.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-nesting" href="/docs/rules/lint/complexity/no-excessive-nesting">
 
 Checks if the nesting level in any block exceeds a configurable threshold.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-parameters" href="/docs/rules/lint/complexity/no-excessive-parameters">
 
 Detects functions, closures, and methods with too many parameters.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-excessive-properties" href="/docs/rules/lint/complexity/no-excessive-properties">
 
 Detects class-like structures with too many properties.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-goto" href="/docs/rules/lint/complexity/no-goto">
 
 Detects the use of `goto` statements and labels.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="no-iterator-to-array-in-foreach" href="/docs/rules/lint/complexity/no-iterator-to-array-in-foreach">
 
 Detects `iterator_to_array()` calls used directly as a `foreach` expression.
 
-In the `code-quality` set. Report only.
+In the `lint-recommended` preset and every stricter one. Report only.
 
 </Card>
 <Card title="no-negated-boolean-literal" href="/docs/rules/lint/complexity/no-negated-boolean-literal">
 
 Replace negated boolean literals (!false, !true) with their simplified equivalents (true, false)
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-negated-group" href="/docs/rules/lint/complexity/no-negated-group">
 
 Simplify negated conditions with de Morgan theorem
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-negated-instanceof-ternary" href="/docs/rules/lint/complexity/no-negated-instanceof-ternary">
 
 Flip negated ternary of `instanceof` to direct use of object
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-phpdoc-class-case-mismatch" href="/docs/rules/lint/complexity/no-phpdoc-class-case-mismatch">
 
 Fix a misspelled class name casing in a @var docblock to match the real class name
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-isset" href="/docs/rules/lint/complexity/no-redundant-isset">
 
 Detects redundant arguments in `isset()` calls where a nested access already implies the parent checks.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="no-redundant-literal-return" href="/docs/rules/lint/complexity/no-redundant-literal-return">
 
 Detects redundant literal guard patterns where an if statement checks if a variable equals a literal and returns that same literal, followed by returning the variable.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="no-redundant-null-check" href="/docs/rules/lint/complexity/no-redundant-null-check">
 
 Return the value directly instead of checking it for null first.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-nullsafe" href="/docs/rules/lint/complexity/no-redundant-nullsafe">
 
 Flags the use of the nullsafe operator (`?->`) in contexts where its null-checking behavior is redundant.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="no-redundant-write-visibility" href="/docs/rules/lint/complexity/no-redundant-write-visibility">
 
 Detects redundant write visibility modifiers on properties.
 
-In the `code-quality` set. Report only.
+In the `lint-recommended` preset and every stricter one. Report only.
 
 </Card>
 <Card title="no-single-case-switch" href="/docs/rules/lint/complexity/no-single-case-switch">
 
 Change `switch` with only 1 check to `if`
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-single-item-in-array" href="/docs/rules/lint/complexity/no-single-item-in-array">
 
 Changes in_array() with single element to ===
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-sole-value-sprintf" href="/docs/rules/lint/complexity/no-sole-value-sprintf">
 
 Remove `sprintf()` wrapper if not needed
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-unused-label" href="/docs/rules/lint/complexity/no-unused-label">
 
 Detects redundant `goto` labels that are declared but not used.
 
-In the `code-quality` set. Report only. Upstream setting: `bleedingEdge (featureToggles.unusedLabel)`.
+In the `lint-recommended` preset and every stricter one. Report only. Upstream setting: `bleedingEdge (featureToggles.unusedLabel)`.
 
 </Card>
 <Card title="no-useless-array-values" href="/docs/rules/lint/complexity/no-useless-array-values">
 
 Removes unneeded array_values() in in_array() call
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-absolute-include" href="/docs/rules/lint/complexity/prefer-absolute-include">
 
 Migrate include/require to absolute path. This Rector might introduce backwards incompatible code, when the include/require being changed depends on the current working directory.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-array-literal" href="/docs/rules/lint/complexity/prefer-array-literal">
 
 Change array_merge of non arrays to array directly
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-coalesce-over-empty-ternary" href="/docs/rules/lint/complexity/prefer-coalesce-over-empty-ternary">
 
 Change ternary empty on array property with array dim fetch to coalesce operator
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-empty-array-compare" href="/docs/rules/lint/complexity/prefer-empty-array-compare">
 
 Compare with `[]` instead of empty()/is_array() on arrays.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-explicit-array-comparison" href="/docs/rules/lint/complexity/prefer-explicit-array-comparison">
 
 Make array if conditions more explicit
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-func-num-args" href="/docs/rules/lint/complexity/prefer-func-num-args">
 
 Simplify count of func_get_args() to func_num_args()
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-if-statement" href="/docs/rules/lint/complexity/prefer-if-statement">
 
 Change inline if to explicit if
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-in-array" href="/docs/rules/lint/complexity/prefer-in-array">
 
 Use in_array() instead of repeated `||`/`&&` comparisons, array_search() checks and foreach loops.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-inline-array-return" href="/docs/rules/lint/complexity/prefer-inline-array-return">
 
 Inline just in time array dim fetch assigns to direct return
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-instance-method" href="/docs/rules/lint/complexity/prefer-instance-method">
 
 Change static method and local-only calls to non-static
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-min-max" href="/docs/rules/lint/complexity/prefer-min-max">
 
 Change ternary number compare to `max()` call
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-named-literal-argument" href="/docs/rules/lint/complexity/prefer-named-literal-argument">
 
 Name literal arguments (true, false, null, numbers) in calls.
 
-Not in any set. Report only.
+Not in any preset. Report only.
 
 </Card>
 <Card title="prefer-not-in-array" href="/docs/rules/lint/complexity/prefer-not-in-array">
 
 Use `! in_array()` instead of repeated `!==`/`!=` comparisons of one value joined by `&&`.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-null-coalesce" href="/docs/rules/lint/complexity/prefer-null-coalesce">
 
 Use `??` instead of isset()/array_key_exists() ternaries, if/return chains and foreach lookups.
 
-In the `code-quality` set. Safe fix. Depends on `[php] version`.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix. Depends on `[php] version`.
 
 </Card>
 <Card title="prefer-property-default" href="/docs/rules/lint/complexity/prefer-property-default">
 
 Move property default from constructor to property default
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-property-exists" href="/docs/rules/lint/complexity/prefer-property-exists">
 
 Use property_exists() instead of array_key_exists() or isset() on object properties.
 
-In the `code-quality` set. Safe fix. Depends on `[php] version`.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix. Depends on `[php] version`.
 
 </Card>
 <Card title="prefer-simple-condition" href="/docs/rules/lint/complexity/prefer-simple-condition">
 
 Simplify a negated comparison or a comparison with a boolean
 
-In the `code-quality` and `dead-code` sets. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/code-quality`, `rector/dead-code` sets. Safe fix.
 
 </Card>
 <Card title="require-attribute-argument-order" href="/docs/rules/lint/complexity/require-attribute-argument-order">
 
 Sort named arguments in PHP 8 attributes to match their declaration order
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality`, `rector/named-args` sets. Safe fix.
 
 </Card>
 <Card title="require-consistent-return" href="/docs/rules/lint/complexity/require-consistent-return">
 
 Add explicit return null to method/function that returns a value, but missed main return
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="require-is-a-allow-string" href="/docs/rules/lint/complexity/require-is-a-allow-string">
 
 Complete missing 3rd argument in case is_a() function in case of strings
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="require-named-argument-order" href="/docs/rules/lint/complexity/require-named-argument-order">
 
 Order named arguments as the parameters are declared.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality`, `rector/named-args` sets. Safe fix.
 
 </Card>
 <Card title="require-previous-exception" href="/docs/rules/lint/complexity/require-previous-exception">
 
 When throwing into a catch block, checks that the previous exception is passed to the new throw clause
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 </CardGroup>

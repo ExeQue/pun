@@ -12,112 +12,112 @@ if, switch, match, loops, return and the other control structures. Also in [form
 
 Detects assignments in conditions. They can cause unexpected behavior and make the code harder to read.
 
-In the `code-quality` set. Report only. Intent: correctness.
+In the `lint-essential` preset and every stricter one. Report only. Intent: correctness.
 
 </Card>
 <Card title="no-else-after-return" href="/docs/rules/lint/control-flow/no-else-after-return">
 
 Drop the else after a branch that always returns, throws or exits, and move its body after the if.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-empty-catch" href="/docs/rules/lint/control-flow/no-empty-catch">
 
 Report an empty `catch` block, which swallows the exception.
 
-In the `code-quality` set. Report only. Intent: correctness.
+In the `lint-essential` preset and every stricter one. Report only. Intent: correctness.
 
 </Card>
 <Card title="no-for-init-overwrite" href="/docs/rules/lint/control-flow/no-for-init-overwrite">
 
 Disallows a `for` loop's init expression overwriting a variable that is already defined.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.overwriteVariablesWithLoop`.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious. Upstream setting: `strictRules.overwriteVariablesWithLoop`.
 
 </Card>
 <Card title="no-loop-variable-overwrite" href="/docs/rules/lint/control-flow/no-loop-variable-overwrite">
 
 Disallows a `foreach` key or value variable overwriting a variable that is already defined.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.overwriteVariablesWithLoop`.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious. Upstream setting: `strictRules.overwriteVariablesWithLoop`.
 
 </Card>
 <Card title="no-return-assignment" href="/docs/rules/lint/control-flow/no-return-assignment">
 
 Local, dynamic and directly referenced variables should not be assigned and directly returned by a function or method.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-superfluous-elseif" href="/docs/rules/lint/control-flow/no-superfluous-elseif">
 
 Replaces superfluous `elseif` with `if`.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="no-switch-continue" href="/docs/rules/lint/control-flow/no-switch-continue">
 
 Switch case must not be ended with `continue` but with `break`.
 
-In the `modernize` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php52` set. Safe fix.
 
 </Card>
 <Card title="no-unsafe-finally" href="/docs/rules/lint/control-flow/no-unsafe-finally">
 
 Detects control flow statements in `finally` blocks.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-useless-else" href="/docs/rules/lint/control-flow/no-useless-else">
 
 There should not be useless `else` cases.
 
-In the `early-return` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-useless-return" href="/docs/rules/lint/control-flow/no-useless-return">
 
 There should not be an empty `return` statement at the end of a function.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="prefer-bare-return" href="/docs/rules/lint/control-flow/prefer-bare-return">
 
 A return statement wishing to return `void` should not return `null`.
 
-Not in any set. Safe fix.
+Not in any preset. Safe fix.
 
 </Card>
 <Card title="prefer-bool-return" href="/docs/rules/lint/control-flow/prefer-bool-return">
 
 Simplify `if` control structures that return the boolean result of their condition.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-combined-isset" href="/docs/rules/lint/control-flow/prefer-combined-isset">
 
 Using `isset($var) &&` multiple times should be done in one call.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="prefer-combined-unset" href="/docs/rules/lint/control-flow/prefer-combined-unset">
 
 Calling `unset` on multiple items should be done in one call.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="prefer-yield-from" href="/docs/rules/lint/control-flow/prefer-yield-from">
 
 If the function explicitly returns an array, and has the return type `iterable`, then `yield from` must be used instead of `return`.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. Safe fix.
 
 </Card>
 </CardGroup>

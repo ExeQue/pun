@@ -1,5 +1,5 @@
 pub mod phpstan;
-mod rector;
+pub(crate) mod rector;
 
 pub use rector::{Configured, Reconciled, Rector, RectorConfig, compose, from_rector};
 

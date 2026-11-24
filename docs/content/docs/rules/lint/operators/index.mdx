@@ -12,49 +12,49 @@ Operators and their operands. Also in [format](/docs/rules/format/operators) (15
 
 Use `&&` and `||` logical operators instead of `and` and `or`.
 
-In the `code-quality` set. Unsafe fix: it can change behavior. Intent: suspicious.
+In the `lint-strict` preset. In Rector's `rector/code-quality` set. Unsafe fix: it can change behavior. Intent: suspicious.
 
 </Card>
 <Card title="no-error-suppression" href="/docs/rules/lint/operators/no-error-suppression">
 
 Error control operator should be added to deprecation notices and/or removed from other cases.
 
-In the `code-quality` set. Unsafe fix: it can change behavior. Intent: suspicious.
+In the `lint-strict` preset. Unsafe fix: it can change behavior. Intent: suspicious.
 
 </Card>
 <Card title="no-loose-equality" href="/docs/rules/lint/operators/no-loose-equality">
 
 Disallows the loose comparison operators `==` and `!=`; use `===` and `!==`.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.disallowedLooseComparison`.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious. Upstream setting: `strictRules.disallowedLooseComparison`.
 
 </Card>
 <Card title="no-useless-nullsafe" href="/docs/rules/lint/operators/no-useless-nullsafe">
 
 There should not be useless Null-safe operator `?->` used.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="prefer-coalesce" href="/docs/rules/lint/operators/prefer-coalesce">
 
 Use `null` coalescing operator `??` where possible.
 
-In the `modernize` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix.
 
 </Card>
 <Card title="prefer-coalesce-assign" href="/docs/rules/lint/operators/prefer-coalesce-assign">
 
 Use the null coalescing assignment operator `??=` where possible.
 
-In the `modernize` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php74` set. Safe fix.
 
 </Card>
 <Card title="prefer-coalesce-assign-over-fallback" href="/docs/rules/lint/operators/prefer-coalesce-assign-over-fallback">
 
 Suggests the null coalescing assignment operator (`??=`) when the right operand of `??` assigns to the same variable or property as its left operand.
 
-In the `modernize` set. Safe fix where types prove it, unsafe otherwise.
+In the `lint-recommended` preset and every stricter one. Safe fix where types prove it, unsafe otherwise.
 
 </Card>
 </CardGroup>

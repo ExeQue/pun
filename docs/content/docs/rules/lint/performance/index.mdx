@@ -12,28 +12,28 @@ Faster equivalents of slow constructs.
 
 Detects calls to `preg_split()` whose pattern has no regex meta-characters and no modifiers, which means the split could be done with `explode()`.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="prefer-static-closure" href="/docs/rules/lint/performance/prefer-static-closure">
 
 Lambdas not (indirectly) referencing `$this` must be declared `static`.
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-qualified-native-constant" href="/docs/rules/lint/performance/require-qualified-native-constant">
 
 Add leading `\` before constant invocation of internal constant to speed up resolving. Constant name match is case-sensitive, except for `null`, `false` and `true`.
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-qualified-native-function" href="/docs/rules/lint/performance/require-qualified-native-function">
 
 Add leading `\` before function invocation to speed up resolving.
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. Unsafe fix: it can change behavior.
 
 </Card>
 </CardGroup>

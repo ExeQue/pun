@@ -1,0 +1,3565 @@
+{
+ "pest/coding-style": {
+  "lint/pest/no-before-all-in-describe": [
+   "ConvertBeforeAllInDescribeRector"
+  ],
+  "lint/pest/no-invalid-repeat": [
+   "FixInvalidRepeatValueRector"
+  ],
+  "lint/pest/no-negated-boolean-matcher": [
+   "ToBeTrueNotFalseRector"
+  ],
+  "lint/pest/no-only": [
+   "RemoveOnlyRector"
+  ],
+  "lint/pest/no-redundant-type-expectation": [
+   "RemoveRedundantLiteralTypeExpectationRector"
+  ],
+  "lint/pest/no-redundant-uses": [
+   "RemoveRedundantPestUsesRector"
+  ],
+  "lint/pest/no-static-test-closure": [
+   "RemoveStaticTestClosureRector"
+  ],
+  "lint/pest/prefer-chained-expect": [
+   "ChainExpectCallsRector"
+  ],
+  "lint/pest/prefer-defer": [
+   "TapToDeferRector"
+  ],
+  "lint/pest/prefer-each-modifier": [
+   "UseEachModifierRector"
+  ],
+  "lint/pest/prefer-expect": [
+   "ConvertAssertToExpectRector"
+  ],
+  "lint/pest/prefer-extend": [
+   "UsesToExtendRector"
+  ],
+  "lint/pest/prefer-filesystem-matchers": [
+   "SimplifyFilesystemMatchersRector"
+  ],
+  "lint/pest/prefer-not-modifier": [
+   "SimplifyExpectNotRector"
+  ],
+  "lint/pest/prefer-sequence": [
+   "UseSequenceMatcherRector"
+  ],
+  "lint/pest/prefer-simpler-expectation": [
+   "SimplifyComparisonExpectationsRector"
+  ],
+  "lint/pest/prefer-specific-expectations": [
+   "SimplifyToLiteralBooleanRector"
+  ],
+  "lint/pest/prefer-strict-equality-matchers": [
+   "UseStrictEqualityMatchersRector"
+  ],
+  "lint/pest/prefer-to-be-alpha": [
+   "UseToBeAlphaRector"
+  ],
+  "lint/pest/prefer-to-be-alpha-numeric": [
+   "UseToBeAlphaNumericRector"
+  ],
+  "lint/pest/prefer-to-be-between": [
+   "UseToBeBetweenRector"
+  ],
+  "lint/pest/prefer-to-be-digits": [
+   "UseToBeDigitsRector"
+  ],
+  "lint/pest/prefer-to-be-directory": [
+   "UseToBeDirectoryRector"
+  ],
+  "lint/pest/prefer-to-be-empty": [
+   "UseToBeEmptyRector"
+  ],
+  "lint/pest/prefer-to-be-file": [
+   "UseToBeFileRector"
+  ],
+  "lint/pest/prefer-to-be-in": [
+   "UseToBeInRector"
+  ],
+  "lint/pest/prefer-to-be-infinite": [
+   "UseToBeInfiniteRector"
+  ],
+  "lint/pest/prefer-to-be-instance-of": [
+   "UseInstanceOfMatcherRector"
+  ],
+  "lint/pest/prefer-to-be-json": [
+   "UseToBeJsonRector"
+  ],
+  "lint/pest/prefer-to-be-list": [
+   "UseToBeListRector"
+  ],
+  "lint/pest/prefer-to-be-lowercase": [
+   "UseToBeLowercaseRector"
+  ],
+  "lint/pest/prefer-to-be-nan": [
+   "UseToBeNanRector"
+  ],
+  "lint/pest/prefer-to-be-truthy-falsy": [
+   "SimplifyToBeTruthyFalsyRector"
+  ],
+  "lint/pest/prefer-to-be-uppercase": [
+   "UseToBeUppercaseRector"
+  ],
+  "lint/pest/prefer-to-be-url": [
+   "UseToBeUrlRector"
+  ],
+  "lint/pest/prefer-to-be-uuid": [
+   "UseToBeUuidRector"
+  ],
+  "lint/pest/prefer-to-contain": [
+   "UseToContainRector"
+  ],
+  "lint/pest/prefer-to-contain-equal": [
+   "UseToContainEqualRector"
+  ],
+  "lint/pest/prefer-to-contain-only-instances-of": [
+   "UseToContainOnlyInstancesOfRector"
+  ],
+  "lint/pest/prefer-to-end-with": [
+   "UseToEndWithRector"
+  ],
+  "lint/pest/prefer-to-equal-canonicalizing": [
+   "UseToEqualCanonicalizingRector"
+  ],
+  "lint/pest/prefer-to-equal-with-delta": [
+   "UseToEqualWithDeltaRector"
+  ],
+  "lint/pest/prefer-to-have-count": [
+   "UseToHaveCountRector"
+  ],
+  "lint/pest/prefer-to-have-key": [
+   "UseToHaveKeyRector"
+  ],
+  "lint/pest/prefer-to-have-keys": [
+   "UseToHaveKeysRector"
+  ],
+  "lint/pest/prefer-to-have-length": [
+   "UseToHaveLengthRector"
+  ],
+  "lint/pest/prefer-to-have-method-on-class": [
+   "ToHaveMethodOnClassRector"
+  ],
+  "lint/pest/prefer-to-have-properties": [
+   "UseToHavePropertiesRector"
+  ],
+  "lint/pest/prefer-to-have-property": [
+   "UseToHavePropertyRector"
+  ],
+  "lint/pest/prefer-to-have-same-size": [
+   "UseToHaveSameSizeRector"
+  ],
+  "lint/pest/prefer-to-match": [
+   "UseToMatchRector"
+  ],
+  "lint/pest/prefer-to-match-array": [
+   "UseToMatchArrayRector"
+  ],
+  "lint/pest/prefer-to-match-object": [
+   "UseToMatchObjectRector"
+  ],
+  "lint/pest/prefer-to-start-with": [
+   "UseToStartWithRector"
+  ],
+  "lint/pest/prefer-to-throw": [
+   "ConvertExpectExceptionToThrowRector",
+   "UseToThrowRector"
+  ],
+  "lint/pest/prefer-type-matchers": [
+   "UseTypeMatchersRector"
+  ],
+  "lint/pest/require-type-matcher-first": [
+   "EnsureTypeChecksFirstRector"
+  ],
+  "lint/security/no-debug-calls": [
+   "RemoveDebugExpectationsRector"
+  ]
+ },
+ "rector-laravel/cashier-13": {
+  "lint/cashier-13/prefer-stripe-method": [
+   "CashierStripeOptionsToStripeRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/cashier-14": {
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/faker-10": {
+  "lint/faker-1/no-faker-property-access": [
+   "ReplaceFakerPropertyFetchWithMethodCallRector"
+  ]
+ },
+ "rector-laravel/laravel-100": {
+  "lint/laravel-10/no-expression-string-cast": [
+   "DatabaseExpressionCastsToMethodCallRector"
+  ],
+  "lint/laravel-10/no-expression-to-string": [
+   "DatabaseExpressionToStringToMethodCallRector"
+  ],
+  "lint/laravel-10/prefer-assert-sent-times": [
+   "ReplaceAssertTimesSendWithAssertSentTimesRector"
+  ],
+  "lint/laravel-10/prefer-date-casts": [
+   "UnifyModelDatesWithCastsRector"
+  ],
+  "lint/laravel-10/prefer-dispatch-sync": [
+   "DispatchNonShouldQueueToDispatchSyncRector"
+  ],
+  "lint/laravel-10/prefer-facade-fake": [
+   "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector"
+  ],
+  "lint/laravel-10/prefer-fake-over-expects": [
+   "ReplaceExpectsMethodsInTestsRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ]
+ },
+ "rector-laravel/laravel-110": {
+  "lint/laravel-11/prefer-assert-see-html": [
+   "AssertSeeToAssertSeeHtmlRector"
+  ],
+  "lint/laravel-11/prefer-casts-method": [
+   "ModelCastsPropertyToCastsMethodRector"
+  ],
+  "lint/laravel-11/prefer-geometry-column": [
+   "RefactorBlueprintGeometryColumnsRector"
+  ],
+  "lint/laravel-11/prefer-queueable-trait": [
+   "ReplaceQueueTraitsWithQueueableRector"
+  ]
+ },
+ "rector-laravel/laravel-120": {
+  "lint/laravel-12/prefer-scope-attribute": [
+   "ScopeNamedClassMethodToScopeAttributedClassMethodRector"
+  ],
+  "lint/laravel/prefer-closure-only-bind": [
+   "ContainerBindConcreteWithClosureOnlyRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/laravel-130": {
+  "lint/laravel/prefer-aliases-attribute": [
+   "AliasesPropertyToAliasesAttributeRector"
+  ],
+  "lint/laravel/prefer-appends-attribute": [
+   "AppendsPropertyToAppendsAttributeRector"
+  ],
+  "lint/laravel/prefer-backoff-attribute": [
+   "BackoffPropertyToBackoffAttributeRector"
+  ],
+  "lint/laravel/prefer-collected-by-attribute": [
+   "CollectedByPropertyToCollectedByAttributeRector"
+  ],
+  "lint/laravel/prefer-collects-attribute": [
+   "CollectsPropertyToCollectsAttributeRector"
+  ],
+  "lint/laravel/prefer-command-hidden-attribute": [
+   "CommandHiddenPropertyToHiddenAttributeRector"
+  ],
+  "lint/laravel/prefer-connection-attribute": [
+   "ConnectionPropertyToConnectionAttributeRector"
+  ],
+  "lint/laravel/prefer-date-format-attribute": [
+   "DateFormatPropertyToDateFormatAttributeRector"
+  ],
+  "lint/laravel/prefer-delay-attribute": [
+   "DelayPropertyToDelayAttributeRector"
+  ],
+  "lint/laravel/prefer-delete-when-missing-models-attribute": [
+   "DeleteWhenMissingModelsPropertyToDeleteWhenMissingModelsAttributeRector"
+  ],
+  "lint/laravel/prefer-description-attribute": [
+   "DescriptionPropertyToDescriptionAttributeRector"
+  ],
+  "lint/laravel/prefer-error-bag-attribute": [
+   "ErrorBagPropertyToErrorBagAttributeRector"
+  ],
+  "lint/laravel/prefer-fail-on-timeout-attribute": [
+   "FailOnTimeoutPropertyToFailOnTimeoutAttributeRector"
+  ],
+  "lint/laravel/prefer-fillable-attribute": [
+   "FillablePropertyToFillableAttributeRector"
+  ],
+  "lint/laravel/prefer-guarded-attribute": [
+   "GuardedPropertyToGuardedAttributeRector"
+  ],
+  "lint/laravel/prefer-help-attribute": [
+   "HelpPropertyToHelpAttributeRector"
+  ],
+  "lint/laravel/prefer-hidden-attribute": [
+   "HiddenPropertyToHiddenAttributeRector"
+  ],
+  "lint/laravel/prefer-job-connection-attribute": [
+   "JobConnectionPropertyToJobConnectionAttributeRector"
+  ],
+  "lint/laravel/prefer-max-exceptions-attribute": [
+   "MaxExceptionsPropertyToMaxExceptionsAttributeRector"
+  ],
+  "lint/laravel/prefer-preserve-keys-attribute": [
+   "PreserveKeysPropertyToPreserveKeysAttributeRector"
+  ],
+  "lint/laravel/prefer-queue-attribute": [
+   "QueuePropertyToQueueAttributeRector"
+  ],
+  "lint/laravel/prefer-route-key-attribute": [
+   "RouteKeyMethodToRouteKeyAttributeRector"
+  ],
+  "lint/laravel/prefer-signature-attribute": [
+   "SignaturePropertyToSignatureAttributeRector"
+  ],
+  "lint/laravel/prefer-stop-on-first-failure-attribute": [
+   "StopOnFirstFailurePropertyToStopOnFirstFailureAttributeRector"
+  ],
+  "lint/laravel/prefer-table-attribute": [
+   "TablePropertyToTableAttributeRector"
+  ],
+  "lint/laravel/prefer-timeout-attribute": [
+   "TimeoutPropertyToTimeoutAttributeRector"
+  ],
+  "lint/laravel/prefer-touches-attribute": [
+   "TouchesPropertyToTouchesAttributeRector"
+  ],
+  "lint/laravel/prefer-tries-attribute": [
+   "TriesPropertyToTriesAttributeRector"
+  ],
+  "lint/laravel/prefer-unguarded-attribute": [
+   "EmptyGuardedPropertyToUnguardedAttributeRector"
+  ],
+  "lint/laravel/prefer-unique-for-attribute": [
+   "UniqueForPropertyToUniqueForAttributeRector"
+  ],
+  "lint/laravel/prefer-visible-attribute": [
+   "VisiblePropertyToVisibleAttributeRector"
+  ],
+  "lint/laravel/prefer-without-incrementing-attribute": [
+   "WithoutIncrementingPropertyToWithoutIncrementingAttributeRector"
+  ],
+  "lint/laravel/prefer-without-timestamps-attribute": [
+   "WithoutTimestampsPropertyToWithoutTimestampsAttributeRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ]
+ },
+ "rector-laravel/laravel-130-attributes": {
+  "lint/laravel/prefer-aliases-attribute": [
+   "AliasesPropertyToAliasesAttributeRector"
+  ],
+  "lint/laravel/prefer-appends-attribute": [
+   "AppendsPropertyToAppendsAttributeRector"
+  ],
+  "lint/laravel/prefer-backoff-attribute": [
+   "BackoffPropertyToBackoffAttributeRector"
+  ],
+  "lint/laravel/prefer-collected-by-attribute": [
+   "CollectedByPropertyToCollectedByAttributeRector"
+  ],
+  "lint/laravel/prefer-collects-attribute": [
+   "CollectsPropertyToCollectsAttributeRector"
+  ],
+  "lint/laravel/prefer-command-hidden-attribute": [
+   "CommandHiddenPropertyToHiddenAttributeRector"
+  ],
+  "lint/laravel/prefer-connection-attribute": [
+   "ConnectionPropertyToConnectionAttributeRector"
+  ],
+  "lint/laravel/prefer-date-format-attribute": [
+   "DateFormatPropertyToDateFormatAttributeRector"
+  ],
+  "lint/laravel/prefer-delay-attribute": [
+   "DelayPropertyToDelayAttributeRector"
+  ],
+  "lint/laravel/prefer-delete-when-missing-models-attribute": [
+   "DeleteWhenMissingModelsPropertyToDeleteWhenMissingModelsAttributeRector"
+  ],
+  "lint/laravel/prefer-description-attribute": [
+   "DescriptionPropertyToDescriptionAttributeRector"
+  ],
+  "lint/laravel/prefer-error-bag-attribute": [
+   "ErrorBagPropertyToErrorBagAttributeRector"
+  ],
+  "lint/laravel/prefer-fail-on-timeout-attribute": [
+   "FailOnTimeoutPropertyToFailOnTimeoutAttributeRector"
+  ],
+  "lint/laravel/prefer-fillable-attribute": [
+   "FillablePropertyToFillableAttributeRector"
+  ],
+  "lint/laravel/prefer-guarded-attribute": [
+   "GuardedPropertyToGuardedAttributeRector"
+  ],
+  "lint/laravel/prefer-help-attribute": [
+   "HelpPropertyToHelpAttributeRector"
+  ],
+  "lint/laravel/prefer-hidden-attribute": [
+   "HiddenPropertyToHiddenAttributeRector"
+  ],
+  "lint/laravel/prefer-job-connection-attribute": [
+   "JobConnectionPropertyToJobConnectionAttributeRector"
+  ],
+  "lint/laravel/prefer-max-exceptions-attribute": [
+   "MaxExceptionsPropertyToMaxExceptionsAttributeRector"
+  ],
+  "lint/laravel/prefer-preserve-keys-attribute": [
+   "PreserveKeysPropertyToPreserveKeysAttributeRector"
+  ],
+  "lint/laravel/prefer-queue-attribute": [
+   "QueuePropertyToQueueAttributeRector"
+  ],
+  "lint/laravel/prefer-route-key-attribute": [
+   "RouteKeyMethodToRouteKeyAttributeRector"
+  ],
+  "lint/laravel/prefer-signature-attribute": [
+   "SignaturePropertyToSignatureAttributeRector"
+  ],
+  "lint/laravel/prefer-stop-on-first-failure-attribute": [
+   "StopOnFirstFailurePropertyToStopOnFirstFailureAttributeRector"
+  ],
+  "lint/laravel/prefer-table-attribute": [
+   "TablePropertyToTableAttributeRector"
+  ],
+  "lint/laravel/prefer-timeout-attribute": [
+   "TimeoutPropertyToTimeoutAttributeRector"
+  ],
+  "lint/laravel/prefer-touches-attribute": [
+   "TouchesPropertyToTouchesAttributeRector"
+  ],
+  "lint/laravel/prefer-tries-attribute": [
+   "TriesPropertyToTriesAttributeRector"
+  ],
+  "lint/laravel/prefer-unguarded-attribute": [
+   "EmptyGuardedPropertyToUnguardedAttributeRector"
+  ],
+  "lint/laravel/prefer-unique-for-attribute": [
+   "UniqueForPropertyToUniqueForAttributeRector"
+  ],
+  "lint/laravel/prefer-visible-attribute": [
+   "VisiblePropertyToVisibleAttributeRector"
+  ],
+  "lint/laravel/prefer-without-incrementing-attribute": [
+   "WithoutIncrementingPropertyToWithoutIncrementingAttributeRector"
+  ],
+  "lint/laravel/prefer-without-timestamps-attribute": [
+   "WithoutTimestampsPropertyToWithoutTimestampsAttributeRector"
+  ]
+ },
+ "rector-laravel/laravel-130-core": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ]
+ },
+ "rector-laravel/laravel-130-without-attributes": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ]
+ },
+ "rector-laravel/laravel-50": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/laravel-51": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ]
+ },
+ "rector-laravel/laravel-52": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ]
+ },
+ "rector-laravel/laravel-53": {
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/laravel-54": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ]
+ },
+ "rector-laravel/laravel-55": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ]
+ },
+ "rector-laravel/laravel-56": {
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/laravel-57": {
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ]
+ },
+ "rector-laravel/laravel-58": {
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ]
+ },
+ "rector-laravel/laravel-60": {
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/laravel-70": {
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/laravel-80": {
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ]
+ },
+ "rector-laravel/laravel-90": {
+  "lint/laravel-9/prefer-attribute-accessor": [
+   "MigrateToSimplifiedAttributeRector"
+  ],
+  "lint/laravel-9/prefer-fake-helper": [
+   "ReplaceFakerInstanceWithHelperRector"
+  ],
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/laravel-array-str-functions-to-static-call": {
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ]
+ },
+ "rector-laravel/laravel-arrayaccess-to-method-call": {
+  "lint/laravel/prefer-container-method-call": [
+   "ContainerArrayAccessToMethodCallRector"
+  ],
+  "lint/laravel/prefer-repository-method-call": [
+   "RepositoryArrayAccessToMethodCallRector"
+  ]
+ },
+ "rector-laravel/laravel-code-quality": {
+  "lint/laravel/no-app-array-access": [
+   "CallOnAppArrayAccessToStandaloneAssignRector"
+  ],
+  "lint/laravel/no-default-authorize": [
+   "RemoveDefaultAuthorizeTrueFromFormRequestRector"
+  ],
+  "lint/laravel/no-negated-blank-filled": [
+   "NotFilledBlankFuncCallToBlankFilledFuncCallRector"
+  ],
+  "lint/laravel/no-negated-when": [
+   "ReverseConditionableMethodCallRector"
+  ],
+  "lint/laravel/no-useless-value-call": [
+   "RemoveRedundantValueCallsRector"
+  ],
+  "lint/laravel/no-useless-with-call": [
+   "RemoveRedundantWithCallsRector"
+  ],
+  "lint/laravel/prefer-anonymous-migration": [
+   "AnonymousMigrationsRector"
+  ],
+  "lint/laravel/prefer-array-validation-rules": [
+   "ValidationRuleArrayStringValueToArrayRector"
+  ],
+  "lint/laravel/prefer-back-helper": [
+   "RedirectBackToBackHelperRector"
+  ],
+  "lint/laravel/prefer-date-facade": [
+   "CarbonToDateFacadeRector"
+  ],
+  "lint/laravel/prefer-default-argument": [
+   "ApplyDefaultInsteadOfNullCoalesceRector"
+  ],
+  "lint/laravel/prefer-dispatch-helper": [
+   "DispatchToHelperFunctionsRector"
+  ],
+  "lint/laravel/prefer-env-helper": [
+   "EnvVariableToEnvHelperRector"
+  ],
+  "lint/laravel/prefer-environment-check": [
+   "AppEnvironmentComparisonToParameterRector"
+  ],
+  "lint/laravel/prefer-exception-class-string": [
+   "ThrowIfAndThrowUnlessExceptionsToUseClassStringRector"
+  ],
+  "lint/laravel/prefer-file-facade-delete": [
+   "UnlinkFuncCallToFileFacadeDeleteRector"
+  ],
+  "lint/laravel/prefer-latest-oldest": [
+   "EloquentOrderByToLatestOrOldestRector"
+  ],
+  "lint/laravel/prefer-nullsafe": [
+   "OptionalToNullsafeOperatorRector"
+  ],
+  "lint/laravel/prefer-pivot-class": [
+   "RelationTableStringToPivotClassRector"
+  ],
+  "lint/laravel/prefer-protected-model-methods": [
+   "MakeModelAttributesAndScopesProtectedRector"
+  ],
+  "lint/laravel/prefer-request-facade": [
+   "RequestVariablesToRequestFacadeRector"
+  ],
+  "lint/laravel/prefer-request-server": [
+   "ServerVariableToRequestFacadeRector"
+  ],
+  "lint/laravel/prefer-resolve-helper": [
+   "AppToResolveRector"
+  ],
+  "lint/laravel/prefer-session-facade": [
+   "SessionVariableToSessionFacadeRector"
+  ],
+  "lint/laravel/prefer-sleep-facade": [
+   "SleepFuncToSleepStaticCallRector"
+  ],
+  "lint/laravel/prefer-str-starts-with": [
+   "SubStrToStartsWithOrEndsWithStaticMethodCallRector"
+  ],
+  "lint/laravel/prefer-to-route-helper": [
+   "RedirectRouteToToRouteHelperRector"
+  ],
+  "lint/laravel/prefer-today": [
+   "NowFuncWithStartOfDayMethodCallToTodayFuncRector"
+  ]
+ },
+ "rector-laravel/laravel-collection": {
+  "lint/laravel/no-collection-aliases": [
+   "UnaliasCollectionMethodsRector"
+  ],
+  "lint/laravel/no-negated-contains": [
+   "AvoidNegatedCollectionContainsOrDoesntContainRector"
+  ],
+  "lint/laravel/no-negated-filter": [
+   "AvoidNegatedCollectionFilterOrRejectRector"
+  ],
+  "lint/laravel/prefer-collection-all": [
+   "ConvertEnumerableToArrayToAllRector"
+  ],
+  "lint/laravel/prefer-collection-is-empty": [
+   "CollectionCountComparisonToIsEmptyRector"
+  ]
+ },
+ "rector-laravel/laravel-container-string-to-fully-qualified-name": {
+  "lint/laravel/prefer-class-container-key": [
+   "ReplaceServiceContainerCallArgRector"
+  ]
+ },
+ "rector-laravel/laravel-eloquent-magic-method-to-query-builder": {
+  "lint/laravel/no-implicit-model-query": [
+   "EloquentMagicMethodToQueryBuilderRector"
+  ]
+ },
+ "rector-laravel/laravel-facade-aliases-to-full-names": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ]
+ },
+ "rector-laravel/laravel-factories": {
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/laravel/add-has-factory-trait": [
+   "AddHasFactoryToModelsRector"
+  ]
+ },
+ "rector-laravel/laravel-if-helpers": {
+  "lint/laravel/prefer-abort-if": [
+   "AbortIfRector"
+  ],
+  "lint/laravel/prefer-report-if": [
+   "ReportIfRector"
+  ],
+  "lint/laravel/prefer-throw-if": [
+   "ThrowIfRector"
+  ]
+ },
+ "rector-laravel/laravel-legacy-factories-to-classes": {
+  "lint/laravel-8/prefer-factory-classes": [
+   "FactoryDefinitionRector"
+  ],
+  "lint/laravel-8/prefer-factory-state-methods": [
+   "FactoryApplyingStatesRector"
+  ],
+  "lint/laravel-8/prefer-model-factory-method": [
+   "FactoryFuncCallToStaticCallRector"
+  ]
+ },
+ "rector-laravel/laravel-static-to-injection": {
+  "lint/laravel/prefer-constructor-injection": [
+   "ArgumentFuncCallToMethodCallRector"
+  ],
+  "lint/laravel/prefer-facade-over-app": [
+   "HelperFuncCallToFacadeClassRector"
+  ],
+  "lint/laravel/prefer-request-validate": [
+   "RequestStaticValidateToInjectRector"
+  ],
+  "lint/refactor/replace-function-with-new": [
+   "FuncCallToNewRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-method": [
+   "StaticFacadeToServiceMethodCallRector"
+  ]
+ },
+ "rector-laravel/laravel-testing": {
+  "lint/laravel/prefer-dedicated-status-assertion": [
+   "AssertStatusToAssertMethodRector"
+  ],
+  "lint/laravel/prefer-explicit-json-call": [
+   "JsonCallToExplicitJsonCallRector"
+  ],
+  "lint/laravel/prefer-travel-to": [
+   "CarbonSetTestNowToTravelToRector"
+  ],
+  "lint/laravel/prefer-typed-assert-closure": [
+   "AssertWithClassStringToTypeHintedClosureRector"
+  ]
+ },
+ "rector-laravel/laravel-type-declarations": {
+  "lint/laravel/add-legacy-relation-generics": [
+   "AddLegacyGenericReturnTypeToRelationsRector"
+  ],
+  "lint/laravel/add-new-relation-generics": [
+   "AddNewGenericReturnTypeToRelationsRector"
+  ],
+  "lint/laravel/add-query-closure-type": [
+   "EloquentWhereTypeHintClosureParameterRector"
+  ],
+  "lint/laravel/add-relation-generics": [
+   "AddGenericReturnTypeToRelationsRector"
+  ],
+  "lint/laravel/add-relation-query-closure-type": [
+   "EloquentWhereRelationTypeHintingParameterRector"
+  ],
+  "lint/laravel/add-scope-builder-generics": [
+   "AddGenericBuilderToScopesRector"
+  ],
+  "lint/laravel/add-tap-closure-type": [
+   "TypeHintTappableCallRector"
+  ]
+ },
+ "rector-laravel/livewire-30": {
+  "lint/livewire-3/prefer-computed-attribute": [
+   "LivewireComponentComputedMethodToComputedAttributeRector"
+  ],
+  "lint/livewire-3/prefer-url-attribute": [
+   "LivewireComponentQueryStringToUrlAttributeRector"
+  ],
+  "lint/refactor/rename-attribute": [
+   "RenameAttributeRector"
+  ]
+ },
+ "rector-laravel/livewire-40": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ]
+ },
+ "rector-laravel/lumen": {
+  "lint/lumen/prefer-middleware-array": [
+   "LumenRoutesStringMiddlewareToArrayRector"
+  ],
+  "lint/lumen/prefer-uses-array": [
+   "LumenRoutesStringActionToUsesArrayRector"
+  ]
+ },
+ "rector-laravel/up-to-cashier-13": {
+  "lint/cashier-13/prefer-stripe-method": [
+   "CashierStripeOptionsToStripeRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/up-to-cashier-14": {
+  "lint/cashier-13/prefer-stripe-method": [
+   "CashierStripeOptionsToStripeRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-100": {
+  "lint/laravel-10/no-expression-string-cast": [
+   "DatabaseExpressionCastsToMethodCallRector"
+  ],
+  "lint/laravel-10/no-expression-to-string": [
+   "DatabaseExpressionToStringToMethodCallRector"
+  ],
+  "lint/laravel-10/prefer-assert-sent-times": [
+   "ReplaceAssertTimesSendWithAssertSentTimesRector"
+  ],
+  "lint/laravel-10/prefer-date-casts": [
+   "UnifyModelDatesWithCastsRector"
+  ],
+  "lint/laravel-10/prefer-dispatch-sync": [
+   "DispatchNonShouldQueueToDispatchSyncRector"
+  ],
+  "lint/laravel-10/prefer-facade-fake": [
+   "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector"
+  ],
+  "lint/laravel-10/prefer-fake-over-expects": [
+   "ReplaceExpectsMethodsInTestsRector"
+  ],
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/laravel-9/prefer-attribute-accessor": [
+   "MigrateToSimplifiedAttributeRector"
+  ],
+  "lint/laravel-9/prefer-fake-helper": [
+   "ReplaceFakerInstanceWithHelperRector"
+  ],
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-110": {
+  "lint/laravel-10/no-expression-string-cast": [
+   "DatabaseExpressionCastsToMethodCallRector"
+  ],
+  "lint/laravel-10/no-expression-to-string": [
+   "DatabaseExpressionToStringToMethodCallRector"
+  ],
+  "lint/laravel-10/prefer-assert-sent-times": [
+   "ReplaceAssertTimesSendWithAssertSentTimesRector"
+  ],
+  "lint/laravel-10/prefer-date-casts": [
+   "UnifyModelDatesWithCastsRector"
+  ],
+  "lint/laravel-10/prefer-dispatch-sync": [
+   "DispatchNonShouldQueueToDispatchSyncRector"
+  ],
+  "lint/laravel-10/prefer-facade-fake": [
+   "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector"
+  ],
+  "lint/laravel-10/prefer-fake-over-expects": [
+   "ReplaceExpectsMethodsInTestsRector"
+  ],
+  "lint/laravel-11/prefer-assert-see-html": [
+   "AssertSeeToAssertSeeHtmlRector"
+  ],
+  "lint/laravel-11/prefer-casts-method": [
+   "ModelCastsPropertyToCastsMethodRector"
+  ],
+  "lint/laravel-11/prefer-geometry-column": [
+   "RefactorBlueprintGeometryColumnsRector"
+  ],
+  "lint/laravel-11/prefer-queueable-trait": [
+   "ReplaceQueueTraitsWithQueueableRector"
+  ],
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/laravel-9/prefer-attribute-accessor": [
+   "MigrateToSimplifiedAttributeRector"
+  ],
+  "lint/laravel-9/prefer-fake-helper": [
+   "ReplaceFakerInstanceWithHelperRector"
+  ],
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-120": {
+  "lint/laravel-10/no-expression-string-cast": [
+   "DatabaseExpressionCastsToMethodCallRector"
+  ],
+  "lint/laravel-10/no-expression-to-string": [
+   "DatabaseExpressionToStringToMethodCallRector"
+  ],
+  "lint/laravel-10/prefer-assert-sent-times": [
+   "ReplaceAssertTimesSendWithAssertSentTimesRector"
+  ],
+  "lint/laravel-10/prefer-date-casts": [
+   "UnifyModelDatesWithCastsRector"
+  ],
+  "lint/laravel-10/prefer-dispatch-sync": [
+   "DispatchNonShouldQueueToDispatchSyncRector"
+  ],
+  "lint/laravel-10/prefer-facade-fake": [
+   "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector"
+  ],
+  "lint/laravel-10/prefer-fake-over-expects": [
+   "ReplaceExpectsMethodsInTestsRector"
+  ],
+  "lint/laravel-11/prefer-assert-see-html": [
+   "AssertSeeToAssertSeeHtmlRector"
+  ],
+  "lint/laravel-11/prefer-casts-method": [
+   "ModelCastsPropertyToCastsMethodRector"
+  ],
+  "lint/laravel-11/prefer-geometry-column": [
+   "RefactorBlueprintGeometryColumnsRector"
+  ],
+  "lint/laravel-11/prefer-queueable-trait": [
+   "ReplaceQueueTraitsWithQueueableRector"
+  ],
+  "lint/laravel-12/prefer-scope-attribute": [
+   "ScopeNamedClassMethodToScopeAttributedClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/laravel-9/prefer-attribute-accessor": [
+   "MigrateToSimplifiedAttributeRector"
+  ],
+  "lint/laravel-9/prefer-fake-helper": [
+   "ReplaceFakerInstanceWithHelperRector"
+  ],
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/laravel/prefer-closure-only-bind": [
+   "ContainerBindConcreteWithClosureOnlyRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-130": {
+  "lint/laravel-10/no-expression-string-cast": [
+   "DatabaseExpressionCastsToMethodCallRector"
+  ],
+  "lint/laravel-10/no-expression-to-string": [
+   "DatabaseExpressionToStringToMethodCallRector"
+  ],
+  "lint/laravel-10/prefer-assert-sent-times": [
+   "ReplaceAssertTimesSendWithAssertSentTimesRector"
+  ],
+  "lint/laravel-10/prefer-date-casts": [
+   "UnifyModelDatesWithCastsRector"
+  ],
+  "lint/laravel-10/prefer-dispatch-sync": [
+   "DispatchNonShouldQueueToDispatchSyncRector"
+  ],
+  "lint/laravel-10/prefer-facade-fake": [
+   "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector"
+  ],
+  "lint/laravel-10/prefer-fake-over-expects": [
+   "ReplaceExpectsMethodsInTestsRector"
+  ],
+  "lint/laravel-11/prefer-assert-see-html": [
+   "AssertSeeToAssertSeeHtmlRector"
+  ],
+  "lint/laravel-11/prefer-casts-method": [
+   "ModelCastsPropertyToCastsMethodRector"
+  ],
+  "lint/laravel-11/prefer-geometry-column": [
+   "RefactorBlueprintGeometryColumnsRector"
+  ],
+  "lint/laravel-11/prefer-queueable-trait": [
+   "ReplaceQueueTraitsWithQueueableRector"
+  ],
+  "lint/laravel-12/prefer-scope-attribute": [
+   "ScopeNamedClassMethodToScopeAttributedClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/laravel-9/prefer-attribute-accessor": [
+   "MigrateToSimplifiedAttributeRector"
+  ],
+  "lint/laravel-9/prefer-fake-helper": [
+   "ReplaceFakerInstanceWithHelperRector"
+  ],
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/laravel/prefer-aliases-attribute": [
+   "AliasesPropertyToAliasesAttributeRector"
+  ],
+  "lint/laravel/prefer-appends-attribute": [
+   "AppendsPropertyToAppendsAttributeRector"
+  ],
+  "lint/laravel/prefer-backoff-attribute": [
+   "BackoffPropertyToBackoffAttributeRector"
+  ],
+  "lint/laravel/prefer-closure-only-bind": [
+   "ContainerBindConcreteWithClosureOnlyRector"
+  ],
+  "lint/laravel/prefer-collected-by-attribute": [
+   "CollectedByPropertyToCollectedByAttributeRector"
+  ],
+  "lint/laravel/prefer-collects-attribute": [
+   "CollectsPropertyToCollectsAttributeRector"
+  ],
+  "lint/laravel/prefer-command-hidden-attribute": [
+   "CommandHiddenPropertyToHiddenAttributeRector"
+  ],
+  "lint/laravel/prefer-connection-attribute": [
+   "ConnectionPropertyToConnectionAttributeRector"
+  ],
+  "lint/laravel/prefer-date-format-attribute": [
+   "DateFormatPropertyToDateFormatAttributeRector"
+  ],
+  "lint/laravel/prefer-delay-attribute": [
+   "DelayPropertyToDelayAttributeRector"
+  ],
+  "lint/laravel/prefer-delete-when-missing-models-attribute": [
+   "DeleteWhenMissingModelsPropertyToDeleteWhenMissingModelsAttributeRector"
+  ],
+  "lint/laravel/prefer-description-attribute": [
+   "DescriptionPropertyToDescriptionAttributeRector"
+  ],
+  "lint/laravel/prefer-error-bag-attribute": [
+   "ErrorBagPropertyToErrorBagAttributeRector"
+  ],
+  "lint/laravel/prefer-fail-on-timeout-attribute": [
+   "FailOnTimeoutPropertyToFailOnTimeoutAttributeRector"
+  ],
+  "lint/laravel/prefer-fillable-attribute": [
+   "FillablePropertyToFillableAttributeRector"
+  ],
+  "lint/laravel/prefer-guarded-attribute": [
+   "GuardedPropertyToGuardedAttributeRector"
+  ],
+  "lint/laravel/prefer-help-attribute": [
+   "HelpPropertyToHelpAttributeRector"
+  ],
+  "lint/laravel/prefer-hidden-attribute": [
+   "HiddenPropertyToHiddenAttributeRector"
+  ],
+  "lint/laravel/prefer-job-connection-attribute": [
+   "JobConnectionPropertyToJobConnectionAttributeRector"
+  ],
+  "lint/laravel/prefer-max-exceptions-attribute": [
+   "MaxExceptionsPropertyToMaxExceptionsAttributeRector"
+  ],
+  "lint/laravel/prefer-preserve-keys-attribute": [
+   "PreserveKeysPropertyToPreserveKeysAttributeRector"
+  ],
+  "lint/laravel/prefer-queue-attribute": [
+   "QueuePropertyToQueueAttributeRector"
+  ],
+  "lint/laravel/prefer-route-key-attribute": [
+   "RouteKeyMethodToRouteKeyAttributeRector"
+  ],
+  "lint/laravel/prefer-signature-attribute": [
+   "SignaturePropertyToSignatureAttributeRector"
+  ],
+  "lint/laravel/prefer-stop-on-first-failure-attribute": [
+   "StopOnFirstFailurePropertyToStopOnFirstFailureAttributeRector"
+  ],
+  "lint/laravel/prefer-table-attribute": [
+   "TablePropertyToTableAttributeRector"
+  ],
+  "lint/laravel/prefer-timeout-attribute": [
+   "TimeoutPropertyToTimeoutAttributeRector"
+  ],
+  "lint/laravel/prefer-touches-attribute": [
+   "TouchesPropertyToTouchesAttributeRector"
+  ],
+  "lint/laravel/prefer-tries-attribute": [
+   "TriesPropertyToTriesAttributeRector"
+  ],
+  "lint/laravel/prefer-unguarded-attribute": [
+   "EmptyGuardedPropertyToUnguardedAttributeRector"
+  ],
+  "lint/laravel/prefer-unique-for-attribute": [
+   "UniqueForPropertyToUniqueForAttributeRector"
+  ],
+  "lint/laravel/prefer-visible-attribute": [
+   "VisiblePropertyToVisibleAttributeRector"
+  ],
+  "lint/laravel/prefer-without-incrementing-attribute": [
+   "WithoutIncrementingPropertyToWithoutIncrementingAttributeRector"
+  ],
+  "lint/laravel/prefer-without-timestamps-attribute": [
+   "WithoutTimestampsPropertyToWithoutTimestampsAttributeRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-130-without-attributes": {
+  "lint/laravel-10/no-expression-string-cast": [
+   "DatabaseExpressionCastsToMethodCallRector"
+  ],
+  "lint/laravel-10/no-expression-to-string": [
+   "DatabaseExpressionToStringToMethodCallRector"
+  ],
+  "lint/laravel-10/prefer-assert-sent-times": [
+   "ReplaceAssertTimesSendWithAssertSentTimesRector"
+  ],
+  "lint/laravel-10/prefer-date-casts": [
+   "UnifyModelDatesWithCastsRector"
+  ],
+  "lint/laravel-10/prefer-dispatch-sync": [
+   "DispatchNonShouldQueueToDispatchSyncRector"
+  ],
+  "lint/laravel-10/prefer-facade-fake": [
+   "ReplaceWithoutJobsEventsAndNotificationsWithFacadeFakeRector"
+  ],
+  "lint/laravel-10/prefer-fake-over-expects": [
+   "ReplaceExpectsMethodsInTestsRector"
+  ],
+  "lint/laravel-11/prefer-assert-see-html": [
+   "AssertSeeToAssertSeeHtmlRector"
+  ],
+  "lint/laravel-11/prefer-casts-method": [
+   "ModelCastsPropertyToCastsMethodRector"
+  ],
+  "lint/laravel-11/prefer-geometry-column": [
+   "RefactorBlueprintGeometryColumnsRector"
+  ],
+  "lint/laravel-11/prefer-queueable-trait": [
+   "ReplaceQueueTraitsWithQueueableRector"
+  ],
+  "lint/laravel-12/prefer-scope-attribute": [
+   "ScopeNamedClassMethodToScopeAttributedClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/laravel-9/prefer-attribute-accessor": [
+   "MigrateToSimplifiedAttributeRector"
+  ],
+  "lint/laravel-9/prefer-fake-helper": [
+   "ReplaceFakerInstanceWithHelperRector"
+  ],
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/laravel/prefer-closure-only-bind": [
+   "ContainerBindConcreteWithClosureOnlyRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-51": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-52": {
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-53": {
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-54": {
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-55": {
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-56": {
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-57": {
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-58": {
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-60": {
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-70": {
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-80": {
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-laravel-90": {
+  "lint/laravel-5.7/add-login-event-guard": [
+   "AddGuardToLoginEventRector"
+  ],
+  "lint/laravel-5.7/add-mock-console-output-false": [
+   "AddMockConsoleOutputFalseToConsoleTestsRector"
+  ],
+  "lint/laravel-5.7/add-parent-boot-call": [
+   "AddParentBootToModelClassMethodRector"
+  ],
+  "lint/laravel-5.7/add-where-time": [
+   "ChangeQueryWhereDateValueWithCarbonRector"
+  ],
+  "lint/laravel-5.7/prefer-permanent-redirect": [
+   "Redirect301ToPermanentRedirectRector"
+  ],
+  "lint/laravel-5.8/prefer-deferrable-provider": [
+   "PropertyDeferToDeferrableProviderToRector"
+  ],
+  "lint/laravel-8/add-parent-register-call": [
+   "AddParentRegisterToEventServiceProviderRector"
+  ],
+  "lint/laravel-9/prefer-attribute-accessor": [
+   "MigrateToSimplifiedAttributeRector"
+  ],
+  "lint/laravel-9/prefer-fake-helper": [
+   "ReplaceFakerInstanceWithHelperRector"
+  ],
+  "lint/laravel/add-factory-extends-phpdoc": [
+   "AddExtendsAnnotationToModelFactoriesRector"
+  ],
+  "lint/refactor/add-argument-default": [
+   "AddArgumentDefaultValueRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/change-method-visibility": [
+   "ChangeMethodVisibilityRector"
+  ],
+  "lint/refactor/remove-interfaces": [
+   "RemoveInterfacesRector"
+  ],
+  "lint/refactor/remove-method-argument": [
+   "ArgumentRemoverRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/refactor/rename-property": [
+   "RenamePropertyRector"
+  ],
+  "lint/refactor/replace-event-string-with-constant": [
+   "EventStringToClassConstantRector"
+  ],
+  "lint/refactor/replace-function-with-static": [
+   "FuncCallToStaticCallRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ]
+ },
+ "rector-laravel/up-to-livewire-30": {
+  "lint/livewire-3/prefer-computed-attribute": [
+   "LivewireComponentComputedMethodToComputedAttributeRector"
+  ],
+  "lint/livewire-3/prefer-url-attribute": [
+   "LivewireComponentQueryStringToUrlAttributeRector"
+  ],
+  "lint/refactor/rename-attribute": [
+   "RenameAttributeRector"
+  ]
+ },
+ "rector-phpunit/annotations-to-attributes": {
+  "lint/phpunit/prefer-attribute-over-annotation": [
+   "AnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-covers-attribute": [
+   "CoversAnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-data-provider-attribute": [
+   "DataProviderAnnotationToAttributeRector"
+  ],
+  "lint/phpunit/prefer-depends-attribute": [
+   "DependsAnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-requires-attribute": [
+   "RequiresAnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-test-with-attribute": [
+   "TestWithAnnotationToAttributeRector"
+  ],
+  "lint/phpunit/prefer-ticket-attribute": [
+   "TicketAnnotationToAttributeRector"
+  ],
+  "lint/refactor/prefer-attribute-over-annotation": [
+   "AnnotationToAttributeRector"
+  ]
+ },
+ "rector-phpunit/composer-based": {
+  "lint/phpunit/add-allow-mock-objects-attribute": [
+   "AllowMockObjectsWhereParentClassRector"
+  ],
+  "lint/phpunit/add-data-provider-allow-mock-objects": [
+   "AllowMockObjectsForDataProviderRector"
+  ],
+  "lint/phpunit/add-does-not-perform-assertions": [
+   "AddDoesNotPerformAssertionToNonAssertingTestRector"
+  ],
+  "lint/phpunit/add-mock-intersection-param": [
+   "AddIntersectionParamToMockObjectParamRector"
+  ],
+  "lint/phpunit/add-mock-intersection-type": [
+   "AddIntersectionVarToMockObjectPropertyRector"
+  ],
+  "lint/phpunit/add-mock-object-type": [
+   "ExpectsParamToMockObjectRector"
+  ],
+  "lint/phpunit/add-parent-test-constructor": [
+   "ParentTestClassConstructorRector"
+  ],
+  "lint/phpunit/add-prophecy-trait": [
+   "AddProphecyTraitRector"
+  ],
+  "lint/phpunit/add-stub-intersection-type": [
+   "AddStubIntersectionVarToStubPropertyRector"
+  ],
+  "lint/phpunit/no-any-matcher": [
+   "AnyMatcherToNewAnyInvokedCountRector"
+  ],
+  "lint/phpunit/no-assert-class-has-attribute": [
+   "PropertyExistsWithoutAssertRector"
+  ],
+  "lint/phpunit/no-assert-contains-on-string": [
+   "SpecificAssertContainsRector"
+  ],
+  "lint/phpunit/no-assert-contains-only": [
+   "AssertContainsOnlyMethodCallRector"
+  ],
+  "lint/phpunit/no-assert-internal-type": [
+   "SpecificAssertInternalTypeRector"
+  ],
+  "lint/phpunit/no-assert-is-type": [
+   "AssertIsTypeMethodCallRector"
+  ],
+  "lint/phpunit/no-bare-mock-assign": [
+   "BareCreateMockAssignToDirectUseRector"
+  ],
+  "lint/phpunit/no-bare-mock-builder": [
+   "GetMockBuilderGetMockToCreateMockRector"
+  ],
+  "lint/phpunit/no-data-provider-test-prefix": [
+   "RemoveDataProviderTestPrefixRector"
+  ],
+  "lint/phpunit/no-expected-exception-annotation": [
+   "ExceptionAnnotationRector"
+  ],
+  "lint/phpunit/no-expects-any": [
+   "RemoveExpectAnyFromMockRector"
+  ],
+  "lint/phpunit/no-final-constructor-override": [
+   "RemoveOverrideFinalConstructTestCaseRector"
+  ],
+  "lint/phpunit/no-mock-builder-set-methods": [
+   "RemoveSetMethodsMethodCallRector"
+  ],
+  "lint/phpunit/no-scenario-annotation": [
+   "ScenarioToTestAnnotationRector"
+  ],
+  "lint/phpunit/no-stub-with-expectations": [
+   "MockObjectArgCreateStubToCreateMockRector"
+  ],
+  "lint/phpunit/no-test-listener": [
+   "TestListenerToHooksRector"
+  ],
+  "lint/phpunit/no-with-consecutive": [
+   "WithConsecutiveRector"
+  ],
+  "lint/phpunit/prefer-assert-contains-equals": [
+   "SpecificAssertContainsWithoutIdentityRector"
+  ],
+  "lint/phpunit/prefer-assert-matches-regular-expression": [
+   "AssertRegExpRector"
+  ],
+  "lint/phpunit/prefer-attribute-over-annotation": [
+   "AnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-covers-attribute": [
+   "CoversAnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-create-mock": [
+   "GetMockRector"
+  ],
+  "lint/phpunit/prefer-create-stub": [
+   "PropertyCreateMockToCreateStubRector"
+  ],
+  "lint/phpunit/prefer-create-stub-argument": [
+   "CreateStubOverCreateMockArgRector"
+  ],
+  "lint/phpunit/prefer-create-stub-expression": [
+   "ExpressionCreateMockToCreateStubRector"
+  ],
+  "lint/phpunit/prefer-create-stub-in-coalesce": [
+   "CreateStubInCoalesceArgRector"
+  ],
+  "lint/phpunit/prefer-data-provider-attribute": [
+   "DataProviderAnnotationToAttributeRector"
+  ],
+  "lint/phpunit/prefer-depends-attribute": [
+   "DependsAnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-expect-exception": [
+   "DelegateExceptionArgumentsRector"
+  ],
+  "lint/phpunit/prefer-expect-php-error": [
+   "ExplicitPhpErrorApiRector"
+  ],
+  "lint/phpunit/prefer-named-data-provider-keys": [
+   "NamedArgumentForDataProviderRector"
+  ],
+  "lint/phpunit/prefer-requires-attribute": [
+   "RequiresAnnotationWithValueToAttributeRector"
+  ],
+  "lint/phpunit/prefer-specific-assert-equals": [
+   "AssertEqualsParameterToSpecificMethodsTypeRector"
+  ],
+  "lint/phpunit/prefer-stub-var": [
+   "MockObjectVarToStubRector"
+  ],
+  "lint/phpunit/prefer-test-with-attribute": [
+   "TestWithAnnotationToAttributeRector"
+  ],
+  "lint/phpunit/prefer-ticket-attribute": [
+   "TicketAnnotationToAttributeRector"
+  ],
+  "lint/phpunit/require-public-data-provider": [
+   "PublicDataProviderClassMethodRector"
+  ],
+  "lint/phpunit/require-static-data-provider": [
+   "StaticDataProviderClassMethodRector"
+  ],
+  "lint/refactor/add-param-type": [
+   "AddParamTypeDeclarationRector"
+  ],
+  "lint/refactor/add-return-type": [
+   "AddReturnTypeDeclarationRector"
+  ],
+  "lint/refactor/prefer-attribute-over-annotation": [
+   "AnnotationToAttributeRector"
+  ],
+  "lint/refactor/rename-class": [
+   "RenameClassRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ]
+ },
+ "rector-phpunit/phpunit-code-quality": {
+  "lint/phpunit/add-depended-test-return-type": [
+   "AddReturnTypeToDependedRector"
+  ],
+  "lint/phpunit/add-instanceof-assert": [
+   "AddInstanceofAssertForNullableInstanceRector"
+  ],
+  "lint/phpunit/add-instanceof-assert-for-argument": [
+   "AddInstanceofAssertForNullableArgumentRector"
+  ],
+  "lint/phpunit/add-param-type-depends": [
+   "AddParamTypeFromDependsRector"
+  ],
+  "lint/phpunit/add-stub-intersection-type": [
+   "AddStubIntersectionVarToStubPropertyRector"
+  ],
+  "lint/phpunit/add-will-return-callback-false-fallback": [
+   "WillReturnCallbackFallbackToReturnFalseRector"
+  ],
+  "lint/phpunit/add-will-return-callback-param-type": [
+   "TypeWillReturnCallableArrowFunctionRector"
+  ],
+  "lint/phpunit/no-assert-same-type-mismatch": [
+   "MatchAssertSameExpectedTypeRector"
+  ],
+  "lint/phpunit/no-at-matcher": [
+   "ReplaceAtMethodWithDesiredMatcherRector"
+  ],
+  "lint/phpunit/no-bare-mock-assign": [
+   "BareCreateMockAssignToDirectUseRector"
+  ],
+  "lint/phpunit/no-bare-mock-builder": [
+   "GetMockBuilderGetMockToCreateMockRector"
+  ],
+  "lint/phpunit/no-empty-test": [
+   "RemoveEmptyTestMethodRector"
+  ],
+  "lint/phpunit/no-entity-mock": [
+   "EntityDocumentCreateMockToDirectNewRector"
+  ],
+  "lint/phpunit/no-expects-any": [
+   "RemoveExpectAnyFromMockRector"
+  ],
+  "lint/phpunit/no-flipped-assertion": [
+   "FlipAssertRector"
+  ],
+  "lint/phpunit/no-float-delta-parameter": [
+   "AssertEqualsOrAssertSameFloatParameterToSpecificMethodsTypeRector"
+  ],
+  "lint/phpunit/no-mock-intersection-property": [
+   "SingleMockPropertyTypeRector"
+  ],
+  "lint/phpunit/no-negated-assertion": [
+   "AssertNotOperatorRector"
+  ],
+  "lint/phpunit/no-setup-override-attribute": [
+   "NoSetupWithParentCallOverrideRector"
+  ],
+  "lint/phpunit/no-test-constructor": [
+   "ConstructClassMethodToSetUpTestCaseRector"
+  ],
+  "lint/phpunit/no-unused-mock": [
+   "RemoveStandaloneCreateMockRector"
+  ],
+  "lint/phpunit/no-unused-mock-property": [
+   "RemoveNeverUsedMockPropertyRector"
+  ],
+  "lint/phpunit/no-value-object-mock": [
+   "DirectInstanceOverMockArgRector"
+  ],
+  "lint/phpunit/prefer-assert": [
+   "AssertFuncCallToPHPUnitAssertRector"
+  ],
+  "lint/phpunit/prefer-assert-array-has-key": [
+   "AssertIssetToSpecificMethodRector"
+  ],
+  "lint/phpunit/prefer-assert-count": [
+   "AssertCompareOnCountableWithMethodToAssertCountRector"
+  ],
+  "lint/phpunit/prefer-assert-instanceof": [
+   "AssertInstanceOfComparisonRector"
+  ],
+  "lint/phpunit/prefer-assert-instanceof-over-empty": [
+   "AssertEmptyNullableObjectToAssertInstanceofRector"
+  ],
+  "lint/phpunit/prefer-assert-instances-of": [
+   "SimplifyForeachInstanceOfRector"
+  ],
+  "lint/phpunit/prefer-assert-null-true-false": [
+   "AssertSameBoolNullToSpecificMethodRector"
+  ],
+  "lint/phpunit/prefer-assert-same": [
+   "AssertEqualsToSameRector"
+  ],
+  "lint/phpunit/prefer-assert-string-contains": [
+   "AssertFalseStrposToContainsRector"
+  ],
+  "lint/phpunit/prefer-assert-true-false": [
+   "AssertSameTrueFalseToAssertTrueFalseRector"
+  ],
+  "lint/phpunit/prefer-comparison-assertion": [
+   "AssertComparisonToSpecificMethodRector"
+  ],
+  "lint/phpunit/prefer-create-stub": [
+   "PropertyCreateMockToCreateStubRector"
+  ],
+  "lint/phpunit/prefer-create-stub-argument": [
+   "CreateStubOverCreateMockArgRector"
+  ],
+  "lint/phpunit/prefer-create-stub-expression": [
+   "ExpressionCreateMockToCreateStubRector"
+  ],
+  "lint/phpunit/prefer-data-provider": [
+   "TestWithToDataProviderRector"
+  ],
+  "lint/phpunit/prefer-inline-create-stub": [
+   "InlineStubPropertyToCreateStubMethodCallRector"
+  ],
+  "lint/phpunit/prefer-local-over-setup-property": [
+   "NarrowUnusedSetUpDefinedPropertyRector"
+  ],
+  "lint/phpunit/prefer-mock-intersection-return": [
+   "ChangeMockObjectReturnUnionToIntersectionRector"
+  ],
+  "lint/phpunit/prefer-narrow-will-return-callback": [
+   "NarrowSingleWillReturnCallbackRector"
+  ],
+  "lint/phpunit/prefer-narrow-with-consecutive": [
+   "NarrowIdenticalWithConsecutiveRector"
+  ],
+  "lint/phpunit/prefer-property-assertions": [
+   "AssertArrayCastedObjectToAssertSameRector"
+  ],
+  "lint/phpunit/prefer-simple-callback-assert": [
+   "CallbackSingleAssertToSimplerRector"
+  ],
+  "lint/phpunit/prefer-simple-mock-expectation": [
+   "SingleWithConsecutiveToWithRector"
+  ],
+  "lint/phpunit/prefer-simple-with-matcher": [
+   "UseSpecificWithMethodRector"
+  ],
+  "lint/phpunit/prefer-specific-true-false-assertion": [
+   "AssertTrueFalseToSpecificMethodRector"
+  ],
+  "lint/phpunit/prefer-specific-will-method": [
+   "UseSpecificWillMethodRector"
+  ],
+  "lint/phpunit/prefer-standalone-asserts-over-callback": [
+   "WithCallbackIdenticalToStandaloneAssertsRector"
+  ],
+  "lint/phpunit/prefer-stub-var": [
+   "MockObjectVarToStubRector"
+  ],
+  "lint/phpunit/prefer-test-prefix": [
+   "ReplaceTestAnnotationWithPrefixedFunctionRector"
+  ],
+  "lint/phpunit/prefer-this-call": [
+   "PreferPHPUnitThisCallRector"
+  ],
+  "lint/phpunit/prefer-will-return-callback": [
+   "MergeWithCallableAndWillReturnRector",
+   "VoidMethodWithCallbackToWillReturnCallbackRector"
+  ],
+  "lint/phpunit/prefer-with-is-instance-of": [
+   "SimplerWithIsInstanceOfRector"
+  ],
+  "lint/phpunit/prefer-yield-data-provider": [
+   "YieldDataProviderRector"
+  ],
+  "lint/phpunit/require-data-provider-newlines": [
+   "DataProviderArrayItemsNewLinedRector"
+  ],
+  "lint/phpunit/require-exact-test-argument-type": [
+   "ScalarArgumentToExpectedParamTypeRector"
+  ],
+  "lint/phpunit/require-final-test-case": [
+   "FinalizeTestCaseClassRector"
+  ],
+  "lint/phpunit/require-mock-expects": [
+   "DecorateWillReturnMapWithExpectsMockRector"
+  ],
+  "lint/phpunit/require-strict-types-in-tests": [
+   "DeclareStrictTypesTestsRector"
+  ],
+  "lint/phpunit/require-string-assert-argument": [
+   "StringCastAssertStringContainsStringRector"
+  ]
+ },
+ "rector-phpunit/phpunit-mock-to-stub": {
+  "lint/phpunit/add-mock-intersection-param": [
+   "AddIntersectionParamToMockObjectParamRector"
+  ],
+  "lint/phpunit/add-mock-intersection-type": [
+   "AddIntersectionVarToMockObjectPropertyRector"
+  ],
+  "lint/phpunit/add-stub-intersection-type": [
+   "AddStubIntersectionVarToStubPropertyRector"
+  ],
+  "lint/phpunit/no-bare-mock-assign": [
+   "BareCreateMockAssignToDirectUseRector"
+  ],
+  "lint/phpunit/no-stub-with-expectations": [
+   "MockObjectArgCreateStubToCreateMockRector"
+  ],
+  "lint/phpunit/prefer-create-stub": [
+   "PropertyCreateMockToCreateStubRector"
+  ],
+  "lint/phpunit/prefer-create-stub-argument": [
+   "CreateStubOverCreateMockArgRector"
+  ],
+  "lint/phpunit/prefer-create-stub-expression": [
+   "ExpressionCreateMockToCreateStubRector"
+  ],
+  "lint/phpunit/prefer-create-stub-in-coalesce": [
+   "CreateStubInCoalesceArgRector"
+  ],
+  "lint/phpunit/prefer-stub-var": [
+   "MockObjectVarToStubRector"
+  ]
+ },
+ "rector-phpunit/phpunit-narrow-asserts": {
+  "lint/phpunit/no-assert-same-type-mismatch": [
+   "MatchAssertSameExpectedTypeRector"
+  ],
+  "lint/phpunit/no-negated-assertion": [
+   "AssertNotOperatorRector"
+  ],
+  "lint/phpunit/prefer-assert-array-has-key": [
+   "AssertIssetToSpecificMethodRector"
+  ],
+  "lint/phpunit/prefer-assert-count": [
+   "AssertCompareOnCountableWithMethodToAssertCountRector"
+  ],
+  "lint/phpunit/prefer-assert-instanceof": [
+   "AssertInstanceOfComparisonRector"
+  ],
+  "lint/phpunit/prefer-assert-instanceof-over-empty": [
+   "AssertEmptyNullableObjectToAssertInstanceofRector"
+  ],
+  "lint/phpunit/prefer-assert-null-true-false": [
+   "AssertSameBoolNullToSpecificMethodRector"
+  ],
+  "lint/phpunit/prefer-assert-same": [
+   "AssertEqualsToSameRector"
+  ],
+  "lint/phpunit/prefer-assert-string-contains": [
+   "AssertFalseStrposToContainsRector"
+  ],
+  "lint/phpunit/prefer-assert-true-false": [
+   "AssertSameTrueFalseToAssertTrueFalseRector"
+  ],
+  "lint/phpunit/prefer-comparison-assertion": [
+   "AssertComparisonToSpecificMethodRector"
+  ],
+  "lint/phpunit/prefer-property-assertions": [
+   "AssertArrayCastedObjectToAssertSameRector"
+  ],
+  "lint/phpunit/prefer-specific-true-false-assertion": [
+   "AssertTrueFalseToSpecificMethodRector"
+  ]
+ },
+ "rector/behat-annotations-to-attributes": {
+  "lint/refactor/prefer-attribute-over-annotation": [
+   "AnnotationToAttributeRector"
+  ]
+ },
+ "rector/code-quality": {
+  "lint/classes/prefer-new-self": [
+   "NewStaticToNewSelfRector"
+  ],
+  "lint/classes/prefer-self-in-final": [
+   "ConvertStaticToSelfRector"
+  ],
+  "lint/complexity/no-and-assignment": [
+   "AndAssignsToSeparateLinesRector"
+  ],
+  "lint/complexity/no-compact": [
+   "CompactToVariablesRector"
+  ],
+  "lint/complexity/no-concat-assign-new-item": [
+   "NewArrayItemConcatAssignToAssignRector"
+  ],
+  "lint/complexity/no-constant-via-variable": [
+   "VariableConstFetchToClassConstFetchRector"
+  ],
+  "lint/complexity/no-dirname-dir-concat": [
+   "DirnameDirConcatStringToDirectStringPathRector"
+  ],
+  "lint/complexity/no-negated-boolean-literal": [
+   "ReplaceConstantBooleanNotRector"
+  ],
+  "lint/complexity/no-negated-group": [
+   "NegatedAndsToPositiveOrsRector",
+   "SimplifyDeMorganBinaryRector"
+  ],
+  "lint/complexity/no-negated-instanceof-ternary": [
+   "FlipNegatedTernaryInstanceofRector"
+  ],
+  "lint/complexity/no-phpdoc-class-case-mismatch": [
+   "FixClassCaseSensitivityVarDocblockRector"
+  ],
+  "lint/complexity/no-redundant-null-check": [
+   "SimplifyIfNotNullReturnRector",
+   "SimplifyIfNullableReturnRector"
+  ],
+  "lint/complexity/no-single-case-switch": [
+   "SingularSwitchToIfRector"
+  ],
+  "lint/complexity/no-single-item-in-array": [
+   "SingleInArrayToCompareRector"
+  ],
+  "lint/complexity/no-sole-value-sprintf": [
+   "RemoveSoleValueSprintfRector"
+  ],
+  "lint/complexity/no-useless-array-values": [
+   "SimplifyInArrayValuesRector"
+  ],
+  "lint/complexity/prefer-absolute-include": [
+   "AbsolutizeRequireAndIncludePathRector"
+  ],
+  "lint/complexity/prefer-array-literal": [
+   "ArrayMergeOfNonArraysToSimpleArrayRector"
+  ],
+  "lint/complexity/prefer-coalesce-over-empty-ternary": [
+   "TernaryEmptyArrayArrayDimFetchToCoalesceRector"
+  ],
+  "lint/complexity/prefer-empty-array-compare": [
+   "SimplifyEmptyArrayCheckRector",
+   "SimplifyEmptyCheckOnEmptyArrayRector"
+  ],
+  "lint/complexity/prefer-explicit-array-comparison": [
+   "ArrayExplicitBoolCompareRector"
+  ],
+  "lint/complexity/prefer-func-num-args": [
+   "SimplifyFuncGetArgsCountRector"
+  ],
+  "lint/complexity/prefer-if-statement": [
+   "InlineIfToExplicitIfRector"
+  ],
+  "lint/complexity/prefer-in-array": [
+   "ForeachToInArrayRector",
+   "RepeatedOrEqualToInArrayRector",
+   "SimplifyArraySearchRector"
+  ],
+  "lint/complexity/prefer-inline-array-return": [
+   "InlineArrayReturnAssignRector"
+  ],
+  "lint/complexity/prefer-instance-method": [
+   "LocallyCalledStaticMethodToNonStaticRector"
+  ],
+  "lint/complexity/prefer-min-max": [
+   "NumberCompareToMaxFuncCallRector"
+  ],
+  "lint/complexity/prefer-not-in-array": [
+   "RepeatedAndNotEqualToNotInArrayRector"
+  ],
+  "lint/complexity/prefer-null-coalesce": [
+   "ArrayKeyExistsTernaryThenValueToCoalescingRector",
+   "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector",
+   "SimplifyForeachToCoalescingRector"
+  ],
+  "lint/complexity/prefer-property-default": [
+   "InlineConstructorDefaultToPropertyRector"
+  ],
+  "lint/complexity/prefer-property-exists": [
+   "IssetOnPropertyObjectToPropertyExistsRector"
+  ],
+  "lint/complexity/prefer-simple-condition": [
+   "BooleanNotIdenticalToNotIdenticalRector",
+   "SimplifyConditionsRector"
+  ],
+  "lint/complexity/require-attribute-argument-order": [
+   "SortAttributeNamedArgsRector"
+  ],
+  "lint/complexity/require-consistent-return": [
+   "ExplicitReturnNullRector"
+  ],
+  "lint/complexity/require-is-a-allow-string": [
+   "IsAWithStringWithThirdArgumentRector"
+  ],
+  "lint/complexity/require-named-argument-order": [
+   "SortCallLikeNamedArgsRector"
+  ],
+  "lint/complexity/require-previous-exception": [
+   "ThrowWithPreviousExceptionRector"
+  ],
+  "lint/control-flow/no-else-after-return": [
+   "RemoveAlwaysElseRector"
+  ],
+  "lint/control-flow/prefer-bool-return": [
+   "SimplifyIfReturnBoolRector"
+  ],
+  "lint/dead-code/no-implode-ternary": [
+   "TernaryImplodeToImplodeRector"
+  ],
+  "lint/dead-code/no-useless-ternary": [
+   "SimplifyTautologyTernaryRector",
+   "UnnecessaryTernaryExpressionRector"
+  ],
+  "lint/functions/no-extra-arguments": [
+   "RemoveExtraParametersRector"
+  ],
+  "lint/functions/no-required-after-optional": [
+   "OptionalParametersAfterRequiredRector"
+  ],
+  "lint/operators/no-and-or-keywords": [
+   "LogicalToBooleanRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/statements/add-safe-strict-types": [
+   "SafeDeclareStrictTypesRector"
+  ],
+  "lint/style/no-array-push": [
+   "ChangeArrayPushToArrayAssignRector"
+  ],
+  "lint/style/no-assign-in-ternary-branch": [
+   "TernaryConditionVariableAssignmentRector"
+  ],
+  "lint/style/prefer-compound-assignment": [
+   "CombinedAssignRector"
+  ],
+  "lint/style/prefer-early-return": [
+   "ChangeIfElseValueAssignToEarlyReturnRector"
+  ],
+  "lint/style/prefer-early-return-over-prepared-value": [
+   "PreparedValueToEarlyReturnRector"
+  ],
+  "lint/style/prefer-empty-string-compare": [
+   "StrlenZeroToIdenticalEmptyStringRector"
+  ],
+  "lint/types/no-nullsafe-on-non-null": [
+   "CleanupUnneededNullsafeOperatorRector"
+  ],
+  "lint/types/prefer-explicit-null-instanceof": [
+   "ExplicitNullableObjectInstanceRector"
+  ],
+  "lint/types/prefer-identical-same-type": [
+   "UseIdenticalOverEqualWithSameTypeRector"
+  ],
+  "lint/types/prefer-instanceof": [
+   "InlineIsAInstanceOfRector"
+  ]
+ },
+ "rector/coding-style": {
+  "lint/functions/no-call-user-func-method": [
+   "CallUserFuncToMethodCallRector"
+  ],
+  "lint/functions/require-strict-array-search": [
+   "StrictArraySearchRector"
+  ],
+  "lint/functions/require-strict-in-array": [
+   "StrictInArrayRector"
+  ],
+  "lint/refactor/replace-function-with-constant": [
+   "FuncCallToConstFetchRector"
+  ],
+  "lint/style/no-escaped-quotes": [
+   "SimplifyQuoteEscapeRector"
+  ],
+  "lint/style/no-multi-assign": [
+   "SplitDoubleAssignRector"
+  ],
+  "lint/style/prefer-catch-name-from-type": [
+   "CatchExceptionNameMatchingTypeRector"
+  ],
+  "lint/style/prefer-class-constant": [
+   "StringClassNameToClassConstantRector",
+   "UseClassKeywordForClassNameResolutionRector"
+  ],
+  "lint/style/prefer-php-version-id": [
+   "VersionCompareFuncCallToConstantRector"
+  ],
+  "lint/style/prefer-spread": [
+   "CallUserFuncArrayToVariadicRector"
+  ],
+  "lint/style/prefer-variadic-param": [
+   "FuncGetArgsToVariadicParamRector"
+  ],
+  "lint/style/require-assign-set-padding": [
+   "NewlineBeforeNewAssignSetRector"
+  ],
+  "lint/style/require-parent-visibility": [
+   "MakeInheritedMethodVisibilitySameAsParentRector"
+  ],
+  "lint/style/require-statement-padding": [
+   "NewlineAfterStatementRector"
+  ]
+ },
+ "rector/datetime-to-carbon": {
+  "lint/style/prefer-carbon": [
+   "DateTimeInstanceToCarbonRector",
+   "DateTimeMethodCallToCarbonRector"
+  ],
+  "lint/style/prefer-carbon-date": [
+   "DateFuncCallToCarbonRector"
+  ],
+  "lint/style/prefer-carbon-timestamp": [
+   "TimeFuncCallToCarbonRector"
+  ]
+ },
+ "rector/dead-code": {
+  "lint/classes/no-null-property-default": [
+   "RemoveNullPropertyInitializationRector"
+  ],
+  "lint/classes/no-redundant-readonly": [
+   "RemoveReadonlyPropertyVisibilityOnReadonlyClassRector"
+  ],
+  "lint/complexity/no-constant-condition": [
+   "RemoveDeadIfBlockRector"
+  ],
+  "lint/complexity/prefer-simple-condition": [
+   "SimplifyBoolIdenticalTrueRector"
+  ],
+  "lint/control-flow/no-return-assignment": [
+   "SimplifyUselessVariableRector"
+  ],
+  "lint/dead-code/no-always-false-condition": [
+   "ReduceAlwaysFalseIfOrRector"
+  ],
+  "lint/dead-code/no-always-true-if": [
+   "RemoveAlwaysTrueIfConditionRector"
+  ],
+  "lint/dead-code/no-always-true-instanceof": [
+   "RemoveDeadInstanceOfAssertRector",
+   "RemoveDeadInstanceOfRector"
+  ],
+  "lint/dead-code/no-and-true": [
+   "RemoveAndTrueRector"
+  ],
+  "lint/dead-code/no-cast-in-concat": [
+   "RemoveConcatAutocastRector"
+  ],
+  "lint/dead-code/no-condition-exact-return": [
+   "RemoveConditionExactReturnRector"
+  ],
+  "lint/dead-code/no-dead-catch": [
+   "RemoveDeadCatchRector"
+  ],
+  "lint/dead-code/no-dead-php-version-check": [
+   "RemovePhpVersionIdCheckRector"
+  ],
+  "lint/dead-code/no-double-self-assignment": [
+   "RemoveDoubleSelfAssignRector"
+  ],
+  "lint/dead-code/no-duplicate-array-key": [
+   "RemoveDuplicatedArrayKeyRector"
+  ],
+  "lint/dead-code/no-duplicate-case-body": [
+   "RemoveDuplicatedCaseInSwitchRector"
+  ],
+  "lint/dead-code/no-empty-block": [
+   "RemoveDeadIfForeachForRector",
+   "RemoveDeadLoopRector"
+  ],
+  "lint/dead-code/no-empty-method": [
+   "RemoveEmptyClassMethodRector"
+  ],
+  "lint/dead-code/no-false-ternary": [
+   "TernaryToBooleanOrFalseToBooleanAndRector"
+  ],
+  "lint/dead-code/no-future-php-version-check": [
+   "UnwrapFutureCompatibleIfPhpVersionRector"
+  ],
+  "lint/dead-code/no-identical-branches": [
+   "SimplifyIfElseWithSameContentRector"
+  ],
+  "lint/dead-code/no-invalid-return-tag": [
+   "RemoveReturnTagIncompatibleWithNativeTypeRector"
+  ],
+  "lint/dead-code/no-invalid-var-tag": [
+   "RemoveNonExistingVarAnnotationRector"
+  ],
+  "lint/dead-code/no-null-tag-value": [
+   "RemoveNullTagValueNodeRector"
+  ],
+  "lint/dead-code/no-overridden-assign-before-if": [
+   "RemoveOverriddenAssignBeforeIfElseRector"
+  ],
+  "lint/dead-code/no-parent-call-without-parent": [
+   "RemoveParentCallWithoutParentRector"
+  ],
+  "lint/dead-code/no-redundant-condition": [
+   "RemoveNextSameValueConditionRector"
+  ],
+  "lint/dead-code/no-redundant-default-argument": [
+   "RemoveArgumentFromDefaultParentCallRector",
+   "RemoveNullArgOnNullDefaultParamRector",
+   "RemoveNullNamedArgOnNullDefaultParamRector"
+  ],
+  "lint/dead-code/no-redundant-foreach-guard": [
+   "RemoveUnusedNonEmptyArrayBeforeForeachRector"
+  ],
+  "lint/dead-code/no-redundant-promoted-assign": [
+   "RemoveUselessAssignFromPropertyPromotionRector"
+  ],
+  "lint/dead-code/no-redundant-property-default": [
+   "RemoveDefaultValueFromAssignedPropertyRector"
+  ],
+  "lint/dead-code/no-redundant-type-check": [
+   "RemoveRedundantTypeCheckRector"
+  ],
+  "lint/dead-code/no-return-in-constructor": [
+   "RemoveUselessReturnExprInConstructRector"
+  ],
+  "lint/dead-code/no-self-assignment": [
+   "SimplifyMirrorAssignRector"
+  ],
+  "lint/dead-code/no-typed-property-instanceof": [
+   "RemoveTypedPropertyDeadInstanceOfRector"
+  ],
+  "lint/dead-code/no-unreachable-code": [
+   "RemoveUnreachableStatementRector"
+  ],
+  "lint/dead-code/no-unused-assignment": [
+   "RemoveDoubleAssignRector",
+   "RemoveUnusedVariableAssignRector"
+  ],
+  "lint/dead-code/no-unused-constructor-param": [
+   "RemoveUnusedConstructorParamRector"
+  ],
+  "lint/dead-code/no-unused-expression": [
+   "RemoveDeadStmtRector"
+  ],
+  "lint/dead-code/no-unused-foreach-key": [
+   "RemoveUnusedForeachKeyRector"
+  ],
+  "lint/dead-code/no-unused-private-constant": [
+   "RemoveUnusedPrivateClassConstantRector"
+  ],
+  "lint/dead-code/no-unused-private-method": [
+   "RemoveUnusedPrivateMethodRector"
+  ],
+  "lint/dead-code/no-unused-private-method-param": [
+   "RemoveTestsOverriddenPrivateMethodParameterRector",
+   "RemoveUnusedPrivateMethodParameterRector"
+  ],
+  "lint/dead-code/no-unused-private-property": [
+   "RemoveUnusedPrivatePropertyRector"
+  ],
+  "lint/dead-code/no-unused-promoted-property": [
+   "RemoveUnusedPromotedPropertyRector"
+  ],
+  "lint/dead-code/no-unused-public-method-param": [
+   "RemoveUnusedPublicMethodParameterRector"
+  ],
+  "lint/dead-code/no-unused-return-type": [
+   "NarrowWideUnionReturnTypeRector"
+  ],
+  "lint/dead-code/no-useless-cast": [
+   "RecastingRemovalRector"
+  ],
+  "lint/dead-code/no-useless-catch": [
+   "RemoveDeadTryCatchRector"
+  ],
+  "lint/dead-code/no-useless-condition": [
+   "RemoveDeadConditionAboveReturnRector"
+  ],
+  "lint/dead-code/no-useless-continue": [
+   "RemoveDeadContinueRector"
+  ],
+  "lint/dead-code/no-useless-filter-var": [
+   "RemoveFilterVarOnExactTypeRector"
+  ],
+  "lint/dead-code/no-useless-math": [
+   "RemoveDeadZeroAndOneOperationRector"
+  ],
+  "lint/dead-code/no-useless-override": [
+   "RemoveParentDelegatingClassMethodRector"
+  ],
+  "lint/dead-code/no-useless-phpdoc-type": [
+   "RemoveUselessUnionReturnDocblockRector"
+  ],
+  "lint/dead-code/no-useless-ternary": [
+   "RemoveUselessTernaryRector"
+  ],
+  "lint/functions/no-unused-closure-use": [
+   "RemoveUnusedClosureVariableUseRector"
+  ],
+  "lint/phpdoc/no-mixed-overruled-by-native": [
+   "RemoveMixedDocblockOverruledByNativeTypeRector"
+  ],
+  "lint/phpdoc/no-useless-param": [
+   "RemoveUselessParamTagRector"
+  ],
+  "lint/phpdoc/no-useless-readonly": [
+   "RemoveUselessReadOnlyTagRector"
+  ],
+  "lint/phpdoc/no-useless-return": [
+   "RemoveUselessReturnTagRector"
+  ],
+  "lint/phpdoc/no-useless-var": [
+   "RemoveUselessVarTagRector"
+  ],
+  "lint/phpdoc/no-void-on-magic-method": [
+   "RemoveVoidDocblockFromMagicMethodRector"
+  ],
+  "lint/style/no-redundant-final-const": [
+   "RemoveFinalFromConstRector"
+  ],
+  "lint/style/no-useless-sprintf": [
+   "UnwrapSprintfOneArgumentRector"
+  ]
+ },
+ "rector/named-args": {
+  "lint/complexity/require-attribute-argument-order": [
+   "SortAttributeNamedArgsRector"
+  ],
+  "lint/complexity/require-named-argument-order": [
+   "SortCallLikeNamedArgsRector"
+  ],
+  "lint/dead-code/no-redundant-default-argument": [
+   "RemoveNullNamedArgOnNullDefaultParamRector"
+  ],
+  "lint/functions/add-attribute-argument-names": [
+   "ExplicitAttributeNamedArgsRector"
+  ],
+  "lint/functions/add-boolean-argument-name": [
+   "AddNameToBooleanArgumentRector"
+  ],
+  "lint/functions/add-null-argument-name": [
+   "AddNameToNullArgumentRector"
+  ]
+ },
+ "rector/php-polyfills": {
+  "lint/php-7.3/prefer-array-key-first": [
+   "ArrayKeyFirstLastRector"
+  ],
+  "lint/php-7.3/prefer-array-key-first-last": [
+   "ArrayKeysToArrayKeyFirstLastRector"
+  ],
+  "lint/php-7.3/prefer-is-countable": [
+   "IsCountableRector"
+  ],
+  "lint/php-8.0/prefer-get-debug-type": [
+   "GetDebugTypeRector"
+  ],
+  "lint/php-8.0/prefer-str-contains-over-mb-strpos": [
+   "MbStrContainsRector"
+  ],
+  "lint/php-8.0/prefer-str-ends-with": [
+   "StrEndsWithRector"
+  ],
+  "lint/php-8.0/prefer-str-starts-with": [
+   "StrStartsWithRector"
+  ],
+  "lint/php-8.3/prefer-json-validate": [
+   "JsonValidateRector"
+  ],
+  "lint/php-8.4/prefer-array-find": [
+   "ForeachToArrayAllRector",
+   "ForeachToArrayAnyRector",
+   "ForeachToArrayFindKeyRector",
+   "ForeachToArrayFindRector"
+  ],
+  "lint/style/prefer-str-contains": [
+   "StrContainsRector"
+  ]
+ },
+ "rector/php52": {
+  "lint/control-flow/no-switch-continue": [
+   "ContinueToBreakInSwitchRector"
+  ],
+  "lint/refactor/remove-function-argument": [
+   "RemoveFuncCallArgRector"
+  ]
+ },
+ "rector/php53": {
+  "lint/php-5.3/no-http-vars": [
+   "ReplaceHttpServerVarsByServerRector"
+  ],
+  "lint/style/prefer-dir-constant": [
+   "DirNameFileConstantToDirConstantRector"
+  ],
+  "lint/style/prefer-short-ternary": [
+   "TernaryToElvisRector"
+  ]
+ },
+ "rector/php54": {
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ]
+ },
+ "rector/php55": {
+  "lint/classes/prefer-self-in-final": [
+   "StaticToSelfOnFinalClassRector"
+  ],
+  "lint/php-5.5/no-class-magic-constant": [
+   "ClassConstantToSelfClassRector"
+  ],
+  "lint/php-5.5/prefer-self-over-get-called-class": [
+   "GetCalledClassToSelfClassRector"
+  ],
+  "lint/php-5.5/prefer-static-over-get-called-class": [
+   "GetCalledClassToStaticClassRector"
+  ],
+  "lint/style/prefer-class-constant": [
+   "StringClassNameToClassConstantRector"
+  ]
+ },
+ "rector/php56": {
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/style/prefer-pow-operator": [
+   "PowToExpRector"
+  ]
+ },
+ "rector/php70": {
+  "lint/operators/prefer-coalesce": [
+   "TernaryToNullCoalescingRector"
+  ],
+  "lint/php-7.0/no-call-user-method": [
+   "CallUserMethodRector"
+  ],
+  "lint/php-7.0/no-list-from-string": [
+   "ListSplitStringRector"
+  ],
+  "lint/php-7.0/prefer-braced-variable-variable": [
+   "WrapVariableVariableNameInCurlyBracesRector"
+  ],
+  "lint/php-7.0/prefer-coalesce-return": [
+   "IfIssetToCoalescingRector"
+  ],
+  "lint/php-7.0/prefer-random-int": [
+   "RandomFunctionRector"
+  ],
+  "lint/php-7.0/prefer-spaceship": [
+   "TernaryToSpaceshipRector"
+  ],
+  "lint/php-7.0/prefer-spaceship-return": [
+   "IfToSpaceshipRector"
+  ],
+  "lint/php-7.0/prefer-static-method-call": [
+   "ThisCallOnStaticMethodToStaticCallRector"
+  ],
+  "lint/php-7.0/prefer-throwable-handler": [
+   "ExceptionHandlerTypehintRector"
+  ],
+  "lint/php-7.0/prefer-time": [
+   "RenameMktimeWithoutArgsToTimeRector"
+  ],
+  "lint/style/no-ereg": [
+   "EregToPregMatchRector"
+  ],
+  "lint/style/no-php4-constructor": [
+   "Php4ConstructorRector"
+  ],
+  "lint/style/prefer-dirname-levels": [
+   "MultiDirnameRector"
+  ]
+ },
+ "rector/php71": {
+  "lint/functions/no-extra-arguments": [
+   "RemoveExtraParametersRector"
+  ],
+  "lint/php-7.1/no-append-to-string": [
+   "AssignArrayToStringRector"
+  ],
+  "lint/php-7.1/no-non-numeric-string-operand": [
+   "BinaryOpBetweenNumberAndStringRector"
+  ],
+  "lint/php-7.1/prefer-is-iterable": [
+   "IsIterableRector"
+  ],
+  "lint/php-7.1/prefer-multi-catch": [
+   "MultiExceptionCatchRector"
+  ]
+ },
+ "rector/php72": {
+  "lint/php-7.2/no-constant-define-name": [
+   "StringifyDefineRector"
+  ],
+  "lint/php-7.2/no-each": [
+   "ReplaceEachAssignmentWithKeyCurrentRector"
+  ],
+  "lint/php-7.2/no-get-class-null": [
+   "GetClassOnNullRector"
+  ],
+  "lint/php-7.2/no-list-each": [
+   "ListEachRector"
+  ],
+  "lint/php-7.2/no-string-assert": [
+   "StringsAssertNakedRector"
+  ],
+  "lint/php-7.2/prefer-foreach-over-each": [
+   "WhileEachToForeachRector"
+  ],
+  "lint/php-7.2/require-parse-str-result": [
+   "ParseStrWithResultArgumentRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ]
+ },
+ "rector/php73": {
+  "lint/php-7.3/no-case-insensitive-constant": [
+   "SensitiveConstantNameRector"
+  ],
+  "lint/php-7.3/no-case-insensitive-define": [
+   "SensitiveDefineRector"
+  ],
+  "lint/php-7.3/no-heredoc-label-in-body": [
+   "SensitiveHereNowDocRector"
+  ],
+  "lint/php-7.3/no-unescaped-regex-dash": [
+   "RegexDashEscapeRector"
+  ],
+  "lint/php-7.3/prefer-array-key-first": [
+   "ArrayKeyFirstLastRector"
+  ],
+  "lint/php-7.3/prefer-array-key-first-last": [
+   "ArrayKeysToArrayKeyFirstLastRector"
+  ],
+  "lint/php-7.3/prefer-is-countable": [
+   "IsCountableRector"
+  ],
+  "lint/php-7.3/prefer-setcookie-options": [
+   "SetCookieRector"
+  ],
+  "lint/php-7.3/require-string-needle": [
+   "StringifyStrNeedlesRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ]
+ },
+ "rector/php74": {
+  "lint/operators/prefer-coalesce-assign": [
+   "NullCoalescingOperatorRector"
+  ],
+  "lint/php-7.4/add-null-property-default": [
+   "RestoreDefaultNullToNullableTypePropertyRector"
+  ],
+  "lint/php-7.4/no-array-key-exists-on-object": [
+   "ArrayKeyExistsOnPropertyRector"
+  ],
+  "lint/php-7.4/no-filter-magic-quotes": [
+   "FilterVarToAddSlashesRector"
+  ],
+  "lint/php-7.4/no-hebrevc": [
+   "HebrevcToNl2brHebrevRector"
+  ],
+  "lint/php-7.4/no-mb-strrpos-encoding-offset": [
+   "MbStrrposEncodingArgumentPositionRector"
+  ],
+  "lint/php-7.4/no-money-format": [
+   "MoneyFormatToNumberFormatRector"
+  ],
+  "lint/php-7.4/no-reflection-export": [
+   "ExportToReflectionFunctionRector"
+  ],
+  "lint/php-7.4/no-restore-include-path": [
+   "RestoreIncludePathToIniRestoreRector"
+  ],
+  "lint/php-7.4/prefer-arrow-function": [
+   "ClosureToArrowFunctionRector"
+  ],
+  "lint/php-7.4/prefer-coalesce-assign-over-if": [
+   "IfToNullCoalescingAssignRector"
+  ],
+  "lint/refactor/rename-cast": [
+   "RenameCastRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/style/require-implode-separator": [
+   "ConsistentImplodeRector"
+  ]
+ },
+ "rector/php80": {
+  "lint/classes/add-stringable": [
+   "StringableForToStringRector"
+  ],
+  "lint/dead-code/no-parent-call-without-parent": [
+   "RemoveParentCallWithoutParentRector"
+  ],
+  "lint/functions/no-required-after-optional": [
+   "OptionalParametersAfterRequiredRector"
+  ],
+  "lint/php-8.0/no-int-get-headers-format": [
+   "GetHeadersArgumentFormatRector"
+  ],
+  "lint/php-8.0/no-unused-catch-variable": [
+   "RemoveUnusedVariableInCatchRector"
+  ],
+  "lint/php-8.0/no-version-compare-operator-alias": [
+   "VersionCompareFuncCallArgumentRector"
+  ],
+  "lint/php-8.0/prefer-get-debug-type": [
+   "GetDebugTypeRector"
+  ],
+  "lint/php-8.0/prefer-match": [
+   "ChangeSwitchToMatchRector"
+  ],
+  "lint/php-8.0/prefer-nullsafe-over-ternary": [
+   "TernaryToNullsafeCoalesceRector"
+  ],
+  "lint/php-8.0/prefer-static-class": [
+   "ClassOnThisVariableObjectRector"
+  ],
+  "lint/php-8.0/prefer-str-ends-with": [
+   "StrEndsWithRector"
+  ],
+  "lint/php-8.0/prefer-str-starts-with": [
+   "StrStartsWithRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/replace-static-with-function": [
+   "StaticCallToFuncCallRector"
+  ],
+  "lint/style/no-redundant-final": [
+   "FinalPrivateToPrivateVisibilityRector"
+  ],
+  "lint/style/prefer-class-keyword-on-object": [
+   "ClassOnObjectRector"
+  ],
+  "lint/style/prefer-str-contains": [
+   "StrContainsRector"
+  ]
+ },
+ "rector/php81": {
+  "lint/php-8.1/no-closure-from-callable": [
+   "ClosureFromCallableToFirstClassCallableRector"
+  ],
+  "lint/php-8.1/no-null-preg-split-limit": [
+   "NullToStrictIntPregSlitFuncCallLimitArgRector"
+  ],
+  "lint/php-8.1/no-reflection-set-accessible": [
+   "RemoveReflectionSetAccessibleCallsRector"
+  ],
+  "lint/php-8.1/prefer-enum-case-over-myclabs-call": [
+   "MyCLabsMethodCallToEnumConstRector"
+  ],
+  "lint/php-8.1/prefer-enum-case-over-spatie-call": [
+   "SpatieEnumMethodCallToEnumConstRector"
+  ],
+  "lint/php-8.1/prefer-enum-from": [
+   "MyCLabsConstructorCallToEnumFromRector"
+  ],
+  "lint/php-8.1/prefer-first-class-callable-argument": [
+   "FunctionFirstClassCallableRector"
+  ],
+  "lint/php-8.1/prefer-first-class-callable-over-array": [
+   "ArrayToFirstClassCallableRector"
+  ],
+  "lint/php-8.1/prefer-first-class-callable-over-arrow-function": [
+   "ArrowFunctionDelegatingCallToFirstClassCallableRector"
+  ],
+  "lint/php-8.1/prefer-first-class-callable-over-closure": [
+   "ClosureDelegatingCallToFirstClassCallableRector"
+  ],
+  "lint/php-8.1/prefer-native-enum-over-myclabs": [
+   "MyCLabsClassToEnumRector"
+  ],
+  "lint/php-8.1/prefer-native-enum-over-spatie": [
+   "SpatieEnumClassToEnumRector"
+  ],
+  "lint/php-8.1/prefer-readonly-property": [
+   "ReadOnlyPropertyRector"
+  ],
+  "lint/types/add-never-return-type": [
+   "ReturnNeverTypeRector"
+  ]
+ },
+ "rector/php82": {
+  "lint/php-8.2/add-skip-dots-flag": [
+   "FilesystemIteratorSkipDotsRector"
+  ],
+  "lint/php-8.2/no-dollar-brace-interpolation": [
+   "VariableInStringInterpolationFixerRector"
+  ],
+  "lint/php-8.2/no-utf8-encode-decode": [
+   "Utf8DecodeEncodeToMbConvertEncodingRector"
+  ],
+  "lint/php-8.2/prefer-readonly-class": [
+   "ReadOnlyClassRector"
+  ]
+ },
+ "rector/php83": {
+  "lint/php-8.3/add-const-type": [
+   "AddTypeToConstRector"
+  ],
+  "lint/php-8.3/prefer-dynamic-class-constant": [
+   "DynamicClassConstFetchRector"
+  ],
+  "lint/php-8.3/prefer-json-validate": [
+   "JsonValidateRector"
+  ],
+  "lint/php-8.3/prefer-ldap-uri": [
+   "CombineHostPortLdapUriRector"
+  ],
+  "lint/php-8.3/prefer-readonly-anonymous-class": [
+   "ReadOnlyAnonymousClassRector"
+  ],
+  "lint/php-8.3/prefer-self-class": [
+   "RemoveGetClassGetParentClassNoArgsRector"
+  ]
+ },
+ "rector/php84": {
+  "lint/php-8.4/add-csv-escape-argument": [
+   "AddEscapeArgumentRector"
+  ],
+  "lint/php-8.4/prefer-array-find": [
+   "ForeachToArrayAllRector",
+   "ForeachToArrayAnyRector",
+   "ForeachToArrayFindKeyRector",
+   "ForeachToArrayFindRector"
+  ],
+  "lint/php-8.4/prefer-round-mode-enum": [
+   "RoundingModeEnumRector"
+  ]
+ },
+ "rector/php85": {
+  "lint/php-8.5/no-finfo-buffer-context": [
+   "RemoveFinfoBufferContextArgRector"
+  ],
+  "lint/php-8.5/no-null-array-key": [
+   "ArrayKeyExistsNullToEmptyStringRector"
+  ],
+  "lint/php-8.5/no-null-debug-info": [
+   "NullDebugInfoReturnRector"
+  ],
+  "lint/php-8.5/no-out-of-range-chr": [
+   "ChrArgModuloRector"
+  ],
+  "lint/php-8.5/prefer-array-first-last": [
+   "ArrayFirstLastRector"
+  ],
+  "lint/php-8.5/prefer-ord-first-byte": [
+   "OrdSingleByteRector"
+  ],
+  "lint/refactor/add-override-attribute": [
+   "AddOverrideAttributeToOverriddenPropertiesRector"
+  ],
+  "lint/refactor/remove-function-argument": [
+   "RemoveFuncCallArgRector"
+  ],
+  "lint/refactor/remove-function-call": [
+   "RemoveFuncCallRector"
+  ],
+  "lint/refactor/rename-cast": [
+   "RenameCastRector"
+  ],
+  "lint/refactor/rename-class-constant": [
+   "RenameClassConstFetchRector"
+  ],
+  "lint/refactor/rename-constant": [
+   "RenameConstantRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ],
+  "lint/refactor/rename-method": [
+   "RenameMethodRector"
+  ],
+  "lint/style/no-sleep-wakeup": [
+   "SleepToSerializeRector",
+   "WakeupToUnserializeRector"
+  ]
+ },
+ "rector/php86": {
+  "lint/php-8.6/prefer-clamp": [
+   "MinMaxToClampRector"
+  ],
+  "lint/php-8.6/prefer-readonly-property-default": [
+   "ConstructorReadonlyAssignToDefaultRector"
+  ],
+  "lint/refactor/remove-function-argument": [
+   "RemoveFuncCallArgRector"
+  ],
+  "lint/refactor/rename-function": [
+   "RenameFunctionRector"
+  ]
+ },
+ "rector/privatization": {
+  "lint/classes/no-protected-constant-in-final": [
+   "PrivatizeFinalClassConstantRector"
+  ],
+  "lint/classes/no-protected-method-in-final": [
+   "PrivatizeFinalClassMethodRector"
+  ],
+  "lint/classes/no-protected-property-in-final": [
+   "PrivatizeFinalClassPropertyRector"
+  ],
+  "lint/style/prefer-property-over-local-getter": [
+   "PrivatizeLocalGetterToPropertyRector"
+  ]
+ },
+ "rector/rector-preset": {
+  "lint/dead-code/no-redundant-node-instanceof": [
+   "RemoveRefactorDuplicatedNodeInstanceCheckRector"
+  ],
+  "lint/phpunit/add-see-test-tag": [
+   "AddSeeTestAnnotationRector"
+  ],
+  "lint/phpunit/require-final-test-case": [
+   "FinalizeTestCaseClassRector"
+  ],
+  "lint/types/add-refactor-param-phpdoc": [
+   "AddParamTypeToRefactorMethodRector"
+  ]
+ },
+ "rector/type-declaration": {
+  "lint/phpunit/add-closure-return-type-from-assert": [
+   "ClosureReturnTypeFromAssertInstanceOfRector"
+  ],
+  "lint/phpunit/add-data-provider-iterator-return-type": [
+   "ReturnIteratorInDataProviderRector"
+  ],
+  "lint/phpunit/add-property-type-container-get": [
+   "TypedPropertyFromContainerGetSetUpRector"
+  ],
+  "lint/phpunit/add-property-type-create-mock": [
+   "TypedPropertyFromCreateMockAssignRector"
+  ],
+  "lint/phpunit/add-property-type-setup": [
+   "TypedPropertyFromStrictSetUpRector"
+  ],
+  "lint/phpunit/add-property-type-setup-docblock": [
+   "TypedPropertyFromDocblockSetUpDefinedRector"
+  ],
+  "lint/phpunit/add-return-type-from-mock-object": [
+   "ReturnTypeFromMockObjectRector"
+  ],
+  "lint/phpunit/add-test-void-return": [
+   "AddTestsVoidReturnTypeWhereNoReturnRector"
+  ],
+  "lint/types/add-array-return-type": [
+   "ReturnTypeFromReturnDirectArrayRector"
+  ],
+  "lint/types/add-arrow-function-return-type": [
+   "AddArrowFunctionReturnTypeRector"
+  ],
+  "lint/types/add-bool-return-type": [
+   "BoolReturnTypeFromBooleanStrictReturnsRector"
+  ],
+  "lint/types/add-bool-return-type-from-const": [
+   "BoolReturnTypeFromBooleanConstReturnsRector"
+  ],
+  "lint/types/add-bool-return-type-from-mixed-returns": [
+   "BoolReturnTypeFromBooleanConstAndStrictReturnsRector"
+  ],
+  "lint/types/add-closure-never-return": [
+   "AddClosureNeverReturnTypeRector"
+  ],
+  "lint/types/add-closure-return-type": [
+   "ClosureReturnTypeRector"
+  ],
+  "lint/types/add-closure-void-return": [
+   "AddClosureVoidReturnTypeWhereNoReturnRector"
+  ],
+  "lint/types/add-datetime-property-type": [
+   "MergeDateTimePropertyTypeDeclarationRector"
+  ],
+  "lint/types/add-fluent-return-type": [
+   "ReturnTypeFromStrictFluentReturnRector"
+  ],
+  "lint/types/add-function-void-return": [
+   "AddFunctionVoidReturnTypeWhereNoReturnRector"
+  ],
+  "lint/types/add-magic-method-return-type": [
+   "KnownMagicClassMethodTypeRector"
+  ],
+  "lint/types/add-method-void-return": [
+   "AddVoidReturnTypeWhereNoReturnRector"
+  ],
+  "lint/types/add-never-return-type": [
+   "ReturnNeverTypeRector"
+  ],
+  "lint/types/add-nullable-return-type": [
+   "ReturnNullableTypeRector"
+  ],
+  "lint/types/add-numeric-return-type": [
+   "NumericReturnTypeFromStrictReturnsRector"
+  ],
+  "lint/types/add-numeric-return-type-from-scalar": [
+   "NumericReturnTypeFromStrictScalarReturnsRector"
+  ],
+  "lint/types/add-param-type-array-any-all": [
+   "AddArrayAnyAllClosureParamTypeRector"
+  ],
+  "lint/types/add-param-type-array-dim-fetch": [
+   "StrictArrayParamDimFetchRector"
+  ],
+  "lint/types/add-param-type-array-function": [
+   "AddArrayFunctionClosureParamTypeRector"
+  ],
+  "lint/types/add-param-type-array-map": [
+   "AddClosureParamTypeForArrayMapRector"
+  ],
+  "lint/types/add-param-type-array-reduce": [
+   "AddClosureParamTypeForArrayReduceRector"
+  ],
+  "lint/types/add-param-type-arrow-dim-fetch": [
+   "AddArrowFunctionParamArrayWhereDimFetchRector"
+  ],
+  "lint/types/add-param-type-data-provider": [
+   "AddParamTypeBasedOnPHPUnitDataProviderRector"
+  ],
+  "lint/types/add-param-type-dim-fetch-key": [
+   "AddParamFromDimFetchKeyUseRector"
+  ],
+  "lint/types/add-param-type-iterable-method-call": [
+   "AddClosureParamTypeFromIterableMethodCallRector"
+  ],
+  "lint/types/add-param-type-method-call": [
+   "AddMethodCallBasedStrictParamTypeRector"
+  ],
+  "lint/types/add-param-type-property": [
+   "AddParamTypeFromPropertyTypeRector"
+  ],
+  "lint/types/add-param-type-spl-fixed-array": [
+   "AddParamTypeSplFixedArrayRector"
+  ],
+  "lint/types/add-param-type-variable-call": [
+   "AddClosureParamTypeFromVariableCallRector"
+  ],
+  "lint/types/add-private-method-array-return-type": [
+   "PrivateMethodReturnTypeFromStrictNewArrayRector"
+  ],
+  "lint/types/add-property-type-assigns": [
+   "TypedPropertyFromAssignsRector"
+  ],
+  "lint/types/add-property-type-constructor": [
+   "TypedPropertyFromStrictConstructorRector"
+  ],
+  "lint/types/add-property-type-get-repository": [
+   "TypedPropertyFromGetRepositorySetUpRector"
+  ],
+  "lint/types/add-property-type-setter-getter": [
+   "PropertyTypeFromStrictSetterGetterRector"
+  ],
+  "lint/types/add-return-type-from-cast": [
+   "ReturnTypeFromReturnCastRector"
+  ],
+  "lint/types/add-return-type-from-constant": [
+   "ReturnTypeFromStrictConstantReturnRector"
+  ],
+  "lint/types/add-return-type-from-get-repository": [
+   "ReturnTypeFromGetRepositoryDocblockRector"
+  ],
+  "lint/types/add-return-type-from-native-call": [
+   "ReturnTypeFromStrictNativeCallRector"
+  ],
+  "lint/types/add-return-type-from-new": [
+   "ReturnTypeFromReturnNewRector"
+  ],
+  "lint/types/add-return-type-from-new-array": [
+   "ReturnTypeFromStrictNewArrayRector"
+  ],
+  "lint/types/add-return-type-from-param": [
+   "ReturnTypeFromStrictParamRector"
+  ],
+  "lint/types/add-return-type-from-parent": [
+   "AddReturnTypeDeclarationBasedOnParentClassMethodRector"
+  ],
+  "lint/types/add-return-type-from-property": [
+   "ReturnTypeFromStrictTypedPropertyRector"
+  ],
+  "lint/types/add-return-type-from-ternary": [
+   "ReturnTypeFromStrictTernaryRector"
+  ],
+  "lint/types/add-return-type-from-try-catch": [
+   "AddReturnTypeFromTryCatchTypeRector"
+  ],
+  "lint/types/add-return-type-from-typed-call": [
+   "ReturnTypeFromStrictTypedCallRector"
+  ],
+  "lint/types/add-return-type-from-yield": [
+   "AddReturnTypeDeclarationFromYieldsRector"
+  ],
+  "lint/types/add-string-return-type": [
+   "StringReturnTypeFromStrictStringReturnsRector"
+  ],
+  "lint/types/add-string-return-type-from-scalar": [
+   "StringReturnTypeFromStrictScalarReturnsRector"
+  ],
+  "lint/types/add-union-return-type": [
+   "ReturnUnionTypeRector"
+  ],
+  "lint/types/prefer-narrow-param-type": [
+   "NarrowArrayAnyAllNullableParamTypeRector"
+  ],
+  "lint/types/prefer-specific-return-type": [
+   "NarrowObjectReturnTypeRector"
+  ]
+ },
+ "rector/type-declaration-docblocks": {
+  "lint/types/add-getter-return-phpdoc": [
+   "DocblockGetterReturnArrayFromPropertyDocblockVarRector"
+  ],
+  "lint/types/add-param-phpdoc-from-callable-call": [
+   "AddParamArrayDocblockBasedOnCallableNativeFuncCallRector"
+  ],
+  "lint/types/add-param-phpdoc-from-dim-fetch": [
+   "AddParamArrayDocblockFromDimFetchAccessRector"
+  ],
+  "lint/types/add-param-phpdoc-from-local-calls": [
+   "ClassMethodArrayDocblockParamFromLocalCallsRector"
+  ],
+  "lint/types/add-param-phpdoc-from-reference-assign": [
+   "AddParamArrayDocblockFromAssignsParamToParamReferenceRector"
+  ],
+  "lint/types/add-return-phpdoc-common-object": [
+   "AddReturnDocblockForCommonObjectDenominatorRector"
+  ],
+  "lint/types/add-return-phpdoc-dim-assigned-object": [
+   "AddReturnDocblockForArrayDimAssignedObjectRector"
+  ],
+  "lint/types/add-return-phpdoc-direct-array": [
+   "DocblockReturnArrayFromDirectArrayInstanceRector"
+  ],
+  "lint/types/add-return-phpdoc-json-array": [
+   "AddReturnDocblockForJsonArrayRector"
+  ],
+  "lint/types/add-return-phpdoc-scalar-array": [
+   "AddReturnDocblockForScalarArrayFromAssignsRector"
+  ],
+  "lint/types/add-var-phpdoc-from-constructor-param": [
+   "DocblockVarFromParamDocblockInConstructorRector"
+  ],
+  "lint/types/add-var-phpdoc-from-default": [
+   "DocblockVarArrayFromPropertyDefaultsRector"
+  ],
+  "lint/types/add-var-phpdoc-from-dim-fetch": [
+   "AddVarArrayDocblockFromDimFetchAssignRector"
+  ],
+  "lint/types/add-var-phpdoc-from-getter": [
+   "DocblockVarArrayFromGetterReturnRector"
+  ],
+  "lint/types/no-phpstan-phpdoc-tag": [
+   "MergePhpstanDocTagIntoNativeRector"
+  ],
+  "lint/types/prefer-generic-collection-phpdoc": [
+   "NarrowArrayCollectionUnionReturnDocblockRector"
+  ],
+  "lint/types/prefer-literal-bool-phpdoc": [
+   "NarrowBoolDocblockReturnTypeRector"
+  ]
+ }
+}

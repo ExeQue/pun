@@ -125,50 +125,34 @@ Steps 1, 2, 4, 5, 6 and 9 are done, and `pun check --fix` equals Pint. Left: ste
 1. **Format preset:** `laravel` or `psr12`.
 2. **Analyse preset:** `basic`, `essential`, `recommended` (default), `strict` or `max`, each including the one below
    (analyse.md decisions).
-3. **Lint sets:** below.
+3. **Lint preset:** `essential`, `recommended` (default) or `strict`, each including the one below.
 
 Laravel, Pest and PHPUnit are not questions. `pun init` reads composer.lock and writes `[extensions]` for them, which
-turns their rules on, including the rules for the locked versions.
+lets their rules in the preset run, including the rules for the locked versions.
 
-**A project coming from Pint, Rector or PHPStan:** `pun migrate` writes the exact rules the old config runs. With
-`--offer-preset` on a terminal it then offers the closest preset, with a count of the new problems it would report.
+**A project coming from Pint, Rector or PHPStan:** `pun migrate` writes the exact rules the old config runs: Rector's
+sets as `rector/*` sets, then only the rules that differ. With `--offer-preset` on a terminal it then offers the
+closest preset, with a count of the new problems it would report.
 
-### Lint presets are sets you tick, not a ladder (decided)
-
-Rector has no ladder either: its config is independent toggles (`withPreparedSets(...)`, `withPhpSets()` and
-ecosystem sets). `pun init` question 3 is a checklist, with a default ticked:
-
-```
-Which lint rules?            (space to toggle)
- [x] dead-code               remove unused and unreachable code
- [x] modernize               newest syntax your PHP and Laravel versions allow
- [ ] code-quality            simplify code
- [ ] types                   add native types Pun can prove
- [ ] early-return            prefer early returns
- [ ] privatization           make what can be private, private
- [ ] naming                  rename variables after their type
- [ ] coding-style            style choices
-```
-
-In pun.toml:
+### Pun's ladder plus Rector's exact sets (decided 2026-11-24)
 
 ```toml
 [lint]
-sets = ["dead-code", "modernize", "code-quality"]
+preset = "recommended"                              # Pun's picks: essential < recommended < strict
+sets = ["rector/dead-code", "rector/code-quality"]  # Rector's sets, exactly
 ```
 
-- **Sets are tags on rules**, separate from the topic group in the name. A rule can be in several sets.
-- **The Laravel, Pest and PHPUnit parts of each set turn on with their `[extensions]` entry**, which `pun init` and
-  `pun migrate` write when composer.lock has the package. For example, `code-quality` in a Laravel app includes
-  rector-laravel's code-quality rules.
-- **Migrate maps 1:1:** `withPreparedSets(deadCode: true, codeQuality: true)` becomes
-  `sets = ["dead-code", "code-quality"]`, `withPhpSets()` is `modernize`, version sets are the upgrade groups
-  (`lint/laravel-13/...`), and single rules become `[lint.rules]`.
-- **PHP-CS-Fixer's risky rules and Mago's rules join the set they fit** (`no-loose-comparison` goes in `types`,
-  `no-debug-calls` in `dead-code`), or stay opt-in by name.
-
-The rejected alternative is a ladder like analyse's (`[lint] preset = "strict"`): simpler to pick, but it bundles
-unrelated choices. Wanting typed code doesn't mean wanting variables renamed.
+- **Presets** (`preset` on each lint rule in mapping.toml, the lowest preset that holds it): `essential` is likely bugs
+  and dead code with safe fixes; `recommended` adds modernize, code-quality and the ecosystem quality rules;
+  `strict` adds types, privatization, early returns, coding style and every unsafe fix. Rules in no preset are opt-in.
+- **Rector sets** (rules/rector-sets.json, written by scripts/gen-rector-sets.py from the upstream inventories):
+  `rector/<set>`, `rector-laravel/<set>`, `rector-phpunit/<set>`, `pest/<set>`, and `rector/php-sets` for
+  `withPhpSets()` (every `rector/phpNN` up to `[php] version`). A merged rule that only a set brings runs only that
+  set's Rector rules (the same `checks` options `pun migrate` writes); Rector rules that are format rules in Pun stay
+  in `[format]`.
+- **A rule runs when the preset or a set holds it**, its gates allow it (PHP version, extension), and no group or rule
+  line turns it off. No preset and no sets runs nothing but named rules and groups.
+- The old sets (`dead-code`, `modernize`, ...) are config errors naming their `rector/*` twin.
 
 ## Decisions
 

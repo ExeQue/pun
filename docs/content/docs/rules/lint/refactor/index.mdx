@@ -12,231 +12,231 @@ Configurable codemods: they do nothing until configured.
 
 Adds default value for arguments in defined methods.
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-80`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-override-attribute" href="/docs/rules/lint/refactor/add-override-attribute">
 
 Add #[Override] to properties that override a parent class's property (PHP 8.5).
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/php85` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-param-type" href="/docs/rules/lint/refactor/add-param-type">
 
 Add param types where needed
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-70`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90`, `rector-phpunit/composer-based` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-return-type" href="/docs/rules/lint/refactor/add-return-type">
 
 Change defined return typehint of method and class
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-58`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90`, `rector-phpunit/composer-based` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="change-method-visibility" href="/docs/rules/lint/refactor/change-method-visibility">
 
 Change visibility of method from parent class
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-56`, `rector-laravel/laravel-57`, `rector-laravel/laravel-60`, `rector-laravel/laravel-90`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-56`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-negated-condition" href="/docs/rules/lint/refactor/no-negated-condition">
 
 Flip a ternary whose condition is negated: drop the `!` (or use `===` / `==`) and swap the branches.
 
-In the `code-quality` set. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-attribute-over-annotation" href="/docs/rules/lint/refactor/prefer-attribute-over-annotation">
 
 Replace configured PHPDoc annotations (including nested ones) with attributes.
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based`, `rector/behat-annotations-to-attributes` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-constant" href="/docs/rules/lint/refactor/prefer-constant">
 
 Replace function calls that return a constant (php_sapi_name(), pi(), ...) with the constant.
 
-In the `coding-style` set. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="remove-attribute" href="/docs/rules/lint/refactor/remove-attribute">
 
 Removes configured attributes by their respective FQN.
 
-Not in any set. Safe fix.
+Not in any preset. Safe fix.
 
 </Card>
 <Card title="remove-function-argument" href="/docs/rules/lint/refactor/remove-function-argument">
 
 Remove argument by position by function name
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/php52`, `rector/php85`, `rector/php86` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="remove-function-call" href="/docs/rules/lint/refactor/remove-function-call">
 
 Remove defined function calls
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/php85` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="remove-interfaces" href="/docs/rules/lint/refactor/remove-interfaces">
 
 Remove interfaces from class
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-53`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-53`, `rector-laravel/up-to-laravel-54`, `rector-laravel/up-to-laravel-55`, `rector-laravel/up-to-laravel-56`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="remove-method-argument" href="/docs/rules/lint/refactor/remove-method-argument">
 
 Remove defined arguments in defined methods and their calls
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-57`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="remove-phpdoc-annotation" href="/docs/rules/lint/refactor/remove-phpdoc-annotation">
 
 Removes configured annotations from PHPDoc.
 
-Not in any set. Safe fix.
+Not in any preset. Safe fix.
 
 </Card>
 <Card title="rename-attribute" href="/docs/rules/lint/refactor/rename-attribute">
 
 Rename attribute class names
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/livewire-30`, `rector-laravel/up-to-livewire-30` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-cast" href="/docs/rules/lint/refactor/rename-cast">
 
 Renames casts
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/php74`, `rector/php85` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-class" href="/docs/rules/lint/refactor/rename-class">
 
 Replace defined classes by new ones
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-130`, `rector-laravel/laravel-130-core`, `rector-laravel/laravel-130-without-attributes`, `rector-laravel/laravel-50`, `rector-laravel/laravel-51`, `rector-laravel/laravel-52`, `rector-laravel/laravel-53`, `rector-laravel/laravel-54`, `rector-laravel/laravel-55`, `rector-laravel/laravel-60`, `rector-laravel/laravel-70`, `rector-laravel/laravel-facade-aliases-to-full-names`, `rector-laravel/livewire-40`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-51`, `rector-laravel/up-to-laravel-52`, `rector-laravel/up-to-laravel-53`, `rector-laravel/up-to-laravel-54`, `rector-laravel/up-to-laravel-55`, `rector-laravel/up-to-laravel-56`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90`, `rector-phpunit/composer-based` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-class-constant" href="/docs/rules/lint/refactor/rename-class-constant">
 
 Replace defined class constants in their calls
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/php85` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-constant" href="/docs/rules/lint/refactor/rename-constant">
 
 Replace constant by new ones
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/php85` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-function" href="/docs/rules/lint/refactor/rename-function">
 
 Turn defined function call new one
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-100`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector/code-quality`, `rector/php54`, `rector/php56`, `rector/php72`, `rector/php73`, `rector/php74`, `rector/php80`, `rector/php85`, `rector/php86` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-method" href="/docs/rules/lint/refactor/rename-method">
 
 Turn method names to new ones
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/cashier-13`, `rector-laravel/cashier-14`, `rector-laravel/laravel-100`, `rector-laravel/laravel-120`, `rector-laravel/laravel-50`, `rector-laravel/laravel-53`, `rector-laravel/laravel-54`, `rector-laravel/laravel-55`, `rector-laravel/laravel-56`, `rector-laravel/laravel-60`, `rector-laravel/laravel-70`, `rector-laravel/laravel-80`, `rector-laravel/laravel-90`, `rector-laravel/up-to-cashier-13`, `rector-laravel/up-to-cashier-14`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-51`, `rector-laravel/up-to-laravel-52`, `rector-laravel/up-to-laravel-53`, `rector-laravel/up-to-laravel-54`, `rector-laravel/up-to-laravel-55`, `rector-laravel/up-to-laravel-56`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90`, `rector-phpunit/composer-based`, `rector/php85` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-phpdoc-tag" href="/docs/rules/lint/refactor/rename-phpdoc-tag">
 
 Renames PHPDoc tags.
 
-Not in any set. Safe fix.
+Not in any preset. Safe fix.
 
 </Card>
 <Card title="rename-property" href="/docs/rules/lint/refactor/rename-property">
 
 Replace defined old properties by new ones
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-100`, `rector-laravel/laravel-55`, `rector-laravel/laravel-58`, `rector-laravel/laravel-80`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-55`, `rector-laravel/up-to-laravel-56`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="rename-string" href="/docs/rules/lint/refactor/rename-string">
 
 Change string value
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-attribute-value-with-constant" href="/docs/rules/lint/refactor/replace-attribute-value-with-constant">
 
 Replace key value on specific attribute to class constant
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-event-string-with-constant" href="/docs/rules/lint/refactor/replace-event-string-with-constant">
 
 Turns a string event name into a class constant, but only where the event dispatcher is used
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-52`, `rector-laravel/laravel-54`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-52`, `rector-laravel/up-to-laravel-53`, `rector-laravel/up-to-laravel-54`, `rector-laravel/up-to-laravel-55`, `rector-laravel/up-to-laravel-56`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-function-with-constant" href="/docs/rules/lint/refactor/replace-function-with-constant">
 
 Changes use of function calls to use constants
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/coding-style` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-function-with-new" href="/docs/rules/lint/refactor/replace-function-with-new">
 
 Change configured function calls to new Instance
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-static-to-injection` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-function-with-static" href="/docs/rules/lint/refactor/replace-function-with-static">
 
 Turn defined function call to static method call
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-58`, `rector-laravel/laravel-array-str-functions-to-static-call`, `rector-laravel/laravel-static-to-injection`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-static-with-function" href="/docs/rules/lint/refactor/replace-static-with-function">
 
 Turn static call to function call
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-53`, `rector-laravel/up-to-laravel-100`, `rector-laravel/up-to-laravel-110`, `rector-laravel/up-to-laravel-120`, `rector-laravel/up-to-laravel-130`, `rector-laravel/up-to-laravel-130-without-attributes`, `rector-laravel/up-to-laravel-53`, `rector-laravel/up-to-laravel-54`, `rector-laravel/up-to-laravel-55`, `rector-laravel/up-to-laravel-56`, `rector-laravel/up-to-laravel-57`, `rector-laravel/up-to-laravel-58`, `rector-laravel/up-to-laravel-60`, `rector-laravel/up-to-laravel-70`, `rector-laravel/up-to-laravel-80`, `rector-laravel/up-to-laravel-90`, `rector/php80` sets. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-static-with-method" href="/docs/rules/lint/refactor/replace-static-with-method">
 
 Change static call to service method via constructor injection
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-laravel/laravel-static-to-injection` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="replace-static-with-new" href="/docs/rules/lint/refactor/replace-static-with-new">
 
 Change static call to new instance
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="wrap-return" href="/docs/rules/lint/refactor/wrap-return">
 
 Wrap return value of specific method
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. Unsafe fix: it can change behavior.
 
 </Card>
 </CardGroup>

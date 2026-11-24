@@ -12,98 +12,98 @@ PHPDoc blocks and tags. Also in [format](/docs/rules/format/phpdoc) (25) and [an
 
 PHPDoc should contain `@param` for all params.
 
-In the `coding-style` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-access" href="/docs/rules/lint/phpdoc/no-access">
 
 `@access` annotations must be removed from PHPDoc.
 
-In the `coding-style` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-empty-return" href="/docs/rules/lint/phpdoc/no-empty-return">
 
 `@return void` and `@return null` annotations must be removed from PHPDoc.
 
-In the `coding-style` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-misplaced" href="/docs/rules/lint/phpdoc/no-misplaced">
 
 Docblocks should only be used on structural elements.
 
-In the `coding-style` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-mixed-overruled-by-native" href="/docs/rules/lint/phpdoc/no-mixed-overruled-by-native">
 
 Remove @param mixed and @return mixed docblock that duplicates an already declared native type
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-package" href="/docs/rules/lint/phpdoc/no-package">
 
 `@package` and `@subpackage` annotations must be removed from PHPDoc.
 
-In the `coding-style` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-superfluous-tags" href="/docs/rules/lint/phpdoc/no-superfluous-tags">
 
 Removes `@param`, `@return` and `@var` tags that don't provide any useful information.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="no-useless-inheritdoc" href="/docs/rules/lint/phpdoc/no-useless-inheritdoc">
 
 Classy that does not inherit must not have `@inheritdoc` tags.
 
-In the `coding-style` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-useless-param" href="/docs/rules/lint/phpdoc/no-useless-param">
 
 Remove @param docblock with same type as parameter type
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-readonly" href="/docs/rules/lint/phpdoc/no-useless-readonly">
 
 Remove useless `@readonly` annotation on native readonly type
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-return" href="/docs/rules/lint/phpdoc/no-useless-return">
 
 Remove @return docblock with same type as defined in PHP
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-var" href="/docs/rules/lint/phpdoc/no-useless-var">
 
 Remove unused `@var` annotation for properties and class constants
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-void-on-magic-method" href="/docs/rules/lint/phpdoc/no-void-on-magic-method">
 
 Remove useless @return void docblock from magic methods __construct, __destruct, and __clone
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="require-no-named-arguments" href="/docs/rules/lint/phpdoc/require-no-named-arguments">
 
 There must be `@no-named-arguments` tag in PHPDoc of a class/enum/interface/trait.
 
-Not in any set. Safe fix.
+Not in any preset. Safe fix.
 
 </Card>
 </CardGroup>

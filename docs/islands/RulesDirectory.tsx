@@ -85,7 +85,7 @@ export default function RulesDirectory() {
               {!rule.ported && <small className="rule-planned">Planned</small>}</td>
             <td>{rule.summary}</td>
             <td>{rule.enabled.length ? rule.enabled.map(name =>
-              <a key={name} href={`/docs/rules/${rule.command === "lint" ? "sets" : "presets"}/${name}`}>{name}</a>
+              <a key={name} href={`/docs/rules/${name.includes("/") ? "sets" : "presets"}/${name}`}>{name}</a>
             ) : "Opt-in"}</td>
             <td><span className="rule-icons" role="img" aria-label={`Fix: ${rule.fix}`}>
               {[["safe", "✓"], ["unsafe", "!"], ["mixed", "±"], ["none", "—"]].map(([kind, icon]) =>

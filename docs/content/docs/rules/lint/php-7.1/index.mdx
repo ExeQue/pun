@@ -12,28 +12,28 @@ Upgrade to PHP 7.1: code a newer PHP removes, deprecates or does better.
 
 String cannot be turned into array by assignment anymore
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.1 or later.
+In the `lint-strict` preset. In Rector's `rector/php71` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.1 or later.
 
 </Card>
 <Card title="no-non-numeric-string-operand" href="/docs/rules/lint/php-7.1/no-non-numeric-string-operand">
 
 Change binary operation between some number + string to PHP 7.1 compatible version
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.1 or later.
+In the `lint-strict` preset. In Rector's `rector/php71` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.1 or later.
 
 </Card>
 <Card title="prefer-is-iterable" href="/docs/rules/lint/php-7.1/prefer-is-iterable">
 
 Changes is_array + Traversable check to is_iterable
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.1 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php71` set. Safe fix. Runs only when `[php] version` is 7.1 or later.
 
 </Card>
 <Card title="prefer-multi-catch" href="/docs/rules/lint/php-7.1/prefer-multi-catch">
 
 Change multiple catch statements of the same exception to a single one `|` separated
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.1 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php71` set. Safe fix. Runs only when `[php] version` is 7.1 or later.
 
 </Card>
 </CardGroup>

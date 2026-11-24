@@ -48,7 +48,16 @@ fn reads_sets_rules_and_skips() {
         php_sets: true,
     };
     let r = from_rector(&root, &config);
-    assert_eq!(r.sets, ["dead-code", "types", "modernize"]);
+    assert_eq!(
+        r.sets,
+        [
+            "rector/dead-code",
+            "pest/coding-style",
+            "rector/type-declaration",
+            "rector/php84",
+            "rector/php-sets"
+        ]
+    );
     let want: Vec<(&str, &str)> = r
         .want
         .iter()
@@ -179,7 +188,7 @@ fn merged_rector_rules_keep_to_the_ones_rector_runs() {
         ..RectorConfig::default()
     };
     let r = from_rector(&dir(&[]), &config);
-    assert_eq!(r.sets, ["dead-code"]);
+    assert_eq!(r.sets, ["rector/dead-code"]);
     assert_eq!(
         r.options["lint/dead-code/no-useless-ternary"]
             .to_string()
@@ -423,7 +432,7 @@ fn carries_rule_configurations() {
     );
 
     let rector = Rector {
-        sets: vec!["code-quality"],
+        sets: vec!["rector/code-quality".into()],
         want: vec![
             (
                 "lint/complexity/no-and-assignment".to_string(),
@@ -482,7 +491,7 @@ fn composes_the_difference_with_the_sets() {
     let root = dir(&[]);
     let id = |s: &str| s.to_string();
     let rector = Rector {
-        sets: vec!["dead-code"],
+        sets: vec!["rector/dead-code".into()],
         want: vec![
             (
                 id("lint/dead-code/no-unused-foreach-key"),
@@ -521,7 +530,7 @@ fn composes_the_difference_with_the_sets() {
     let text = parts.render();
     assert!(
         text.starts_with(
-            "[format]\npreset = \"empty\"\n\n[lint]\nsets = [\"dead-code\"]\nexclude = [\"legacy\"]\n\n[lint.rules]\n\"imports/no-unused\" = \"error\"\n"
+            "[format]\npreset = \"empty\"\n\n[lint]\nsets = [\"rector/dead-code\"]\nexclude = [\"legacy\"]\n\n[lint.rules]\n\"imports/no-unused\" = \"error\"\n"
         ),
         "{text}"
     );

@@ -30,7 +30,8 @@ not-path = ["app/Legacy.php"]
 "arrays/syntax" = false
 
 [lint]
-sets = ["dead-code", "modernize"]
+preset = "recommended"
+sets = ["rector/dead-code"]
 
 [lint.groups]
 style = "warn"
@@ -81,7 +82,7 @@ Extensions add the rules and analysis for a framework or test tool. Each one is 
 | `"on"` | On for every command |
 | `"off"`, or left out | Off |
 
-An extension that is on brings the lint rules of its group that belong to any lint set, whatever `[lint] sets` lists. Its rules in no set, such as `laravel/no-controller-middleware`, stay opt-in. Name them in `[lint.rules]` or `[lint.groups]`. To turn part of an extension off, set its group to `"off"` in `[lint.groups]` or `[analyse.rules]`, or set a single rule to `"off"`.
+An extension that is on lets its lint rules run: the ones your `[lint] preset` or `[lint] sets` hold. Its rules in no preset, such as `laravel/no-controller-middleware`, stay opt-in. Name them in `[lint.rules]` or `[lint.groups]`. To turn part of an extension off, set its group to `"off"` in `[lint.groups]` or `[analyse.rules]`, or set a single rule to `"off"`.
 
 A rule that you name in `[lint.rules]` runs even when its extension is off. Upgrade groups such as `laravel-12` are the exception: they need the extension, and you must name them.
 
@@ -103,7 +104,8 @@ Format always indents with four spaces and writes `\n` line endings. Neither has
 
 | Key | Meaning |
 | --- | --- |
-| `sets` | [Lint sets](/docs/configuration/presets#lint-sets) to turn on: `dead-code`, `modernize`, `code-quality`, `types`, `early-return`, `privatization`, `naming`, `coding-style` |
+| `preset` | [Lint preset](/docs/configuration/presets#lint-presets): `essential`, `recommended`, or `strict`. Each includes the ones before it. No default: without it, only `sets`, groups and rules run |
+| `sets` | [Rector sets](/docs/configuration/presets#rector-sets) to turn on, each exactly as Rector defines it: `rector/dead-code`, `rector/php-sets`, `rector-laravel/laravel-code-quality`, and the [others](/docs/rules/sets) |
 | `exclude` | Added to `[files] exclude` for lint only |
 | `groups` | `"error"`, `"warn"`, or `"off"` for every rule in a group |
 | `rules` | `"error"`, `"warn"`, or `"off"` (not `true` or `false`), or a table with `level`, `fix = "off"`, and the rule's options. `level` defaults to `"error"` |
@@ -111,7 +113,7 @@ Format always indents with four spaces and writes `\n` line endings. Neither has
 
 Later settings win, in this order:
 
-1. Sets, at `"error"`.
+1. The preset and sets, at `"error"`.
 2. Groups.
 3. Rules.
 4. Matching overrides, in the order they appear.
@@ -119,7 +121,7 @@ Later settings win, in this order:
 
 Warnings don't fail the run unless you set a warning limit. `--fix` skips rules with `fix = "off"`.
 
-Laravel, Pest, and PHPUnit rules come from [`[extensions]`](#extensions), not from sets. PHP upgrade rules, such as the `php-8.5` group, run only when `[php] version` is that version or later. Groups such as `laravel-12` turn on only when you name them.
+Laravel, Pest, and PHPUnit rules also need their [extension](#extensions). PHP upgrade rules, such as the `php-8.5` group, run only when `[php] version` is that version or later. Groups such as `laravel-12` turn on only when you name them.
 
 ## [analyse]
 

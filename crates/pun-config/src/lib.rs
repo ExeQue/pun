@@ -13,8 +13,9 @@ mod schema;
 pub use explain::{RULE_DOCS_URL, explain};
 pub use identifiers::{identifiers_of_rules, rule_of_identifier};
 pub use schema::{
-    Analyse, AnalysePreset, AnalyseRule, Files, FixSafety, FormatPreset, Ignore, LINT_SETS, Level,
-    Lint, LintRule, LintSetting, Override, PhpVersion, groups, phpstan_level_rules,
+    Analyse, AnalysePreset, AnalyseRule, Files, FixSafety, FormatPreset, Ignore, Level, Lint,
+    LintPreset, LintRule, LintSetting, Override, PHP_SETS, PhpVersion, RectorSets, groups,
+    lint_sets, phpstan_level_rules, rector_sets,
 };
 
 use anyhow::{Context, Result, bail};
@@ -575,6 +576,7 @@ impl Config {
                 rules: format,
             },
             lint: ShownLint {
+                preset: self.lint.preset,
                 sets: &self.lint.sets,
                 exclude: &self.lint.exclude,
                 ecosystems: &self.lint.ecosystems,
@@ -626,6 +628,8 @@ struct ShownFormat<'a> {
 
 #[derive(Serialize)]
 struct ShownLint<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preset: Option<LintPreset>,
     sets: &'a [String],
     exclude: &'a [String],
     ecosystems: &'a [&'static extensions::ExtensionMeta],

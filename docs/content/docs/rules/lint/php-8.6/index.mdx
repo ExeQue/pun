@@ -12,14 +12,14 @@ Upgrade to PHP 8.6: code a newer PHP removes, deprecates or does better.
 
 Convert nested min()/max() calls to clamp()
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 8.6 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php86` set. Safe fix. Runs only when `[php] version` is 8.6 or later.
 
 </Card>
 <Card title="prefer-readonly-property-default" href="/docs/rules/lint/php-8.6/prefer-readonly-property-default">
 
 Move a constant constructor assignment of a readonly property to a property default value
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.6 or later.
+In the `lint-strict` preset. In Rector's `rector/php86` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.6 or later.
 
 </Card>
 </CardGroup>

@@ -2,7 +2,7 @@ mod common;
 
 use common::pty::{pun, pun_with};
 use common::read;
-use pun_config::{AnalysePreset, Options};
+use pun_config::{AnalysePreset, LintPreset, Options};
 use std::path::{Path, PathBuf};
 
 const LARAVEL_JSON: &str = r#"{"require":{"php":"^8.4","laravel/framework":"^13.0"},"require-dev":{"pestphp/pest":"^4.0"}}"#;
@@ -23,12 +23,12 @@ fn plain(name: &str) -> PathBuf {
     common::project("init", name, &[("composer.json", PLAIN_JSON)])
 }
 
-fn toml(style: &str, sets: &str, analyse: &str) -> String {
-    toml_with(&[], style, sets, analyse)
+fn toml(style: &str, lint: &str, analyse: &str) -> String {
+    toml_with(&[], style, lint, analyse)
 }
 
 /// What init writes, with `[extensions]` turning on the extensions composer.lock shows.
-fn toml_with(extensions: &[&str], style: &str, sets: &str, analyse: &str) -> String {
+fn toml_with(extensions: &[&str], style: &str, lint: &str, analyse: &str) -> String {
     let on = extensions.join(" = \"on\"\n");
     let on = if on.is_empty() {
         on
@@ -36,15 +36,15 @@ fn toml_with(extensions: &[&str], style: &str, sets: &str, analyse: &str) -> Str
         format!("[extensions]\n{on} = \"on\"\n\n")
     };
     format!(
-        "# Written by `pun init`.\n{on}[format]\npreset = \"{style}\"\n\n[lint]\nsets = [{sets}]\n\n[analyse]\npreset = \"{analyse}\"\n"
+        "# Written by `pun init`.\n{on}[format]\npreset = \"{style}\"\n\n[lint]\npreset = \"{lint}\"\n\n[analyse]\npreset = \"{analyse}\"\n"
     )
 }
 
 const ALL: &[&str] = &["laravel", "pest", "phpunit"];
 
-fn loaded(d: &Path) -> (String, Vec<String>, AnalysePreset) {
+fn loaded(d: &Path) -> (String, Option<LintPreset>, AnalysePreset) {
     let c = pun_config::load(d, &Options::default()).unwrap();
-    (c.preset.to_string(), c.lint.sets, c.analyse.preset)
+    (c.preset.to_string(), c.lint.preset, c.analyse.preset)
 }
 
 fn tty(d: &Path, keys: &str) -> (String, Option<i32>) {
@@ -62,22 +62,20 @@ fn laravel_defaults_without_a_terminal() {
     assert_eq!(
         out,
         format!(
-            "\n  Pun · new project setup\n  Found Laravel 13, Pest 4, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint sets: dead-code, modernize\nAnalysis preset: recommended\n\n  Extensions on from composer.lock: Laravel, Pest and PHPUnit. See [extensions] in pun.toml.\n{NEXT}"
+            "\n  Pun · new project setup\n  Found Laravel 13, Pest 4, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint preset: recommended\nAnalysis preset: recommended\n\n  Extensions on from composer.lock: Laravel, Pest and PHPUnit. See [extensions] in pun.toml.\n{NEXT}"
         )
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml_with(
-            ALL,
-            "laravel",
-            "\"dead-code\", \"modernize\"",
-            "recommended"
-        )
+        toml_with(ALL, "laravel", "recommended", "recommended")
     );
-    let sets = vec!["dead-code".to_string(), "modernize".into()];
     assert_eq!(
         loaded(&d),
-        ("laravel".into(), sets, AnalysePreset::Recommended)
+        (
+            "laravel".into(),
+            Some(LintPreset::Recommended),
+            AnalysePreset::Recommended
+        )
     );
 
     let (out, err, code) = pun_with(&d, &["init", "--style", "psr12"], ENV);
@@ -99,11 +97,11 @@ fn plain_project_gets_psr12() {
     assert_eq!(code, Some(0));
     assert_eq!(
         out,
-        "\n  Pun · new project setup\n  Found PHP >=8.4 (composer.json)\n\nCode style: psr12\nLint sets: dead-code, modernize\nAnalysis preset: recommended\n\n  ok Wrote pun.toml\n\n  Done. Run `pun check` any time; `pun check --fix` before you commit.\n  Add `pun check` to CI and your composer scripts.\n"
+        "\n  Pun · new project setup\n  Found PHP >=8.4 (composer.json)\n\nCode style: psr12\nLint preset: recommended\nAnalysis preset: recommended\n\n  ok Wrote pun.toml\n\n  Done. Run `pun check` any time; `pun check --fix` before you commit.\n  Add `pun check` to CI and your composer scripts.\n"
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml("psr12", "\"dead-code\", \"modernize\"", "recommended")
+        toml("psr12", "recommended", "recommended")
     );
 
     let d = common::project("init", "bare", &[]);
@@ -122,43 +120,56 @@ fn flags_pick_the_choices() {
         "init",
         "--style",
         "laravel",
-        "--lint-sets",
-        "types,naming",
+        "--lint",
+        "strict",
         "--analyse",
         "max",
     ];
     let (out, _, code) = pun_with(&d, &args, ENV);
     assert_eq!(code, Some(0));
     assert!(
-        out.starts_with("\n  Pun · new project setup\n  Found PHPUnit dev-main, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint sets: types, naming\nAnalysis preset: max\n\n  Extensions on from composer.lock: PHPUnit. See [extensions] in pun.toml.\n"),
+        out.starts_with("\n  Pun · new project setup\n  Found PHPUnit dev-main, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint preset: strict\nAnalysis preset: max\n\n  Extensions on from composer.lock: PHPUnit. See [extensions] in pun.toml.\n"),
         "{out}"
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml_with(&["phpunit"], "laravel", "\"types\", \"naming\"", "max")
+        toml_with(&["phpunit"], "laravel", "strict", "max")
     );
-    let sets = vec!["types".to_string(), "naming".into()];
-    assert_eq!(loaded(&d), ("laravel".into(), sets, AnalysePreset::Max));
+    assert_eq!(
+        loaded(&d),
+        (
+            "laravel".into(),
+            Some(LintPreset::Strict),
+            AnalysePreset::Max
+        )
+    );
 
-    let d = plain("no-sets");
-    let (out, _, _) = pun(&d, &["init", "--lint-sets", "", "--analyse", "basic"]);
+    let d = plain("essential");
+    let (out, _, _) = pun(&d, &["init", "--lint", "essential", "--analyse", "basic"]);
     assert!(
-        out.contains("Lint sets: none\nAnalysis preset: basic\n"),
+        out.contains("Lint preset: essential\nAnalysis preset: basic\n"),
         "{out}"
     );
-    assert_eq!(read(&d, "pun.toml"), toml("psr12", "", "basic"));
-    assert_eq!(loaded(&d), ("psr12".into(), vec![], AnalysePreset::Basic));
+    assert_eq!(read(&d, "pun.toml"), toml("psr12", "essential", "basic"));
+    assert_eq!(
+        loaded(&d),
+        (
+            "psr12".into(),
+            Some(LintPreset::Essential),
+            AnalysePreset::Basic
+        )
+    );
 }
 
 #[test]
 fn bad_flags_are_rejected() {
     let d = plain("bad");
-    let (out, err, code) = pun_with(&d, &["init", "--lint-sets", "dead-code,speed"], ENV);
+    let (out, err, code) = pun_with(&d, &["init", "--lint", "speed"], ENV);
     assert_eq!(
         (out.as_str(), err.as_str(), code),
         (
             "",
-            "✖ --lint-sets: `speed` is not a lint set; the sets are `dead-code`, `modernize`, `code-quality`, `types`, `early-return`, `privatization`, `naming`, `coding-style`\n",
+            "✖ --lint: `speed` is not a lint preset; use `essential`, `recommended`, `strict`\n",
             Some(2)
         )
     );
@@ -209,7 +220,9 @@ fn agent_mode() {
     assert_eq!(code, Some(0));
     let (summary, item) = out.split_once('\n').unwrap();
     assert!(
-        summary.starts_with("pun init: ok, pun.toml written, style laravel, lint sets dead-code modernize, analyse recommended"),
+        summary.starts_with(
+            "pun init: ok, pun.toml written, style laravel, lint recommended, analyse recommended"
+        ),
         "{out}"
     );
     assert_eq!(
@@ -218,12 +231,7 @@ fn agent_mode() {
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml_with(
-            ALL,
-            "laravel",
-            "\"dead-code\", \"modernize\"",
-            "recommended"
-        )
+        toml_with(ALL, "laravel", "recommended", "recommended")
     );
 }
 
@@ -239,7 +247,7 @@ fn terminal_accepts_the_defaults() {
     for answer in [
         "? Code style ›",
         "✔ Code style · laravel",
-        "✔ Lint sets (space toggles, enter confirms) · dead-code, modernize",
+        "✔ Lint preset · recommended",
         "✔ Analysis preset · recommended",
     ] {
         assert!(out.contains(answer), "{answer}: {out}");
@@ -252,32 +260,20 @@ fn terminal_accepts_the_defaults() {
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml_with(
-            ALL,
-            "laravel",
-            "\"dead-code\", \"modernize\"",
-            "recommended"
-        )
+        toml_with(ALL, "laravel", "recommended", "recommended")
     );
 
     let d = plain("tty-pick");
-    let (out, code) = tty(&d, "\\033[B\\r\\033[B\\033[B \\r\\033[B\\r");
+    let (out, code) = tty(&d, "\\033[B\\r\\033[B\\r\\033[B\\r");
     assert_eq!(code, Some(0), "{out}");
     assert!(out.contains("✔ Code style · laravel"), "{out}");
-    assert_eq!(
-        read(&d, "pun.toml"),
-        toml(
-            "laravel",
-            "\"dead-code\", \"modernize\", \"code-quality\"",
-            "strict"
-        )
-    );
+    assert_eq!(read(&d, "pun.toml"), toml("laravel", "strict", "strict"));
 
     let d = plain("tty-ci");
     let (out, code) = common::pty::pty(&d, "init", "", &[("CI", "true"), ENV[0], ENV[1]]);
     assert_eq!(code, Some(0), "{out}");
     assert!(
-        out.contains("\nCode style: psr12\nLint sets: dead-code, modernize\n"),
+        out.contains("\nCode style: psr12\nLint preset: recommended\n"),
         "{out}"
     );
 }
@@ -303,11 +299,6 @@ fn terminal_offers_migrate() {
     assert!(out.ends_with(NEXT), "{out}");
     assert_eq!(
         read(&d, "pun.toml"),
-        toml_with(
-            ALL,
-            "laravel",
-            "\"dead-code\", \"modernize\"",
-            "recommended"
-        )
+        toml_with(ALL, "laravel", "recommended", "recommended")
     );
 }

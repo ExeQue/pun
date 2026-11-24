@@ -9,16 +9,152 @@ use std::path::Path;
 
 pub use pun_tokens::PhpVersion;
 
-pub const LINT_SETS: [&str; 8] = [
-    "dead-code",
-    "modernize",
-    "code-quality",
-    "types",
-    "early-return",
-    "privatization",
-    "naming",
-    "coding-style",
+/// `[lint] preset`: Pun's own lint presets, each including the ones below it (mapping.toml's `tier`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LintPreset {
+    Essential,
+    Recommended,
+    Strict,
+}
+
+impl LintPreset {
+    /// Lowest first.
+    pub const ALL: [Self; 3] = [Self::Essential, Self::Recommended, Self::Strict];
+    /// The preset `pun init` writes.
+    pub const DEFAULT: Self = Self::Recommended;
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Essential => "essential",
+            Self::Recommended => "recommended",
+            Self::Strict => "strict",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|p| p.name() == name)
+    }
+}
+
+impl std::fmt::Display for LintPreset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+impl Serialize for LintPreset {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.name())
+    }
+}
+
+/// `withPhpSets()`: every `rector/phpNN` set up to `[php] version`.
+pub const PHP_SETS: &str = "rector/php-sets";
+
+/// The lint sets before 2026-11-24, each with the Rector set that replaced it (`None`: Rector's set has no rules).
+const OLD_SETS: [(&str, Option<&str>); 8] = [
+    ("dead-code", Some("rector/dead-code")),
+    ("modernize", Some(PHP_SETS)),
+    ("code-quality", Some("rector/code-quality")),
+    ("types", Some("rector/type-declaration")),
+    ("early-return", None),
+    ("privatization", Some("rector/privatization")),
+    ("naming", None),
+    ("coding-style", Some("rector/coding-style")),
 ];
+
+/// Every Rector set under its Pun name: the Pun lint rules its Rector rules map to, each with those Rector rules'
+/// short class names (rules/rector-sets.json, written by scripts/gen-rector-sets.py).
+pub type RectorSets = BTreeMap<String, BTreeMap<String, Vec<String>>>;
+
+pub fn rector_sets() -> &'static RectorSets {
+    static T: std::sync::LazyLock<RectorSets> = std::sync::LazyLock::new(|| {
+        serde_json::from_str(include_str!("../rules/rector-sets.json")).unwrap()
+    });
+    &T
+}
+
+/// The names `[lint] sets` takes: every Rector set, and `rector/php-sets`.
+pub fn lint_sets() -> Vec<&'static str> {
+    let mut out: Vec<&'static str> = rector_sets().keys().map(String::as_str).collect();
+    out.push(PHP_SETS);
+    out.sort_unstable();
+    out
+}
+
+/// The Rector sets `sets` name, resolved: each Pun rule they hold, with the Rector rules (short class names) behind it.
+pub(crate) fn rector_members(
+    sets: &[String],
+    php: PhpVersion,
+) -> BTreeMap<String, BTreeSet<String>> {
+    let mut out: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut add = |name: &str| {
+        for (id, classes) in &rector_sets()[name] {
+            out.entry(id.clone())
+                .or_default()
+                .extend(classes.iter().cloned());
+        }
+    };
+    for s in sets {
+        if s == PHP_SETS {
+            let target = php.major() * 10 + php.minor();
+            for name in rector_sets().keys() {
+                let version = name
+                    .strip_prefix("rector/php")
+                    .and_then(|v| v.parse::<u32>().ok());
+                if version.is_some_and(|v| v <= target) {
+                    add(name);
+                }
+            }
+        } else {
+            add(s);
+        }
+    }
+    out
+}
+
+fn check_sets(path: &Path, sets: &[String]) -> Result<()> {
+    for s in sets {
+        if s == PHP_SETS || rector_sets().contains_key(s) {
+            continue;
+        }
+        match OLD_SETS.iter().find(|(old, _)| old == s) {
+            Some((_, Some(new))) => bail!(
+                "{}: [lint] sets: `{s}` is now `{new}`, Rector's set; for Pun's own picks use [lint] preset = {}",
+                path.display(),
+                presets_list()
+            ),
+            Some((_, None)) => bail!(
+                "{}: [lint] sets: `{s}` is gone: Rector's set has no rules; use [lint] preset = {}",
+                path.display(),
+                presets_list()
+            ),
+            None => bail!(
+                "{}: [lint] sets: `{s}` is not a lint set; the sets are Rector's, such as `rector/dead-code`, `rector/php-sets` and `rector-laravel/laravel-code-quality` (`pun explain` lists a rule's sets)",
+                path.display()
+            ),
+        }
+    }
+    Ok(())
+}
+
+fn presets_list() -> String {
+    let names: Vec<String> = LintPreset::ALL.iter().map(|p| format!("\"{p}\"")).collect();
+    names.join(" | ")
+}
+
+fn lint_preset(path: &Path, v: Option<&str>) -> Result<Option<LintPreset>> {
+    v.map(|name| {
+        LintPreset::parse(name).ok_or_else(|| {
+            anyhow::anyhow!(
+                "{}: [lint] preset: `{name}` is not a lint preset; use {}",
+                path.display(),
+                presets_list()
+            )
+        })
+    })
+    .transpose()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FormatPreset {
@@ -315,6 +451,7 @@ pub struct Override {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Lint {
+    pub preset: Option<LintPreset>,
     pub sets: Vec<String>,
     pub exclude: Vec<String>,
     pub ecosystems: Vec<&'static ExtensionMeta>,
@@ -383,6 +520,7 @@ pub(crate) struct FilesToml {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct LintToml {
+    preset: Option<String>,
     #[serde(default)]
     sets: Vec<String>,
     #[serde(default)]
@@ -619,15 +757,8 @@ pub(crate) fn lint(
     gates: &Gates,
     phpstan: &BTreeSet<String>,
 ) -> Result<Lint> {
-    for s in &t.sets {
-        if !LINT_SETS.contains(&s.as_str()) {
-            bail!(
-                "{}: [lint] sets: `{s}` is not a lint set; the sets are {}",
-                path.display(),
-                list(&LINT_SETS)
-            );
-        }
-    }
+    check_sets(path, &t.sets)?;
+    let preset = lint_preset(path, t.preset.as_deref())?;
     let mut groups = BTreeMap::new();
     for (g, v) in t.groups {
         if !groups_contains(&g) {
@@ -667,8 +798,9 @@ pub(crate) fn lint(
         options,
         named,
     };
+    let members = rector_members(&t.sets, gates.php);
     let mut on: BTreeMap<String, LintRule> = BTreeMap::new();
-    if !t.sets.is_empty() || !groups.is_empty() || !ecosystems.is_empty() {
+    if preset.is_some() || !members.is_empty() || !groups.is_empty() {
         let ported =
             |e: &toml::Value| e.get("ported").and_then(toml::Value::as_bool) != Some(false);
         for (id, e) in rules()
@@ -676,27 +808,21 @@ pub(crate) fn lint(
             .filter(|(id, e)| id.starts_with("lint/") && ported(e))
         {
             let group = group_of(id);
-            let level = if let Some(l) = groups.get(group) {
-                *l
-            } else {
-                // An extension that is on brings its rules in any set: they are its defaults. The rules in no set,
-                // such as its upgrade groups', stay opt-in by name.
-                let sets = e.get("sets").and_then(toml::Value::as_array);
-                let own = extensions::owner(group).is_some();
-                let in_set = sets.is_some_and(|s| {
-                    !s.is_empty()
-                        && (own
-                            || s.iter()
-                                .any(|s| t.sets.iter().any(|t| s.as_str() == Some(t))))
-                });
-                (in_set && gates.allows(group, &ecosystems)).then_some(Level::Error)
+            let tier = (e.get("preset").and_then(toml::Value::as_str)).and_then(LintPreset::parse);
+            let in_tier = matches!((tier, preset), (Some(t), Some(p)) if t <= p);
+            let classes = members.get(id.as_str());
+            let level = match groups.get(group) {
+                Some(l) => *l,
+                None => ((in_tier || classes.is_some()) && gates.allows(group, &ecosystems))
+                    .then_some(Level::Error),
             };
-            if let Some(level) = level {
-                on.insert(
-                    id.clone(),
-                    rule(id.clone(), level, true, Value::Null, false),
-                );
-            }
+            let Some(level) = level else { continue };
+            // A rule that only a Rector set brings runs as that set's Rector rules do.
+            let options = match classes {
+                Some(classes) if !in_tier => as_rector(path, id, classes)?,
+                _ => Value::Null,
+            };
+            on.insert(id.clone(), rule(id.clone(), level, true, options, false));
         }
     }
     for id in phpstan_lint_on(phpstan, &groups, gates, &ecosystems) {
@@ -710,6 +836,7 @@ pub(crate) fn lint(
         }
     }
     Ok(Lint {
+        preset,
         sets: t.sets,
         exclude: [&files.exclude[..], &t.exclude[..]].concat(),
         ecosystems,
@@ -735,6 +862,15 @@ fn phpstan_lint_on(
         })
         .cloned()
         .collect()
+}
+
+/// The options that keep `id` to what `classes` (its Rector rules in the sets) rewrite, as `pun migrate` writes them.
+fn as_rector(path: &Path, id: &str, classes: &BTreeSet<String>) -> Result<Value> {
+    let options = crate::migrate::rector::as_rector_options(id, classes);
+    if options.is_empty() {
+        return Ok(Value::Null);
+    }
+    Ok(setting(path, &id[5..], toml::Value::Table(options))?.options)
 }
 
 fn groups_contains(g: &str) -> bool {

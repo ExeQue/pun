@@ -12,392 +12,392 @@ Code that never runs, or whose result is never used. Also in [analyse](/docs/rul
 
 Reduce always false in a `if (a || b)` condition
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-always-true-if" href="/docs/rules/lint/dead-code/no-always-true-if">
 
 Remove if condition that is always true
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-always-true-instanceof" href="/docs/rules/lint/dead-code/no-always-true-instanceof">
 
 Remove instanceof checks and assert(instanceof) calls that are always true for the known type.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-and-true" href="/docs/rules/lint/dead-code/no-and-true">
 
 Remove `and true` that has no added value
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-cast-in-concat" href="/docs/rules/lint/dead-code/no-cast-in-concat">
 
 Remove (string) casting when it comes to concat, that does this by default
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-condition-exact-return" href="/docs/rules/lint/dead-code/no-condition-exact-return">
 
 Remove an if that returns the value it compares when the next statement returns the compared expression.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-dead-catch" href="/docs/rules/lint/dead-code/no-dead-catch">
 
 Remove dead catches
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-dead-php-version-check" href="/docs/rules/lint/dead-code/no-dead-php-version-check">
 
 Remove PHP_VERSION_ID / version_compare() checks that are always true for the configured PHP version.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-double-self-assignment" href="/docs/rules/lint/dead-code/no-double-self-assignment">
 
 Remove duplicated self assign of the same variable
 
-In the `dead-code` set. Safe fix. Intent: correctness.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix. Intent: correctness.
 
 </Card>
 <Card title="no-duplicate-array-key" href="/docs/rules/lint/dead-code/no-duplicate-array-key">
 
 Remove duplicated key in defined arrays
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-duplicate-case-body" href="/docs/rules/lint/dead-code/no-duplicate-case-body">
 
 2 following switch keys with identical  will be reduced to one result
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-empty-block" href="/docs/rules/lint/dead-code/no-empty-block">
 
 Remove or report if/for/foreach/while statements with an empty body.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-empty-method" href="/docs/rules/lint/dead-code/no-empty-method">
 
 Remove empty class methods not required by parents
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-false-ternary" href="/docs/rules/lint/dead-code/no-false-ternary">
 
 Change ternary of `bool : false` to `&& bool`
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-future-php-version-check" href="/docs/rules/lint/dead-code/no-future-php-version-check">
 
 Unwrap `if` checks on a PHP version that the configured PHP version always meets.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-identical-branches" href="/docs/rules/lint/dead-code/no-identical-branches">
 
 Remove if/else if they have same content
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-implode-ternary" href="/docs/rules/lint/dead-code/no-implode-ternary">
 
 Drop an empty-array ternary around `implode()`
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="no-invalid-return-tag" href="/docs/rules/lint/dead-code/no-invalid-return-tag">
 
 Remove @return docblock that contradicts the declared native return type
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-invalid-var-tag" href="/docs/rules/lint/dead-code/no-invalid-var-tag">
 
 Removes non-existing @var annotations above the code
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-null-tag-value" href="/docs/rules/lint/dead-code/no-null-tag-value">
 
 Remove @var/@param/@return null docblock
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-overridden-assign-before-if" href="/docs/rules/lint/dead-code/no-overridden-assign-before-if">
 
 Remove assign before if/else that overrides the variable in both branches
 
-In the `dead-code` set. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/dead-code` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-parent-call-without-parent" href="/docs/rules/lint/dead-code/no-parent-call-without-parent">
 
 Remove unused parent call with no parent class
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code`, `rector/php80` sets. Safe fix.
 
 </Card>
 <Card title="no-redundant-condition" href="/docs/rules/lint/dead-code/no-redundant-condition">
 
 Merge an if into the if before it when both check the same condition.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-default-argument" href="/docs/rules/lint/dead-code/no-redundant-default-argument">
 
 Remove arguments that equal the parameter default value.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code`, `rector/named-args` sets. Safe fix.
 
 </Card>
 <Card title="no-redundant-foreach-guard" href="/docs/rules/lint/dead-code/no-redundant-foreach-guard">
 
 Remove unused if check to non-empty array before foreach of the array
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-node-instanceof" href="/docs/rules/lint/dead-code/no-redundant-node-instanceof">
 
 Remove refactor() method of Rector rule double check of $classMethod instance, if already defined in @param type
 
-Not in any set. Safe fix.
+Not in any preset. In Rector's `rector/rector-preset` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-promoted-assign" href="/docs/rules/lint/dead-code/no-redundant-promoted-assign">
 
 Remove useless re-assign from property promotion
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-property-default" href="/docs/rules/lint/dead-code/no-redundant-property-default">
 
 Remove redundant default value from property that is always assigned in the constructor
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-type-check" href="/docs/rules/lint/dead-code/no-redundant-type-check">
 
 Remove is_&lt;type>() check that can never fail on already known type
 
-In the `dead-code` set. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/dead-code` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-return-in-constructor" href="/docs/rules/lint/dead-code/no-return-in-constructor">
 
 Remove useless return Expr in __construct()
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-self-assignment" href="/docs/rules/lint/dead-code/no-self-assignment">
 
 Detects and removes self-assignments where a variable or property is assigned to itself.
 
-In the `dead-code` set. Safe fix. Intent: correctness.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix. Intent: correctness.
 
 </Card>
 <Card title="no-typed-property-instanceof" href="/docs/rules/lint/dead-code/no-typed-property-instanceof">
 
 Remove dead instanceof check on type hinted property
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unreachable-code" href="/docs/rules/lint/dead-code/no-unreachable-code">
 
 Remove unreachable statements
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-assignment" href="/docs/rules/lint/dead-code/no-unused-assignment">
 
 Remove assignments whose value is never read, including stores overwritten before use.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-constructor-param" href="/docs/rules/lint/dead-code/no-unused-constructor-param">
 
 Remove unused parameter in constructor
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-expression" href="/docs/rules/lint/dead-code/no-unused-expression">
 
 Remove dead code statements
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-foreach-key" href="/docs/rules/lint/dead-code/no-unused-foreach-key">
 
 Remove unused key in foreach
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-global" href="/docs/rules/lint/dead-code/no-unused-global">
 
 Flags `global $x;` declarations whose name is never read or written
 
-In the `code-quality` set. Report only. Intent: correctness.
+In the `lint-essential` preset and every stricter one. Report only. Intent: correctness.
 
 </Card>
 <Card title="no-unused-private-constant" href="/docs/rules/lint/dead-code/no-unused-private-constant">
 
 Remove unused class constants
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-private-method" href="/docs/rules/lint/dead-code/no-unused-private-method">
 
 Remove unused private method
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-private-method-param" href="/docs/rules/lint/dead-code/no-unused-private-method-param">
 
 Remove unused parameters of private methods, including test-method parameters overwritten before use.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-private-property" href="/docs/rules/lint/dead-code/no-unused-private-property">
 
 Remove unused private properties
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-promoted-property" href="/docs/rules/lint/dead-code/no-unused-promoted-property">
 
 Remove unused promoted property
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-public-method-param" href="/docs/rules/lint/dead-code/no-unused-public-method-param">
 
 Remove unused parameter in public method on final class without extends and interface
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-return-type" href="/docs/rules/lint/dead-code/no-unused-return-type">
 
 Narrow overly wide union return type declaration if possible
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-unused-return-value" href="/docs/rules/lint/dead-code/no-unused-return-value">
 
 Detects private methods whose return value is thrown away at every call site.
 
-In the `dead-code` set. Report only.
+In the `lint-essential` preset and every stricter one. Report only.
 
 </Card>
 <Card title="no-unused-static" href="/docs/rules/lint/dead-code/no-unused-static">
 
 Flags `static $x;` declarations whose name is never read or written
 
-In the `code-quality` set. Report only. Intent: correctness.
+In the `lint-essential` preset and every stricter one. Report only. Intent: correctness.
 
 </Card>
 <Card title="no-useless-cast" href="/docs/rules/lint/dead-code/no-useless-cast">
 
 Remove casts to the type the value already has, including (string) inside concatenation.
 
-In the `dead-code` set. Safe fix. Upstream setting: `strictRules.uselessCast`.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix. Upstream setting: `strictRules.uselessCast`.
 
 </Card>
 <Card title="no-useless-catch" href="/docs/rules/lint/dead-code/no-useless-catch">
 
 Remove dead try/catch
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-condition" href="/docs/rules/lint/dead-code/no-useless-condition">
 
 Remove if conditions whose branches return the same value.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-continue" href="/docs/rules/lint/dead-code/no-useless-continue">
 
 Remove `continue` as the last statement of a loop.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-filter-var" href="/docs/rules/lint/dead-code/no-useless-filter-var">
 
 Removes filter_var() calls with exact type
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-math" href="/docs/rules/lint/dead-code/no-useless-math">
 
 Remove arithmetic that does not change the value (`+ 0`, `* 1`, ...).
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-override" href="/docs/rules/lint/dead-code/no-useless-override">
 
 Remove methods and constructors that only call the parent with the same arguments.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-phpdoc-type" href="/docs/rules/lint/dead-code/no-useless-phpdoc-type">
 
 Remove PHPDoc types that add nothing over the native type (`@var null`, unions wider than the native return type).
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-useless-ternary" href="/docs/rules/lint/dead-code/no-useless-ternary">
 
 Simplify ternaries whose result does not depend on the condition, or that equal a boolean expression.
 
-In the `dead-code` and `code-quality` sets. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/code-quality`, `rector/dead-code` sets. Safe fix.
 
 </Card>
 </CardGroup>

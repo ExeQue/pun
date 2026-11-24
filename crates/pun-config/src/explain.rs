@@ -69,7 +69,16 @@ fn text(id: &str) -> String {
     };
     match command {
         "format" => row("presets", &opt_in(list("presets"))),
-        "lint" => row("sets", &opt_in(list("sets"))),
+        "lint" => {
+            row("preset", &opt_in(str("preset").into_iter().collect()));
+            let sets: Vec<&str> = (crate::rector_sets().iter())
+                .filter(|(_, rules)| rules.contains_key(id))
+                .map(|(s, _)| s.as_str())
+                .collect();
+            if !sets.is_empty() {
+                row("sets", &sets.join(", "));
+            }
+        }
         _ => row("preset", &opt_in(str("preset").into_iter().collect())),
     }
     if let Some(p) = phpstan_preset(id) {

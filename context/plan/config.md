@@ -44,7 +44,7 @@ not-path = ["app/Legacy.php"]         # Pint's notPath (no notName: PLAN.md §2,
 "arrays/syntax" = false
 
 [lint]
-sets = ["dead-code", "modernize"]     # the checklist; see §5
+preset = "recommended"               # Pun's ladder; see §5
 
 [lint.groups]                         # a level for a whole group
 style = "warn"
@@ -69,7 +69,7 @@ baseline = "pun-baseline.toml"
 "undefined/method" = { magic = true } # options in a table mean "on, with these options"
 ```
 
-`pun init` writes only `[format] preset`, `[lint] sets` and `[analyse] preset`. Everything else is optional.
+`pun init` writes only `[format] preset`, `[lint] preset` and `[analyse] preset`. Everything else is optional.
 
 **Files.** `[files] paths` and `exclude` apply to every command; each command's own `exclude` is added on top, so
 format, lint and analyse can see different file sets. `vendor/` is never checked, but analyse reads it for symbols.
@@ -91,10 +91,10 @@ format, lint and analyse can see different file sets. `vendor/` is never checked
 
 - **Format presets:** `laravel`, `psr12`, `empty`. There is no `per` or `symfony` preset; their rules stay available
   one by one, and migrate expands a pint.json that used them into explicit rules.
-- **Lint sets:** `dead-code`, `modernize`, `code-quality`, `types`, `early-return`, `privatization`, `naming`,
-  `coding-style`. Sets are tags on rules, and a rule can be in several. An extension that is on in `[extensions]`
-  brings every rule of its groups that sits in some set, whatever `[lint] sets` lists (extensions.md). Rules in no set
-  are opt-in by name or group.
+- **Lint presets and Rector sets** (2026-11-24, lint.md §8): `[lint] preset` is `essential`, `recommended` or
+  `strict`, each including the one below; `[lint] sets` takes Rector's sets exactly (`rector/dead-code`,
+  `rector/php-sets`, `rector-laravel/laravel-code-quality`, ...). An extension that is on lets its rules in the preset
+  or sets run. Rules in neither are opt-in by name or group.
 - **Lint levels, as oxlint:** `"off"`, `"warn"`, `"error"` per rule or group. A rule enabled by a set is `error` unless
   set to `warn`. Only `error` fails. `--deny-warnings` makes warnings fail, `--max-warnings <n>` fails above n.
   `-A` / `-W` / `-D <rule or group>` set a level for one run. `[[lint.overrides]]` changes levels per path.

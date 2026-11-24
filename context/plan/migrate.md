@@ -21,7 +21,7 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
 **Unsupported items are named, skipped, and Pun asks for a PR.** There is no fallback to PHP:
 ```
  ✔ pint.json        → [format] preset laravel, 6 rules changed, 3 risky rules → [lint]
- ✔ rector.php       → [lint] sets dead-code, code-quality; 4 rules
+ ✔ rector.php       → [lint] sets rector/dead-code, rector/code-quality; 4 rules
  ✔ phpstan.neon     → [analyse] 212 rules (level 6), 14 ignoreErrors
  ⚠ phpdoc_tag_casing                   not supported by Pun yet; skipped
  ⚠ phpstan: Mockery extension          not supported by Pun yet; skipped
@@ -32,7 +32,7 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
   explicit rules; a `symfony` preset stops migrate with an error. Risky and code-deleting rules go to `[lint.rules]`
   at `error`. Custom fixer classes are named as unsupported. The Finder (paths, exclude, notPath) moves to
   `[format]`; `notName` is named as unsupported.
-- **rector.php:** paths and skip, prepared sets to `[lint] sets` one to one, single rules to `[lint.rules]`, PHP and
+- **rector.php:** paths and skip, Rector's sets to `rector/*` sets one to one (`withPhpSets()` to `rector/php-sets`), single rules to `[lint.rules]`, PHP and
   Laravel level sets to the upgrade groups, all at `error`. Symfony, Doctrine and downgrade sets are named as
   unsupported.
 - **phpstan.neon:** the level expands into the exact rules it ran, parameters into rule options, `ignoreErrors` into

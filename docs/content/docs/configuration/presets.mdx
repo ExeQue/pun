@@ -1,9 +1,9 @@
 ---
 title: Presets
-description: Pick the rules each command runs with format presets, lint sets, and analyse presets.
+description: Pick the rules each command runs with format presets, lint presets, Rector sets, and analyse presets.
 ---
 
-Each command picks its rules on its own. `[format] preset`, `[lint] sets`, and `[analyse] preset` set them. There is no top-level preset. To see the full rule list of one choice, open its page under [rule presets](/docs/rules/presets) or [lint sets](/docs/rules/sets).
+Each command picks its rules on its own. `[format] preset`, `[lint] preset` and `sets`, and `[analyse] preset` set them. There is no top-level preset. To see the full rule list of one choice, open its page under [rule presets](/docs/rules/presets) or [Rector sets](/docs/rules/sets).
 
 ## Format presets
 
@@ -15,27 +15,41 @@ Each command picks its rules on its own. `[format] preset`, `[lint] sets`, and `
 
 `[format.rules]` overrides the preset. Pint's `per` is not a Pun preset: `pun migrate` expands it into rules over `empty`. Pun has no `symfony` preset, and `pun migrate` stops with an error on a `pint.json` that uses it.
 
-## Lint sets
+## Lint presets
 
-Sets turn on groups of lint rules at `"error"`. A rule can belong to several sets.
+Each preset includes the ones above it in this table.
 
-| Set | Turns on rules for |
+| Preset | Turns on |
 | --- | --- |
-| `dead-code` | Code that never runs, or whose result is never used |
-| `modernize` | Newer PHP syntax, up to `[php] version` |
-| `code-quality` | Simpler equivalents and likely bugs |
-| `types` | Missing type declarations and PHPDoc types |
-| `early-return` | Early returns and continues instead of nesting |
-| `privatization` | Narrower visibility, and final classes and constants |
-| `naming` | Names that match their types. It holds no rules today |
-| `coding-style` | One consistent way to write the same thing |
+| `essential` | Likely bugs and dead code, with safe fixes only |
+| `recommended` | Newer PHP syntax up to `[php] version`, the Laravel, Pest, and PHPUnit quality rules, and simpler equivalents. The default for `pun init`. |
+| `strict` | Added types, narrower visibility, early returns, coding style, and every rule whose fix is unsafe |
 
 ```toml pun.toml
 [lint]
-sets = ["dead-code", "modernize"]
+preset = "recommended"
 ```
 
-Laravel, Pest, and PHPUnit rules also need their [extension](/docs/configuration/pun-toml#extensions). To turn on a rule outside your sets, name the rule or its group. For precedence and path overrides, see [`[lint]`](/docs/configuration/pun-toml#lint).
+Pun's presets are its own picks, from Rector, PHP-CS-Fixer's risky fixers, and Mago. Laravel, Pest, and PHPUnit rules also need their [extension](/docs/configuration/pun-toml#extensions). To turn on a rule outside your preset, name the rule or its group. For precedence and path overrides, see [`[lint]`](/docs/configuration/pun-toml#lint). The [lint preset pages](/docs/rules/presets) list every rule.
+
+## Rector sets
+
+To run exactly what a Rector set runs, name it in `sets`. Each is Rector's own set, under its own name:
+
+```toml pun.toml
+[lint]
+sets = ["rector/dead-code", "rector/code-quality", "rector/php-sets"]
+```
+
+| Sets | From |
+| --- | --- |
+| `rector/dead-code`, `rector/code-quality`, `rector/coding-style`, `rector/type-declaration`, `rector/privatization`, `rector/php84`, ... | Rector |
+| `rector/php-sets` | Rector's `withPhpSets()`: every PHP set up to `[php] version` |
+| `rector-laravel/laravel-code-quality`, `rector-laravel/laravel-130`, ... | rector-laravel |
+| `rector-phpunit/phpunit-code-quality`, ... | rector-phpunit |
+| `pest/coding-style` | Pest's Rector plugin |
+
+[Rector sets](/docs/rules/sets) lists them all, with each one's rules. `pun migrate` writes the sets your `rector.php` uses. A rule that Pun merged from several Rector rules runs only the rewrites of the set's Rector rules. Rector rules that are format rules in Pun stay under `[format]`. A preset and sets work together: a rule runs when either turns it on.
 
 ## Analyse presets
 

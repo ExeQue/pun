@@ -21,7 +21,7 @@ Each command answers one question.
 | [`pun check`](/docs/commands/check) | All three, in one pass | With `--fix` |
 
 - **Format** changes only layout, casing, and spelling. It never changes what the code does, so it is safe on save. Fixers that can change behavior, such as `==` to `===`, are lint rules.
-- **Lint** looks at one file at a time. Upgrades, such as newer PHP syntax, are lint sets like [`modernize`](/docs/rules/sets/modernize). There is no separate upgrade command.
+- **Lint** looks at one file at a time. Upgrades, such as newer PHP syntax, are lint rules in the presets, or Rector sets like [`rector/php-sets`](/docs/rules/sets/rector/php-sets). There is no separate upgrade command.
 - **Analyse** checks types across files. Each finding keeps its PHPStan identifier, such as `argument.type`.
 - **Check** applies lint fixes, formats the result, then analyses the final code. It reports only what is left.
 

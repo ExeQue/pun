@@ -37,7 +37,7 @@ Lint also takes the file options of [`pun format`](/docs/commands/format#options
 
 ## What happens
 
-- Reads the `[lint]` sets and rules from `pun.toml`.
+- Reads the `[lint]` preset, sets and rules from `pun.toml`.
 - Checks each file and prints the problems.
 - With `--fix`, edits the files. It does not format them, so use `pun check --fix` for both.
 - Only `error` rules fail the run. `warn` rules only report.
@@ -45,7 +45,7 @@ Lint also takes the file options of [`pun format`](/docs/commands/format#options
 
 ```toml pun.toml
 [lint]
-sets = ["dead-code", "modernize"]
+preset = "recommended"
 
 [lint.rules]
 "style/require-final-class" = "error"

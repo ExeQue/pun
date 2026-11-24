@@ -12,70 +12,70 @@ Upgrade to PHP 7.0: code a newer PHP removes, deprecates or does better.
 
 Changes call_user_method()/call_user_method_array() to call_user_func()/call_user_func_array()
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="no-list-from-string" href="/docs/rules/lint/php-7.0/no-list-from-string">
 
 list() cannot split string directly anymore, use str_split()
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-braced-variable-variable" href="/docs/rules/lint/php-7.0/prefer-braced-variable-variable">
 
 Ensure variable variables are wrapped in curly braces
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-coalesce-return" href="/docs/rules/lint/php-7.0/prefer-coalesce-return">
 
 Change `if` with `isset` and `return` to coalesce
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-random-int" href="/docs/rules/lint/php-7.0/prefer-random-int">
 
 Changes rand, srand, and getrandmax to newer alternatives
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php70` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-spaceship" href="/docs/rules/lint/php-7.0/prefer-spaceship">
 
 Use &lt;=> spaceship instead of ternary with same effect
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-spaceship-return" href="/docs/rules/lint/php-7.0/prefer-spaceship-return">
 
 Changes if/else to spaceship &lt;=> where useful
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-static-method-call" href="/docs/rules/lint/php-7.0/prefer-static-method-call">
 
 Changes $this->call() to static method to static call
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-throwable-handler" href="/docs/rules/lint/php-7.0/prefer-throwable-handler">
 
 Change typehint from `Exception` to `Throwable`
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php70` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 <Card title="prefer-time" href="/docs/rules/lint/php-7.0/prefer-time">
 
 Renames mktime() without arguments to time()
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php70` set. Safe fix. Runs only when `[php] version` is 7.0 or later.
 
 </Card>
 </CardGroup>

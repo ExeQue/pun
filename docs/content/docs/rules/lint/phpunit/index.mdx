@@ -12,938 +12,938 @@ PHPUnit (ecosystem: on when composer.lock has phpunit/phpunit). Also in [format]
 
 Add #[AllowMockObjectsWithoutExpectations] to PHPUnit test classes whose mocks have no expectations.
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-closure-return-type-from-assert" href="/docs/rules/lint/phpunit/add-closure-return-type-from-assert">
 
 Add return type to closures narrowed by assertInstanceOf() inside PHPUnit test case classes
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-data-provider-allow-mock-objects" href="/docs/rules/lint/phpunit/add-data-provider-allow-mock-objects">
 
 Add #[AllowMockObjectsWithoutExpectations] attribute to PHPUnit test classes that have methods with data providers and mock objects without expectations
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-data-provider-iterator-return-type" href="/docs/rules/lint/phpunit/add-data-provider-iterator-return-type">
 
 Add Iterator type on known PHPUnit data providers
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-depended-test-return-type" href="/docs/rules/lint/phpunit/add-depended-test-return-type">
 
 Add return type declaration to a test method that returns type
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-does-not-perform-assertions" href="/docs/rules/lint/phpunit/add-does-not-perform-assertions">
 
 Tests without assertion will have #[DoesNotPerformAssertions] attribute, or @doesNotPerformAssertions annotation on PHPUnit below 10
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-instanceof-assert" href="/docs/rules/lint/phpunit/add-instanceof-assert">
 
 Add an assertInstanceOf() before a nullable object is used in a PHPUnit test.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-instanceof-assert-for-argument" href="/docs/rules/lint/phpunit/add-instanceof-assert-for-argument">
 
 Add explicit instance assert between above nullable object pass
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-mock-intersection-param" href="/docs/rules/lint/phpunit/add-mock-intersection-param">
 
 Add a MockObject intersection @param docblock with the mocked class, based on the mock passed in the private method call
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-mock-intersection-type" href="/docs/rules/lint/phpunit/add-mock-intersection-type">
 
 Add `MockObject&Foo` / `Stub&Foo` intersection types to PHPDoc of mock and stub properties, params and returns.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-mock-object-type" href="/docs/rules/lint/phpunit/add-mock-object-type">
 
 Change param type of a private test method to MockObject, when expects() is called on it
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-param-type-depends" href="/docs/rules/lint/phpunit/add-param-type-depends">
 
 Add param type declaration based on @depends test method return type
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-parent-test-constructor" href="/docs/rules/lint/phpunit/add-parent-test-constructor">
 
 PHPUnit\Framework\TestCase requires a parent constructor call
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-container-get" href="/docs/rules/lint/phpunit/add-property-type-container-get">
 
 Add strict typed property to a private test case property based on its @var object type, when assigned via container fetch in setUp()
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-create-mock" href="/docs/rules/lint/phpunit/add-property-type-create-mock">
 
 Add "PHPUnit\Framework\MockObject\MockObject" typed property from assigned mock to clearly separate from real objects
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-setup" href="/docs/rules/lint/phpunit/add-property-type-setup">
 
 Add strict typed property based on setUp() strict typed assigns in TestCase
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-property-type-setup-docblock" href="/docs/rules/lint/phpunit/add-property-type-setup-docblock">
 
 Add property type in PHPUnit test from docblock, if defined in setUp() method
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-prophecy-trait" href="/docs/rules/lint/phpunit/add-prophecy-trait">
 
 Add Prophecy trait for method using $this->prophesize()
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-return-type-from-mock-object" href="/docs/rules/lint/phpunit/add-return-type-from-mock-object">
 
 Add known property and return MockObject types
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-see-test-tag" href="/docs/rules/lint/phpunit/add-see-test-tag">
 
 Add @see annotation test of the class for faster jump to test. Make it FQN, so it stays in the annotation, not in the PHP source code.
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector/rector-preset` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-stub-intersection-type" href="/docs/rules/lint/phpunit/add-stub-intersection-type">
 
 Add a Stub intersection @var docblock with the stubbed class to a native Stub property
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="add-test-void-return" href="/docs/rules/lint/phpunit/add-test-void-return">
 
 Add void to PHPUnit test methods
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/type-declaration` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-will-return-callback-false-fallback" href="/docs/rules/lint/phpunit/add-will-return-callback-false-fallback">
 
 Add a "return false" fallback to a willReturnCallback() closure that only returns booleans, but can fall through without a return
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-will-return-callback-param-type" href="/docs/rules/lint/phpunit/add-will-return-callback-param-type">
 
 Decorate callbacks and arrow functions in willReturnCallback() with known param/return types based on reflection method
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-any-matcher" href="/docs/rules/lint/phpunit/no-any-matcher">
 
 Change deprecated `$this->any()` matcher assign to direct `new AnyInvokedCount()`
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-assert-class-has-attribute" href="/docs/rules/lint/phpunit/no-assert-class-has-attribute">
 
 Replace removed assertClassHas*Attribute() with property_exists()
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-assert-contains-on-string" href="/docs/rules/lint/phpunit/no-assert-contains-on-string">
 
 Change assertContains()/assertNotContains() method to new string and iterable alternatives
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-assert-contains-only" href="/docs/rules/lint/phpunit/no-assert-contains-only">
 
 Replaces `Assert::assertContainsOnly()` calls with type-specific `Assert::assertContainsOnly*()` calls
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-assert-internal-type" href="/docs/rules/lint/phpunit/no-assert-internal-type">
 
 Replace assertInternalType() with the dedicated assertIs*() assertion.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-assert-is-type" href="/docs/rules/lint/phpunit/no-assert-is-type">
 
 Replaces `Assert::isType()` calls with type-specific `Assert::is*()` calls
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-assert-same-type-mismatch" href="/docs/rules/lint/phpunit/no-assert-same-type-mismatch">
 
 Correct expected type in assertSame() method to match strict type of passed variable
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-at-matcher" href="/docs/rules/lint/phpunit/no-at-matcher">
 
 Replace at() method call with desired matcher
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-bare-mock-assign" href="/docs/rules/lint/phpunit/no-bare-mock-assign">
 
 Use a `createMock()` result directly where it is used once, instead of assigning it to a variable first
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-bare-mock-builder" href="/docs/rules/lint/phpunit/no-bare-mock-builder">
 
 Remove getMockBuilder() to createMock()
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-data-provider-test-prefix" href="/docs/rules/lint/phpunit/no-data-provider-test-prefix">
 
 Data provider methods cannot start with "test" prefix
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-empty-test" href="/docs/rules/lint/phpunit/no-empty-test">
 
 Remove empty test methods
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-entity-mock" href="/docs/rules/lint/phpunit/no-entity-mock">
 
 Move from entity mock, to direct use of class instance and setters
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-expected-exception-annotation" href="/docs/rules/lint/phpunit/no-expected-exception-annotation">
 
 Replace @expectedException annotations with expectException() calls.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-expects-any" href="/docs/rules/lint/phpunit/no-expects-any">
 
 Remove `expect($this->any())` from mocks as it has no added value
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-final-constructor-override" href="/docs/rules/lint/phpunit/no-final-constructor-override">
 
 Remove override final construct test case
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-flipped-assertion" href="/docs/rules/lint/phpunit/no-flipped-assertion">
 
 Turns accidentally flipped assert order to right one, with expected expr to left
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-float-delta-parameter" href="/docs/rules/lint/phpunit/no-float-delta-parameter">
 
 Change assertEquals()/assertSame() method using float on expected argument to new specific alternatives.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-mock-builder-set-methods" href="/docs/rules/lint/phpunit/no-mock-builder-set-methods">
 
 Remove "setMethods()" method as never used, move methods to "addMethods()" if non-existent or @method magic
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-mock-intersection-property" href="/docs/rules/lint/phpunit/no-mock-intersection-property">
 
 Make properties in tests with intersection mock object either object type or mock type
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-negated-assertion" href="/docs/rules/lint/phpunit/no-negated-assertion">
 
 Turns not-operator comparisons to their method name alternatives in PHPUnit TestCase
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-scenario-annotation" href="/docs/rules/lint/phpunit/no-scenario-annotation">
 
 Change `@scenario` annotation to `@test` in a test class
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-setup-override-attribute" href="/docs/rules/lint/phpunit/no-setup-override-attribute">
 
 Remove override attribute, if setUp()/tearDown() references parent call to improve readability
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-stub-with-expectations" href="/docs/rules/lint/phpunit/no-stub-with-expectations">
 
 Change createStub() to createMock(), when the created variable is passed to a method that requires MockObject type
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-test-constructor" href="/docs/rules/lint/phpunit/no-test-constructor">
 
 Replace or remove __construct() in PHPUnit test cases; use setUp().
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-test-listener" href="/docs/rules/lint/phpunit/no-test-listener">
 
 Refactor "*TestListener.php" to particular "*Hook.php" files
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-unused-mock" href="/docs/rules/lint/phpunit/no-unused-mock">
 
 Remove standalone method calls with no effect
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-unused-mock-property" href="/docs/rules/lint/phpunit/no-unused-mock-property">
 
 Remove never used property mock, only to set expectations
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-value-object-mock" href="/docs/rules/lint/phpunit/no-value-object-mock">
 
 Use a real instance instead of a mock for entities and simple value objects in tests.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="no-with-consecutive" href="/docs/rules/lint/phpunit/no-with-consecutive">
 
 Refactor deprecated withConsecutive() to willReturnCallback() structure
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-assert" href="/docs/rules/lint/phpunit/prefer-assert">
 
 Turns assert() calls in tests to PHPUnit assert method alternative
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-array-has-key" href="/docs/rules/lint/phpunit/prefer-assert-array-has-key">
 
 Turns assertTrue() + isset() comparisons to more precise assertArrayHasKey() method
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-contains-equals" href="/docs/rules/lint/phpunit/prefer-assert-contains-equals">
 
 Change assertContains()/assertNotContains() with non-strict comparison to new specific alternatives
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-count" href="/docs/rules/lint/phpunit/prefer-assert-count">
 
 Replaces use of assertSame and assertEquals on Countable objects with count method
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-instanceof" href="/docs/rules/lint/phpunit/prefer-assert-instanceof">
 
 Turns instanceof comparisons to their method name alternatives in PHPUnit TestCase
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-instanceof-over-empty" href="/docs/rules/lint/phpunit/prefer-assert-instanceof-over-empty">
 
 Change assertNotEmpty() and assertNotNull() on an object to more clear assertInstanceof()
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-instances-of" href="/docs/rules/lint/phpunit/prefer-assert-instances-of">
 
 Simplify unnecessary foreach check of instances
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-matches-regular-expression" href="/docs/rules/lint/phpunit/prefer-assert-matches-regular-expression">
 
 Turns `preg_match` comparisons to their method name alternatives in PHPUnit TestCase
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-assert-null-true-false" href="/docs/rules/lint/phpunit/prefer-assert-null-true-false">
 
 Turns same bool and null comparisons to their method name alternatives in PHPUnit TestCase
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-assert-same" href="/docs/rules/lint/phpunit/prefer-assert-same">
 
 PHPUnit methods like `assertSame` should be used instead of `assertEquals`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-assert-string-contains" href="/docs/rules/lint/phpunit/prefer-assert-string-contains">
 
 Turns `strpos`/`stripos` comparisons to their method name alternatives in PHPUnit TestCase
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-assert-true-false" href="/docs/rules/lint/phpunit/prefer-assert-true-false">
 
 Change $this->assertSame(true, ...) to assertTrue()
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-attribute-over-annotation" href="/docs/rules/lint/phpunit/prefer-attribute-over-annotation">
 
 Change annotations with value to attribute
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-attributes" href="/docs/rules/lint/phpunit/prefer-attributes">
 
 PHPUnit attributes must be used over their respective PHPDoc-based annotations.
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-camel-case-test-names" href="/docs/rules/lint/phpunit/prefer-camel-case-test-names">
 
 Changes PHPUnit test methods to camel case
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-comparison-assertion" href="/docs/rules/lint/phpunit/prefer-comparison-assertion">
 
 Replace assertTrue()/assertFalse() on a comparison, instanceof, isset, count or strpos with the specific assertion.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-covers-attribute" href="/docs/rules/lint/phpunit/prefer-covers-attribute">
 
 Change covers annotations with value to attribute
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-create-mock" href="/docs/rules/lint/phpunit/prefer-create-mock">
 
 Replace getMock*() with createMock().
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-create-stub" href="/docs/rules/lint/phpunit/prefer-create-stub">
 
 Use createStub() instead of createMock() when no expectations are set.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-create-stub-argument" href="/docs/rules/lint/phpunit/prefer-create-stub-argument">
 
 Use createStub() over createMock() when used as argument or array value and does not add any mock requirements
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-create-stub-expression" href="/docs/rules/lint/phpunit/prefer-create-stub-expression">
 
 Replace createMock() assigned to variable that is only used as arg with no expectations, to createStub()
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-create-stub-in-coalesce" href="/docs/rules/lint/phpunit/prefer-create-stub-in-coalesce">
 
 Use createStub() over createMock() when used as argument/array item coalesce ?? fallback
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-data-provider" href="/docs/rules/lint/phpunit/prefer-data-provider">
 
 Replace testWith annotation to data provider.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-data-provider-attribute" href="/docs/rules/lint/phpunit/prefer-data-provider-attribute">
 
 Change dataProvider annotations to attribute
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-dedicated-assertion" href="/docs/rules/lint/phpunit/prefer-dedicated-assertion">
 
 Use dedicated PHPUnit assertions such as assertFileExists() instead of assertTrue(file_exists()).
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-depends-attribute" href="/docs/rules/lint/phpunit/prefer-depends-attribute">
 
 Change depends annotations with value to attribute
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-direct-assert" href="/docs/rules/lint/phpunit/prefer-direct-assert">
 
 Change $this->assertThat($value, $this->*()) to direct $this->assert*() method
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-expect-exception" href="/docs/rules/lint/phpunit/prefer-expect-exception">
 
 Replace setExpectedException*() with expectException*().
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-expect-php-error" href="/docs/rules/lint/phpunit/prefer-expect-php-error">
 
 Use explicit API for expecting PHP errors, warnings, and notices
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-inline-create-stub" href="/docs/rules/lint/phpunit/prefer-inline-create-stub">
 
 Inline stub property only used to pass as new argument to a method call
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-local-over-setup-property" href="/docs/rules/lint/phpunit/prefer-local-over-setup-property">
 
 Turn property used only in setUp() to variable
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-mock-intersection-return" href="/docs/rules/lint/phpunit/prefer-mock-intersection-return">
 
 Change a MockObject @return union docblock to an intersection type
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-named-data-provider-keys" href="/docs/rules/lint/phpunit/prefer-named-data-provider-keys">
 
 Change the array-index names to the argument name of the dataProvider
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-namespaced" href="/docs/rules/lint/phpunit/prefer-namespaced">
 
 PHPUnit classes MUST be used in namespaced version, e.g. `\PHPUnit\Framework\TestCase` instead of `\PHPUnit_Framework_TestCase`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-narrow-will-return-callback" href="/docs/rules/lint/phpunit/prefer-narrow-will-return-callback">
 
 Narrow single-value match willReturnCallback() to with() and willReturn() call
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-narrow-with-consecutive" href="/docs/rules/lint/phpunit/prefer-narrow-with-consecutive">
 
 Narrow identical withConsecutive() and willReturnOnConsecutiveCalls() to single call
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-new-assertion-names" href="/docs/rules/lint/phpunit/prefer-new-assertion-names">
 
 Rename deprecated PHPUnit assertions like `assertFileNotExists` to new methods like `assertFileDoesNotExist`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-property-assertions" href="/docs/rules/lint/phpunit/prefer-property-assertions">
 
 Split object casted to array to assert public properties to standalone assert calls
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-requires-attribute" href="/docs/rules/lint/phpunit/prefer-requires-attribute">
 
 Change Requires annotations with values to attributes
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-self-call" href="/docs/rules/lint/phpunit/prefer-self-call">
 
 Changes PHPUnit calls from $this->assert*() to self::assert*()
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-short-will-return" href="/docs/rules/lint/phpunit/prefer-short-will-return">
 
 Use willReturn() and similar instead of will($this->returnValue()).
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-simple-callback-assert" href="/docs/rules/lint/phpunit/prefer-simple-callback-assert">
 
 Replaces use of with, callback and sole assertSame() to simple equalTo() matcher
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-simple-mock-expectation" href="/docs/rules/lint/phpunit/prefer-simple-mock-expectation">
 
 Replace withConsecutive()/willReturnCallback() that cover one value with with()/willReturn().
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-simple-with-matcher" href="/docs/rules/lint/phpunit/prefer-simple-with-matcher">
 
 Simplify ->with() matchers: plain values instead of equalTo(), isInstanceOf() instead of a callback.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-snake-case-test-names" href="/docs/rules/lint/phpunit/prefer-snake-case-test-names">
 
 Changes PHPUnit test methods to snake case
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-specific-assert-equals" href="/docs/rules/lint/phpunit/prefer-specific-assert-equals">
 
 Change assertEquals()/assertNotEquals() method parameters to new specific alternatives
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-specific-assertions" href="/docs/rules/lint/phpunit/prefer-specific-assertions">
 
 PHPUnit assertion method calls like `->assertSame(true, $foo)` should be written with dedicated method like `->assertTrue($foo)`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-specific-true-false-assertion" href="/docs/rules/lint/phpunit/prefer-specific-true-false-assertion">
 
 Turns true/false comparisons to their method name alternatives in PHPUnit TestCase when possible
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-narrow-asserts` sets. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-specific-will-method" href="/docs/rules/lint/phpunit/prefer-specific-will-method">
 
 Changes $mock->will() call to more specific method
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-standalone-asserts-over-callback" href="/docs/rules/lint/phpunit/prefer-standalone-asserts-over-callback">
 
 Replaces identical compare in $this->callable() sole return to standalone PHPUnit asserts that show more detailed failure messages
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-stub-var" href="/docs/rules/lint/phpunit/prefer-stub-var">
 
 Update the @var docblock of a property changed to a Stub native type, from MockObject to Stub
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/composer-based`, `rector-phpunit/phpunit-code-quality`, `rector-phpunit/phpunit-mock-to-stub` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-test-attribute" href="/docs/rules/lint/phpunit/prefer-test-attribute">
 
 Suggests using PHPUnit's `#[Test]` attribute instead of the `test` method name prefix.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-test-prefix" href="/docs/rules/lint/phpunit/prefer-test-prefix">
 
 Replace @test with prefixed function
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-test-with-attribute" href="/docs/rules/lint/phpunit/prefer-test-with-attribute">
 
 Change @testWith() annotation to #[TestWith] attribute
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-this-assert" href="/docs/rules/lint/phpunit/prefer-this-assert">
 
 Changes PHPUnit calls from Assert::assert*() to $this->assert*()
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-this-call" href="/docs/rules/lint/phpunit/prefer-this-call">
 
 Changes PHPUnit calls from self::assert*() to $this->assert*()
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-ticket-attribute" href="/docs/rules/lint/phpunit/prefer-ticket-attribute">
 
 Change annotations with value to attribute
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/annotations-to-attributes`, `rector-phpunit/composer-based` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-will-return-callback" href="/docs/rules/lint/phpunit/prefer-will-return-callback">
 
 Merge ->with($this->callback()) and ->willReturn() into willReturnCallback().
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-with-is-instance-of" href="/docs/rules/lint/phpunit/prefer-with-is-instance-of">
 
 Replaces use of with, callable and instance assert to simple isInstanceOf() method
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="prefer-yield-data-provider" href="/docs/rules/lint/phpunit/prefer-yield-data-provider">
 
 Turns array return to yield in data providers
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-array-key-assert" href="/docs/rules/lint/phpunit/require-array-key-assert">
 
 Add assertArrayHasKey() call for array access with string key, that was not validated before
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-assertion-style" href="/docs/rules/lint/phpunit/require-assertion-style">
 
 Calls to `PHPUnit\Framework\TestCase` static methods (like assertions) must all be of the same type, either `$this->`, `self::` or `static::`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-covers" href="/docs/rules/lint/phpunit/require-covers">
 
 Adds a default `@coversNothing` annotation to PHPUnit test classes that have no `@covers*` annotation.
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-data-provider-naming" href="/docs/rules/lint/phpunit/require-data-provider-naming">
 
 Data provider names must match the name of the test.
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-data-provider-newlines" href="/docs/rules/lint/phpunit/require-data-provider-newlines">
 
 Change data provider in PHPUnit test case to newline per item
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-data-provider-order" href="/docs/rules/lint/phpunit/require-data-provider-order">
 
 Data provider method must be placed after/before the last/first test where used.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-exact-test-argument-type" href="/docs/rules/lint/phpunit/require-exact-test-argument-type">
 
 Correct expected type in setter of tests, if param type is strictly defined
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-explicit-mock-expects" href="/docs/rules/lint/phpunit/require-explicit-mock-expects">
 
 Add explicit expects() to method() mock calls, to make expectations count explicit
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-final-test-case" href="/docs/rules/lint/phpunit/require-final-test-case">
 
 Make PHPUnit test case final
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality`, `rector/rector-preset` sets. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-internal" href="/docs/rules/lint/phpunit/require-internal">
 
 All PHPUnit test classes should be marked as internal.
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-iterable-data-provider" href="/docs/rules/lint/phpunit/require-iterable-data-provider">
 
 The return type of PHPUnit data provider must be `iterable`.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-method-casing" href="/docs/rules/lint/phpunit/require-method-casing">
 
 Enforce camel (or snake) case for PHPUnit test methods, following configuration.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-mock-expects" href="/docs/rules/lint/phpunit/require-mock-expects">
 
 Add an explicit expects() to mocked method calls.
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-protected-setup" href="/docs/rules/lint/phpunit/require-protected-setup">
 
 Changes the visibility of the `setUp()` and `tearDown()` functions of PHPUnit to `protected`, to match the PHPUnit TestCase.
 
-Off until you name it or its group. Unsafe fix: it can change behavior.
+Not in any preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-public-data-provider" href="/docs/rules/lint/phpunit/require-public-data-provider">
 
 Change data provider methods to public
 
-Off until you name it or its group. Safe fix.
+Not in any preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-size" href="/docs/rules/lint/phpunit/require-size">
 
 All PHPUnit test cases should have `@small`, `@medium` or `@large` annotation to enable run time limits.
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-static-data-provider" href="/docs/rules/lint/phpunit/require-static-data-provider">
 
 Make PHPUnit data providers static.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector-phpunit/composer-based` set. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-strict-types-in-tests" href="/docs/rules/lint/phpunit/require-strict-types-in-tests">
 
 Add `declare(strict_types=1)` to PHPUnit test class file
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-string-assert-argument" href="/docs/rules/lint/phpunit/require-string-assert-argument">
 
 Cast 2nd argument in assertStringContainsString() to a string if not yet
 
-On when the `phpunit` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector-phpunit/phpunit-code-quality` set. Needs the `phpunit` extension. Safe fix.
 
 </Card>
 <Card title="require-test-annotation-style" href="/docs/rules/lint/phpunit/require-test-annotation-style">
 
 Mark tests consistently: a `test` prefix or a @test annotation.
 
-On when the `phpunit` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `phpunit` extension. Unsafe fix: it can change behavior.
 
 </Card>
 </CardGroup>

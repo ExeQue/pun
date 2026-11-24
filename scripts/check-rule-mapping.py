@@ -4,12 +4,12 @@
 Fails (exit 1) on: a `tentative` entry; a rule key that isn't "<group>/<name>"; a group not in [meta.groups]; a name
 that isn't kebab-case, is listed twice in its group, or repeats its group; a lint name without its verb prefix (codemod
 prefixes only in the refactor group); an analyse name phrased as a fix; a field from before the rename (aliases,
-tier, severity, group); format `presets`, lint `sets` or analyse `preset` outside their lists; a broken `pun` /
+tier, severity, group); format `presets`, or lint or analyse `preset`, outside their lists; a broken `pun` /
 `fixed_by` / `conflicts` / `merged` reference; an upstream entry that is not exactly one of pun / drop / unsupported; a
 Rector entry without its class; a rule that no upstream entry maps to (unless `pun_only = true`); a PHPStan/Larastan
 entry without `variant` when its rule replaces several identifiers; `also` (the further rules a Mago analyzer code
 reports for) outside mago-analyzer entries with `pun`, or naming no other rule; and a conflict whose two sides one format preset,
-the lint sets together, or one analyse preset would enable.
+one lint preset, or one analyse preset would enable.
 
 Against the pinned upstream inventories in crates/pun-config/rules/upstream/*.json (context/plan/rules.md §5) it also
 fails on: an in-scope Rector, rector-laravel, rector-phpunit or Pest rule, or an in-scope PHPStan, strict-rules,
@@ -126,7 +126,6 @@ def check(data):
             err(f"meta.groups: {g!r} is not a group name")
         if not isinstance(desc, str) or not desc:
             err(f"meta.groups: {g!r} needs a one-line description")
-    sets = meta.get("sets", [])
     presets = meta.get("presets", {})
     rules = data["rules"]
     ids = set()
@@ -172,17 +171,14 @@ def check(data):
                     err(f"{rid}: lint names start with {'/'.join(LINT_PREFIXES)} (codemods: refactor/rename- ...)")
             if c == "analyse" and n.startswith(("prefer-", "require-", "add-")):
                 err(f"{rid}: analyse names describe the problem, not a fix")
-            for field, cmd in (("presets", "format"), ("sets", "lint"), ("preset", "analyse")):
-                if field in r and c != cmd:
-                    err(f"{rid}: `{field}` is for {cmd} rules only")
+            for field, cmds in (("presets", ("format",)), ("preset", ("lint", "analyse"))):
+                if field in r and c not in cmds:
+                    err(f"{rid}: `{field}` is for {' and '.join(cmds)} rules only")
             for p in r.get("presets", []) if c == "format" else []:
                 if p not in presets.get("format", []) or p == "empty":
                     err(f"{rid}: presets entry {p!r} is not a format preset")
-            for s in r.get("sets", []) if c == "lint" else []:
-                if s not in sets:
-                    err(f"{rid}: set {s!r} is not in meta.sets")
-            if c == "analyse" and "preset" in r and r["preset"] not in presets.get("analyse", []):
-                err(f"{rid}: preset {r['preset']!r} is not an analyse preset")
+            if c in ("lint", "analyse") and "preset" in r and r["preset"] not in presets.get(c, []):
+                err(f"{rid}: preset {r['preset']!r} is not a{'n' if c == 'analyse' else ''} {c} preset")
 
     sources = defaultdict(set)
     for tool, entries in data["upstream"].items():
@@ -429,19 +425,24 @@ def enabled(data, cmd, test):
     return {f"{cmd}/{k}" for k, r in data["rules"].get(cmd, {}).items() if test(r)}
 
 
-def analyse_preset(data, preset):
-    """The analyse rules `[analyse] preset = <preset>` enables (each preset includes the ones below it)."""
-    order = data["meta"]["presets"]["analyse"]
+def ladder(data, cmd, preset):
+    """The rules `[<cmd>] preset = <preset>` enables (each preset includes the ones below it)."""
+    order = data["meta"]["presets"][cmd]
     k = order.index(preset)
-    return enabled(data, "analyse", lambda r: r.get("preset") in order[: k + 1])
+    return enabled(data, cmd, lambda r: r.get("preset") in order[: k + 1])
+
+
+def analyse_preset(data, preset):
+    return ladder(data, "analyse", preset)
 
 
 def enablers(data):
-    """Every rule set a config can turn on at once: each format preset, all lint sets together, each analyse preset."""
+    """Every rule set a config can turn on at once: each format, lint and analyse preset."""
     out = {}
     for p in data["meta"]["presets"]["format"]:
         out[f"format preset {p}"] = enabled(data, "format", lambda r: p in r.get("presets", []))
-    out["the lint sets together"] = enabled(data, "lint", lambda r: bool(r.get("sets")))
+    for p in data["meta"]["presets"]["lint"]:
+        out[f"lint preset {p}"] = ladder(data, "lint", p)
     for p in data["meta"]["presets"]["analyse"]:
         out[f"analyse preset {p}"] = analyse_preset(data, p)
     return out
@@ -451,8 +452,9 @@ def selftest():
     good = {
         "meta": {"conflicts": [], "groups": {"dead-code": "Dead code.", "undefined": "Undefined.",
                                              "refactor": "Codemods.", "php-8.4": "Upgrade."},
-                 "sets": ["dead-code"], "presets": {"format": ["laravel", "empty"], "analyse": ["basic", "max"]}},
-        "rules": {"lint": {"dead-code/no-x": {"status": "decided", "sets": ["dead-code"]}},
+                 "presets": {"format": ["laravel", "empty"], "lint": ["essential", "strict"],
+                             "analyse": ["basic", "max"]}},
+        "rules": {"lint": {"dead-code/no-x": {"status": "decided", "preset": "essential"}},
                   "analyse": {"undefined/x": {"status": "decided", "preset": "basic",
                                               "fixed_by": ["lint/dead-code/no-x"]}}},
         "upstream": {"mago-linter": {"x": {"pun": "lint/dead-code/no-x", "status": "decided"}},
@@ -476,7 +478,7 @@ def selftest():
         assert check(d) == [], check(d)
 
     fine(add("lint", "refactor/rename-x"))
-    fine(add("lint", "php-8.4/prefer-x", sets=["dead-code"]))
+    fine(add("lint", "php-8.4/prefer-x", preset="essential"))
     fine(add("lint", "dead-code/no-y", why="Remove it.", examples=[{"before": "x();", "after": "y();"}]))
     fine(add("analyse", "undefined/y", examples=[{"code": "x();", "message": "Unknown function x."}]))
     bad(add("lint", "dead-code/no-y", why=3), "why must be a non-empty string")
@@ -496,8 +498,8 @@ def selftest():
     bad(add("analyse", "undefined/undefined"), "repeats its group")
     bad(add("lint", "dead-code/no-y", aliases=["old"]), "`aliases` is gone")
     bad(add("lint", "dead-code/no-y", tier="strict"), "`tier` is gone")
-    bad(add("lint", "dead-code/no-y", sets=["typo"]), "not in meta.sets")
-    bad(add("lint", "dead-code/no-y", preset="basic"), "for analyse rules only")
+    bad(add("lint", "dead-code/no-y", preset="typo"), "not a lint preset")
+    bad(add("format", "dead-code/y", preset="basic"), "for lint and analyse rules only")
     bad(add("analyse", "undefined/y", preset="pedantic"), "not an analyse preset")
     bad(add("format", "dead-code/y", presets=["empty"]), "not a format preset")
     bad(lambda d: d["meta"]["groups"].update({"Bad Group": "x"}), "not a group name")
@@ -519,9 +521,9 @@ def selftest():
     fine(lambda d: d["upstream"].update(**{"mago-analyzer": {"X": {"pun": "analyse/undefined/x", "also": ["lint/dead-code/no-x"]}}}))
 
     def conflict(d):
-        add("lint", "dead-code/no-y", sets=["dead-code"])(d)
+        add("lint", "dead-code/no-y", preset="essential")(d)
         d["meta"]["conflicts"] = [["lint/dead-code/no-x", "lint/dead-code/no-y"]]
-    bad(conflict, "the lint sets together enables both sides")
+    bad(conflict, "lint preset essential enables both sides")
 
     def analyse_conflict(d):
         add("analyse", "undefined/y", preset="max")(d)
@@ -648,9 +650,9 @@ if __name__ == "__main__":
     print("format presets: " + ", ".join(
         f"{p} {sum(p in r.get('presets', []) for r in data['rules']['format'].values())}"
         for p in data["meta"]["presets"]["format"]))
-    print("lint sets: " + ", ".join(
-        f"{s} {sum(s in r.get('sets', []) for r in data['rules']['lint'].values())}" for s in data["meta"]["sets"])
-        + f", no set {sum(not r.get('sets') for r in data['rules']['lint'].values())}")
+    print("lint presets (cumulative): " + ", ".join(
+        f"{p} {len(ladder(data, 'lint', p))}" for p in data["meta"]["presets"]["lint"])
+        + f", opt-in {sum('preset' not in r for r in data['rules']['lint'].values())}")
     print("analyse presets (cumulative): " + ", ".join(
         f"{p} {len(analyse_preset(data, p))}" for p in data["meta"]["presets"]["analyse"])
         + f", opt-in {sum('preset' not in r for r in data['rules']['analyse'].values())}")

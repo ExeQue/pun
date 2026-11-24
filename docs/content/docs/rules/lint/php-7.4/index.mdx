@@ -12,70 +12,70 @@ Upgrade to PHP 7.4: code a newer PHP removes, deprecates or does better.
 
 Add null default to properties with PHP 7.4 property nullable type
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
+In the `lint-strict` preset. In Rector's `rector/php74` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="no-array-key-exists-on-object" href="/docs/rules/lint/php-7.4/no-array-key-exists-on-object">
 
 Change array_key_exists() on property to property_exists()
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
+In the `lint-strict` preset. In Rector's `rector/php74` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="no-filter-magic-quotes" href="/docs/rules/lint/php-7.4/no-filter-magic-quotes">
 
 Change filter_var() with slash escaping to addslashes()
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php74` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="no-hebrevc" href="/docs/rules/lint/php-7.4/no-hebrevc">
 
 Change hebrevc($str) to nl2br(hebrev($str))
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php74` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="no-mb-strrpos-encoding-offset" href="/docs/rules/lint/php-7.4/no-mb-strrpos-encoding-offset">
 
 Change mb_strrpos() encoding argument position
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php74` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="no-money-format" href="/docs/rules/lint/php-7.4/no-money-format">
 
 Change `money_format()` to equivalent `number_format()`
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
+In the `lint-strict` preset. In Rector's `rector/php74` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="no-reflection-export" href="/docs/rules/lint/php-7.4/no-reflection-export">
 
 Change export() to ReflectionFunction alternatives
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php74` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="no-restore-include-path" href="/docs/rules/lint/php-7.4/no-restore-include-path">
 
 Change restore_include_path() to ini_restore("include_path")
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php74` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="prefer-arrow-function" href="/docs/rules/lint/php-7.4/prefer-arrow-function">
 
 Change closure to arrow function
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
+In the `lint-strict` preset. In Rector's `rector/php74` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 <Card title="prefer-coalesce-assign-over-if" href="/docs/rules/lint/php-7.4/prefer-coalesce-assign-over-if">
 
 Change `if` null guard with single assign to null coalescing assign `??=`
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php74` set. Safe fix. Runs only when `[php] version` is 7.4 or later.
 
 </Card>
 </CardGroup>

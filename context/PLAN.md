@@ -85,7 +85,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **`pun lint --fix` doesn't format** (Rector doesn't); `pun check --fix` does both.
 - **`pun migrate`** moves pint.json, .php-cs-fixer.php, rector.php and phpstan.neon onto pun.toml completely. It means
   config migration, not code upgrades.
-- **`pun init`** asks three questions (format preset, lint sets, analyse preset), offers `pun migrate` when old configs
+- **`pun init`** asks three questions (format preset, lint preset, analyse preset), offers `pun migrate` when old configs
   exist, writes only the choices, runs one `pun check` and offers fix and baseline. `empty` is not offered (assistant's
   default).
 - **No workflow wiring.** Neither migrate nor init edits composer scripts, CI, hooks or editor settings. Agent skills
@@ -124,8 +124,8 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   `"safe-only"`, `severity`, the `"info"` level) fail as ordinary unknown keys or values, with no message of their own.
 - **Format presets:** `laravel` (default), `psr12`, `empty`. Migrate expands `per` and `symfony`.
 - **Rule options are TOML-native**, not PHP-CS-Fixer's; migrate translates upstream options.
-- **Lint presets are sets you tick** (`[lint] sets = ["dead-code", "modernize"]`), Rector's prepared sets; dead-code and
-  modernize are init's default. Sets are tags on rules.
+- **Lint presets and Rector sets** (2026-11-24, below): `[lint] preset = "recommended"` (init's default) plus
+  `[lint] sets = ["rector/dead-code"]` for Rector's exact sets.
 - **Lint levels follow oxlint:** `"off" | "warn" | "error"` per rule or group, options in a table with `level`; only
   `error` fails; enabled rules default to `error`; `--deny-warnings`, `--max-warnings <n>`, `-A/-W/-D`,
   `[[lint.overrides]]` per path.
@@ -175,7 +175,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Lint gets a ladder plus exact Rector sets** (Pushpak, 2026-11-24; replaces "lint presets are sets you tick" of
   2026-10-17): `[lint] preset` is one of Pun's own tiers, each including the one below (names and contents are the
   assistant's call), and `[lint] sets` takes `rector/<set>` sets that match the Rector set exactly. `pun migrate` writes
-  only `rector/*` sets (plus single rules); `pun init` writes a tier, with a good default. Design in progress.
+  only `rector/*` sets (plus single rules); `pun init` writes a tier (`recommended`). Built 2026-11-24 (plan/lint.md §8).
   Today's eight sets (`dead-code`, `modernize`, ...) are dropped; each becomes its `rector/*` twin with exactly Rector's
   members, its PHP-CS-Fixer and Mago rules move into the tiers, and an old set name is a config error naming the new one.
   Rector set names carry over exactly, prefixed by package: `rector/dead-code`, `rector/type-declaration`,

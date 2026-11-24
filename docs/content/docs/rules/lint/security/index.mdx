@@ -12,91 +12,91 @@ Code that can be exploited, or that leaks or hides data.
 
 Requires that parameters that are likely to contain sensitive information (e.g., passwords) are marked with the `#[SensitiveParameter]` attribute.
 
-In the `code-quality` set. Safe fix. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Safe fix. Intent: suspicious.
 
 </Card>
 <Card title="no-debug-calls" href="/docs/rules/lint/security/no-debug-calls">
 
 Remove or report debug calls left in code: dd(), dump(), var_dump(), ray(), and ->dd()/->dump() in Pest expectations.
 
-In the `coding-style` set. Unsafe fix: it can change behavior. Intent: suspicious.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Unsafe fix: it can change behavior. Intent: suspicious.
 
 </Card>
 <Card title="no-eval" href="/docs/rules/lint/security/no-eval">
 
 Detects unsafe uses of the `eval` construct.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-ffi" href="/docs/rules/lint/security/no-ffi">
 
 Detects unsafe use of the PHP FFI (Foreign Function Interface) extension.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-global" href="/docs/rules/lint/security/no-global">
 
 Detects the use of the `global` keyword and the `$GLOBALS` variable.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-homoglyph-names" href="/docs/rules/lint/security/no-homoglyph-names">
 
 Replace accidental usage of homoglyphs (non ascii characters) in names.
 
-In the `code-quality` set. Unsafe fix: it can change behavior. Intent: suspicious.
+In the `lint-strict` preset. Unsafe fix: it can change behavior. Intent: suspicious.
 
 </Card>
 <Card title="no-insecure-comparison" href="/docs/rules/lint/security/no-insecure-comparison">
 
 Detects insecure comparison of passwords or tokens using `==`, `!=`, `===`, or `!==`.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-literal-password" href="/docs/rules/lint/security/no-literal-password">
 
 Detects the use of literal values for passwords or sensitive data.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-request-variable" href="/docs/rules/lint/security/no-request-variable">
 
 Detects the use of the `$_REQUEST` variable, which is considered unsafe.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-restricted-functions" href="/docs/rules/lint/security/no-restricted-functions">
 
 Flags calls to functions that are disallowed via rule configuration.
 
-Not in any set. Report only. Intent: suspicious.
+Not in any preset. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-restricted-instantiation" href="/docs/rules/lint/security/no-restricted-instantiation">
 
 Flags direct instantiation of specific types that are disallowed via rule configuration.
 
-Not in any set. Report only. Intent: suspicious.
+Not in any preset. Report only. Intent: suspicious.
 
 </Card>
 <Card title="no-tainted-data" href="/docs/rules/lint/security/no-tainted-data">
 
 Detects user (tainted) data being passed directly to sink functions or constructs (such as `echo`, `print`, or user-defined "log" functions).
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 <Card title="require-preg-quote-delimiter" href="/docs/rules/lint/security/require-preg-quote-delimiter">
 
 This rule requires that when using `preg_quote()`, the second `$delimiter` argument is always provided.
 
-In the `code-quality` set. Report only. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious.
 
 </Card>
 </CardGroup>

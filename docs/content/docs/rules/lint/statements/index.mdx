@@ -12,21 +12,21 @@ Statements, declare and semicolons. Also in [format](/docs/rules/format/statemen
 
 Add `declare(strict_types=1)` if missing and only if the file is type-safe (no scalar type coercions).
 
-In the `code-quality` set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
 
 </Card>
 <Card title="no-empty" href="/docs/rules/lint/statements/no-empty">
 
 Remove useless (semicolon) statements.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. Safe fix.
 
 </Card>
 <Card title="require-strict-types" href="/docs/rules/lint/statements/require-strict-types">
 
 Force a strict types mode in all files.
 
-In the `code-quality` set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
 
 </Card>
 </CardGroup>

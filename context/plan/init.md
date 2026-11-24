@@ -18,7 +18,7 @@ $ pun init
   Found Laravel 13, Pest 4, PHP ^8.4 (composer.json)
 
 ? Code style                    › laravel        laravel | psr12
-? Lint sets                     › [x] dead-code  [x] modernize  [ ] code-quality  [ ] types
+? Lint preset                   › essential  [recommended]  strict
                                   [ ] early-return  [ ] privatization  [ ] naming  [ ] coding-style
 ? Analysis preset               › recommended    basic | essential | recommended | strict | max
 
@@ -80,5 +80,5 @@ Assistant's calls (change them freely):
 - **Flag errors keep schema.rs's wording** with the flag in place of the pun.toml location: "--lint-sets: `x` is not a
   lint set; the sets are …", "--analyse x: expected `basic`, …". `--lint-sets ""` means no sets.
 - **pun.toml starts with ``# Written by `pun init`.``**, as migrate's does.
-- **Agent mode** prints one `pun init: ok, pun.toml written, style …, lint sets …, analyse …, extensions …` line, with
+- **Agent mode** prints one `pun init: ok, pun.toml written, style …, lint …, analyse …, extensions …` line, with
   the next steps as its item.

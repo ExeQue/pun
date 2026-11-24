@@ -850,7 +850,7 @@ fn rector_paths_skips_and_unsupported_rules() {
     assert_eq!(code, Some(0), "{out}{err}");
     let out = counts(&out);
     assert!(
-        out.starts_with(" ok rector.php  -> [lint] N on, N off, 3 paths excluded, 1 per-path skip\n                   sets dead-code, modernize\n"),
+        out.starts_with(" ok rector.php  -> [lint] N on, N off, 3 paths excluded, 1 per-path skip\n                   sets rector/dead-code, rector/php-sets\n"),
         "{out}"
     );
     assert!(
@@ -1007,7 +1007,11 @@ fn rector_warnings_on_stdout() {
         counts(&out).starts_with(" ok rector.php  -> [lint] N on, N off"),
         "{out}"
     );
-    assert!(read(&d, "pun.toml").contains("\n[lint.rules]\n"));
+    let toml = read(&d, "pun.toml");
+    assert!(
+        toml.contains("sets = [\"rector/php82\", \"rector/php83\", \"rector/php84\"]\n"),
+        "{toml}"
+    );
 }
 
 /// The PHP 8.2 set read through Rector 2.8.4 (`.oracle/rector-bin`): `SetList::PHP_82` lists the set's four rules
@@ -1029,7 +1033,7 @@ fn rector_php82_set_turns_on_the_php_8_2_rules() {
         (
             "rector-php82-php-sets",
             "return RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withPhpSets(php82: true);\n",
-            " ok rector.php  -> [lint] N on, N off, 1 path excluded\n                   sets modernize",
+            " ok rector.php  -> [lint] N on, N off, 1 path excluded\n                   sets rector/php-sets",
         ),
     ] {
         let d = project(
@@ -1054,13 +1058,19 @@ fn rector_php82_set_turns_on_the_php_8_2_rules() {
             "add-skip-dots-flag",
             "no-dollar-brace-interpolation",
         ] {
+            // Both sets hold the rule, so pun.toml doesn't name it.
             let on = format!("\"php-8.2/{id}\" = \"error\"\n");
-            assert_eq!(
-                toml.contains(&on),
-                name.ends_with("set-list"),
-                "{name}: {toml}"
-            );
+            assert!(!toml.contains(&on), "{name}: {toml}");
         }
+        let sets = if name.ends_with("set-list") {
+            "rector/php82"
+        } else {
+            "rector/php-sets"
+        };
+        assert!(
+            toml.contains(&format!("sets = [\"{sets}\"]\n")),
+            "{name}: {toml}"
+        );
         pun(&d, &["lint", "--fix"]);
         assert_eq!(read(&d, "src/a.php"), rector, "{name}");
     }

@@ -12,119 +12,119 @@ Function and method declarations, calls, arguments and closures. Also in [format
 
 Convert positional arguments on attributes into named arguments, using the attribute constructor parameter names
 
-Not in any set. Safe fix.
+Not in any preset. In Rector's `rector/named-args` set. Safe fix.
 
 </Card>
 <Card title="add-boolean-argument-name" href="/docs/rules/lint/functions/add-boolean-argument-name">
 
 Add parameter names to boolean arguments.
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/named-args` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="add-null-argument-name" href="/docs/rules/lint/functions/add-null-argument-name">
 
 Add parameter names to null arguments.
 
-Not in any set. Unsafe fix: it can change behavior.
+Not in any preset. In Rector's `rector/named-args` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-assign-in-argument" href="/docs/rules/lint/functions/no-assign-in-argument">
 
 Detects assignments in function call arguments. They can cause unexpected behavior and make the code harder to read.
 
-In the `code-quality` set. Report only. Intent: correctness.
+In the `lint-essential` preset and every stricter one. Report only. Intent: correctness.
 
 </Card>
 <Card title="no-call-user-func-method" href="/docs/rules/lint/functions/no-call-user-func-method">
 
 Refactor `call_user_func()` on known class method to a method call
 
-In the `coding-style` set. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `rector/coding-style` set. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-extra-arguments" href="/docs/rules/lint/functions/no-extra-arguments">
 
 Remove extra parameters
 
-In the `code-quality` set. Safe fix. Depends on `[php] version`.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality`, `rector/php71` sets. Safe fix. Depends on `[php] version`.
 
 </Card>
 <Card title="no-missing-format-argument" href="/docs/rules/lint/functions/no-missing-format-argument">
 
 Detects `sprintf`-style format calls where the number of placeholders
 
-In the `code-quality` set. Report only. Intent: correctness.
+In the `lint-essential` preset and every stricter one. Report only. Intent: correctness.
 
 </Card>
 <Card title="no-required-after-optional" href="/docs/rules/lint/functions/no-required-after-optional">
 
 Report or fix optional parameters declared before required ones.
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality`, `rector/php80` sets. Safe fix.
 
 </Card>
 <Card title="no-swapped-explode-arguments" href="/docs/rules/lint/functions/no-swapped-explode-arguments">
 
 Detects `explode` calls whose arguments appear to be swapped.
 
-In the `code-quality` set. Report only. Intent: correctness.
+In the `lint-essential` preset and every stricter one. Report only. Intent: correctness.
 
 </Card>
 <Card title="no-unreachable-default-argument-value" href="/docs/rules/lint/functions/no-unreachable-default-argument-value">
 
 In function arguments there must not be arguments with default values before non-default ones.
 
-In the `code-quality` set. Unsafe fix: it can change behavior. Intent: correctness.
+In the `lint-strict` preset. Unsafe fix: it can change behavior. Intent: correctness.
 
 </Card>
 <Card title="no-unused-closure-use" href="/docs/rules/lint/functions/no-unused-closure-use">
 
 Lambda must not import variables it doesn't use.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-void-reference-return" href="/docs/rules/lint/functions/no-void-reference-return">
 
 Detects functions, methods, closures, arrow functions, and set property hooks that return by reference from a void function.
 
-In the `modernize` set. Report only.
+In the `lint-recommended` preset and every stricter one. Report only.
 
 </Card>
 <Card title="require-array-filter-callback" href="/docs/rules/lint/functions/require-array-filter-callback">
 
 Requires a callback for `array_filter()`: without one it drops every falsy value, not only `null`.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.strictArrayFilter`.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious. Upstream setting: `strictRules.strictArrayFilter`.
 
 </Card>
 <Card title="require-assert-description" href="/docs/rules/lint/functions/require-assert-description">
 
 Detects assert functions that do not have a description.
 
-Not in any set. Report only. Intent: correctness.
+Not in any preset. Report only. Intent: correctness.
 
 </Card>
 <Card title="require-strict-array-search" href="/docs/rules/lint/functions/require-strict-array-search">
 
 Makes array_search search for identical elements
 
-In the `coding-style` set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/coding-style` set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
 
 </Card>
 <Card title="require-strict-function-call" href="/docs/rules/lint/functions/require-strict-function-call">
 
 Requires the strict flag of `in_array()`, `array_search()`, `array_keys()` with a search value and `base64_decode()`.
 
-In the `coding-style` set. Report only. Intent: suspicious. Upstream setting: `strictRules.strictFunctionCalls`.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious. Upstream setting: `strictRules.strictFunctionCalls`.
 
 </Card>
 <Card title="require-strict-in-array" href="/docs/rules/lint/functions/require-strict-in-array">
 
 Set in_array strict to true when defined on similar type
 
-In the `coding-style` set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/coding-style` set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
 
 </Card>
 </CardGroup>

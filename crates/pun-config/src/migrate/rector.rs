@@ -4,7 +4,7 @@ use crate::{Config, mapping, rules};
 use anyhow::Result;
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt::Write;
 use std::path::Path;
 
@@ -103,7 +103,7 @@ fn rule_options(c: &Configured) -> Result<toml::Table, String> {
 
 #[derive(Debug, Default)]
 pub struct Rector {
-    pub sets: Vec<&'static str>,
+    pub sets: Vec<String>,
     pub want: Vec<(String, String)>,
     pub overrides: Vec<(Vec<String>, String)>,
     pub exclude: Vec<String>,
@@ -112,15 +112,25 @@ pub struct Rector {
     pub options: BTreeMap<String, toml::Table>,
 }
 
-const PREPARED: [(&str, &str); 7] = [
-    ("dead-code.php", "dead-code"),
-    ("code-quality.php", "code-quality"),
-    ("coding-style.php", "coding-style"),
-    ("type-declaration.php", "types"),
-    ("privatization.php", "privatization"),
-    ("naming.php", "naming"),
-    ("early-return.php", "early-return"),
-];
+/// A Rector set file rector.php names, as its Pun set (`rector/dead-code`, `rector-laravel/laravel-code-quality`), when
+/// Pun has it.
+fn set_of(path: &str) -> Option<String> {
+    let name = path.rsplit('/').next()?.strip_suffix(".php")?;
+    let pun = if path.contains("rector-phpunit") {
+        format!("rector-phpunit/{name}")
+    } else if path.contains("rector-laravel") {
+        format!("rector-laravel/{name}")
+    } else if path.contains("pest-plugin-rector") {
+        format!("pest/{}", name.strip_prefix("pest-").unwrap_or(name))
+    } else if path.contains("/rector/rector/") {
+        format!("rector/{name}")
+    } else {
+        return None;
+    };
+    crate::schema::rector_sets()
+        .contains_key(&pun)
+        .then_some(pun)
+}
 
 /// The Pun options that keep a rule merged with a PHP-CS-Fixer fixer to what its Rector rules check, so a project
 /// clean under Rector is clean under Pun. The fixer's own checks run only when it is named in pint.json.
@@ -146,6 +156,21 @@ fn only_these(id: &str, classes: &HashSet<String>) -> Option<(String, toml::Valu
         .map(|(pun, _)| toml::Value::String(pun.clone()))
         .collect();
     (parts.len() < option.values.len()).then(|| (option.name.clone(), toml::Value::Array(parts)))
+}
+
+/// The options that keep rule `id` to what `classes` (short names of its Rector rules that run) rewrite: Rector's
+/// checks for a rule merged with a PHP-CS-Fixer fixer, and only those Rector rules' rewrites for a rule merged from
+/// several.
+pub(crate) fn as_rector_options(id: &str, classes: &BTreeSet<String>) -> toml::Table {
+    let mut out = toml::Table::new();
+    if let Some((_, key)) = AS_RECTOR.iter().find(|(r, _)| *r == id) {
+        out.insert((*key).to_string(), toml::Value::Boolean(true));
+    }
+    let classes: HashSet<String> = classes.iter().cloned().collect();
+    if let Some((key, parts)) = only_these(id, &classes) {
+        out.insert(key, parts);
+    }
+    out
 }
 
 fn by_class() -> &'static BTreeMap<String, toml::Value> {
@@ -182,16 +207,14 @@ fn relative(root: &Path, path: &str) -> String {
 pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
     let mut out = Rector::default();
     for set in &r.sets {
-        let file = set.rsplit('/').next().unwrap();
-        if let Some((_, pun)) = PREPARED.iter().find(|(f, _)| *f == file)
-            && set.contains("/rector/rector/")
-            && !out.sets.contains(pun)
+        if let Some(pun) = set_of(set)
+            && !out.sets.contains(&pun)
         {
             out.sets.push(pun);
         }
     }
     if r.php_sets {
-        out.sets.push("modernize");
+        out.sets.push(crate::schema::PHP_SETS.to_string());
     }
     let mut seen = HashSet::new();
     let mut runs: BTreeMap<String, HashSet<String>> = BTreeMap::new();
@@ -266,12 +289,7 @@ pub struct Reconciled {
 pub fn compose(root: &Path, parts: &mut Parts, rector: &Rector) -> Result<Reconciled> {
     let quoted = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
     if !rector.sets.is_empty() {
-        let sets: Vec<String> = rector
-            .sets
-            .iter()
-            .map(std::string::ToString::to_string)
-            .collect();
-        writeln!(parts.lint, "sets = {}", quoted(&sets)).unwrap();
+        writeln!(parts.lint, "sets = {}", quoted(&rector.sets)).unwrap();
     }
     if !rector.exclude.is_empty() {
         writeln!(parts.lint, "exclude = {}", quoted(&rector.exclude)).unwrap();

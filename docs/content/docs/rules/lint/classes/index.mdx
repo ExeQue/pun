@@ -12,105 +12,105 @@ Class, interface, trait and enum declarations and their members. Also in [format
 
 A class that implements the `__toString()` method must explicitly implement the `Stringable` interface.
 
-In the `modernize` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php80` set. Safe fix.
 
 </Card>
 <Card title="no-explicit-constructor-call" href="/docs/rules/lint/classes/no-explicit-constructor-call">
 
 Disallows calling `__construct()` on an existing object outside a constructor.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.illegalConstructorMethodCall`.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious. Upstream setting: `strictRules.illegalConstructorMethodCall`.
 
 </Card>
 <Card title="no-null-property-default" href="/docs/rules/lint/classes/no-null-property-default">
 
 Properties MUST not be explicitly initialized with `null` except when they have a type declaration (PHP 7.4).
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-protected-constant-in-final" href="/docs/rules/lint/classes/no-protected-constant-in-final">
 
 Change protected constant to private if possible
 
-In the `privatization` set. Safe fix.
+In the `lint-strict` preset. In Rector's `rector/privatization` set. Safe fix.
 
 </Card>
 <Card title="no-protected-in-final" href="/docs/rules/lint/classes/no-protected-in-final">
 
 Converts `protected` variables and methods to `private` where possible.
 
-In the `privatization` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 <Card title="no-protected-method-in-final" href="/docs/rules/lint/classes/no-protected-method-in-final">
 
 Change protected class method to private if possible
 
-In the `privatization` set. Safe fix.
+In the `lint-strict` preset. In Rector's `rector/privatization` set. Safe fix.
 
 </Card>
 <Card title="no-protected-property-in-final" href="/docs/rules/lint/classes/no-protected-property-in-final">
 
 Change property to private if possible
 
-In the `privatization` set. Safe fix.
+In the `lint-strict` preset. In Rector's `rector/privatization` set. Safe fix.
 
 </Card>
 <Card title="no-redundant-readonly" href="/docs/rules/lint/classes/no-redundant-readonly">
 
 Removes redundant readonly from properties in readonly classes.
 
-In the `dead-code` set. Safe fix.
+In the `lint-essential` preset and every stricter one. In Rector's `rector/dead-code` set. Safe fix.
 
 </Card>
 <Card title="no-static-constructor-call" href="/docs/rules/lint/classes/no-static-constructor-call">
 
 Disallows calling a constructor statically (`Foo::__construct()`) outside a child class's constructor.
 
-In the `code-quality` set. Report only. Intent: suspicious. Upstream setting: `strictRules.illegalConstructorMethodCall`.
+In the `lint-essential` preset and every stricter one. Report only. Intent: suspicious. Upstream setting: `strictRules.illegalConstructorMethodCall`.
 
 </Card>
 <Card title="no-underscore-class" href="/docs/rules/lint/classes/no-underscore-class">
 
 Detects class, interface, trait, or enum declarations named `_`.
 
-In the `modernize` set. Report only.
+In the `lint-recommended` preset and every stricter one. Report only.
 
 </Card>
 <Card title="no-unset-on-property" href="/docs/rules/lint/classes/no-unset-on-property">
 
 Properties should be set to `null` instead of using `unset`.
 
-In the `code-quality` set. Unsafe fix: it can change behavior. Intent: suspicious.
+In the `lint-strict` preset. Unsafe fix: it can change behavior. Intent: suspicious.
 
 </Card>
 <Card title="prefer-new-self" href="/docs/rules/lint/classes/prefer-new-self">
 
 Change `new static()` to `new self()` in a final class
 
-In the `code-quality` set. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality` set. Safe fix.
 
 </Card>
 <Card title="prefer-self-in-final" href="/docs/rules/lint/classes/prefer-self-in-final">
 
 Inside an enum or `final`/anonymous class, `self` should be preferred over `static`.
 
-In the `modernize` and `code-quality` sets. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/code-quality`, `rector/php55` sets. Safe fix.
 
 </Card>
 <Card title="require-class-matches-file" href="/docs/rules/lint/classes/require-class-matches-file">
 
 Classes must be in a path that matches their namespace, be at least one namespace deep and the class name should match the file name.
 
-In the `code-quality` set. Unsafe fix: it can change behavior. Intent: correctness.
+In the `lint-strict` preset. Unsafe fix: it can change behavior. Intent: correctness.
 
 </Card>
 <Card title="require-member-order" href="/docs/rules/lint/classes/require-member-order">
 
 Orders the elements of classes/interfaces/traits/enums.
 
-In the `coding-style` set. Safe fix.
+In the `lint-strict` preset. Safe fix.
 
 </Card>
 </CardGroup>

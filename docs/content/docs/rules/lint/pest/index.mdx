@@ -12,413 +12,413 @@ Pest (ecosystem: on when composer.lock has pestphp/pest).
 
 Replaces invalid beforeAll() and afterAll() hooks inside describe() with beforeEach() and afterEach()
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="no-invalid-repeat" href="/docs/rules/lint/pest/no-invalid-repeat">
 
 Normalizes invalid literal repeat() counts to 1
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="no-negated-boolean-matcher" href="/docs/rules/lint/pest/no-negated-boolean-matcher">
 
 Simplifies double-negative expectations like ->not->toBeFalse() to ->toBeTrue()
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="no-only" href="/docs/rules/lint/pest/no-only">
 
 Remove ->only() from Pest tests.
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="no-redundant-type-expectation" href="/docs/rules/lint/pest/no-redundant-type-expectation">
 
 Removes redundant literal type expectations when a later matcher keeps the chain meaningful
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="no-redundant-uses" href="/docs/rules/lint/pest/no-redundant-uses">
 
 Removes redundant local Pest uses already configured globally in tests/Pest.php
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="no-static-test-closure" href="/docs/rules/lint/pest/no-static-test-closure">
 
 Removes static from Pest test and hook callbacks that use the test case instance
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-chained-expect" href="/docs/rules/lint/pest/prefer-chained-expect">
 
 Chains consecutive expect() calls into a single chained expectation, combining calls on the same value and joining different values with ->and() (configurable)
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-dedicated-expectation" href="/docs/rules/lint/pest/prefer-dedicated-expectation">
 
 Use dedicated Pest matchers (toBeArray(), toStartWith(), toHaveCount(), ...) instead of expect(fn(...))->toBeTrue().
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-defer" href="/docs/rules/lint/pest/prefer-defer">
 
 Replaces deprecated ->tap() method with ->defer() for Pest v3 migration
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-each-modifier" href="/docs/rules/lint/pest/prefer-each-modifier">
 
 Converts foreach loops with expect() calls to use the ->each modifier
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-expect" href="/docs/rules/lint/pest/prefer-expect">
 
 Converts $this->assert*() calls to Pest expect() chains
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-extend" href="/docs/rules/lint/pest/prefer-extend">
 
 Converts uses() and pest()->uses() to pest()->extend() for classes and pest()->use() for traits
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-filesystem-matchers" href="/docs/rules/lint/pest/prefer-filesystem-matchers">
 
 Simplifies combined filesystem checks to single Pest matchers
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-not-modifier" href="/docs/rules/lint/pest/prefer-not-modifier">
 
 Simplifies negated expectations by flipping the matcher (e.g., expect(!$x)->toBeTrue() becomes expect($x)->toBeFalse())
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-separate-expects" href="/docs/rules/lint/pest/prefer-separate-expects">
 
 Splits `->and()` calls in expect() chains into separate expect() statements
 
-Off until you name it or its group. Safe fix.
+Not in any preset. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-sequence" href="/docs/rules/lint/pest/prefer-sequence">
 
 Converts consecutive indexed expect() calls to sequence()
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-simpler-expectation" href="/docs/rules/lint/pest/prefer-simpler-expectation">
 
 Simplify Pest expectations: expect($a > $b)->toBeTrue() becomes expect($a)->toBeGreaterThan($b), and similar.
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-specific-expectations" href="/docs/rules/lint/pest/prefer-specific-expectations">
 
 Use toBeTrue()/toBeFalse()/toBeNull() instead of toBe(true&#124;false&#124;null).
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-strict-equality-matchers" href="/docs/rules/lint/pest/prefer-strict-equality-matchers">
 
 Converts strict equality expressions to toBe() matcher
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-be-alpha" href="/docs/rules/lint/pest/prefer-to-be-alpha">
 
 Converts ctype_alpha() checks to toBeAlpha() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-alpha-numeric" href="/docs/rules/lint/pest/prefer-to-be-alpha-numeric">
 
 Converts ctype_alnum() checks to toBeAlphaNumeric() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-between" href="/docs/rules/lint/pest/prefer-to-be-between">
 
 Converts expect($value >= $min &amp;&amp; $value &lt;= $max)->toBeTrue() to expect($value)->toBeBetween($min, $max)
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-be-digits" href="/docs/rules/lint/pest/prefer-to-be-digits">
 
 Converts ctype_digit() checks to toBeDigits() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-directory" href="/docs/rules/lint/pest/prefer-to-be-directory">
 
 Converts is_dir() checks to toBeDirectory() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-empty" href="/docs/rules/lint/pest/prefer-to-be-empty">
 
 Converts empty checks and count-zero comparisons to toBeEmpty() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-file" href="/docs/rules/lint/pest/prefer-to-be-file">
 
 Converts is_file() checks to toBeFile() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-in" href="/docs/rules/lint/pest/prefer-to-be-in">
 
 Converts strict in_array() checks to the toBeIn() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-infinite" href="/docs/rules/lint/pest/prefer-to-be-infinite">
 
 Converts is_infinite() checks to toBeInfinite() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-instance-of" href="/docs/rules/lint/pest/prefer-to-be-instance-of">
 
 Converts expect($obj instanceof User)->toBeTrue() to expect($obj)->toBeInstanceOf(User::class)
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-be-json" href="/docs/rules/lint/pest/prefer-to-be-json">
 
 Converts json_decode() null checks to toBeJson() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-list" href="/docs/rules/lint/pest/prefer-to-be-list">
 
 Converts array_is_list() checks to toBeList() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-lowercase" href="/docs/rules/lint/pest/prefer-to-be-lowercase">
 
 Converts strtolower() equality checks to toBeLowercase() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-nan" href="/docs/rules/lint/pest/prefer-to-be-nan">
 
 Converts is_nan() checks to toBeNan() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-truthy-falsy" href="/docs/rules/lint/pest/prefer-to-be-truthy-falsy">
 
 Converts bool cast assertions to toBeTruthy()/toBeFalsy() matchers
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-be-uppercase" href="/docs/rules/lint/pest/prefer-to-be-uppercase">
 
 Converts strtoupper() equality checks to toBeUppercase() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-url" href="/docs/rules/lint/pest/prefer-to-be-url">
 
 Converts filter_var($url, FILTER_VALIDATE_URL) checks to toBeUrl() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-be-uuid" href="/docs/rules/lint/pest/prefer-to-be-uuid">
 
 Converts UUID regex validation to toBeUuid() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-contain" href="/docs/rules/lint/pest/prefer-to-contain">
 
 Converts in_array() checks to toContain() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-contain-equal" href="/docs/rules/lint/pest/prefer-to-contain-equal">
 
 Converts in_array(..., false) checks to toContainEqual() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-contain-only-instances-of" href="/docs/rules/lint/pest/prefer-to-contain-only-instances-of">
 
 Converts ->each->toBeInstanceOf() pattern to toContainOnlyInstancesOf() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-end-with" href="/docs/rules/lint/pest/prefer-to-end-with">
 
 Converts str_ends_with() checks to toEndWith() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-equal-canonicalizing" href="/docs/rules/lint/pest/prefer-to-equal-canonicalizing">
 
 Converts sort-then-compare to toEqualCanonicalizing() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-equal-with-delta" href="/docs/rules/lint/pest/prefer-to-equal-with-delta">
 
 Converts `expect(abs($a - $b) < $delta)->toBeTrue()` to `expect($a)->toEqualWithDelta($b, $delta)`.
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-have-count" href="/docs/rules/lint/pest/prefer-to-have-count">
 
 Converts expect(count($arr))->toBe(5) to expect($arr)->toHaveCount(5)
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-have-key" href="/docs/rules/lint/pest/prefer-to-have-key">
 
 Converts array_key_exists() checks to toHaveKey() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-have-keys" href="/docs/rules/lint/pest/prefer-to-have-keys">
 
 Converts chained toHaveKey() calls to toHaveKeys() with array of keys
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-have-length" href="/docs/rules/lint/pest/prefer-to-have-length">
 
 Converts strlen()/mb_strlen() comparisons to toHaveLength() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-have-method-on-class" href="/docs/rules/lint/pest/prefer-to-have-method-on-class">
 
 Changes expect($object)->toHaveMethod() to expect($object::class)->toHaveMethod() for Pest v3
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-have-properties" href="/docs/rules/lint/pest/prefer-to-have-properties">
 
 Converts chained toHaveProperty() calls to toHaveProperties() with array of properties
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-have-property" href="/docs/rules/lint/pest/prefer-to-have-property">
 
 Converts property_exists() checks to toHaveProperty() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-have-same-size" href="/docs/rules/lint/pest/prefer-to-have-same-size">
 
 Converts expect(count($a))->toBe(count($b)) to expect($a)->toHaveSameSize($b)
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-match" href="/docs/rules/lint/pest/prefer-to-match">
 
 Converts expect(preg_match("/pattern/", $str))->toBe(1) to expect($str)->toMatch("/pattern/")
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-match-array" href="/docs/rules/lint/pest/prefer-to-match-array">
 
 Converts multiple array element assertions to toMatchArray() matcher
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-match-object" href="/docs/rules/lint/pest/prefer-to-match-object">
 
 Converts consecutive toHaveProperty() with values to toMatchObject() matcher
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-to-start-with" href="/docs/rules/lint/pest/prefer-to-start-with">
 
 Converts str_starts_with() checks to toStartWith() matcher
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="prefer-to-throw" href="/docs/rules/lint/pest/prefer-to-throw">
 
 Use expect()->toThrow() instead of expectException() or try/catch in Pest tests.
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 <Card title="prefer-type-matchers" href="/docs/rules/lint/pest/prefer-type-matchers">
 
 Converts expect(is_array($x))->toBeTrue() to expect($x)->toBeArray()
 
-On when the `pest` extension is on. Unsafe fix: it can change behavior.
+In the `lint-strict` preset. In Rector's `pest/coding-style` set. Needs the `pest` extension. Unsafe fix: it can change behavior.
 
 </Card>
 <Card title="require-type-matcher-first" href="/docs/rules/lint/pest/require-type-matcher-first">
 
 Ensure type-check matchers (e.g. toBeInt, toBeInstanceOf) appear before value assertions in expect() chains and consecutive expects
 
-On when the `pest` extension is on. Safe fix.
+In the `lint-recommended` preset and every stricter one. In Rector's `pest/coding-style` set. Needs the `pest` extension. Safe fix.
 
 </Card>
 </CardGroup>

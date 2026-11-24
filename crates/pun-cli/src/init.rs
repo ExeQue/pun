@@ -3,7 +3,7 @@ use crate::{Exit, agent, migrate, root};
 use anyhow::{Result, bail};
 use dialoguer::console::Term;
 use pun_config::composer::{Composer, Locked};
-use pun_config::{AnalysePreset, LINT_SETS};
+use pun_config::{AnalysePreset, LintPreset};
 use std::io::IsTerminal;
 use std::path::Path;
 
@@ -12,9 +12,9 @@ pub(crate) struct InitArgs {
     /// The code style, `[format] preset` (default: laravel for a Laravel app, else psr12).
     #[arg(long, value_enum)]
     style: Option<Style>,
-    /// The lint sets, comma-separated (default: dead-code,modernize).
-    #[arg(long, value_delimiter = ',', value_name = "SETS")]
-    lint_sets: Option<Vec<String>>,
+    /// The lint preset: essential, recommended or strict (default: recommended).
+    #[arg(long, value_name = "PRESET")]
+    lint: Option<String>,
     /// The analysis preset: basic, essential, recommended, strict or max (default: recommended).
     #[arg(long, value_name = "PRESET")]
     analyse: Option<String>,
@@ -31,8 +31,6 @@ enum Style {
 }
 
 const STYLES: [&str; 2] = ["laravel", "psr12"];
-/// The lint sets ticked by default (init.md §2).
-const DEFAULT_SETS: [&str; 2] = ["dead-code", "modernize"];
 
 pub(crate) fn run(a: InitArgs) -> Result<Exit> {
     let root = root()?;
@@ -41,9 +39,9 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
             "pun.toml exists; `pun init` doesn't overwrite it. Edit it, or move it away and run `pun init` again."
         );
     }
-    let sets = match a.lint_sets {
-        Some(sets) => valid_sets(sets)?,
-        None => DEFAULT_SETS.map(String::from).to_vec(),
+    let lint = match a.lint {
+        Some(p) => lint_preset(&p)?,
+        None => LintPreset::DEFAULT,
     };
     let analyse = match a.analyse.as_deref() {
         Some(p) => preset(p)?,
@@ -89,10 +87,10 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
             return migrate::run(&migrate::MigrateArgs::default());
         }
     }
-    let (style, sets, analyse) = if interactive {
-        ask(&term, style, &sets, analyse)?
+    let (style, lint, analyse) = if interactive {
+        ask(&term, style, lint, analyse)?
     } else {
-        (style, sets, analyse)
+        (style, lint, analyse)
     };
     let style = STYLES[style as usize];
     let extensions = pun_config::migrate::extensions(&composer);
@@ -102,11 +100,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
         format!("[extensions]\n{extensions}\n")
     };
     let toml = format!(
-        "# Written by `pun init`.\n{extensions}[format]\npreset = \"{style}\"\n\n[lint]\nsets = [{}]\n\n[analyse]\npreset = \"{analyse}\"\n",
-        sets.iter()
-            .map(|s| format!("\"{s}\""))
-            .collect::<Vec<_>>()
-            .join(", ")
+        "# Written by `pun init`.\n{extensions}[format]\npreset = \"{style}\"\n\n[lint]\npreset = \"{lint}\"\n\n[analyse]\npreset = \"{analyse}\"\n"
     );
     pun_config::from_toml(&root, &toml)?;
     std::fs::write(root.join("pun.toml"), &toml)?;
@@ -114,7 +108,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
         let detail = [
             "pun.toml written".to_string(),
             format!("style {style}"),
-            format!("lint sets {}", none_or(&sets.join(" "))),
+            format!("lint {lint}"),
             format!("analyse {analyse}"),
             format!("extensions {}", none_or(&ids(&composer).join(" "))),
         ];
@@ -124,7 +118,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
     }
     if !interactive {
         println!("Code style: {style}");
-        println!("Lint sets: {}", none_or(&sets.join(", ")));
+        println!("Lint preset: {lint}");
         println!("Analysis preset: {analyse}");
     }
     if let Some(eco) = ecosystems(&composer) {
@@ -141,23 +135,19 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
 fn ask(
     term: &Term,
     style: Style,
-    sets: &[String],
+    lint: LintPreset,
     analyse: AnalysePreset,
-) -> Result<(Style, Vec<String>, AnalysePreset)> {
+) -> Result<(Style, LintPreset, AnalysePreset)> {
     let theme = theme();
     let style = dialoguer::Select::with_theme(&theme)
         .with_prompt("Code style")
         .items(STYLES)
         .default(style as usize)
         .interact_on(term)?;
-    let ticked: Vec<bool> = LINT_SETS
-        .iter()
-        .map(|s| sets.iter().any(|t| t == s))
-        .collect();
-    let sets = dialoguer::MultiSelect::with_theme(&theme)
-        .with_prompt("Lint sets (space toggles, enter confirms)")
-        .items(LINT_SETS)
-        .defaults(&ticked)
+    let lint = dialoguer::Select::with_theme(&theme)
+        .with_prompt("Lint preset")
+        .items(LintPreset::ALL.map(LintPreset::name))
+        .default(LintPreset::ALL.iter().position(|p| *p == lint).unwrap_or(1))
         .interact_on(term)?;
     let names = AnalysePreset::ALL.map(AnalysePreset::name);
     let analyse = dialoguer::Select::with_theme(&theme)
@@ -172,7 +162,7 @@ fn ask(
         .interact_on(term)?;
     Ok((
         [Style::Laravel, Style::Psr12][style],
-        sets.into_iter().map(|i| LINT_SETS[i].to_string()).collect(),
+        LintPreset::ALL[lint],
         AnalysePreset::ALL[analyse],
     ))
 }
@@ -183,18 +173,12 @@ pub(crate) fn theme() -> dialoguer::theme::ColorfulTheme {
     dialoguer::theme::ColorfulTheme::default()
 }
 
-/// `--lint-sets`, each checked against the lint sets with schema.rs's wording. `--lint-sets ""` is no sets.
-fn valid_sets(sets: Vec<String>) -> Result<Vec<String>> {
-    let sets: Vec<String> = sets.into_iter().filter(|s| !s.is_empty()).collect();
-    for s in &sets {
-        if !LINT_SETS.contains(&s.as_str()) {
-            bail!(
-                "--lint-sets: `{s}` is not a lint set; the sets are {}",
-                quoted(&LINT_SETS)
-            );
-        }
-    }
-    Ok(sets)
+/// `--lint`, with schema.rs's wording for an unknown preset.
+fn lint_preset(p: &str) -> Result<LintPreset> {
+    LintPreset::parse(p).ok_or_else(|| {
+        let names: Vec<&str> = LintPreset::ALL.map(LintPreset::name).to_vec();
+        anyhow::anyhow!("--lint: `{p}` is not a lint preset; use {}", quoted(&names))
+    })
 }
 
 /// `--analyse`, with schema.rs's wording for an unknown preset.

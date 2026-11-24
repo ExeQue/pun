@@ -328,72 +328,91 @@ fn analyse_php_version() {
 }
 
 #[test]
-fn lint_sets() {
+fn lint_presets() {
     let lint = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap().lint;
-    let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\"]\n")]);
-    assert_eq!(l.sets, ["early-return"]);
-    // Rector 2.8.4's early-return set is empty: its rules moved to the code-quality set.
-    let early = [
-        ("lint/control-flow/no-useless-else", Some("no_useless_else")),
-        ("lint/style/prefer-early-continue", None),
-    ];
+    let has = |l: &Lint, id: &str| ids(&l.rules).contains(&id);
+    let essential = lint(&[("pun.toml", "[lint]\npreset = \"essential\"\n")]);
+    assert_eq!(essential.preset, Some(LintPreset::Essential));
+    assert!(has(&essential, "lint/dead-code/no-unused-assignment"));
+    assert!(!has(&essential, "lint/style/prefer-early-return"));
+    // Each preset includes the ones below it.
+    let recommended = lint(&[("pun.toml", "[lint]\npreset = \"recommended\"\n")]);
+    assert!(ids(&essential.rules).iter().all(|id| has(&recommended, id)));
+    assert!(has(&recommended, "lint/style/prefer-early-return"));
+    assert!(has(&recommended, "lint/php-8.3/prefer-json-validate"));
+    assert!(!has(&recommended, "lint/types/add-return-type-from-cast"));
+    let strict = lint(&[("pun.toml", "[lint]\npreset = \"strict\"\n")]);
+    assert!(ids(&recommended.rules).iter().all(|id| has(&strict, id)));
+    assert!(has(&strict, "lint/types/add-return-type-from-cast"));
+    // Rules a preset holds still wait for their PHP version and extension.
+    assert!(!has(&strict, "lint/php-8.4/prefer-array-find"));
+    assert!(!has(&strict, "lint/laravel/add-relation-generics"));
+    let laravel = "[extensions]\nlaravel = \"on\"\n[lint]\npreset = \"strict\"\n";
+    let l = lint(&[("pun.toml", laravel), ("composer.lock", LARAVEL_LOCK)]);
+    assert!(has(&l, "lint/laravel/add-relation-generics"));
+    assert!(!has(&l, "lint/laravel/no-controller-middleware"));
+    // No preset and no sets: nothing runs, even with an extension on.
+    let l = lint(&[
+        ("pun.toml", "[extensions]\nlaravel = \"on\"\n"),
+        ("composer.lock", LARAVEL_LOCK),
+    ]);
+    assert!(l.rules.is_empty());
+}
+
+#[test]
+fn rector_sets() {
+    let lint = |toml: &str| load(&dir(&[("pun.toml", toml)]), &Options::default()).map(|c| c.lint);
+    let has = |l: &Lint, id: &str| ids(&l.rules).contains(&id);
+    // Rector 2.8.4's dead-code set: 72 rules, 71 of them lint rules in Pun (ReplaceBlockToItsStmts is
+    // format/control-flow/no-unneeded-braces), merged into 65 Pun rules.
+    let l = lint("[lint]\nsets = [\"rector/dead-code\"]\n").unwrap();
+    assert_eq!(l.rules.len(), 65);
+    assert!(!has(&l, "lint/style/prefer-early-return"));
+    // Of no-useless-ternary's and prefer-simple-condition's Rector rules, Rector 2.8.5's dead-code set runs only
+    // RemoveUselessTernaryRector and SimplifyBoolIdenticalTrueRector (crates/pun-cli/src/rector_config.php's output,
+    // as in tests/rector.rs), so each runs those checks only.
+    let options = |l: &Lint, id: &str| l.rules.iter().find(|r| r.id == id).unwrap().options.clone();
     assert_eq!(
-        l.rules,
-        early.map(|(id, fixer)| LintRule {
-            named: false,
-            ..lr(id, Level::Error, true, Value::Null, fixer)
-        })
+        options(&l, "lint/dead-code/no-useless-ternary"),
+        json!({"checks": ["useless"]})
     );
-    let types = "[lint]\nsets = [\"types\"]\n";
-    let l = lint(&[("pun.toml", types)]);
-    assert_eq!((l.rules.len(), l.ecosystems.len()), (71, 0));
-    assert!(!ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
-    // A locked laravel/framework alone turns nothing on: only pun.toml does.
-    let l = lint(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]);
-    assert_eq!((l.rules.len(), l.ecosystems.len()), (71, 0));
-    // On, the extension brings its rules from every set (7 types, 39 code-quality, 1 coding-style), not only `types`;
-    // its rules in no set, such as no-controller-middleware, stay opt-in.
-    let laravel = format!("[extensions]\nlaravel = \"on\"\n{types}");
-    let l = lint(&[("pun.toml", &laravel), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!(
-        (l.rules.len(), l.ecosystems),
-        (71 + 47, vec![&crate::extensions::LARAVEL])
+        options(&l, "lint/complexity/prefer-simple-condition"),
+        json!({"checks": ["identical-true"]})
     );
-    assert!(ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
-    assert!(ids(&l.rules).contains(&"lint/laravel/no-app-array-access"));
-    assert!(!ids(&l.rules).contains(&"lint/laravel/prefer-pivot-class"));
-    assert!(!ids(&l.rules).contains(&"lint/laravel/no-controller-middleware"));
-    let off = format!("{laravel}[lint.groups]\nlaravel = \"off\"\n");
-    let l = lint(&[("pun.toml", &off), ("composer.lock", LARAVEL_LOCK)]);
-    assert_eq!((l.rules.len(), l.ecosystems.len()), (71, 0));
-    let modernize = "[lint]\nsets = [\"modernize\"]\n";
-    let l = lint(&[(
-        "pun.toml",
-        &format!("[php]\nversion = \"8.4\"\n{modernize}"),
-    )]);
-    assert_eq!(l.rules.len(), 102);
-    assert!(ids(&l.rules).contains(&"lint/php-7.4/prefer-arrow-function"));
-    assert!(ids(&l.rules).contains(&"lint/php-8.3/prefer-json-validate"));
-    assert!(ids(&l.rules).contains(&"lint/php-8.2/prefer-readonly-class"));
-    assert!(ids(&l.rules).contains(&"lint/php-8.4/prefer-array-find"));
-    assert!(!ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
-    // PHP 8.3, the default without `require.php`: the 8.3 upgrades run, the 8.4 ones do not.
-    let l = lint(&[("pun.toml", modernize)]);
-    assert!(ids(&l.rules).contains(&"lint/php-8.3/prefer-json-validate"));
+    // Through a preset as well, the rule runs whole.
+    let l = lint("[lint]\npreset = \"essential\"\nsets = [\"rector/dead-code\"]\n").unwrap();
+    assert_eq!(
+        options(&l, "lint/dead-code/no-useless-ternary"),
+        Value::Null
+    );
+    // `rector/php-sets` is `withPhpSets()`: every PHP set up to `[php] version`.
+    let php = |v: &str| {
+        lint(&format!(
+            "[php]\nversion = \"{v}\"\n[lint]\nsets = [\"rector/php-sets\"]\n"
+        ))
+        .unwrap()
+    };
+    let l = php("8.4");
+    assert!(has(&l, "lint/php-7.4/prefer-arrow-function"));
+    assert!(has(&l, "lint/php-8.4/prefer-array-find"));
+    assert!(!has(&l, "lint/php-8.5/no-null-array-key"));
+    assert!(!has(&php("8.3"), "lint/php-8.4/prefer-array-find"));
+    assert!(has(&php("8.5"), "lint/php-8.5/no-null-array-key"));
+    // The sets before 2026-11-24 name their Rector set.
+    let err = |toml: &str| lint(toml).unwrap_err().to_string();
     assert!(
-        !ids(&l.rules)
-            .iter()
-            .any(|id| id.starts_with("lint/php-8.4/"))
+        err("[lint]\nsets = [\"types\"]\n").ends_with(
+            "[lint] sets: `types` is now `rector/type-declaration`, Rector's set; for Pun's own picks use [lint] preset = \"essential\" | \"recommended\" | \"strict\""
+        )
     );
-    let l = lint(&[(
-        "pun.toml",
-        &format!("[php]\nversion = \"8.5\"\n{modernize}"),
-    )]);
-    assert_eq!(l.rules.len(), 108);
-    assert!(ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
-    assert!(!ids(&l.rules).contains(&"lint/php-8.1/prefer-first-class-callable"));
-    let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\", \"types\"]\n")]);
-    assert_eq!(l.rules.len(), 73);
+    assert!(
+        err("[lint]\nsets = [\"naming\"]\n")
+            .contains("`naming` is gone: Rector's set has no rules")
+    );
+    assert!(err("[lint]\npreset = \"max\"\n").ends_with(
+        "[lint] preset: `max` is not a lint preset; use \"essential\" | \"recommended\" | \"strict\""
+    ));
 }
 
 #[test]
@@ -404,24 +423,29 @@ fn lint_groups() {
             .lint
     };
     let level = |l: &Lint, id: &str| l.rules.iter().find(|r| r.id == id).map(|r| r.level);
-    let l = lint("[lint]\nsets = [\"early-return\"]\n[lint.groups]\nstyle = \"warn\"\n");
-    assert_eq!(l.rules.len(), 92);
+    // rector/privatization: three classes/ rules and style/prefer-property-over-local-getter.
+    let set = "[lint]\nsets = [\"rector/privatization\"]\n";
+    let l = lint(&format!("{set}[lint.groups]\nstyle = \"warn\"\n"));
+    // A group's level turns on every rule of the group: the 91 style rules, plus the set's three others.
+    assert_eq!(l.rules.len(), 91 + 3);
     assert!(
         l.rules
             .iter()
-            .all(|r| r.level == Level::Warn || r.id.starts_with("lint/control-flow/no-"))
+            .all(|r| r.level == Level::Warn || r.id.starts_with("lint/classes/no-protected-"))
     );
     assert_eq!(
-        level(&l, "lint/control-flow/no-useless-else"),
+        level(&l, "lint/classes/no-protected-method-in-final"),
         Some(Level::Error)
     );
-    let l = lint(
-        "[lint]\nsets = [\"early-return\"]\n[lint.groups]\nstyle = \"off\"\n[lint.rules]\n\"style/prefer-early-return\" = \"warn\"\n",
-    );
+    let l = lint(&format!(
+        "{set}[lint.groups]\nstyle = \"off\"\n[lint.rules]\n\"style/prefer-early-return\" = \"warn\"\n"
+    ));
     assert_eq!(
         ids(&l.rules),
         [
-            "lint/control-flow/no-useless-else",
+            "lint/classes/no-protected-constant-in-final",
+            "lint/classes/no-protected-method-in-final",
+            "lint/classes/no-protected-property-in-final",
             "lint/style/prefer-early-return"
         ]
     );
@@ -429,10 +453,10 @@ fn lint_groups() {
         level(&l, "lint/style/prefer-early-return"),
         Some(Level::Warn)
     );
-    let l = lint(
-        "[lint]\nsets = [\"early-return\"]\n[lint.rules]\n\"control-flow/no-useless-else\" = \"off\"\n",
-    );
-    assert_eq!(l.rules.len(), 1);
+    let l = lint(&format!(
+        "{set}[lint.rules]\n\"classes/no-protected-method-in-final\" = \"off\"\n"
+    ));
+    assert_eq!(l.rules.len(), 3);
     let l =
         lint("[lint.rules]\n\"style/prefer-early-return\" = { level = \"warn\", max-depth = 2 }\n");
     assert_eq!(
@@ -727,17 +751,30 @@ fn phpstan_level_presets() {
 #[test]
 fn extensions() {
     let load_ = |files: &[(&str, &str)]| load(&dir(files), &Options::default());
-    let types = "[lint]\nsets = [\"types\"]\n";
+    let types = "[lint]\npreset = \"strict\"\n";
     let with = |switch: &str| format!("{types}[extensions]\nlaravel = \"{switch}\"\n");
     let c = load_(&[("pun.toml", &with("off")), ("composer.lock", LARAVEL_LOCK)]).unwrap();
-    assert_eq!((c.lint.rules.len(), c.lint.ecosystems.len()), (71, 0));
+    let without = c.lint.rules.len();
+    assert_eq!(c.lint.ecosystems.len(), 0);
+    assert!(
+        !c.lint
+            .rules
+            .iter()
+            .any(|r| r.id.starts_with("lint/laravel/"))
+    );
     assert!(c.extensions.is_empty() && c.analyse.ecosystems.is_empty() && !c.analyse.larastan);
     assert_eq!(c.show()["extensions"]["laravel"], "off");
     let c = load_(&[("pun.toml", &with("on"))]).unwrap();
-    assert_eq!(
-        (c.lint.rules.len(), &c.extensions),
-        (71 + 47, &vec![&crate::extensions::LARAVEL])
-    );
+    // On, the extension adds the preset's Laravel rules.
+    assert_eq!(c.extensions, [&crate::extensions::LARAVEL]);
+    let laravel = c
+        .lint
+        .rules
+        .iter()
+        .filter(|r| r.id.starts_with("lint/laravel/"))
+        .count();
+    assert!(laravel > 0);
+    assert_eq!(c.lint.rules.len(), without + laravel);
     assert!(c.analyse.larastan && c.analyse.ecosystems == [&crate::extensions::LARAVEL]);
     let shown = c.show();
     assert_eq!(
@@ -965,7 +1002,7 @@ upstream  array_syntax (php-cs-fixer)
 Master functions shall be used instead of aliases.
 
 group     style: One consistent way to write the same thing
-sets      coding-style
+preset    strict
 fix       unsafe
 upstream  no_alias_functions (php-cs-fixer)
           no-alias-function (mago-linter)
@@ -1002,7 +1039,7 @@ upstream  CallMethodsRule (phpstan-classes)
 A @pun-ignore comment that suppressed nothing. Fix removes it.
 
 group     comments: Comments other than PHPDoc, including ignore comments
-sets      code-quality
+preset    essential
 intent    suspicious
 fix       safe
 upstream  none (Pun's own rule)
@@ -1024,6 +1061,15 @@ upstream  none (Pun's own rule)
     );
     assert!(
         out.contains("\npresets   none (opt-in by name or group)\n"),
+        "{out}"
+    );
+    // Rector's RemoveUselessTernaryRector is in its dead-code set, SimplifyTautologyTernaryRector in code-quality.
+    let out = explained(
+        "lint/dead-code/no-useless-ternary",
+        "lint/dead-code/no-useless-ternary",
+    );
+    assert!(
+        out.contains("\nsets      rector/code-quality, rector/dead-code\n"),
         "{out}"
     );
 }
@@ -1154,7 +1200,7 @@ fn pun_toml_errors() {
         ),
         (
             "[lint]\nsets = [\"recommended\"]\n",
-            "[lint] sets: `recommended` is not a lint set; the sets are `dead-code`, `modernize`, `code-quality`, `types`, `early-return`, `privatization`, `naming`, `coding-style`",
+            "[lint] sets: `recommended` is not a lint set; the sets are Rector's, such as `rector/dead-code`, `rector/php-sets` and `rector-laravel/laravel-code-quality` (`pun explain` lists a rule's sets)",
         ),
         (
             "[lint.groups]\nnope = \"error\"\n",

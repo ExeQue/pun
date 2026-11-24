@@ -12,70 +12,70 @@ Upgrade to PHP 8.0: code a newer PHP removes, deprecates or does better.
 
 Change the integer associative argument of the get_headers() function to a boolean
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php80` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="no-unused-catch-variable" href="/docs/rules/lint/php-8.0/no-unused-catch-variable">
 
 Remove unused variable in `catch()`
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php80` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="no-version-compare-operator-alias" href="/docs/rules/lint/php-8.0/no-version-compare-operator-alias">
 
 Streamline the operator argument of the version_compare() function
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php80` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="prefer-get-debug-type" href="/docs/rules/lint/php-8.0/prefer-get-debug-type">
 
 Change ternary type resolve to get_debug_type()
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php-polyfills`, `rector/php80` sets. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="prefer-match" href="/docs/rules/lint/php-8.0/prefer-match">
 
 Change `switch()` to `match()`
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php80` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="prefer-nullsafe-over-ternary" href="/docs/rules/lint/php-8.0/prefer-nullsafe-over-ternary">
 
 Change null check ternary around a method call or property fetch to nullsafe operator
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php80` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="prefer-static-class" href="/docs/rules/lint/php-8.0/prefer-static-class">
 
 Change $this::class to static::class or self::class depends on class modifier
 
-In the `modernize` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
+In the `lint-recommended` preset and every stricter one. In Rector's `rector/php80` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="prefer-str-contains-over-mb-strpos" href="/docs/rules/lint/php-8.0/prefer-str-contains-over-mb-strpos">
 
 Replace mb_strpos() !== false and mb_strstr()  with str_contains()
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php-polyfills` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="prefer-str-ends-with" href="/docs/rules/lint/php-8.0/prefer-str-ends-with">
 
 Change helper functions to `str_ends_with()`
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php-polyfills`, `rector/php80` sets. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 <Card title="prefer-str-starts-with" href="/docs/rules/lint/php-8.0/prefer-str-starts-with">
 
 Change helper functions to str_starts_with()
 
-In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+In the `lint-strict` preset. In Rector's `rector/php-polyfills`, `rector/php80` sets. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 </CardGroup>

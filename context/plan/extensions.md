@@ -67,7 +67,7 @@ pest = "on"
 - An extension runs only when `[extensions]` says `"on"`, so pun.toml alone shows what runs (Pushpak). A locked
   package never turns one on. `pun migrate` and `pun init` write `"on"` for each extension whose package composer.lock locks.
   `"auto"` is a config error that says so.
-- An extension that is on brings every rule of its groups that sits in some lint set, whatever `[lint] sets` lists.
+- An extension that is on lets the rules of its groups that the `[lint] preset` or `[lint] sets` hold run (2026-11-24; it used to bring every rule that sat in some set).
   Its rules in no set (its upgrade groups, opinionated codemods) stay opt-in by name or group. Analyse rules still
   follow the analyse preset.
 - Format rules don't depend on extensions: `format/laravel/blade` stays a `[format.rules]` entry, which migrate writes
