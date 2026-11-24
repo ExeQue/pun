@@ -1140,6 +1140,7 @@ exclude = ["storage/**"]
 laravel = "off"
 pest = "off"
 phpunit = "off"
+carbon = "off"
 
 [format]
 preset = "empty"
