@@ -8,6 +8,13 @@ pagination: false
 Upgrade to PHP 7.3: code a newer PHP removes, deprecates or does better.
 
 <CardGroup cols={2}>
+<Card title="no-case-insensitive-constant" href="/docs/rules/lint/php-7.3/no-case-insensitive-constant">
+
+Change case insensitive constants to sensitive ones
+
+In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.3 or later.
+
+</Card>
 <Card title="no-case-insensitive-define" href="/docs/rules/lint/php-7.3/no-case-insensitive-define">
 
 Change case insensitive constant definition to sensitive one
@@ -15,9 +22,23 @@ Change case insensitive constant definition to sensitive one
 In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.3 or later.
 
 </Card>
+<Card title="no-heredoc-label-in-body" href="/docs/rules/lint/php-7.3/no-heredoc-label-in-body">
+
+Changes heredoc/nowdoc that contains closing word to safe wrapper name
+
+In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.3 or later.
+
+</Card>
 <Card title="no-unescaped-regex-dash" href="/docs/rules/lint/php-7.3/no-unescaped-regex-dash">
 
 Escape - in some cases
+
+In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.3 or later.
+
+</Card>
+<Card title="prefer-array-key-first" href="/docs/rules/lint/php-7.3/prefer-array-key-first">
+
+Make use of array_key_first() and array_key_last()
 
 In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.3 or later.
 
@@ -34,6 +55,20 @@ In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php
 Changes is_array + Countable check to is_countable
 
 In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.3 or later.
+
+</Card>
+<Card title="prefer-setcookie-options" href="/docs/rules/lint/php-7.3/prefer-setcookie-options">
+
+Convert setcookie argument to PHP7.3 option array
+
+In the `modernize` set. Safe fix. Runs only when `[php] version` is 7.3 or later.
+
+</Card>
+<Card title="require-string-needle" href="/docs/rules/lint/php-7.3/require-string-needle">
+
+Make needles explicit strings
+
+In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 7.3 or later.
 
 </Card>
 </CardGroup>

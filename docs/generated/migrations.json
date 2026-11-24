@@ -6534,9 +6534,11 @@
         "name": "ArrayKeyFirstLast",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/array-key-first-last-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/prefer-array-key-first"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ArrayKeysToArrayKeyFirstLast",
@@ -9820,9 +9822,11 @@
         "name": "SensitiveConstantName",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/sensitive-constant-name-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/no-case-insensitive-constant"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "SensitiveDefine",
@@ -9838,9 +9842,11 @@
         "name": "SensitiveHereNowDoc",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/sensitive-here-now-doc-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/no-heredoc-label-in-body"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "SeparateMultiUseImports",
@@ -9864,9 +9870,11 @@
         "name": "SetCookie",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/set-cookie-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/prefer-setcookie-options"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "SetStateToStatic",
@@ -10376,9 +10384,11 @@
         "name": "StringifyStrNeedles",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/stringify-str-needles-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.3/require-string-needle"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "StringsAssertNaked",

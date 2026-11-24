@@ -7,7 +7,9 @@ use crate::common::run_class;
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
-    NoCaseInsensitiveDefine, NoUnescapedRegexDash, PreferArrayKeyFirstLast, PreferIsCountable,
+    NoCaseInsensitiveConstant, NoCaseInsensitiveDefine, NoHeredocLabelInBody, NoUnescapedRegexDash,
+    PreferArrayKeyFirst, PreferArrayKeyFirstLast, PreferIsCountable, PreferSetcookieOptions,
+    RequireStringNeedle,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -38,5 +40,39 @@ fn array_keys_to_array_key_first_last() {
     check(
         || Box::new(PreferArrayKeyFirstLast),
         "ArrayKeysToArrayKeyFirstLastRector",
+    );
+}
+
+#[test]
+fn array_key_first_last() {
+    check(|| Box::new(PreferArrayKeyFirst), "ArrayKeyFirstLastRector");
+}
+
+#[test]
+fn sensitive_constant_name() {
+    check(
+        || Box::new(NoCaseInsensitiveConstant),
+        "SensitiveConstantNameRector",
+    );
+}
+
+#[test]
+fn sensitive_here_now_doc() {
+    check(
+        || Box::new(NoHeredocLabelInBody),
+        "SensitiveHereNowDocRector",
+    );
+}
+
+#[test]
+fn setcookie() {
+    check(|| Box::new(PreferSetcookieOptions), "SetcookieRector");
+}
+
+#[test]
+fn stringify_str_needles() {
+    check(
+        || Box::new(RequireStringNeedle),
+        "StringifyStrNeedlesRector",
     );
 }

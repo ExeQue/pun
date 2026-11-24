@@ -10443,6 +10443,26 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.3/no-case-insensitive-constant",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Change case insensitive constants to sensitive ones",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php73\\Rector\\ConstFetch\\SensitiveConstantNameRector",
+        "SensitiveConstantName",
+        "SensitiveConstantNameRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.3/no-case-insensitive-define",
       "command": "lint",
       "group": "php-7.3",
@@ -10463,6 +10483,26 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.3/no-heredoc-label-in-body",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Changes heredoc/nowdoc that contains closing word to safe wrapper name",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php73\\Rector\\String_\\SensitiveHereNowDocRector",
+        "SensitiveHereNowDoc",
+        "SensitiveHereNowDocRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.3/no-unescaped-regex-dash",
       "command": "lint",
       "group": "php-7.3",
@@ -10479,6 +10519,26 @@
         "Rector\\Php73\\Rector\\FuncCall\\RegexDashEscapeRector",
         "RegexDashEscape",
         "RegexDashEscapeRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.3/prefer-array-key-first",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Make use of array_key_first() and array_key_last()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ArrayKeyFirstLast",
+        "ArrayKeyFirstLastRector",
+        "Rector\\Php73\\Rector\\FuncCall\\ArrayKeyFirstLastRector"
       ],
       "ported": true
     },
@@ -10519,6 +10579,46 @@
         "IsCountable",
         "IsCountableRector",
         "Rector\\Php73\\Rector\\BooleanOr\\IsCountableRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.3/prefer-setcookie-options",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Convert setcookie argument to PHP7.3 option array",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php73\\Rector\\FuncCall\\SetCookieRector",
+        "SetCookie",
+        "SetCookieRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.3/require-string-needle",
+      "command": "lint",
+      "group": "php-7.3",
+      "summary": "Make needles explicit strings",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php73\\Rector\\FuncCall\\StringifyStrNeedlesRector",
+        "StringifyStrNeedles",
+        "StringifyStrNeedlesRector"
       ],
       "ported": true
     },

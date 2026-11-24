@@ -1,4 +1,9 @@
+pub(super) mod no_case_insensitive_constant;
 pub(super) mod no_case_insensitive_define;
+pub(super) mod no_heredoc_label_in_body;
 pub(super) mod no_unescaped_regex_dash;
+pub(super) mod prefer_array_key_first;
 pub(super) mod prefer_array_key_first_last;
 pub(super) mod prefer_is_countable;
+pub(super) mod prefer_setcookie_options;
+pub(super) mod require_string_needle;
