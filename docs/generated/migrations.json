@@ -6261,7 +6261,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -6635,7 +6635,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "only in sets outside the eight prepared sets: instanceof",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -6757,7 +6757,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -7065,7 +7065,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -7919,7 +7919,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -7937,7 +7937,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -7945,7 +7945,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -8161,7 +8161,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -8879,7 +8879,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -9089,7 +9089,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-trait-use-rector",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -9497,7 +9497,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/rename-static-method-rector",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -9551,7 +9551,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -10413,7 +10413,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "in no set",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
