@@ -128,7 +128,7 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
         .map_or_else(|_| o.phar.clone(), |p| p.to_string_lossy().into_owned());
     o.phar.clone_from(&phar);
     let files = WithoutBaselines {
-        files: ProjectFiles::new(&phar),
+        files: ProjectFiles::new(&phar, &cwd),
         seen: std::cell::RefCell::default(),
         virtual_file: std::cell::RefCell::default(),
     };
@@ -286,7 +286,9 @@ fn neon(file: &str) -> Array {
 }
 
 fn package(rel: &str) -> Option<String> {
-    if rel.starts_with("phar://phpstan.phar/") {
+    if (rel.strip_prefix("phar://")).is_some_and(|p| {
+        p.starts_with("phpstan.phar/") || p.contains("vendor/phpstan/phpstan/phpstan.phar/")
+    }) {
         return Some("phpstan/phpstan".into());
     }
     let rest = rel.strip_prefix("vendor/")?;

@@ -474,6 +474,29 @@ fn takes_phar_bleeding_edge() {
     assert!(p.unsupported.is_empty(), "{:?}", p.unsupported);
 }
 
+/// Issue #25: PHPStan 2.3.5 reads `phar://vendor/phpstan/phpstan/phpstan.phar/conf/bleedingEdge.neon` from the project
+/// root, where PHP opens the relative archive path; a path that names no phar there is "missing or is not readable",
+/// as PHPStan reports it.
+#[test]
+fn takes_bleeding_edge_from_a_relative_phar_path() {
+    let neon = |archive: &str| {
+        format!(
+            "includes:\n    - phar://{archive}/conf/bleedingEdge.neon\nparameters:\n    level: 0\n"
+        )
+    };
+    let d = project(&neon("vendor/phpstan/phpstan/phpstan.phar"), &[]);
+    let p = from_phpstan(&d, &d.join("phpstan.neon")).unwrap();
+    assert!(p.bleeding_edge);
+    assert!(p.unsupported.is_empty(), "{:?}", p.unsupported);
+    std::fs::write(d.join("phpstan.neon"), neon("vendor/phpstan.phar")).unwrap();
+    let e = from_phpstan(&d, &d.join("phpstan.neon")).unwrap_err();
+    assert_eq!(
+        e.to_string(),
+        "File 'phar://vendor/phpstan.phar/conf/bleedingEdge.neon' is missing or is not readable."
+    );
+    std::fs::remove_dir_all(d).unwrap();
+}
+
 /// PHPStan's config.level7.neon to config.level10.neon turn on checkUnionTypes, checkNullables, checkExplicitMixed
 /// and checkImplicitMixed: a migrated level keeps the switches of its own level, not those of its preset's top level.
 #[test]

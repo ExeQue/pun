@@ -11,7 +11,7 @@ fn container_factory_validate_parameters() {
     let dir = std::env::temp_dir().join(format!("pun-phpstan-schema-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("schema.neon").to_string_lossy().into_owned();
-    let files = ProjectFiles::new("/pun-root/phpstan.phar");
+    let files = ProjectFiles::new("/pun-root/phpstan.phar", "/pun-root");
     let mut failures = Vec::new();
     for case in fixture("schema.json").as_array().unwrap() {
         std::fs::write(&file, case["neon"].as_str().unwrap()).unwrap();

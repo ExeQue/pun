@@ -205,20 +205,32 @@ impl Options {
 
 pub struct ProjectFiles {
     phar: String,
+    cwd: String,
 }
 
 impl ProjectFiles {
-    pub fn new(phar: &str) -> ProjectFiles {
+    /// The files of the project in `cwd`, with PHPStan's `phar`.
+    pub fn new(phar: &str, cwd: &str) -> ProjectFiles {
         ProjectFiles {
             phar: normalize_path(phar),
+            cwd: cwd.to_string(),
         }
     }
 
     fn embedded(&self, path: &str) -> Option<&'static str> {
         let n = normalize_path(path);
-        let rel = n
-            .strip_prefix(&format!("phar://{}/", self.phar))
-            .or_else(|| n.strip_prefix("phar://phpstan.phar/"))?;
+        let inner = n.strip_prefix("phar://")?;
+        let rel = (inner.strip_prefix(&format!("{}/", self.phar)))
+            .or_else(|| inner.strip_prefix("phpstan.phar/"))
+            .or_else(|| {
+                // `phar://vendor/phpstan/phpstan/phpstan.phar/conf/...`: PHP opens a relative archive path from the
+                // working directory.
+                let (archive, rest) = inner.split_once(".phar/")?;
+                let archive = normalize_path(&format!("{}/{archive}.phar", self.cwd));
+                let real = std::fs::canonicalize(&archive)
+                    .map_or(archive, |p| normalize_path(&p.to_string_lossy()));
+                (real == self.phar).then_some(rest)
+            })?;
         let name = rel.strip_prefix("conf/")?;
         CONF.iter().find(|(f, _)| *f == name).map(|(_, c)| *c)
     }
@@ -279,7 +291,7 @@ fn get<'a>(a: &'a Array, path: &[&str]) -> Option<&'a Value> {
 pub fn resolve(o: &Options) -> Result<Resolved, Error> {
     let phar = std::fs::canonicalize(&o.phar)
         .map_or_else(|_| o.phar.clone(), |p| p.to_string_lossy().into_owned());
-    let files = ProjectFiles::new(&phar);
+    let files = ProjectFiles::new(&phar, &o.cwd);
     resolve_with(&Options { phar, ..o.clone() }, &files)
 }
 

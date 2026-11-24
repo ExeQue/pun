@@ -75,7 +75,7 @@ fn php_helpers() {
 fn php_config_files() {
     let dir = format!("{}/tests/fixtures/phpfile", env!("CARGO_MANIFEST_DIR"));
     let want = &fixture("php.json")["phpfile"];
-    let files = pun_phpstan::config::ProjectFiles::new("");
+    let files = pun_phpstan::config::ProjectFiles::new("", "");
     let mut names: Vec<String> = std::fs::read_dir(&dir)
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
