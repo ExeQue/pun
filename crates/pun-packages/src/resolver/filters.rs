@@ -579,8 +579,8 @@ fn merge_policy(current: Value, val: &Value) -> Value {
         } else {
             list
         };
+        // `false` disables, and a list with no prior layer (or a disabled one) is taken as it is.
         let merged = match (current.get(&name), &list) {
-            (_, Value::Bool(false)) | (None | Some(Value::Bool(false)), _) => list,
             (Some(Value::Object(existing)), Value::Object(incoming)) => {
                 let mut m = existing.clone();
                 m.extend(incoming.clone());

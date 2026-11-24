@@ -916,7 +916,7 @@ mod tests {
         .unwrap();
         assert!(kept.contains("\"version\": \"1.0.0\""), "{kept}");
 
-        let mut foreign = manifest.clone();
+        let mut foreign = manifest;
         foreign["repositories"] = json!([
             {"type": "package", "package": [{"name": "acme/listed", "version": "1.0.1"}]},
             {"type": "composer", "url": base}, {"packagist.org": false}
