@@ -850,7 +850,7 @@ fn rector_paths_skips_and_unsupported_rules() {
     assert_eq!(code, Some(0), "{out}{err}");
     let out = counts(&out);
     assert!(
-        out.starts_with(" ok rector.php  -> [lint] N on, N off, 3 paths excluded, 1 per-path skip\n                   sets rector/dead-code, rector/php-sets\n"),
+        out.starts_with(" ok rector.php  -> [lint] N on, N off, 3 paths excluded, 1 per-path skip\n                   sets rector/dead-code, rector/php-polyfills, rector/php-sets\n"),
         "{out}"
     );
     assert!(
@@ -1033,7 +1033,7 @@ fn rector_php82_set_turns_on_the_php_8_2_rules() {
         (
             "rector-php82-php-sets",
             "return RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withPhpSets(php82: true);\n",
-            " ok rector.php  -> [lint] N on, N off, 1 path excluded\n                   sets rector/php-sets",
+            " ok rector.php  -> [lint] N on, N off, 1 path excluded\n                   sets rector/php-polyfills, rector/php-sets",
         ),
     ] {
         let d = project(
@@ -1065,7 +1065,7 @@ fn rector_php82_set_turns_on_the_php_8_2_rules() {
         let sets = if name.ends_with("set-list") {
             "rector/php82"
         } else {
-            "rector/php-sets"
+            "rector/php-polyfills\", \"rector/php-sets"
         };
         assert!(
             toml.contains(&format!("sets = [\"{sets}\"]\n")),

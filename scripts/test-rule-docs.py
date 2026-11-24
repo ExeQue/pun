@@ -73,7 +73,7 @@ def main() -> None:
     assert all("%s" not in r["name"] for r in tables["phpstan"])
     assert "larastan.jobs.noConstructor" in {r["name"] for r in tables["larastan"]}
     index = json.loads(output[docs.GENERATED / "rules.json"])
-    assert "format-empty" in index["selections"] and "naming" in index["selections"]
+    assert {"format-empty", "lint-recommended", "rector/dead-code"} <= set(index["selections"])
     directory = index["rules"]
     indexed = {rule["id"]: rule for rule in directory}
     assert len(directory) == len(indexed)
