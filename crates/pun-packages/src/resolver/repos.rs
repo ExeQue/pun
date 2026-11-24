@@ -142,7 +142,10 @@ pub fn open<'a>(
             "vcs" | "git" | "github" | "gitlab" | "bitbucket" | "git-bitbucket" | "svn"
             | "fossil" | "perforce" | "hg" | "artifact" | "pear" => bail!(
                 "Pun does not read {kind} repositories yet ({}); publish the package to a Composer repository, or use a path repository",
-                config.get("url").and_then(Value::as_str).unwrap_or(kind)
+                config
+                    .get("url")
+                    .and_then(Value::as_str)
+                    .map_or_else(|| kind.to_string(), crate::fetch::redact)
             ),
             other => bail!("Repository type is not registered: {other}"),
         };

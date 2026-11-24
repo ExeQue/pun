@@ -83,6 +83,27 @@ impl Auth {
     }
 }
 
+/// A URL as errors show it: without the user information and the query, which can carry a token or a signature
+/// that grants the download, as Composer's `Url::sanitize` hides passwords and access tokens.
+pub fn redact(url: &str) -> String {
+    let (scheme, rest) = url.split_once("://").unwrap_or(("", url));
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let (authority, path) = rest.split_at(end);
+    let authority = authority
+        .rsplit_once('@')
+        .map_or(authority.to_string(), |(_, h)| format!("***@{h}"));
+    let path = match path.find(['?', '#']) {
+        Some(i) => format!("{}?***", &path[..i]),
+        None => path.to_string(),
+    };
+    let prefix = if url.contains("://") {
+        format!("{scheme}://")
+    } else {
+        String::new()
+    };
+    format!("{prefix}{authority}{path}")
+}
+
 fn basic(user: Option<&Value>, password: Option<&Value>) -> String {
     let text = |v: Option<&Value>| v.and_then(Value::as_str).unwrap_or_default().to_string();
     format!(
@@ -363,22 +384,23 @@ impl Fetcher {
             .next()
             .unwrap_or_default()
             .to_ascii_lowercase();
+        let shown = redact(&url);
         if self.secure_http
             && url.contains("://")
             && ["http", "git", "ftp", "svn"].contains(&scheme.as_str())
         {
             bail!(
-                "Your configuration does not allow connections to {url}. See https://getcomposer.org/doc/06-config.md#secure-http for details."
+                "Your configuration does not allow connections to {shown}. See https://getcomposer.org/doc/06-config.md#secure-http for details."
             );
         }
         let bytes = self
             .get(&url)
-            .with_context(|| format!("downloading {name} from {url}"))?;
+            .with_context(|| format!("downloading {name} from {shown}"))?;
         if let Some(want) = shasum {
             let got = sha1(&bytes);
             if got != want {
                 bail!(
-                    "the {name} archive from {url} has sha1 {got}, but composer.lock expects {want}; it may have been tampered with"
+                    "the {name} archive from {shown} has sha1 {got}, but composer.lock expects {want}; it may have been tampered with"
                 );
             }
         }
@@ -421,9 +443,9 @@ impl Fetcher {
                 Ok(res) => {
                     let status = res.status().as_u16();
                     if !(status == 429 || status >= 500) {
-                        bail!("HTTP {status} from {url}");
+                        bail!("HTTP {status} from {}", redact(url));
                     }
-                    Error::msg(format!("HTTP {status} from {url}"))
+                    Error::msg(format!("HTTP {status} from {}", redact(url)))
                 }
                 Err(e) => e.into(),
             };
@@ -1036,7 +1058,9 @@ mod tests {
         let origin = base.trim_start_matches("http://");
         std::fs::write(
             dir.join("auth.json"),
-            format!(r#"{{"http-basic": {{"{origin}": {{"username": "user", "password": "pass"}}}}}}"#),
+            format!(
+                r#"{{"http-basic": {{"{origin}": {{"username": "user", "password": "pass"}}}}}}"#
+            ),
         )
         .unwrap();
         let auth = Auth::load(&dir, None, None);
@@ -1140,6 +1164,44 @@ mod tests {
     }
 
     #[test]
+    fn redacts_urls_as_composer_hides_secrets() {
+        for (url, want) in [
+            (
+                "https://a.test/p.zip?X-Amz-Signature=s3cr3t&x=1",
+                "https://a.test/p.zip?***",
+            ),
+            ("https://u:s3cr3t@a.test/p.zip", "https://***@a.test/p.zip"),
+            (
+                "https://a.test:8443/p.zip#frag",
+                "https://a.test:8443/p.zip?***",
+            ),
+            ("https://a.test?t=s3cr3t", "https://a.test?***"),
+            ("https://a.test/p.zip", "https://a.test/p.zip"),
+            ("../local", "../local"),
+        ] {
+            assert_eq!(redact(url), want, "{url}");
+        }
+        let closed = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap();
+        let url = format!("http://u:s3cr3t@{closed}/a.zip?sig=s3cr3t");
+        let fetcher = Fetcher::new(None, Auth::default(), false);
+        let error = format!("{:#}", fetcher.archive(&package(&url, "")).unwrap_err());
+        assert!(
+            !error.contains("s3cr3t") && error.contains(&format!("***@{closed}/a.zip?***")),
+            "{error}"
+        );
+        let error = format!(
+            "{:#}",
+            Fetcher::new(None, Auth::default(), true)
+                .archive(&package(&url, ""))
+                .unwrap_err()
+        );
+        assert!(!error.contains("s3cr3t"), "{error}");
+    }
+
+    #[test]
     fn credentials_by_host() {
         let dir = scratch("auth");
         std::fs::write(
@@ -1172,9 +1234,15 @@ mod tests {
             Some("Bearer gl")
         );
         assert_eq!(auth.header("https://git.acme.test/x"), Some("Basic dTp0"));
-        assert_eq!(auth.header("https://me@repo.acme.test/p.zip"), Some("Bearer br"));
+        assert_eq!(
+            auth.header("https://me@repo.acme.test/p.zip"),
+            Some("Bearer br")
+        );
         assert_eq!(auth.header("https://repo.acme.test:8443/p.zip"), None);
-        assert_eq!(auth.header("https://port.test:8443/p.zip"), Some("Bearer p"));
+        assert_eq!(
+            auth.header("https://port.test:8443/p.zip"),
+            Some("Bearer p")
+        );
         assert_eq!(auth.header("https://port.test/p.zip"), None);
         assert_eq!(auth.header("https://other.test/x"), Some("Bearer o"));
         assert_eq!(auth.header("https://packagist.org/x"), None);

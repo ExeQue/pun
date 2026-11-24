@@ -3,7 +3,7 @@ use super::package::{Origin, Package, load_with, stability_value};
 use super::pool::{Found, Loaded, Repository, Stabilities};
 use crate::constraint::Constraint;
 use crate::error::{Context, Result, bail};
-use crate::fetch::{Fetched, Fetcher};
+use crate::fetch::{Fetched, Fetcher, redact};
 use crate::version::{branch_alias, is_platform, normalize, stability_of};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -53,9 +53,11 @@ fn last_modified(text: &[u8]) -> Option<Option<String>> {
 }
 
 fn object(text: &[u8], url: &str) -> Result<Map<String, Value>> {
-    match serde_json::from_slice(text).with_context(|| format!("{url} is not valid JSON"))? {
+    match serde_json::from_slice(text)
+        .with_context(|| format!("{} is not valid JSON", redact(url)))?
+    {
         Value::Object(m) => Ok(m),
-        _ => bail!("{url} does not hold a JSON object"),
+        _ => bail!("{} does not hold a JSON object", redact(url)),
     }
 }
 
@@ -141,10 +143,11 @@ impl<'a> ComposerRepository<'a> {
         let url = self.url.clone();
         let root = self
             .cached_or_fetch(&format!("{url}/packages.json"), "packages.json", 600)?
-            .with_context(|| format!("{url} has no packages.json"))?;
+            .with_context(|| format!("{} has no packages.json", redact(&url)))?;
         let Some(metadata) = root.get("metadata-url").and_then(Value::as_str) else {
             bail!(
-                "{url} is a Composer repository without a metadata-url (the v1 format), which Pun does not read"
+                "{} is a Composer repository without a metadata-url (the v1 format), which Pun does not read",
+                redact(&url)
             );
         };
         self.metadata_url = canonical(&url, metadata);
@@ -152,7 +155,8 @@ impl<'a> ComposerRepository<'a> {
             .and_then(Value::as_str)
             .filter(|s| !s.is_empty())
             .map(|n| canonical(&url, n));
-        let flag = |key: &str| root.get(key).and_then(|f| f.get("metadata")) == Some(&Value::Bool(true));
+        let flag =
+            |key: &str| root.get(key).and_then(|f| f.get("metadata")) == Some(&Value::Bool(true));
         self.filter_metadata = flag("filter");
         self.advisory_metadata = flag("security-advisories");
         Ok(())
@@ -239,7 +243,7 @@ fn fetch_file(
     let response = match fetcher.metadata(url, since.as_deref()) {
         Ok(r) => r,
         Err(_) if cached.is_some() => return Ok(cached),
-        Err(e) => return Err(e).with_context(|| format!("fetching {url}")),
+        Err(e) => return Err(e).with_context(|| format!("fetching {}", redact(url))),
     };
     match response {
         Fetched::NotModified => {
@@ -293,7 +297,7 @@ fn fetch_all(
                     let result = fetch_file(fetcher, &url, path, cached).and_then(|text| {
                         (text.map(|t| serde_json::from_slice::<File>(&t)))
                             .transpose()
-                            .with_context(|| format!("{url} is not valid metadata"))
+                            .with_context(|| format!("{} is not valid metadata", redact(&url)))
                     });
                     *results[i].lock().expect("a result") = Some((file, result));
                 }
@@ -550,7 +554,9 @@ impl Repository for ComposerRepository<'_> {
                     let read = materialize(raw, LOADED_FIELDS)?;
                     let text = version_text(raw, notify.as_deref())?;
                     let loaded = load_with(&read, text, Origin::Repository(index), &mut local)
-                        .with_context(|| format!("Could not load packages in {url} from {file}"))?;
+                        .with_context(|| {
+                            format!("Could not load packages in {} from {file}", redact(url))
+                        })?;
                     order.extend(loaded);
                     Ok(())
                 };
@@ -860,8 +866,14 @@ mod tests {
                 repos::open(std::path::Path::new("."), manifest, None, fetcher, &no_env)?;
             let php = json!({"name": "php", "version": "8.5.0"});
             let platform = vec![php.as_object().unwrap().clone()];
-            let resolved =
-                resolve(manifest, platform, repositories, lock.as_ref(), &options, &no_env)?;
+            let resolved = resolve(
+                manifest,
+                platform,
+                repositories,
+                lock.as_ref(),
+                &options,
+                &no_env,
+            )?;
             let resolution = resolved.map_err(|_| crate::error::Error::msg("no solution"))?;
             Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
         };
@@ -874,7 +886,10 @@ mod tests {
     fn lists_cover_kept_and_foreign_packages() {
         let (base, seen, _) = serve(&[]);
         let fetcher = Fetcher::new(None, crate::fetch::Auth::default(), false);
-        let manifest = manifest(&base, json!({"acme/insecure": "^1.0", "acme/listed": "^1.0"}));
+        let manifest = manifest(
+            &base,
+            json!({"acme/insecure": "^1.0", "acme/listed": "^1.0"}),
+        );
         let lock = |listed: &str| {
             json!({"content-hash": "x", "packages-dev": [], "packages": [
                 {"name": "acme/insecure", "version": "1.0.0", "type": "library"},
@@ -882,11 +897,23 @@ mod tests {
             ]})
         };
         assert_eq!(
-            resolve_with(&fetcher, &manifest, Some(&lock("1.0.1")), &["acme/insecure"]).unwrap_err(),
+            resolve_with(
+                &fetcher,
+                &manifest,
+                Some(&lock("1.0.1")),
+                &["acme/insecure"]
+            )
+            .unwrap_err(),
             "no solution"
         );
         assert!(requests(&seen).contains(&("/p2/acme/listed.json".into(), None)));
-        let kept = resolve_with(&fetcher, &manifest, Some(&lock("1.0.0")), &["acme/insecure"]).unwrap();
+        let kept = resolve_with(
+            &fetcher,
+            &manifest,
+            Some(&lock("1.0.0")),
+            &["acme/insecure"],
+        )
+        .unwrap();
         assert!(kept.contains("\"version\": \"1.0.0\""), "{kept}");
 
         let mut foreign = manifest.clone();
@@ -1017,7 +1044,10 @@ mod tests {
                 "/bad/acme/empty.json",
                 r#"{"packages": {"acme/other": []}}"#,
             ),
-            ("/bad/acme/wrong.json", r#"{"packages": {"acme/wrong": "oops"}}"#),
+            (
+                "/bad/acme/wrong.json",
+                r#"{"packages": {"acme/wrong": "oops"}}"#,
+            ),
             (
                 "/bad/acme/both.json",
                 r#"{"packages": {"acme/both": [{"name": "acme/both", "version": "1.0.0"}]}}"#,
