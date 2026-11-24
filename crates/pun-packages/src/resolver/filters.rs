@@ -283,16 +283,24 @@ impl Filters {
         if let Some(v) = env_bool(env, "COMPOSER_POLICY_ADVISORIES_BLOCK")? {
             f.advisories = v;
         }
-        if let Some(m) = enabled(policy.get("malware")) {
+        // As Composer's `PolicyConfig::fromConfig`, COMPOSER_POLICY_MALWARE_BLOCK=1 turns blocking back on for a
+        // manifest's `"malware": false`, with the disabled list's defaults.
+        let malware_env = env_bool(env, "COMPOSER_POLICY_MALWARE_BLOCK")?;
+        let malware = enabled(policy.get("malware"))
+            .or_else(|| (malware_env == Some(true)).then_some(&*EMPTY));
+        if let Some(m) = malware {
+            // Composer's schema rejects another scope in composer.json; it would otherwise never block.
+            let scope = m.get("block-scope").and_then(Value::as_str).unwrap_or("all");
+            if !["update", "install", "all"].contains(&scope) {
+                bail!(
+                    "Invalid block-scope for policy list \"malware\": expected one of \"update\", \"install\", \"all\", got \"{scope}\"."
+                );
+            }
             f.lists.push(List {
                 name: "malware".into(),
-                block: env_bool(env, "COMPOSER_POLICY_MALWARE_BLOCK")?
+                block: malware_env
                     .unwrap_or_else(|| m.get("block").and_then(Value::as_bool).unwrap_or(true)),
-                scope: m
-                    .get("block-scope")
-                    .and_then(Value::as_str)
-                    .unwrap_or("all")
-                    .into(),
+                scope: scope.into(),
                 ignore: ignore_map(m.get("ignore"))?,
                 ignore_source: (m
                     .get("ignore-source")
@@ -488,13 +496,27 @@ impl Filters {
             let data = base.data();
             let date = ["published-time", "time"]
                 .iter()
-                .find_map(|k| data.get(*k).and_then(Value::as_str).and_then(timestamp));
+                .find_map(|k| data.get(*k).and_then(date));
             if date.is_some_and(|d| d > now - period) {
                 return Some("cooldown".into());
             }
         }
         None
     }
+}
+
+/// A release date as Composer's `Package::prepareDateString` reads it: a JSON integer or a string of digits is a Unix
+/// timestamp, any other string a date.
+fn date(v: &Value) -> Option<i64> {
+    let text = match v {
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => s.clone(),
+        _ => return None,
+    };
+    if !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) {
+        return text.parse().ok();
+    }
+    timestamp(&text)
 }
 
 #[expect(
@@ -716,6 +738,11 @@ mod tests {
                 json!({}),
                 with(json!({"malware": false})),
             ),
+            (
+                vec![("COMPOSER_POLICY_MALWARE_BLOCK", "1")],
+                json!({"policy": {"malware": false}}),
+                base.clone(),
+            ),
         ] {
             assert_eq!(
                 summary(&parse(&env, config.clone()).unwrap()),
@@ -768,6 +795,11 @@ mod tests {
                 vec![],
                 json!({"audit": {"ignore": {"CVE-1": {"apply": 5}}}}),
                 "Invalid 'apply' value for 'CVE-1': int. Expected 'audit', 'block', or 'all'.",
+            ),
+            (
+                vec![],
+                json!({"policy": {"malware": {"block-scope": "instal"}}}),
+                "Invalid block-scope for policy list \"malware\": expected one of \"update\", \"install\", \"all\", got \"instal\".",
             ),
             (
                 vec![],
@@ -851,5 +883,12 @@ mod tests {
             removal(&f, &fresh("acme/b", "1.1.0"), &[], false).as_deref(),
             Some("cooldown")
         );
+        // A Unix `published-time`, as Composer's `Package::prepareDateString` reads it, wins over an old `time`.
+        for published in [json!(now - 60), json!((now - 60).to_string())] {
+            let p = package(json!({"name": "acme/b", "version": "1.0.0", "time": "2020-01-01", "published-time": published}));
+            assert_eq!(removal(&f, &p, &[], false).as_deref(), Some("cooldown"), "{published}");
+        }
+        let p = package(json!({"name": "acme/b", "version": "1.0.0", "time": "2020-01-01", "published-time": now - 30 * 86400}));
+        assert_eq!(removal(&f, &p, &[], false), None);
     }
 }
