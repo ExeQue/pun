@@ -112,6 +112,64 @@ fn writes_pun_toml_and_rewrites_ignores() {
     assert_eq!(read(&d, "pun.toml"), "# mine\n");
 }
 
+/// Migrate edits only the project's own files: not one a symlink leads to outside it, nor one an absolute phpstan.neon
+/// path names. It doesn't read (for the `--dry-run` diff) or write through a pun.toml symlink that leads out.
+#[test]
+fn stays_inside_the_project() {
+    let outside = common::scratch("migrate", "outside");
+    std::fs::create_dir_all(outside.join("src")).unwrap();
+    std::fs::write(outside.join("Linked.php"), IGNORED).unwrap();
+    std::fs::write(outside.join("src/Analysed.php"), IGNORED).unwrap();
+    std::fs::write(outside.join("secret.toml"), "token = \"hunter2\"\n").unwrap();
+    let src = outside.join("src");
+    let neon = format!(
+        "parameters:\n    level: 0\n    paths: [app, {}]\n",
+        src.display()
+    );
+    let d = project(
+        "outside",
+        &[
+            ("pint.json", PINT),
+            ("phpstan.neon", &neon),
+            ("app/Ignored.php", IGNORED),
+        ],
+    );
+    std::os::unix::fs::symlink(outside.join("Linked.php"), d.join("app/Linked.php")).unwrap();
+    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert_eq!(read(&d, "app/Ignored.php"), REWRITTEN);
+    assert_eq!(read(&outside, "Linked.php"), IGNORED);
+    assert_eq!(read(&outside, "src/Analysed.php"), IGNORED);
+
+    let message = "x pun.toml is a symlink that leads outside the project; migrate doesn't read or write through it. Remove it, then run `pun migrate` again.\n";
+    for target in ["secret.toml", "made.toml"] {
+        std::fs::remove_file(d.join("pun.toml")).unwrap();
+        std::os::unix::fs::symlink(outside.join(target), d.join("pun.toml")).unwrap();
+        for args in [
+            &["migrate", "--dry-run", "--yes"][..],
+            &["migrate", "--yes"],
+        ] {
+            let (out, err, code) = pun(&d, args);
+            assert_eq!((out.as_str(), err.as_str(), code), ("", message, Some(2)));
+        }
+    }
+    assert_eq!(read(&outside, "secret.toml"), "token = \"hunter2\"\n");
+    assert!(!outside.join("made.toml").exists());
+
+    // A pun.toml that isn't UTF-8 still differs: it is kept, not overwritten.
+    std::fs::remove_file(d.join("pun.toml")).unwrap();
+    std::fs::write(d.join("pun.toml"), b"\xff\xfe").unwrap();
+    let (_, err, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(
+        (err.as_str(), code),
+        (
+            "x pun.toml exists and differs from what migrate writes; move it away first (`pun migrate --dry-run` shows the difference)\n",
+            Some(2)
+        )
+    );
+    assert_eq!(std::fs::read(d.join("pun.toml")).unwrap(), b"\xff\xfe");
+}
+
 #[test]
 fn skips_unsupported_rules() {
     let d = project(

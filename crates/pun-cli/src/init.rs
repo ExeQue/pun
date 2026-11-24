@@ -32,12 +32,12 @@ enum Style {
 
 const STYLES: [&str; 2] = ["laravel", "psr12"];
 
+const EXISTS: &str = "pun.toml exists; `pun init` doesn't overwrite it. Edit it, or move it away and run `pun init` again.";
+
 pub(crate) fn run(a: InitArgs) -> Result<Exit> {
     let root = root()?;
-    if root.join("pun.toml").exists() {
-        bail!(
-            "pun.toml exists; `pun init` doesn't overwrite it. Edit it, or move it away and run `pun init` again."
-        );
+    if root.join("pun.toml").symlink_metadata().is_ok() {
+        bail!(EXISTS);
     }
     let lint = match a.lint {
         Some(p) => lint_preset(&p)?,
@@ -103,7 +103,14 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
         "# Written by `pun init`.\n{extensions}[files]\nexclude = [\"tmp\", \"temp\"]\n\n[format]\npreset = \"{style}\"\n\n[lint]\npreset = \"{lint}\"\n\n[analyse]\npreset = \"{analyse}\"\n"
     );
     pun_config::from_toml(&root, &toml)?;
-    std::fs::write(root.join("pun.toml"), &toml)?;
+    // Created, never opened: a symlink at pun.toml (one to nowhere included) fails this instead of leading the write.
+    let created =
+        (std::fs::OpenOptions::new().write(true).create_new(true)).open(root.join("pun.toml"));
+    let mut file = match created {
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => bail!(EXISTS),
+        file => file?,
+    };
+    std::io::Write::write_all(&mut file, toml.as_bytes())?;
     if !human {
         let detail = [
             "pun.toml written".to_string(),

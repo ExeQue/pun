@@ -238,7 +238,15 @@ pub(crate) fn run(a: &MigrateArgs) -> Result<Exit> {
         body.migration.toml
     );
     let path = root.join("pun.toml");
-    let old = std::fs::read_to_string(&path).ok();
+    if crate::finder::leaves(&root, &path) {
+        bail!(
+            "pun.toml is a symlink that leads outside the project; migrate doesn't read or write through it. Remove it, then run `pun migrate` again."
+        );
+    }
+    // Not UTF-8 is still a pun.toml that differs, not one to overwrite.
+    let old = std::fs::read(&path)
+        .ok()
+        .map(|old| String::from_utf8_lossy(&old).into_owned());
     if old.as_ref().is_some_and(|o| *o != toml) && !a.dry_run {
         bail!(
             "pun.toml exists and differs from what migrate writes; move it away first (`pun migrate --dry-run` shows the difference)"
@@ -502,6 +510,9 @@ fn ignore_rewrites(
         std::collections::HashSet::new()
     };
     files.extend(analysed.iter().cloned());
+    // A file outside the project (an absolute analyse path, or one a symlink leads to) isn't the project's to edit, and
+    // `pun format` skips a symlinked file.
+    files.retain(|f| !f.is_symlink() && !crate::finder::leaves(root, f));
     files.sort();
     files.dedup();
     let read: Vec<(PathBuf, Vec<u8>)> = (files.into_iter())

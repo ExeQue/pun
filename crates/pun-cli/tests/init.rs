@@ -90,6 +90,25 @@ fn laravel_defaults_without_a_terminal() {
     assert!(read(&d, "pun.toml").contains("preset = \"laravel\""));
 }
 
+/// A pun.toml symlink to a file that doesn't exist is a pun.toml too: init refuses it rather than create the file it
+/// leads to, outside the project.
+#[test]
+fn a_dangling_pun_toml_link_is_not_followed() {
+    let d = plain("dangling");
+    let outside = common::scratch("init", "outside").join("made.toml");
+    std::os::unix::fs::symlink(&outside, d.join("pun.toml")).unwrap();
+    let (out, err, code) = pun_with(&d, &["init"], ENV);
+    assert_eq!(
+        (out.as_str(), err.as_str(), code),
+        (
+            "",
+            "✖ pun.toml exists; `pun init` doesn't overwrite it. Edit it, or move it away and run `pun init` again.\n",
+            Some(2)
+        )
+    );
+    assert!(!outside.exists());
+}
+
 #[test]
 fn plain_project_gets_psr12() {
     let d = plain("plain");
