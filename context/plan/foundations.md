@@ -40,7 +40,7 @@ use the brand colours. The rule pages and "Coming from" pages are plan/docs.md.
 
 **Today.** Pun ships two ways. No crate, npm package or Homebrew tap is published.
 
-- **Composer package `punphp/pun`.** `composer.json` sits at the repo root and `composer/bin/pun` is the shim.
+- **Composer package `shipfastlabs/pun`.** `composer.json` sits at the repo root and `composer/bin/pun` is the shim.
   `.gitattributes` export-ignores everything else, so a tag's zipball holds only `composer.json`, the shim, the README,
   LICENSE and the Laravel Boost guideline and skill (`resources/boost/`). On first run the shim downloads
   `punphp-<target>.tar.gz` from the tag's GitHub release, checks its `.sha256` and caches the binary in Composer's
@@ -54,7 +54,7 @@ use the brand colours. The rule pages and "Coming from" pages are plan/docs.md.
 cargo-dist builds the four archives on a tag push: Linux (musl) and macOS, x86_64 and arm64 (`dist-workspace.toml`:
 no dist installers, no source tarball). Tags run to v0.2.7; every tag from v0.1.0 has a GitHub release except v0.2.2,
 whose macOS build failed. Packagist lists releases up to v0.2.0. On Linux x86_64 the v0.2.7 installer verifies the
-attestation and `composer require --dev punphp/pun` installs v0.2.0.
+attestation and `composer require --dev shipfastlabs/pun` installs v0.2.0.
 
 **Build.** Packagist follows every tag (the GitHub hook), then check the Composer install on Linux and macOS and the
 installer on macOS (../PLAN.md §3 Step 5). Publish 1.0 after ../PLAN.md §3 Step 4.

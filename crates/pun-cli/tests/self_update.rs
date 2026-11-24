@@ -210,7 +210,7 @@ fn fails_without_a_release() {
     let (err, code) = run(&composer, None, &empty, &[], &[]);
     assert!(
         err.contains(
-            "this pun was installed with Composer; update it with `composer update punphp/pun`"
+            "this pun was installed with Composer; update it with `composer update shipfastlabs/pun`"
         ),
         "{err}"
     );

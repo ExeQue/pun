@@ -2,7 +2,7 @@
 
 Pun is one Rust binary for the PHP toolchain. `pun format` produces the same bytes as Laravel Pint. `pun analyse` (parity with PHPStan and Larastan) is in progress.
 
-Pun ships as the Composer package `punphp/pun` (`composer.json` at the root and the shim `composer/bin/pun`, which downloads the release binary) and through the standalone installer `docs/public/install`, served as `https://pun.laravel.cloud/install`. No crate, npm package or Homebrew tap is published (`context/plan/foundations.md` §4).
+Pun ships as the Composer package `shipfastlabs/pun` (`composer.json` at the root and the shim `composer/bin/pun`, which downloads the release binary) and through the standalone installer `docs/public/install`, served as `https://pun.laravel.cloud/install`. No crate, npm package or Homebrew tap is published (`context/plan/foundations.md` §4).
 
 Read these for more:
 

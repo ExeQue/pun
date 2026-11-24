@@ -3,7 +3,7 @@ name: pun-development
 description: "Use when you format, lint or type-check PHP code, fix a Pun error, change pun.toml, or add, remove or update a Composer package in a project that uses Pun. Activate when the user mentions Pun, pun.toml, punx, Pint, PHP-CS-Fixer, Rector, PHPStan or Larastan. Do not use for JavaScript tooling."
 license: MIT
 metadata:
-  author: punphp
+  author: shipfastlabs
 ---
 # Pun
 

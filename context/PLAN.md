@@ -52,7 +52,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **The 1.0 bar:** every lint rule in mapping.toml native; every PHPStan core rule native; Larastan built in with seven
   improvements (typed config, routes, views, translations, env keys, Inertia pages, fresh model data); deprecation-rules
   and strict-rules as plain rules. Speed and memory come first in every command.
-- **Shipping** (2026-11-14, plan/foundations.md §4): the Composer package `punphp/pun` (`composer.json` at the root;
+- **Shipping** (2026-11-14, plan/foundations.md §4): the Composer package `shipfastlabs/pun` (`composer.json` at the root;
   the shim `composer/bin/pun` downloads the release archive for the platform, checks its SHA-256 and runs it) and the
   standalone installer `curl -fsSL https://pun.laravel.cloud/install | sh`. Release archives carry GitHub build
   attestations. No crate, npm package or Homebrew tap (`publish = false` in every crate).
@@ -149,7 +149,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   default, Mago's model).
 - **Unsupported items** (an unported rule, a custom fixer class, Rector's Symfony, Doctrine and downgrade sets, a PHPStan
   extension that isn't built in, a project's own PHPStan rules): `pun migrate` names each one, skips it, asks for a PR to
-  punphp/pun, and exits 0 when the rest migrated. A hand-written pun.toml naming an unknown or unported rule is a config
+  shipfastlabs/pun, and exits 0 when the rest migrated. A hand-written pun.toml naming an unknown or unported rule is a config
   error (exit 2).
 - **No PHP fallback.** Pun never runs PHP-CS-Fixer, Pint, Rector or PHPStan for a rule it lacks, and embeds no PHP.
   System PHP is only the test oracle.
@@ -441,8 +441,8 @@ Left for 1.0: the rule docs content (below), name checks, signing and publishing
 
 | Work | Status |
 | --- | --- |
-| release: Packagist (punphp/pun) lists v0.1.0-v0.2.0 and none of the tags after it (v0.2.1-v0.2.7), so its GitHub hook looks off. Turn the hook on (or update the package once) and confirm new tags publish | needs Pushpak |
-| release: on macOS, check the archive's attestation, `curl -fsSL https://pun.laravel.cloud/install \| sh` and `pun --version`; on Linux and macOS, `composer require --dev punphp/pun` once Packagist has the latest tag (Linux x86_64: the v0.2.7 installer verifies the attestation, Composer installs v0.2.0) | needs Pushpak |
+| release: the Composer package is renamed to shipfastlabs/pun (2026-11-24). Submit https://github.com/shipfastlabs/pun on Packagist as shipfastlabs/pun, turn on its GitHub hook, mark punphp/pun abandoned with shipfastlabs/pun as the replacement, and confirm new tags publish | needs Pushpak |
+| release: on macOS, check the archive's attestation, `curl -fsSL https://pun.laravel.cloud/install \| sh` and `pun --version`; on Linux and macOS, `composer require --dev shipfastlabs/pun` once Packagist has the latest tag (Linux x86_64: the v0.2.7 installer verifies the attestation, Composer installs v0.2.0) | needs Pushpak |
 | docs content: 361 of the 370 analyse rules have no summary; only format/casts/no-short-bool has a why, and no rule has examples. Add prose and oracle-backed examples in mapping.toml in batches | todo |
 | release notices: licenses/THIRD_PARTY_NOTICES.md carries the Zend Engine acknowledgment the Zend sorting port requires; advertising materials that mention its features or use need it too (Zend Engine License clauses 5 and 6); check those materials before publication | todo |
 

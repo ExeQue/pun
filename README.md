@@ -1,9 +1,9 @@
 <p align="center"><img src="docs/public/og.png" width="600" alt="Pun: ultrafast unified PHP tooling"></p>
 
 <p align="center">
-<a href="https://packagist.org/packages/punphp/pun"><img src="https://img.shields.io/packagist/dt/punphp/pun" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/punphp/pun"><img src="https://img.shields.io/packagist/v/punphp/pun" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/punphp/pun"><img src="https://img.shields.io/packagist/l/punphp/pun" alt="License"></a>
+<a href="https://packagist.org/packages/shipfastlabs/pun"><img src="https://img.shields.io/packagist/dt/shipfastlabs/pun" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/shipfastlabs/pun"><img src="https://img.shields.io/packagist/v/shipfastlabs/pun" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/shipfastlabs/pun"><img src="https://img.shields.io/packagist/l/shipfastlabs/pun" alt="License"></a>
 </p>
 
 ## Introduction
@@ -19,7 +19,7 @@ curl -fsSL https://pun.laravel.cloud/install | sh
 Or add it to a project with Composer:
 
 ```sh
-composer require --dev punphp/pun
+composer require --dev shipfastlabs/pun
 
 vendor/bin/pun migrate   # or: vendor/bin/pun init
 vendor/bin/pun check --fix

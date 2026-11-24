@@ -168,7 +168,7 @@ teammates run, and it needs no resolver.
   as it follows PHPStan's (Pushpak).
 - A fresh clone needs no Composer: the standalone installer (`curl -fsSL https://pun.laravel.cloud/install | sh`,
   foundations.md §4) gives a global `pun` that runs `pun install` (Pushpak). `pun install` in a project that requires
-  `punphp/pun` rewrites the `vendor/punphp/pun` shim but not the binary it runs, which the shim keeps beside it; no
+  `shipfastlabs/pun` rewrites the `vendor/shipfastlabs/pun` shim but not the binary it runs, which the shim keeps beside it; no
   test covers it yet.
 
 ## 7. Beyond Composer: what pnpm and Cargo add

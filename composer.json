@@ -1,5 +1,5 @@
 {
-    "name": "punphp/pun",
+    "name": "shipfastlabs/pun",
     "description": "Pun formats, lints, and analyses PHP 8.3+ projects in one Rust binary. Downloads the native binary on first run.",
     "type": "library",
     "license": "MIT",

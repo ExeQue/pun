@@ -33,7 +33,7 @@ function pun_download(string $url): string
     if (! ini_get('allow_url_fopen')) {
         pun_fail("download failed: $url (allow_url_fopen is off in php.ini)");
     }
-    $http = ['user_agent' => 'punphp/pun composer shim', 'follow_location' => 1, 'timeout' => 120];
+    $http = ['user_agent' => 'shipfastlabs/pun composer shim', 'follow_location' => 1, 'timeout' => 120];
     // PHP's streams ignore the proxy variables that curl and Composer honour.
     $proxy = getenv('HTTPS_PROXY') ?: getenv('https_proxy');
     if ($proxy) {
