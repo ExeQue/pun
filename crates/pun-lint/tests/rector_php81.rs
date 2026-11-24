@@ -6,10 +6,10 @@ use crate::common::{run_class, run_dirs};
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
-    NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible, PreferEnumFrom,
-    PreferFirstClassCallableArgument, PreferFirstClassCallableOverArray,
-    PreferFirstClassCallableOverArrowFunction, PreferFirstClassCallableOverClosure,
-    PreferNativeEnumOverMyCLabs, PreferNativeEnumOverSpatie,
+    NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible,
+    PreferEnumCaseOverSpatieCall, PreferEnumFrom, PreferFirstClassCallableArgument,
+    PreferFirstClassCallableOverArray, PreferFirstClassCallableOverArrowFunction,
+    PreferFirstClassCallableOverClosure, PreferNativeEnumOverMyCLabs, PreferNativeEnumOverSpatie,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -112,5 +112,13 @@ fn spatie_enum_class_to_enum() {
             .unwrap_err()
             .to_string(),
         "unknown option `toUpperSnakeCase` or a value of the wrong type"
+    );
+}
+
+#[test]
+fn spatie_enum_method_call_to_enum_const() {
+    check(
+        || Box::new(PreferEnumCaseOverSpatieCall),
+        "SpatieEnumMethodCallToEnumConstRector",
     );
 }

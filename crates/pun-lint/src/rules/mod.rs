@@ -219,6 +219,7 @@ rules! {
         php_8_1::no_closure_from_callable => NoClosureFromCallable,
         php_8_1::no_null_preg_split_limit => NoNullPregSplitLimit,
         php_8_1::no_reflection_set_accessible => NoReflectionSetAccessible,
+        php_8_1::prefer_enum_case_over_spatie_call => PreferEnumCaseOverSpatieCall,
         php_8_1::prefer_enum_from => PreferEnumFrom,
         php_8_1::prefer_first_class_callable_argument => PreferFirstClassCallableArgument,
         php_8_1::prefer_first_class_callable_over_array => PreferFirstClassCallableOverArray,

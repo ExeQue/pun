@@ -868,7 +868,7 @@ fn rector_paths_skips_and_unsupported_rules() {
         "{out}"
     );
     assert!(
-        out.contains("\n   only in php52..php81 upgrade sets (below php82)\n     8 Rector rules\n"),
+        out.contains("\n   only in php52..php81 upgrade sets (below php82)\n     7 Rector rules\n"),
         "{out}"
     );
     assert!(out.contains(PR), "{out}");
