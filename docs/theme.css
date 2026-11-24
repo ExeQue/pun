@@ -142,11 +142,14 @@
 @media (max-width: 640px) {
   .migration-table table, .migration-table tbody, .migration-table tr, .migration-table td { display: block; width: auto; }
   .migration-table thead, .migration-table colgroup { display: none; }
+  .migration-table tr { border: 0; padding: .75rem .85rem; }
   .migration-table tr + tr { border-top: 1px solid var(--blume-border); }
-  .migration-table td { border: 0; padding: .2rem .85rem; }
-  .migration-table td:first-child { padding-top: .8rem; }
-  .migration-table td:last-child { padding-bottom: .8rem; }
-  .migration-table td[data-label="Pun rule"]::before { content: "Pun rule"; display: block; margin: .35rem 0 .15rem; font-size: .6875rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--blume-muted-foreground); }
+  .migration-table td { border: 0; padding: 0; }
+  .migration-table td[data-label="Pun rule"] { margin-top: .35rem; }
+  .migration-table td[data-label="Pun rule"] a { display: flex; gap: .4rem; }
+  .migration-table td[data-label="Pun rule"] a::before {
+    content: "→"; flex: none; color: var(--blume-muted-foreground); font-size: .8rem; line-height: 1.7;
+  }
 }
 
 /* A table's first column names a command or rule: keep it on one line so narrow screens wrap the description instead. */
