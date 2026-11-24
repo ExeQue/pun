@@ -117,7 +117,7 @@ fn oracle_blade_fixtures() {
             "fs",
         ]),
         Some(vec![
-            Some("3.9.10".into()),
+            Some("3.10.1".into()),
             Some("3.3.3".into()),
             Some("0.8.1".into()),
             None,

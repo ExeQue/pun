@@ -17,7 +17,7 @@ The pinned upstream tools every Pun change is judged against. `scripts/oracle.sh
 | rector/rector-phpunit | dev-main@22c6dae (bundled in rector/rector 2.8.4) | |
 | driftingly/rector-laravel | 2.7.3 (`.oracle/rector-ecosystem`, locked by `scripts/oracle-rector-ecosystem/composer.lock`; tests and stubs at `699f25b`) | |
 | pestphp/pest-plugin-rector | 5.x-dev (`.oracle/rector-ecosystem`, same lock, `minimum-stability: dev` with `prefer-stable`) | `8c1b780c5e551cb78150ee91ceb73d34cd029946` |
-| prettier / prettier-plugin-blade / prettier-plugin-tailwindcss | 3.9.10 / 3.3.3 / 0.8.1 (only for `Pint/laravel_blade`, in `corpus/pinkary/node_modules`) | |
+| prettier / prettier-plugin-blade / prettier-plugin-tailwindcss | 3.10.1 / 3.3.3 / 0.8.1 (only for `Pint/laravel_blade`, in `corpus/pinkary/node_modules`) | |
 | Node | v26.12.1 (system; scripts/oracle.sh does not pin it) | |
 
 - Pint: `php .oracle/pint/builds/pint` (the PHAR committed at the tag). `.oracle/pint` is the source with dev deps,

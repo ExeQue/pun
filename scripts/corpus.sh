@@ -28,6 +28,6 @@ while read -r name url commit; do
   if [ "$name" = pinkary ]; then
     # Pint/laravel_blade needs prettier; Pinkary has no package-lock, so pin what the oracle used.
     (cd "$dir" && npm install -q --no-save --no-audit --no-fund --ignore-scripts \
-      prettier@3.9.10 prettier-plugin-blade@3.3.3 prettier-plugin-tailwindcss@0.8.1)
+      prettier@3.10.1 prettier-plugin-blade@3.3.3 prettier-plugin-tailwindcss@0.8.1)
   fi
 done
