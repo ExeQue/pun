@@ -240,6 +240,28 @@ not-path = ["p"]
 }
 
 #[test]
+fn indent_and_line_ending() {
+    let c = from_toml(
+        &dir(&[]),
+        "[format]\nnot-name = [\"*.inc\"]\n\n[format.rules]\n\"whitespace/indentation-type\" = \"tabs\"\n\"whitespace/line-ending\" = { ending = \"crlf\" }\n",
+    )
+    .unwrap();
+    let options = |n: &str| &c.rules.iter().find(|r| r.name == n).unwrap().options;
+    assert_eq!(options("indentation_type"), &json!({"indent": "\t"}));
+    assert_eq!(options("line_ending"), &json!({"line_ending": "\r\n"}));
+    assert_eq!(c.finder.not_name, ["*.inc"]);
+    let e = from_toml(
+        &dir(&[]),
+        "[format.rules]\n\"whitespace/indentation-type\" = \"2\"\n",
+    )
+    .unwrap_err();
+    assert!(
+        format!("{e:#}").contains("expected one of \"spaces\", \"tabs\""),
+        "{e:#}"
+    );
+}
+
+#[test]
 fn php_version() {
     let c = |files: &[(&str, &str)]| {
         load(&dir(files), &Options::default())
@@ -948,7 +970,7 @@ fn show() {
     assert_eq!(
         v["format"],
         json!({
-            "preset": "empty", "exclude": ["build", "gen"], "not-path": [],
+            "preset": "empty", "exclude": ["build", "gen"], "not-path": [], "not-name": [],
             "rules": {"operators/concat-spacing": "one", "strings/single-quote": true},
         })
     );
@@ -999,7 +1021,10 @@ fn presets() {
 fn explained(name: &str, id: &str) -> String {
     let out = explain(name).unwrap();
     let (head, docs) = out.rsplit_once("docs      ").unwrap();
-    assert_eq!(docs, format!("https://punphp.com/docs/rules/{}\n", id.replace('.', "-")));
+    assert_eq!(
+        docs,
+        format!("https://punphp.com/docs/rules/{}\n", id.replace('.', "-"))
+    );
     head.to_string()
 }
 
@@ -1319,7 +1344,6 @@ fn pun_toml_errors() {
     assert!(e("[lint]\nset = []\n").contains("unknown field `set`"));
     assert!(e("preset = \"basic\"\n").contains("expected `essential`, `recommended` or `strict`"));
     assert!(e("[format]\npaths = [\"app\"]\n").contains("unknown field `paths`"));
-    assert!(e("[format]\nnot-name = [\"*.inc\"]\n").contains("unknown field `not-name`"));
     assert!(e("[[lint.overrides]]\nrules = {}\n").contains("missing field `files`"));
     for (table, name, id) in [
         ("format", "format.array-syntax", "format/arrays/syntax"),
@@ -1752,9 +1776,8 @@ not-path = ["y"]
 
     #[test]
     fn php_cs_fixer_rules() {
-        let rules =
-            json!({"@PSR12": true, "strict_param": true, "concat_space": {"spacing": "one"}});
-        let finder = json!({"in": ["src", "/elsewhere"], "exclude": [], "notName": ["*.inc"], "notPath": "x/y.php", "unsupported": ["depth()"]});
+        let rules = json!({"@PSR12": true, "strict_param": true, "concat_space": {"spacing": "one"}, "indentation_type": {"indent": "\t"}, "line_ending": {"line_ending": "\r\n"}});
+        let finder = json!({"in": ["src", "/elsewhere"], "exclude": [], "notName": ["*.inc"], "notPath": "x/y.php", "unsupported": ["depth()", "setIndent(\"  \")"]});
         let m = from_rules(
             rules.as_object().unwrap().clone(),
             finder.as_object().unwrap(),
@@ -1764,17 +1787,28 @@ not-path = ["y"]
         assert_eq!(
             m.unsupported,
             [
-                "Finder notName(): no pun.toml key for it",
-                "Finder depth(): no pun.toml key for it"
+                "Finder depth(): no pun.toml key for it",
+                "Config setIndent(\"  \"): format indents with four spaces or tabs"
             ]
         );
         assert!(
-            m.toml.starts_with("[files]\npaths = [\"src\", \"/elsewhere\"]\n\n[format]\npreset = \"empty\"\nnot-path = [\"x/y.php\"]\n\n[format.rules]\n"),
+            m.toml.starts_with("[files]\npaths = [\"src\", \"/elsewhere\"]\n\n[format]\npreset = \"empty\"\nnot-path = [\"x/y.php\"]\nnot-name = [\"*.inc\"]\n\n[format.rules]\n"),
+            "{}",
+            m.toml
+        );
+        assert!(
+            m.toml
+                .contains("\"whitespace/indentation-type\" = \"tabs\"\n")
+                && m.toml.contains("\"whitespace/line-ending\" = \"crlf\"\n"),
             "{}",
             m.toml
         );
         let c = from_toml(&dir(&[]), &m.toml).unwrap();
         assert_eq!(c.preset, "empty");
+        assert_eq!(c.finder.not_name, ["*.inc"]);
+        let options = |n: &str| &c.rules.iter().find(|r| r.name == n).unwrap().options;
+        assert_eq!(options("indentation_type"), &json!({"indent": "\t"}));
+        assert_eq!(options("line_ending"), &json!({"line_ending": "\r\n"}));
         assert!(
             names(&c.rules).contains(&"braces_position")
                 && names(&c.rules).contains(&"concat_space")
@@ -1874,9 +1908,9 @@ not-path = ["y"]
         let m = from_pint(&d.join("custom.json"), None, &|_| true).unwrap();
         assert_eq!(
             m.toml,
-            "[files]\npaths = [\"src\"]\nexclude = [\"x\", \"b\"]\n\n[format]\npreset = \"empty\"\n\n[format.rules]\n\"strings/single-quote\" = true\n\"operators/concat-spacing\" = \"one\"\n"
+            "[files]\npaths = [\"src\"]\nexclude = [\"x\", \"b\"]\n\n[format]\npreset = \"empty\"\nnot-name = [\"n\", \"m\"]\n\n[format.rules]\n\"strings/single-quote\" = true\n\"operators/concat-spacing\" = \"one\"\n"
         );
-        assert_eq!(m.unsupported, ["notName: no pun.toml key for it"]);
+        assert!(m.unsupported.is_empty());
     }
 }
 

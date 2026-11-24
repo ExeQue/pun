@@ -116,12 +116,16 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   target. Intent (correctness, style) and fix safety are data, not part of the name. Format's names: plan/format.md §8.
 - **No aliases.** Renames are breaking, and that's fine until 1.0. An old or upstream name in pun.toml is an error that
   names the Pun ID.
-- **No compatibility-only keys or options** (Pushpak, 2026-11-23, before the first beta): pun.toml has no
-  `[format] not-name` (`pun migrate` reports Pint's and PHP-CS-Fixer's `notName` as unsupported); `pun analyse` has
+- **No compatibility-only keys or options** (Pushpak, 2026-11-23, before the first beta): `pun analyse` has
   no `--memory-limit` and no `table` or `prettyJson` format; the 12 PHPStan parameters Pun's analyser doesn't read
   (`NO_READER` in scripts/gen-phpstan-parameters.py) are not rule options, so migrate reports them; and pun.toml keys
   from before the beta (a top-level `preset`, `[format] paths`, `preset = "per"`/`"symfony"`, `fix = "apply"` or
   `"safe-only"`, `severity`, the `"info"` level) fail as ordinary unknown keys or values, with no message of their own.
+- **Indent, line ending and `not-name`** (Pushpak, 2026-11-24): format's indent and line ending are the options of
+  the rules that check them, `"whitespace/indentation-type" = "tabs"` (`spaces` default) and
+  `"whitespace/line-ending" = "crlf"` (`lf` default); every fixer uses them, as PHP-CS-Fixer's `setIndent()` and
+  `setLineEnding()` do, and migrate maps those two calls onto them (2-space indent is reported). `[format] not-name`
+  is back (reverses 2026-11-23); migrate maps Pint's and PHP-CS-Fixer's `notName` onto it.
 - **Format presets:** `laravel` (default), `psr12`, `empty`. Migrate expands `per` and `symfony`.
 - **Rule options are TOML-native**, not PHP-CS-Fixer's; migrate translates upstream options.
 - **Lint presets and Rector sets** (2026-11-24, below): `[lint] preset = "recommended"` (init's default) plus

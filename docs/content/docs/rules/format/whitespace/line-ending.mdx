@@ -22,6 +22,12 @@ All PHP files must use same line ending.
 
 To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `ending` | `enum` | `lf`, `crlf` | `"lf"` | None (Pun's own) |
+
 ## Replaces
 
 - [`line_ending`](https://cs.symfony.com/doc/rules/whitespace/line_ending.html) (php-cs-fixer)

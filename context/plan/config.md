@@ -37,7 +37,8 @@ laravel = "on"
 [format]
 preset = "laravel"                    # laravel | psr12 | empty
 exclude = ["app/Generated/**"]        # added to [files] exclude, for format only
-not-path = ["app/Legacy.php"]         # Pint's notPath (no notName: PLAN.md §2, 2026-11-23)
+not-path = ["app/Legacy.php"]         # Pint's notPath
+not-name = ["*.inc"]                  # Pint's notName (added 2026-11-24)
 
 [format.rules]                        # only what differs from the preset
 "imports/ordered" = { sort = "alphabetical" }

@@ -13,11 +13,12 @@ const PINT_NOT_NAME: [&str; 4] = [
     "_ide_helper.php",
     ".phpstorm.meta.php",
 ];
-fn pint_not_name(cfg: &Config) -> Vec<&'static str> {
+fn pint_not_name(cfg: &Config) -> Vec<&str> {
     let mut not_name = PINT_NOT_NAME.to_vec();
     if !cfg.blade {
         not_name.push("*.blade.php");
     }
+    not_name.extend(cfg.finder.not_name.iter().map(String::as_str));
     not_name
 }
 

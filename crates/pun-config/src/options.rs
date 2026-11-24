@@ -250,7 +250,12 @@ pub fn to_pun(fixer: &str, id: &str, options: &Value) -> Result<Value> {
     let Value::Object(m) = options else {
         return Ok(Value::Bool(true));
     };
-    let opts: Vec<&RuleOption> = rule_options(id).iter().filter(|o| !o.pun).collect();
+    // A format rule's own options (the indent and line ending) are PHP-CS-Fixer's `setIndent()` and `setLineEnding()`,
+    // which `pun migrate` passes as options of the rules that enforce them.
+    let format = id.starts_with("format/");
+    let opts: Vec<&RuleOption> = (rule_options(id).iter())
+        .filter(|o| !o.pun || format)
+        .collect();
     if opts.is_empty() {
         bail!("[{fixer}] Is not configurable.");
     }

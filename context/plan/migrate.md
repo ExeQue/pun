@@ -31,7 +31,8 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
 - **pint.json and .php-cs-fixer.php:** the preset, then a delta of rules with TOML option names. `per` expands into
   explicit rules; a `symfony` preset stops migrate with an error. Risky and code-deleting rules go to `[lint.rules]`
   at `error`. Custom fixer classes are named as unsupported. The Finder (paths, exclude, notPath) moves to
-  `[format]`; `notName` is named as unsupported.
+  `[format]`, `notName` too (`not-name`). PHP-CS-Fixer's `setIndent("\t")` and `setLineEnding("\r\n")` become the
+  options of `whitespace/indentation-type` and `whitespace/line-ending`; a 2-space indent is named as unsupported.
 - **rector.php:** paths and skip, Rector's sets to `rector/*` sets one to one (`withPhpSets()` to `rector/php-sets`), single rules to `[lint.rules]`, PHP and
   Laravel level sets to the upgrade groups, all at `error`. Symfony, Doctrine and downgrade sets are named as
   unsupported.
@@ -79,6 +80,6 @@ It moves everything Pun supports and names everything it doesn't. The proof is t
   preset rule Pun can't run is written as `false`, so the migrated pun.toml always runs. Migrate then exits 0.
 - **The `.php-cs-fixer.php` Finder** is read in the same `php -r` run. `in()` folders become `[files] paths`
   (relative to the project, the root itself left out). `exclude()` (without the default `vendor`) and
-  `notPath()` become `[format]` keys, as for pint.json; `notName()` is named as unsupported. Any other Finder call, a `name()` other than `*.php`, or a
+  `notPath()` and `notName()` become `[format]` keys, as for pint.json. Any other Finder call, a `name()` other than `*.php`, or a
   Finder that is not a Symfony Finder is named as `Finder <call>: no pun.toml key for it`. An empty Finder list is left
   out of pun.toml.

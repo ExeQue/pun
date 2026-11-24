@@ -1,6 +1,7 @@
 // `pun migrate` (run with `php -r`): a .php-cs-fixer(.dist).php's rules as PHP-CS-Fixer's own ConfigurationResolver
 // resolves them (rule validation, custom fixers), and its Finder, printed as one JSON object:
 // {"rules": {...}, "finder": {"in": [...], "exclude": [...], "notName": [...], "notPath": [...], "unsupported": [...]}}.
+// The rules carry setIndent("\t") and setLineEnding() as options of indentation_type and line_ending.
 // The Finder keys are pint.json's; `in` is relative to the project when inside it; `unsupported` names each Finder
 // setting pun.toml has no key for. On failure, its message and exit 1. The JSON or the message follows the marker
 // "\0pun-migrate\0", as output written straight to STDOUT (a deprecation notice) gets past the buffer below.
@@ -65,7 +66,18 @@ try {
             $out['unsupported'][] = 'ignoreVCSIgnored()';
         }
     }
-    fwrite(STDOUT, "\0pun-migrate\0".json_encode(['rules' => (object) $resolver->getRules(), 'finder' => $out], JSON_UNESCAPED_SLASHES));
+    // setIndent() and setLineEnding() are options of the rules that enforce them in pun.toml (2-space indent is not).
+    $rules = $resolver->getRules();
+    $whitespace = $resolver->getConfig();
+    if ($whitespace->getIndent() === "\t") {
+        $rules['indentation_type'] = ['indent' => "\t"];
+    } elseif ($whitespace->getIndent() !== '    ') {
+        $out['unsupported'][] = 'setIndent('.json_encode($whitespace->getIndent()).')';
+    }
+    if ($whitespace->getLineEnding() !== "\n") {
+        $rules['line_ending'] = ['line_ending' => $whitespace->getLineEnding()];
+    }
+    fwrite(STDOUT, "\0pun-migrate\0".json_encode(['rules' => (object) $rules, 'finder' => $out], JSON_UNESCAPED_SLASHES));
 } catch (Throwable $e) {
     fwrite(STDOUT, "\0pun-migrate\0".$e->getMessage());
     exit(1);

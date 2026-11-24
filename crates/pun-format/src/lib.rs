@@ -212,6 +212,38 @@ impl Fixer for SkipBladeFiles {
     }
 }
 
+/// The indent and line ending every fixer uses, as PHP-CS-Fixer's `setIndent()` and `setLineEnding()` set them. In
+/// pun.toml they are options of the rules that enforce them: `indent` of `indentation_type` and `line_ending` of
+/// `line_ending`. Returned with those two options taken out, as the fixers themselves have none.
+fn whitespaces(rules: &[Rule]) -> Result<(WhitespacesFixerConfig, Vec<Rule>)> {
+    let default = WhitespacesFixerConfig::default();
+    let (mut indent, mut line_ending) = (
+        default.get_indent().to_string(),
+        default.get_line_ending().to_string(),
+    );
+    let mut out = rules.to_vec();
+    for rule in &mut out {
+        let (key, slot) = match rule.name.as_str() {
+            "indentation_type" => ("indent", &mut indent),
+            "line_ending" => ("line_ending", &mut line_ending),
+            _ => continue,
+        };
+        let Value::Object(options) = &mut rule.options else {
+            continue;
+        };
+        if let Some(v) = options.remove(key) {
+            let Some(v) = v.as_str() else {
+                bail!("[{}] Option \"{key}\" must be a string.", rule.name);
+            };
+            v.clone_into(slot);
+        }
+        if options.is_empty() {
+            rule.options = Value::Null;
+        }
+    }
+    Ok((WhitespacesFixerConfig::new(&indent, &line_ending)?, out))
+}
+
 pub struct Pipeline {
     fixers: Vec<Box<dyn Fixer>>,
     pub not_ported: Vec<String>,
@@ -229,7 +261,8 @@ impl Pipeline {
         let mut fixers: Vec<Box<dyn Fixer>> = Vec::new();
         let mut not_ported = Vec::new();
         let mut pool = factory();
-        for rule in rules {
+        let (whitespaces, rules) = whitespaces(rules)?;
+        for rule in &rules {
             let mut target = rule.name.as_str();
             if let Some((_, successors)) = DEPRECATED.iter().find(|(n, _)| *n == target) {
                 if target != "visibility_required" {
@@ -255,7 +288,7 @@ impl Pipeline {
             };
             match found {
                 Some(mut f) => {
-                    f.set_whitespaces_config(&WhitespacesFixerConfig::default());
+                    f.set_whitespaces_config(&whitespaces);
                     f.configure(&rule.options)?;
                     if target != rule.name {
                         f = Box::new(Proxy {

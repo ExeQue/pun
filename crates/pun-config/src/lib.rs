@@ -73,6 +73,7 @@ pub struct Finder {
     pub in_dirs: Vec<String>,
     pub exclude: Vec<String>,
     pub not_path: Vec<String>,
+    pub not_name: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -139,6 +140,8 @@ struct PunFormat {
     exclude: Vec<String>,
     #[serde(default)]
     not_path: Vec<String>,
+    #[serde(default)]
+    not_name: Vec<String>,
     #[serde(default)]
     rules: toml::Table,
 }
@@ -356,6 +359,7 @@ fn parse(
             in_dirs: files.paths.clone(),
             exclude: [&files.exclude[..], &f.exclude[..]].concat(),
             not_path: f.not_path,
+            not_name: f.not_name,
         },
         blade,
         files,
@@ -611,6 +615,7 @@ impl Config {
                 preset: &self.preset,
                 exclude: &f.exclude,
                 not_path: &f.not_path,
+                not_name: &f.not_name,
                 rules: format,
             },
             lint: ShownLint {
@@ -661,6 +666,7 @@ struct ShownFormat<'a> {
     preset: &'a FormatPreset,
     exclude: &'a [String],
     not_path: &'a [String],
+    not_name: &'a [String],
     rules: Map<String, Value>,
 }
 

@@ -990,11 +990,11 @@ fn migrates_php_cs_fixer_config() {
     assert_eq!(code, Some(0), "{err}");
     assert_eq!(
         out,
-        " ok .php-cs-fixer.php  -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n\n ! Not migrated\n   no pun.toml key for it\n     Finder notName()\n     Finder depth()\n     Finder ignoreVCSIgnored()\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ok Wrote pun.toml\n"
+        " ok .php-cs-fixer.php  -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n\n ! Not migrated\n   no pun.toml key for it\n     Finder depth()\n     Finder ignoreVCSIgnored()\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n\n ok Wrote pun.toml\n"
     );
     assert_eq!(
         std::fs::read_to_string(dir.join("pun.toml")).unwrap(),
-        "# Written by `pun migrate` from .php-cs-fixer.php.\n[files]\nexclude = [\"legacy\"]\n\n[format]\npreset = \"empty\"\n\n[format.rules]\n\"strings/single-quote\" = true\n\n[lint.rules]\n\"style/no-alias-function\" = \"error\"\n"
+        "# Written by `pun migrate` from .php-cs-fixer.php.\n[files]\nexclude = [\"legacy\"]\n\n[format]\npreset = \"empty\"\nnot-name = [\"*.inc\"]\n\n[format.rules]\n\"strings/single-quote\" = true\n\n[lint.rules]\n\"style/no-alias-function\" = \"error\"\n"
     );
     pun(&dir, &["format"]);
     let a = || std::fs::read_to_string(dir.join("app/A.php")).unwrap();

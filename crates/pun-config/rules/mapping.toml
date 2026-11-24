@@ -1780,8 +1780,14 @@ sort = { upstream = "sort_algorithm", type = "enum", values = { alphabetical = "
 space = { upstream = "space", type = "enum", values = { none = "none", single = "single" } }
 space-multiple-catch = { upstream = "space_multiple_catch", type = "enum", values = { none = "none", single = "single" }, null = "same-as-space" }
 
+[options."format/whitespace/indentation-type"]
+style = { upstream = "indent", type = "enum", origin = "pun", default = "spaces", values = { spaces = "    ", tabs = "\t" } }
+
 [options."format/whitespace/inside-parentheses"]
 space = { upstream = "space", type = "enum", values = { none = "none", single = "single" } }
+
+[options."format/whitespace/line-ending"]
+ending = { upstream = "line_ending", type = "enum", origin = "pun", default = "lf", values = { lf = "\n", crlf = "\r\n" } }
 
 [options."format/whitespace/no-extra-blank-lines"]
 tokens = { upstream = "tokens", type = "list", values = { attribute = "attribute", break = "break", case = "case", comma = "comma", continue = "continue", curly-brace-block = "curly_brace_block", default = "default", extra = "extra", parenthesis-brace-block = "parenthesis_brace_block", return = "return", square-brace-block = "square_brace_block", switch = "switch", throw = "throw", use = "use", use-trait = "use_trait" } }
@@ -2103,11 +2109,11 @@ heredoc_to_nowdoc = { pun = "format/strings/heredoc-to-nowdoc", risky = false, p
 implode_call = { pun = "lint/style/require-implode-separator", risky = true, options = "none", status = "decided" }
 include = { pun = "format/control-flow/include", risky = false, pint_presets = ["laravel", "symfony"], options = "none", status = "decided" }
 increment_style = { pun = "format/operators/increment-style", risky = false, pint_presets = ["laravel", "symfony"], options = "renamed for TOML: [options.\"format/operators/increment-style\"]", status = "decided" }
-indentation_type = { pun = "format/whitespace/indentation-type", risky = false, pint_presets = ["laravel", "psr12", "per", "symfony"], options = "none", status = "decided" }
+indentation_type = { pun = "format/whitespace/indentation-type", risky = false, pint_presets = ["laravel", "psr12", "per", "symfony"], options = "Pun's own style option, for PHP-CS-Fixer's setIndent()", status = "decided" }
 integer_literal_case = { pun = "format/casing/integer-literals", risky = false, pint_presets = ["laravel", "symfony"], options = "none", status = "decided" }
 is_null = { pun = "lint/style/no-is-null", risky = true, options = "none", status = "decided" }
 lambda_not_used_import = { pun = "lint/functions/no-unused-closure-use", risky = false, pint_presets = ["laravel", "symfony"], options = "none", status = "decided" }
-line_ending = { pun = "format/whitespace/line-ending", risky = false, pint_presets = ["laravel", "psr12", "per", "symfony"], options = "none", status = "decided" }
+line_ending = { pun = "format/whitespace/line-ending", risky = false, pint_presets = ["laravel", "psr12", "per", "symfony"], options = "Pun's own ending option, for PHP-CS-Fixer's setLineEnding()", status = "decided" }
 linebreak_after_opening_tag = { pun = "format/tags/linebreak-after-opening", risky = false, pint_presets = ["laravel", "symfony"], options = "none", status = "decided" }
 list_syntax = { pun = "format/arrays/list-syntax", risky = false, pint_presets = ["laravel"], options = "renamed for TOML: [options.\"format/arrays/list-syntax\"]", status = "decided" }
 logical_operators = { pun = "lint/operators/no-and-or-keywords", risky = true, options = "none", status = "decided" }

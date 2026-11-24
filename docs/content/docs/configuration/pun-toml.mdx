@@ -97,9 +97,18 @@ Format rules don't depend on extensions. Blade formatting is `"laravel/blade" = 
 | `blade` | How `laravel/blade` formats Blade files: `prettier` (default) runs Prettier and prettier-plugin-blade in Node, as Pint does. `native` uses Pun's built-in formatter, which needs no Node and no `node_modules`. It gives the same output, except that it doesn't sort Tailwind classes |
 | `exclude` | Added to `[files] exclude` for format only |
 | `not-path` | Paths to skip, as in Pint's `notPath`. PHP regular expressions work. An invalid regular expression is a run error |
+| `not-name` | File names to skip, as in Pint's `notName`, such as `["*.inc"]`. Globs and PHP regular expressions work |
 | `rules` | `true`, `false`, a table of options, or the value of the rule's only option |
 
-Format always indents with four spaces and writes `\n` line endings. Neither has a setting. Risky and code-deleting fixers are [lint rules](/docs/commands/lint).
+Format indents with four spaces and writes `\n` line endings. To change them, set the option of the rule that checks each one. Every format rule then uses it:
+
+```toml title="pun.toml"
+[format.rules]
+"whitespace/indentation-type" = "tabs"   # or "spaces" (default)
+"whitespace/line-ending" = "crlf"        # or "lf" (default)
+```
+
+Risky and code-deleting fixers are [lint rules](/docs/commands/lint).
 
 ## [lint]
 

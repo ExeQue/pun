@@ -55,3 +55,32 @@ fn pun_risky_rules() {
         ]
     );
 }
+
+#[test]
+fn indent_and_line_ending_options_reach_every_fixer() {
+    let rule = |name: &str, options: serde_json::Value| Rule {
+        name: name.into(),
+        options,
+    };
+    let rules = [
+        rule("indentation_type", serde_json::json!({"indent": "\t"})),
+        rule("line_ending", serde_json::json!({"line_ending": "\r\n"})),
+        rule("statement_indentation", serde_json::Value::Null),
+    ];
+    let pipeline = Pipeline::new(&rules, &pun_fixers::all).unwrap();
+    let code = b"<?php\nif ($a) {\n$b = 1;\n}\n";
+    let fixed = pipeline
+        .run(std::path::Path::new("a.php"), code)
+        .unwrap()
+        .unwrap()
+        .code;
+    assert_eq!(
+        String::from_utf8(fixed).unwrap(),
+        "<?php\r\nif ($a) {\r\n\t$b = 1;\r\n}\r\n"
+    );
+    let bad = [rule(
+        "indentation_type",
+        serde_json::json!({"indent": "  x"}),
+    )];
+    assert!(Pipeline::new(&bad, &pun_fixers::all).is_err());
+}

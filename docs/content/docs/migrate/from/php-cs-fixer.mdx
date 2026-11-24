@@ -18,7 +18,9 @@ Run `pun migrate --from php-cs-fixer`. It reads `.php-cs-fixer.php` or `.php-cs-
 | Configured options | Pun names and values, on each rule page |
 | Finder `in()`, `exclude()` | `[files] paths`, `[files] exclude` |
 | Finder `notPath()` | `[format] not-path` |
-| Finder `notName()` | Not supported: `pun migrate` reports it and leaves it out |
+| Finder `notName()` | `[format] not-name` |
+| `setIndent("\t")` | `"whitespace/indentation-type" = "tabs"` in `[format.rules]`. A 2-space indent is not supported: `pun migrate` reports it |
+| `setLineEnding("\r\n")` | `"whitespace/line-ending" = "crlf"` in `[format.rules]` |
 | Custom fixer classes | Reported and skipped |
 
 ## Rule mapping

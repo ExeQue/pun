@@ -759,7 +759,7 @@
         "rules": [
           "format/whitespace/indentation-type"
         ],
-        "note": "Same.",
+        "note": "Same. Options: Pun's own style option, for PHP-CS-Fixer's setIndent().",
         "unsupported": false
       },
       {
@@ -799,7 +799,7 @@
         "rules": [
           "format/whitespace/line-ending"
         ],
-        "note": "Same.",
+        "note": "Same. Options: Pun's own ending option, for PHP-CS-Fixer's setLineEnding().",
         "unsupported": false
       },
       {
@@ -3745,7 +3745,7 @@
         "rules": [
           "format/whitespace/indentation-type"
         ],
-        "note": "Same.",
+        "note": "Same. Options: Pun's own style option, for PHP-CS-Fixer's setIndent().",
         "unsupported": false
       },
       {
@@ -3785,7 +3785,7 @@
         "rules": [
           "format/whitespace/line-ending"
         ],
-        "note": "Same.",
+        "note": "Same. Options: Pun's own ending option, for PHP-CS-Fixer's setLineEnding().",
         "unsupported": false
       },
       {
