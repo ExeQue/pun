@@ -1,5 +1,6 @@
 mod autoload;
 mod bitset;
+mod carbon;
 mod codebase;
 mod dependencies;
 mod extension;
@@ -16,6 +17,7 @@ use std::path::{Path, PathBuf};
 use pun_phpstan::config::Resolved;
 use rayon::prelude::*;
 
+pub use carbon::Carbon;
 pub use codebase::CouldNotReadFile;
 pub use extension::AnalyseExtension;
 pub use laravel::Laravel;

@@ -33,7 +33,7 @@ pub struct Phpstan {
     pub changed: Vec<(String, Value)>,
 }
 
-const BUILT_IN: [(&str, Option<&str>); 6] = [
+const BUILT_IN: [(&str, Option<&str>); 7] = [
     ("larastan/larastan", Some("larastan")),
     ("phpstan/phpstan-strict-rules", Some("phpstan-strict-rules")),
     (
@@ -43,6 +43,7 @@ const BUILT_IN: [(&str, Option<&str>); 6] = [
     ("pestphp/pest-plugin-phpstan", None),
     ("phpstan/phpstan-phpunit", None),
     ("phpstan/extension-installer", None),
+    ("nesbot/carbon", None),
 ];
 
 const HANDLED: [&str; 19] = [

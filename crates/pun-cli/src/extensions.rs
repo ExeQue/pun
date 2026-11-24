@@ -10,6 +10,7 @@ use std::path::PathBuf;
 struct Laravel;
 struct Pest;
 struct Phpunit;
+struct Carbon;
 
 impl Extension for Laravel {
     fn meta(&self) -> &'static ExtensionMeta {
@@ -45,7 +46,13 @@ impl Extension for Phpunit {
     }
 }
 
-pub(crate) static ALL: [&dyn Extension; 3] = [&Laravel, &Pest, &Phpunit];
+impl Extension for Carbon {
+    fn meta(&self) -> &'static ExtensionMeta {
+        &meta::CARBON
+    }
+}
+
+pub(crate) static ALL: [&dyn Extension; 4] = [&Laravel, &Pest, &Phpunit, &Carbon];
 
 pub(crate) fn fixers() -> Vec<Box<dyn pun_format::Fixer>> {
     pun_extension::fixers(&ALL)

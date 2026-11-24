@@ -800,7 +800,7 @@ pub(crate) fn build(
         .collect();
     metadata.function_likes.extend(pseudo);
     for extension in project.extensions() {
-        extension.prepare_codebase(&mut metadata);
+        extension.prepare_codebase(project, &mut metadata);
     }
     populate_codebase_parallel(
         &mut metadata,

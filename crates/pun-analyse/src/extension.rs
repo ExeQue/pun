@@ -23,7 +23,7 @@ pub trait AnalyseExtension: Send + Sync {
     fn class_aliases(&self) -> Vec<(String, String)>;
 
     /// Changes the scanned symbols before the codebase is populated.
-    fn prepare_codebase(&self, codebase: &mut CodebaseMetadata);
+    fn prepare_codebase(&self, project: &Project, codebase: &mut CodebaseMetadata);
 
     /// Reads what the extension needs from the populated codebase, before any file is checked.
     fn load(&mut self, project: &Project, codebase: &CodebaseMetadata);

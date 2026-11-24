@@ -45,7 +45,15 @@ pub static PHPUNIT: ExtensionMeta = ExtensionMeta {
     packages: &["phpunit/phpunit"],
 };
 
-pub static ALL: [&ExtensionMeta; 3] = [&LARAVEL, &PEST, &PHPUNIT];
+pub static CARBON: ExtensionMeta = ExtensionMeta {
+    id: "carbon",
+    name: "Carbon",
+    description: "Carbon's macros and DatePeriodBase in analyse",
+    groups: &[],
+    packages: &["nesbot/carbon"],
+};
+
+pub static ALL: [&ExtensionMeta; 4] = [&LARAVEL, &PEST, &PHPUNIT, &CARBON];
 
 /// The extension that owns `group`, and the version in the group's name when it is a version group.
 pub fn owner(group: &str) -> Option<(&'static ExtensionMeta, Option<&str>)> {

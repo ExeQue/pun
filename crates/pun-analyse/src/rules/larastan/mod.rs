@@ -319,7 +319,11 @@ impl crate::AnalyseExtension for Larastan {
         crate::larastan::aliases::load(&self.root)
     }
 
-    fn prepare_codebase(&self, codebase: &mut mago_codex::metadata::CodebaseMetadata) {
+    fn prepare_codebase(
+        &self,
+        _: &crate::Project,
+        codebase: &mut mago_codex::metadata::CodebaseMetadata,
+    ) {
         crate::larastan::app::App::load(&self.root).contract_mixins(codebase);
         crate::larastan::types::generic_eloquent_builders(codebase);
     }

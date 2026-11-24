@@ -1,0 +1,116 @@
+[
+    {
+        "file": "src/Probe.php",
+        "line": 15,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 16,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 18,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 23,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\CarbonInterface::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 24,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method App\\MyDate::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 26,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\CarbonImmutable::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 31,
+        "identifier": "staticMethod.notFound",
+        "message": "Call to an undefined static method Carbon\\Carbon::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 32,
+        "identifier": "staticMethod.notFound",
+        "message": "Call to an undefined static method Carbon\\Carbon::fromTicket()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 34,
+        "identifier": "staticMethod.notFound",
+        "message": "Call to an undefined static method Carbon\\CarbonImmutable::fromTicket()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 39,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::quarterName()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 40,
+        "identifier": "staticMethod.notFound",
+        "message": "Call to an undefined static method Carbon\\Carbon::quarterName()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 42,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::quarterName()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 47,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::isPayday()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 49,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::isPayday()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 49,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::isPayday()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 54,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::notAMacro()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 55,
+        "identifier": "staticMethod.notFound",
+        "message": "Call to an undefined static method Carbon\\Carbon::notAStaticMacro()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 61,
+        "identifier": "class.notFound",
+        "message": "Class Carbon\\DatePeriodBase not found."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 63,
+        "identifier": "return.type",
+        "message": "Method App\\Probe::period() should return DatePeriod but returns Carbon\\CarbonPeriod."
+    }
+]

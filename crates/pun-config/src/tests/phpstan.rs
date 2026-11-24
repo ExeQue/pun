@@ -97,6 +97,19 @@ final class GeneratedConfig
     'extra' => NULL,
     'version' => '1.0.0',
   ),
+  'nesbot/carbon' => 
+  array (
+    'install_path' => '/p/vendor/nesbot/carbon',
+    'relative_install_path' => '../../../nesbot/carbon',
+    'extra' => 
+    array (
+      'includes' => 
+      array (
+        0 => 'extension.neon',
+      ),
+    ),
+    'version' => '3.15.1',
+  ),
   'phpstan/phpstan-mockery' => 
   array (
     'install_path' => '/p/vendor/phpstan/phpstan-mockery',
@@ -143,6 +156,7 @@ fn reads_level_paths_ignores_and_includes() {
             ("vendor/foo/bar/rules.neon", ""),
             ("vendor/phpstan/phpstan/conf/extra.neon", ""),
             ("vendor/phpstan/phpstan-mockery/extension.neon", ""),
+            ("vendor/nesbot/carbon/extension.neon", ""),
             ("vendor/phpstan/phpstan-strict-rules/rules.neon", ""),
             (
                 "build/custom.neon",
@@ -169,7 +183,11 @@ fn reads_level_paths_ignores_and_includes() {
     assert_eq!(p.baselines, ["phpstan-baseline.neon"]);
     assert_eq!(
         p.extensions.iter().collect::<Vec<_>>(),
-        ["larastan/larastan", "phpstan/phpstan-strict-rules"]
+        [
+            "larastan/larastan",
+            "nesbot/carbon",
+            "phpstan/phpstan-strict-rules"
+        ]
     );
     assert!(p.bleeding_edge);
     assert_eq!(p.php_version.as_deref(), Some("8.4"));

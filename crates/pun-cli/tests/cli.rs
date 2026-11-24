@@ -1024,6 +1024,7 @@ fn extension_list_says_why_each_is_on() {
     let want = r#"laravel  on   Laravel's rules and Larastan's analysis: on in pun.toml
 pest     off  Rules for Pest tests: pestphp/pest v4.1.0 is locked; turn it on with pest = "on" in [extensions]
 phpunit  off  Rules for PHPUnit tests: not in pun.toml
+carbon   off  Carbon's macros and DatePeriodBase in analyse: not in pun.toml
 "#;
     assert_eq!(
         pun(&dir, &["extension", "list"]),
@@ -1047,6 +1048,7 @@ phpunit  off  Rules for PHPUnit tests: not in pun.toml
                 ("laravel", true, Some("on")),
                 ("pest", false, None),
                 ("phpunit", false, None),
+                ("carbon", false, None),
             ],
             Some(0)
         )

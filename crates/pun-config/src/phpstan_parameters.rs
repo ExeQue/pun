@@ -22,6 +22,9 @@ const STRICT_RULES_PARAMETERS: [(&str, bool); 12] = [
     ("checkStrictPrintfPlaceholderTypes", true),
 ];
 
+/// The bootstrap file nesbot/carbon's `extension.neon` names, from the project root.
+const CARBON_BOOTSTRAP: &str = "vendor/nesbot/carbon/lazy/Carbon/UnprotectedDatePeriod.php";
+
 /// The PHPStan level at which each `[analyse]` type switch is on.
 pub(crate) const SWITCH_LEVELS: [(&str, u8); 4] = [
     ("union-types", 7),
@@ -66,11 +69,15 @@ impl Analyse {
             .map(|s| absolute(root, s))
             .partition(|s| Path::new(s).is_dir());
         let absolute = |paths: &[String]| paths.iter().map(|s| absolute(root, s)).collect();
+        // Carbon's extension.neon adds its bootstrap file, which declares `Carbon\DatePeriodBase`
+        let carbon = (self.ecosystems.contains(&&crate::extensions::CARBON))
+            .then(|| CARBON_BOOTSTRAP.to_string());
+        let bootstrap = absolute(&[&self.bootstrap[..], carbon.as_slice()].concat());
         for (name, paths) in [
             ("stubFiles", absolute(&self.stubs)),
             ("scanFiles", files),
             ("scanDirectories", dirs),
-            ("bootstrapFiles", absolute(&self.bootstrap)),
+            ("bootstrapFiles", bootstrap),
         ] {
             let paths = paths.into_iter().map(Value::str);
             p.set(Key::from(name), Value::Array(Array::list(paths)));

@@ -2,15 +2,17 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use mago_allocator::LocalArena;
+use mago_codex::build_synthetic_name;
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::union::TUnion;
-use mago_database::file::FileType;
+use mago_database::file::{File, FileType};
 use mago_names::ResolvedNames;
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
+use mago_word::Word;
 
 use crate::codebase::{parse, read};
 use crate::larastan::app::App;
@@ -36,8 +38,10 @@ pub(crate) struct Macro {
 }
 
 #[derive(Clone)]
-enum Definition {
-    Closure(Option<TUnion>),
+pub(crate) enum Definition {
+    /// A closure or arrow function: its native return type, its synthetic name in the codebase, and whether it is
+    /// `static`.
+    Closure(Option<TUnion>, Word, bool),
     Function(String),
     Method(String, String),
     /// `X::mixin(new Mixin)`: Macroable::mixin() registers each public and protected method's returned closure.
@@ -122,12 +126,7 @@ impl Macros {
         files.extend(discovered_providers(root));
         let mut seen = HashSet::new();
         let mut read_files = Reader::default();
-        while let Some(path) = files.pop() {
-            if !seen.insert(path.clone()) {
-                continue;
-            }
-            files.extend(read_files.read(&path));
-        }
+        read_files.read_all(files, &mut seen);
         // A mixin class Pun has not read yet sits in the file named after it, as PSR-4 autoloading wants.
         let mixins: HashSet<String> = (read_files.registrations.iter())
             .filter_map(|(_, _, definition)| match definition {
@@ -178,7 +177,7 @@ impl Macros {
                 t.map_or_else(get_mixed, |t| t.type_union.clone())
             };
             let found = match definition {
-                Definition::Closure(ty) => Macro {
+                Definition::Closure(ty, ..) => Macro {
                     ty: populated(ty),
                     instance: None,
                     native: false,
@@ -419,7 +418,25 @@ struct Reader {
     mixin_methods: HashMap<String, Vec<(String, Option<TUnion>)>>,
 }
 
+/// The `X::macro()` calls of `files` and of the files they include: the class each is called on, the macro's name
+/// and its definition.
+pub(crate) fn registrations(files: Vec<PathBuf>) -> Vec<(String, String, Definition)> {
+    let mut reader = Reader::default();
+    reader.read_all(files, &mut HashSet::new());
+    reader.registrations
+}
+
 impl Reader {
+    /// Reads `files`, and the files they include, once each.
+    fn read_all(&mut self, mut files: Vec<PathBuf>, seen: &mut HashSet<PathBuf>) {
+        while let Some(path) = files.pop() {
+            if !seen.insert(path.clone()) {
+                continue;
+            }
+            files.extend(self.read(&path));
+        }
+    }
+
     fn read(&mut self, path: &Path) -> Vec<PathBuf> {
         let Some(file) = read(path, FileType::Host).ok().flatten() else {
             return Vec::new();
@@ -428,6 +445,7 @@ impl Reader {
         let (program, names) = parse(&arena, &file);
         let mut walker = Walker {
             reader: self,
+            file: &file,
             names: &names,
             dir: path.parent().unwrap_or(Path::new("")).to_path_buf(),
             namespace: String::new(),
@@ -442,6 +460,7 @@ impl Reader {
 
 struct Walker<'r, 'n, 'arena> {
     reader: &'r mut Reader,
+    file: &'n File,
     names: &'n ResolvedNames<'arena>,
     dir: PathBuf,
     namespace: String,
@@ -517,9 +536,13 @@ impl Walker<'_, '_, '_> {
         match e {
             Expression::Closure(c) => Some(Definition::Closure(
                 c.return_type_hint.as_ref().and_then(|h| self.hint(&h.hint)),
+                build_synthetic_name("closure", self.file, c.span()),
+                c.r#static.is_some(),
             )),
             Expression::ArrowFunction(f) => Some(Definition::Closure(
                 f.return_type_hint.as_ref().and_then(|h| self.hint(&h.hint)),
+                build_synthetic_name("closure", self.file, f.span()),
+                f.r#static.is_some(),
             )),
             Expression::Array(a) => self.callable_array(&a.elements),
             Expression::LegacyArray(a) => self.callable_array(&a.elements),

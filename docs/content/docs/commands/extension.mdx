@@ -32,6 +32,7 @@ pun extension list --format json
 laravel  on   Laravel's rules and Larastan's analysis: on in pun.toml
 pest     off  Rules for Pest tests: pestphp/pest v4.1.0 is locked; turn it on with pest = "on" in [extensions]
 phpunit  off  Rules for PHPUnit tests: not in pun.toml
+carbon   off  Carbon's macros and DatePeriodBase in analyse: not in pun.toml
 ```
 
 | Extension | Adds |
@@ -39,6 +40,7 @@ phpunit  off  Rules for PHPUnit tests: not in pun.toml
 | `laravel` | Laravel lint and analyse rules, and Larastan's checks. |
 | `pest` | Pest lint rules. |
 | `phpunit` | PHPUnit lint rules. |
+| `carbon` | Carbon's PHPStan extension in analyse. Each class that implements `CarbonInterface` gets the macros that `X::macro('name', ...)` calls register in the analysed, scanned, and bootstrap files. Pun reads these calls without running PHP. A macro that is registered at runtime in any other way, such as with a dynamic name, isn't found. |
 
 An extension is on only when [`[extensions]`](/docs/configuration/pun-toml#extensions) says `"on"`. `pun init` and `pun migrate` write that for you.
 

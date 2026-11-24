@@ -830,7 +830,7 @@ fn extensions() {
     let shown = c.show();
     assert_eq!(
         shown["extensions"],
-        json!({"laravel": "on", "pest": "off", "phpunit": "off"})
+        json!({"laravel": "on", "pest": "off", "phpunit": "off", "carbon": "off"})
     );
     // Left out of [extensions], an extension is off even with its package locked.
     let c = load_(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]).unwrap();
@@ -841,13 +841,39 @@ fn extensions() {
     let e = |toml: &str| format!("{:#}", load_(&[("pun.toml", toml)]).unwrap_err());
     assert!(
         e("[extensions]\nsymfony = \"on\"\n").ends_with(
-            "pun.toml: [extensions] `symfony` is not an extension: expected `laravel`, `pest`, `phpunit`"
+            "pun.toml: [extensions] `symfony` is not an extension: expected `laravel`, `pest`, `phpunit`, `carbon`"
         )
     );
     assert!(
         e("[extensions]\nlaravel = true\n")
             .ends_with("pun.toml: [extensions] `laravel` = true: expected \"on\" or \"off\"")
     );
+    // `carbon` adds what Carbon's extension.neon adds: its bootstrap file. Off, or left out, it adds nothing.
+    let bootstrap = |toml: &str| {
+        let root = dir(&[("pun.toml", toml)]);
+        let analyse = load(&root, &Options::default()).unwrap().analyse;
+        let prefix = format!("{}/", root.display());
+        let parameters = analyse.parameters(&root);
+        let files = (parameters.get_str("bootstrapFiles"))
+            .and_then(pun_phpstan::Value::as_array)
+            .unwrap()
+            .values()
+            .filter_map(|v| Some(v.as_str()?.strip_prefix(&prefix)?.to_string()))
+            .collect::<Vec<_>>();
+        (analyse.ecosystems == [&crate::extensions::CARBON], files)
+    };
+    assert_eq!(
+        bootstrap("[extensions]\ncarbon = \"on\"\n"),
+        (
+            true,
+            vec!["vendor/nesbot/carbon/lazy/Carbon/UnprotectedDatePeriod.php".to_string()]
+        )
+    );
+    assert_eq!(
+        bootstrap("[extensions]\ncarbon = \"off\"\n"),
+        (false, vec![])
+    );
+    assert_eq!(bootstrap(types), (false, vec![]));
     assert!(e("[extensions]\nlaravel = \"auto\"\n").contains(
         "[extensions] `laravel` = \"auto\" was removed: an extension is on only when pun.toml says so"
     ));

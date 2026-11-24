@@ -27,6 +27,7 @@ mod callable_visibility;
 mod callback_gather;
 mod called_on_types;
 mod capture_feedback;
+mod carbon;
 mod class_constant_initializers;
 mod class_constants;
 mod class_names;

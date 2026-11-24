@@ -204,6 +204,11 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   `require.php` the target is 8.3. Rules that write PHP 8.4 syntax or call PHP 8.4 functions run only on an 8.4+
   target: the `php-8.4` group, the rules whose `min_php_version` is 8.4, and `format/operators/new-expression-parentheses`
   unless it adds parentheses.
+- **Carbon's PHPStan extension is built in** (Pushpak, 2026-11-24): `[extensions] carbon = "on"` (`pun migrate`
+  and `pun init` write it when composer.lock locks nesbot/carbon) adds Carbon's bootstrap file, which declares
+  `Carbon\DatePeriodBase`. It also gives every class that implements `CarbonInterface` the macros that
+  `X::macro('name', ...)` calls register in the analysed, scanned and bootstrap files. Pun reads those calls
+  statically, as it reads Larastan's.
 
 ### Engines
 

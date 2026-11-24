@@ -1,0 +1,74 @@
+[
+    {
+        "file": "src/Probe.php",
+        "line": 15,
+        "identifier": "arguments.count",
+        "message": "Method Carbon\\Carbon::addBusinessDays() invoked with 0 parameters, 1 required."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 16,
+        "identifier": "argument.type",
+        "message": "Parameter #1 $days of method Carbon\\Carbon::addBusinessDays() expects int, string given."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 23,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\CarbonInterface::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 24,
+        "identifier": "argument.type",
+        "message": "Parameter #1 $days of method App\\MyDate::addBusinessDays() expects int, string given."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 31,
+        "identifier": "method.staticCall",
+        "message": "Static call to instance method Carbon\\Carbon::addBusinessDays()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 32,
+        "identifier": "argument.type",
+        "message": "Parameter #1 $ticket of static method Carbon\\Carbon::fromTicket() expects string, int given."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 39,
+        "identifier": "argument.type",
+        "message": "Parameter #1 $quarter of method Carbon\\Carbon::quarterName() expects int, string given."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 40,
+        "identifier": "method.nonObject",
+        "message": "Cannot call method format() on string."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 47,
+        "identifier": "argument.type",
+        "message": "Parameter #1 $day of method Carbon\\Carbon::isPayday() expects int, string given."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 54,
+        "identifier": "method.notFound",
+        "message": "Call to an undefined method Carbon\\Carbon::notAMacro()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 55,
+        "identifier": "staticMethod.notFound",
+        "message": "Call to an undefined static method Carbon\\Carbon::notAStaticMacro()."
+    },
+    {
+        "file": "src/Probe.php",
+        "line": 61,
+        "identifier": "instanceof.alwaysTrue",
+        "message": "Instanceof between Carbon\\CarbonPeriod and Carbon\\DatePeriodBase will always evaluate to true."
+    }
+]
