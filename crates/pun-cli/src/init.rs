@@ -100,7 +100,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
         format!("[extensions]\n{extensions}\n")
     };
     let toml = format!(
-        "# Written by `pun init`.\n{extensions}[format]\npreset = \"{style}\"\n\n[lint]\npreset = \"{lint}\"\n\n[analyse]\npreset = \"{analyse}\"\n"
+        "# Written by `pun init`.\n{extensions}[files]\nexclude = [\"tmp\", \"temp\"]\n\n[format]\npreset = \"{style}\"\n\n[lint]\npreset = \"{lint}\"\n\n[analyse]\npreset = \"{analyse}\"\n"
     );
     pun_config::from_toml(&root, &toml)?;
     std::fs::write(root.join("pun.toml"), &toml)?;

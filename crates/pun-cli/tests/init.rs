@@ -36,7 +36,7 @@ fn toml_with(extensions: &[&str], style: &str, lint: &str, analyse: &str) -> Str
         format!("[extensions]\n{on} = \"on\"\n\n")
     };
     format!(
-        "# Written by `pun init`.\n{on}[format]\npreset = \"{style}\"\n\n[lint]\npreset = \"{lint}\"\n\n[analyse]\npreset = \"{analyse}\"\n"
+        "# Written by `pun init`.\n{on}[files]\nexclude = [\"tmp\", \"temp\"]\n\n[format]\npreset = \"{style}\"\n\n[lint]\npreset = \"{lint}\"\n\n[analyse]\npreset = \"{analyse}\"\n"
     )
 }
 

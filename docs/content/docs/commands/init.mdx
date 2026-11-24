@@ -31,7 +31,7 @@ pun init --style psr12 --lint strict --analyse strict
 - Asks for the format preset, lint preset and analyse preset.
 - Picks `laravel` when `composer.lock` has `laravel/framework`, else `psr12`.
 - Turns on each extension whose package is in `composer.lock`.
-- Writes `pun.toml`.
+- Writes `pun.toml`, with `tmp/` and `temp/` excluded from every command.
 - Asks no questions with `--yes`, in CI, under a coding agent, or without a terminal.
 - Stops if `pun.toml` exists, or if an old tool config exists (it offers `pun migrate`).
 - Never edits Composer scripts, CI, Git hooks or editor settings.
@@ -40,6 +40,9 @@ pun init --style psr12 --lint strict --analyse strict
 [extensions]
 laravel = "on"
 pest = "on"
+
+[files]
+exclude = ["tmp", "temp"]
 
 [format]
 preset = "laravel"

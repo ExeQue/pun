@@ -80,5 +80,7 @@ Assistant's calls (change them freely):
 - **Flag errors keep schema.rs's wording** with the flag in place of the pun.toml location: "--lint-sets: `x` is not a
   lint set; the sets are …", "--analyse x: expected `basic`, …". `--lint-sets ""` means no sets.
 - **pun.toml starts with ``# Written by `pun init`.``**, as migrate's does.
+- **`[files] exclude = ["tmp", "temp"]`** keeps scratch folders out of every command; `vendor/` is already skipped by
+  the finder.
 - **Agent mode** prints one `pun init: ok, pun.toml written, style …, lint …, analyse …, extensions …` line, with
   the next steps as its item.
