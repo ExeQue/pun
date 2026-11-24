@@ -10623,6 +10623,46 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.4/add-null-property-default",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Add null default to properties with PHP 7.4 property nullable type",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php74\\Rector\\Property\\RestoreDefaultNullToNullableTypePropertyRector",
+        "RestoreDefaultNullToNullableTypeProperty",
+        "RestoreDefaultNullToNullableTypePropertyRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/no-array-key-exists-on-object",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change array_key_exists() on property to property_exists()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ArrayKeyExistsOnProperty",
+        "ArrayKeyExistsOnPropertyRector",
+        "Rector\\Php74\\Rector\\FuncCall\\ArrayKeyExistsOnPropertyRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.4/no-filter-magic-quotes",
       "command": "lint",
       "group": "php-7.4",
@@ -10683,6 +10723,46 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.4/no-money-format",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change money_format() to equivalent number_format()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "MoneyFormatToNumberFormat",
+        "MoneyFormatToNumberFormatRector",
+        "Rector\\Php74\\Rector\\FuncCall\\MoneyFormatToNumberFormatRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/no-reflection-export",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change export() to ReflectionFunction alternatives",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ExportToReflectionFunction",
+        "ExportToReflectionFunctionRector",
+        "Rector\\Php74\\Rector\\StaticCall\\ExportToReflectionFunctionRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.4/no-restore-include-path",
       "command": "lint",
       "group": "php-7.4",
@@ -10719,6 +10799,26 @@
         "ClosureToArrowFunction",
         "ClosureToArrowFunctionRector",
         "Rector\\Php74\\Rector\\Closure\\ClosureToArrowFunctionRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.4/prefer-coalesce-assign-over-if",
+      "command": "lint",
+      "group": "php-7.4",
+      "summary": "Change if null guard with single assign to null coalescing assign ??=",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "IfToNullCoalescingAssign",
+        "IfToNullCoalescingAssignRector",
+        "Rector\\Php74\\Rector\\If_\\IfToNullCoalescingAssignRector"
       ],
       "ported": true
     },

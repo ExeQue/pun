@@ -35,7 +35,7 @@ mod add_param_type_property;
 mod add_param_type_spl_fixed_array;
 mod add_param_type_variable_call;
 mod add_property_type_assigns;
-mod add_property_type_constructor;
+pub(crate) mod add_property_type_constructor;
 // The PHPUnit extension registers its rule.
 pub(super) mod add_property_type_create_mock;
 mod add_property_type_setter_getter;

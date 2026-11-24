@@ -1,5 +1,10 @@
+pub(super) mod add_null_property_default;
+pub(super) mod no_array_key_exists_on_object;
 pub(super) mod no_filter_magic_quotes;
 pub(super) mod no_hebrevc;
 pub(super) mod no_mb_strrpos_encoding_offset;
+pub(super) mod no_money_format;
+pub(super) mod no_reflection_export;
 pub(super) mod no_restore_include_path;
 pub(super) mod prefer_arrow_function;
+pub(super) mod prefer_coalesce_assign_over_if;

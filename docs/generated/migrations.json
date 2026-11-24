@@ -6516,9 +6516,11 @@
         "name": "ArrayKeyExistsOnProperty",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/array-key-exists-on-property-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/no-array-key-exists-on-object"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ArrayKeyExistsTernaryThenValueToCoalescing",
@@ -7362,9 +7364,11 @@
         "name": "ExportToReflectionFunction",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/export-to-reflection-function-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/no-reflection-export"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "FilesystemIteratorSkipDots",
@@ -7644,9 +7648,11 @@
         "name": "IfToNullCoalescingAssign",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/if-to-null-coalescing-assign-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/prefer-coalesce-assign-over-if"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "IfToSpaceship",
@@ -7936,9 +7942,11 @@
         "name": "MoneyFormatToNumberFormat",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/money-format-to-number-format-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/no-money-format"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "MoveInnerFunctionToTopLevel",
@@ -9566,9 +9574,11 @@
         "name": "RestoreDefaultNullToNullableTypeProperty",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/restore-default-null-to-nullable-type-property-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.4/add-null-property-default"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RestoreIncludePathToIniRestore",

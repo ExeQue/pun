@@ -58,6 +58,7 @@ impl Rule for NoRedundantPropertyDefault {
             extends,
             constructor: Some(constructor),
             test_case: None,
+            conditional: false,
         };
         let mut edits = Vec::new();
         for member in members {
@@ -122,6 +123,7 @@ pub(crate) fn is_assigned_in_constructor<'a>(
         extends,
         constructor: Some(constructor),
         test_case: None,
+        conditional: false,
     }
     .is_assigned(name)
 }
@@ -271,6 +273,8 @@ struct Scope<'s, 'p, 'a> {
     extends: Option<&'a Extends<'a>>,
     constructor: Option<&'a Method<'a>>,
     test_case: Option<bool>,
+    /// `allowConditional`: an assign below the first level counts as assigned.
+    conditional: bool,
 }
 
 pub(crate) fn is_property_assigned(
@@ -287,8 +291,29 @@ pub(crate) fn is_property_assigned(
         extends: None,
         constructor: view.method(b"__construct"),
         test_case: Some(test_case),
+        conditional: false,
     };
     scope.is_assigned(name)
+}
+
+/// `ConstructorAssignDetector::isPropertyAssignedConditionally`.
+pub(crate) fn is_property_assigned_conditionally(
+    ctx: &Context<'_>,
+    view: &ClassView<'_, '_>,
+    test_case: bool,
+    name: &[u8],
+) -> bool {
+    Scope {
+        ctx,
+        members: view.members,
+        comments_from: node_span(&view.node).start,
+        path: &view.path,
+        extends: None,
+        constructor: view.method(b"__construct"),
+        test_case: Some(test_case),
+        conditional: true,
+    }
+    .is_assigned(name)
 }
 
 enum Found {
@@ -395,7 +420,7 @@ impl<'a> Scope<'_, '_, 'a> {
             if uses_fetch(self.ctx.source, Node::Expression(a.rhs), a.lhs) {
                 return Found::Stop(false);
             }
-            if first.contains(&node_span(a)) {
+            if first.contains(&node_span(a)) || self.conditional {
                 return Found::Stop(true);
             }
         }

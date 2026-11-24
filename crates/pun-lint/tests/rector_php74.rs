@@ -7,8 +7,9 @@ use crate::common::run_class;
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
-    NoFilterMagicQuotes, NoHebrevc, NoMbStrrposEncodingOffset, NoRestoreIncludePath,
-    PreferArrowFunction,
+    AddNullPropertyDefault, NoArrayKeyExistsOnObject, NoFilterMagicQuotes, NoHebrevc,
+    NoMbStrrposEncodingOffset, NoMoneyFormat, NoReflectionExport, NoRestoreIncludePath,
+    PreferArrowFunction, PreferCoalesceAssignOverIf,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -50,5 +51,45 @@ fn mb_strrpos_encoding_argument_position() {
     check(
         || Box::new(NoMbStrrposEncodingOffset),
         "MbStrrposEncodingArgumentPositionRector",
+    );
+}
+
+#[test]
+fn array_key_exists_on_property() {
+    check(
+        || Box::new(NoArrayKeyExistsOnObject),
+        "ArrayKeyExistsOnPropertyRector",
+    );
+}
+
+#[test]
+fn export_to_reflection_function() {
+    check(
+        || Box::new(NoReflectionExport),
+        "ExportToReflectionFunctionRector",
+    );
+}
+
+#[test]
+fn if_to_null_coalescing_assign() {
+    check(
+        || Box::new(PreferCoalesceAssignOverIf),
+        "IfToNullCoalescingAssignRector",
+    );
+}
+
+#[test]
+fn money_format_to_number_format() {
+    check(
+        || Box::new(NoMoneyFormat),
+        "MoneyFormatToNumberFormatRector",
+    );
+}
+
+#[test]
+fn restore_default_null_to_nullable_type_property() {
+    check(
+        || Box::new(AddNullPropertyDefault),
+        "RestoreDefaultNullToNullableTypePropertyRector",
     );
 }
