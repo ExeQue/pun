@@ -23,7 +23,9 @@ pub(crate) fn run(a: &SelfUpdateArgs) -> Result<Exit> {
         .canonicalize()
         .context("can't find the running pun")?;
     if exe.file_name().is_none_or(|n| n != "pun") {
-        bail!("this pun was installed with Composer; update it with `composer update shipfastlabs/pun`");
+        bail!(
+            "this pun was installed with Composer; update it with `composer update shipfastlabs/pun`"
+        );
     }
     let current = env!("CARGO_PKG_VERSION");
     // Pun's tests serve the releases from a local server.
