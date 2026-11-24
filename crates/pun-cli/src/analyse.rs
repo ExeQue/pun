@@ -84,6 +84,11 @@ pub(crate) struct Finding {
     pub(crate) can_be_ignored: bool,
     /// PHPStan's `isFixable()`.
     pub(crate) fixable: bool,
+    /// The file that holds the error: `file` without the ` (in context of class …)` of an error in a trait. Kept
+    /// apart from the label because a file's own name may hold that text.
+    pub(crate) source: PathBuf,
+    /// `source` relative to the project root.
+    pub(crate) source_rel: String,
 }
 
 impl Finding {
@@ -92,17 +97,12 @@ impl Finding {
         self.can_be_ignored
     }
 
-    /// The file that holds the error: `file` without the ` (in context of class …)` of an error in a trait.
     pub(crate) fn source(&self) -> &Path {
-        let label = self.file.to_str().unwrap_or_default();
-        label
-            .split_once(" (in context of ")
-            .map_or(&self.file, |(path, _)| Path::new(path))
+        &self.source
     }
 
-    /// `rel` without the ` (in context of class …)` of an error in a trait.
     pub(crate) fn source_rel(&self) -> &str {
-        (self.rel.split_once(" (in context of ")).map_or(&self.rel, |(path, _)| path)
+        &self.source_rel
     }
 
     /// PHPStan's `getLine()`: none (0 here) for an `ignoreErrors` entry nothing matched.
@@ -304,6 +304,9 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
         errors.retain(|e| e.identifier == "phpstan.parse" && seen.insert(e.message.clone()));
         general.clear();
     }
+    let analysed_files: std::collections::HashSet<String> = (project.analysed.iter())
+        .map(|p| normalize_path(&p.to_string_lossy()))
+        .collect();
     let mut findings: Vec<Finding> = (errors.into_iter())
         .map(|e| {
             let rule =
@@ -312,15 +315,21 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
                 } else {
                     UNMATCHED_IGNORE
                 });
-            let file = match e.file.split_once(" (in context of ") {
-                Some((path, class)) => {
-                    format!("{} (in context of {class}", normalize_path(path))
+            // An analysed file's name may itself hold ` (in context of `: only another label gets split.
+            let whole = normalize_path(&e.file);
+            let (source, file) = match e.file.rsplit_once(" (in context of ") {
+                Some((path, class)) if !analysed_files.contains(&whole) => {
+                    let path = normalize_path(path);
+                    let file = format!("{path} (in context of {class}");
+                    (PathBuf::from(path), file)
                 }
-                None => normalize_path(&e.file),
+                _ => (PathBuf::from(&whole), whole),
             };
             let file = PathBuf::from(file);
             Finding {
                 rel: relative(&cfg.root, &file).replace('\\', "/"),
+                source_rel: relative(&cfg.root, &source).replace('\\', "/"),
+                source,
                 file,
                 line: u32::try_from(e.line).unwrap_or(0),
                 identifier: e.identifier,

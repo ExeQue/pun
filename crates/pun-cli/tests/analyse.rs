@@ -553,6 +553,39 @@ fn pun(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, String, Opti
 
 const MALFORMED: &str = "<?php\n\nnamespace App;\n\nfunction f(): void\n{\n    undefined_fn();\n    new Missing(); // @pun-ignore\n}\n";
 
+/// A file whose name holds ` (in context of ` is not a trait's error label: its excerpt comes from the file itself,
+/// not from the file its name starts with.
+#[test]
+fn file_names_like_trait_labels_show_their_own_source() {
+    let d = sample("context-name", CLEAN);
+    let named = "src/s (in context of x.php";
+    common::write_files(
+        &d,
+        &[
+            (named, "<?php\n\nundefined_fn();\n"),
+            ("secret.txt", "line one\nline two\nTOP SECRET\n"),
+        ],
+    );
+    std::os::unix::fs::symlink(d.join("secret.txt"), d.join("src/s")).unwrap();
+    let (out, _, code) = pun(&d, &["--color=never"], &[]);
+    assert_eq!(code, Some(1));
+    assert!(!out.contains("SECRET"), "{out}");
+    assert!(out.contains("3| undefined_fn();"), "{out}");
+    assert!(out.contains(&format!(",- {named}:3:1")), "{out}");
+    let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+        .current_dir(&d)
+        .env("PUN_AGENT", "0")
+        .args(["check", "--color=never"])
+        .output()
+        .unwrap();
+    let out = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        out.contains(&format!("   {named}:3:1  analyse/undefined/function\n")),
+        "{out}"
+    );
+    std::fs::remove_dir_all(d).unwrap();
+}
+
 #[test]
 fn malformed_ignores_show_in_every_output() {
     let d = sample("malformed", MALFORMED);

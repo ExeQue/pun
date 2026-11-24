@@ -131,11 +131,7 @@ fn by_file<'f>(
 
 fn checkstyle(findings: &[Finding], general: &[String]) -> String {
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<checkstyle>\n");
-    let files = by_file(findings, |f| {
-        f.rel
-            .split_once(" (in context of ")
-            .map_or(&f.rel, |(path, _)| path)
-    });
+    let files = by_file(findings, Finding::source_rel);
     for (rel, list) in files {
         let _ = writeln!(out, "<file name=\"{}\">", xml(rel));
         for f in list {
