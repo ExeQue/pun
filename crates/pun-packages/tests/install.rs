@@ -1093,3 +1093,55 @@ fn dump_autoload_without_a_lock() {
     );
     std::fs::remove_dir_all(&tmp).unwrap();
 }
+
+/// A file and a class named with U+10FF27 and U+10FF5C, the code points that stand for the bytes `'` and `\` of a
+/// name that isn't UTF-8, are written as their own UTF-8 bytes: the generated PHP still parses and names them.
+#[test]
+fn private_use_names_do_not_change_the_generated_php() {
+    let tmp = std::env::temp_dir().join(format!("pun-dump-private-use-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    run(&tmp, &lock, &Options::default());
+    let (file, class) = ("x\u{10FF27}.php", "Odd\u{10FF5C}\u{10FF27}");
+    std::fs::create_dir_all(tmp.join("odd")).unwrap();
+    std::fs::write(
+        tmp.join("odd").join(file),
+        format!("<?php\nclass {class} {{}}\n"),
+    )
+    .unwrap();
+    let mut manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    manifest.insert("autoload".into(), serde_json::json!({"classmap": ["odd/"]}));
+    dump_autoload(
+        &tmp,
+        &manifest,
+        None,
+        &Options::default(),
+        None,
+        &mut |_, _| Ok(()),
+    )
+    .unwrap();
+    for name in ["autoload_classmap.php", "autoload_static.php"] {
+        let path = tmp.join("vendor/composer").join(name);
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains(&format!("'{class}' => ")), "{text}");
+        assert!(text.contains(&format!("/odd/{file}'")), "{text}");
+        if std::process::Command::new("php").arg("-v").output().is_ok() {
+            let lint = std::process::Command::new("php")
+                .arg("-l")
+                .arg(&path)
+                .output()
+                .unwrap();
+            assert!(
+                lint.status.success(),
+                "{}",
+                String::from_utf8_lossy(&lint.stdout)
+            );
+        }
+    }
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+

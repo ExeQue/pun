@@ -215,31 +215,48 @@ fn strip_whitespace(code: &[u8]) -> Vec<u8> {
 }
 
 /// PHP reads a class name as bytes, so `class ©` in a Latin-1 file names the single byte 0xA9, and Composer writes
-/// that byte into the class map. `lossless` keeps each byte that is not UTF-8 as the code point U+10FF00 + byte, and
-/// `restore` gives the bytes back when a file is written.
+/// that byte into the class map. `lossless` keeps each byte that is not UTF-8 (always 0x80 or above) as the code
+/// point U+10FF00 + byte, and `restore` gives the bytes back when a file is written. A real U+10FFxx in the text is
+/// kept as its own UTF-8 bytes, and `restore` never makes a byte below 0x80, so a name or path can't turn into a
+/// quote or a backslash after the PHP around it was escaped.
 const RAW: u32 = 0x10_FF00;
 
+fn raw(c: char) -> bool {
+    u32::from(c) >= RAW
+}
+
 pub fn lossless(bytes: &[u8]) -> Cow<'_, str> {
-    if let Ok(s) = std::str::from_utf8(bytes) {
+    if let Ok(s) = std::str::from_utf8(bytes)
+        && !s.chars().any(raw)
+    {
         return Cow::Borrowed(s);
     }
     let mut out = String::with_capacity(bytes.len() * 2);
+    let push_raw = |out: &mut String, bytes: &[u8]| {
+        out.extend((bytes.iter()).filter_map(|&b| char::from_u32(RAW + u32::from(b))));
+    };
     for chunk in bytes.utf8_chunks() {
-        out.push_str(chunk.valid());
-        out.extend((chunk.invalid().iter()).filter_map(|&b| char::from_u32(RAW + u32::from(b))));
+        for c in chunk.valid().chars() {
+            if raw(c) {
+                push_raw(&mut out, c.encode_utf8(&mut [0; 4]).as_bytes());
+            } else {
+                out.push(c);
+            }
+        }
+        push_raw(&mut out, chunk.invalid());
     }
     Cow::Owned(out)
 }
 
 pub fn restore(s: &str) -> Cow<'_, [u8]> {
-    if !s.chars().any(|c| u32::from(c) >= RAW) {
+    if !s.chars().any(raw) {
         return Cow::Borrowed(s.as_bytes());
     }
     let mut out = Vec::with_capacity(s.len());
     for c in s.chars() {
         match (u32::from(c).checked_sub(RAW)).and_then(|b| u8::try_from(b).ok()) {
-            Some(b) => out.push(b),
-            None => out.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes()),
+            Some(b) if b >= 0x80 => out.push(b),
+            _ => out.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes()),
         }
     }
     Cow::Owned(out)
@@ -318,6 +335,8 @@ pub struct ClassMap {
     pub map: Vec<(String, String)>,
     index: HashMap<String, usize>,
     pub ambiguous: Vec<(String, Vec<String>)>,
+    /// Each class's place in `ambiguous`, so a new conflict doesn't search the ones before it.
+    ambiguous_index: HashMap<String, usize>,
     pub violations: Vec<(String, String)>,
     scanned: HashSet<PathBuf>,
 }
@@ -330,11 +349,11 @@ impl ClassMap {
                 self.map.push((class.to_string(), path.to_string()));
             }
             Some(&i) if self.map[i].1 != path => {
-                match self.ambiguous.iter_mut().find(|a| a.0 == class) {
-                    Some(a) => a.1.push(path.to_string()),
-                    None => self
-                        .ambiguous
-                        .push((class.to_string(), vec![path.to_string()])),
+                if let Some(&a) = self.ambiguous_index.get(class) {
+                    self.ambiguous[a].1.push(path.to_string());
+                } else {
+                    (self.ambiguous_index).insert(class.to_string(), self.ambiguous.len());
+                    (self.ambiguous).push((class.to_string(), vec![path.to_string()]));
                 }
             }
             Some(_) => {}
@@ -508,7 +527,15 @@ fn list(job: &Job) -> Result<Listing> {
     let mut cacheable = true;
     match std::fs::canonicalize(dir) {
         Ok(real) if dir.is_file() => files.push((job.dir.clone(), real)),
-        Ok(real) if dir.is_dir() => cacheable = walk(&job.dir, &real, &mut files),
+        Ok(real) if dir.is_dir() => {
+            cacheable = walk(&job.dir, &real, &mut files, &mut vec![real.clone()]);
+            if files.len() >= MAX_LISTED {
+                bail!(
+                    "\"{}\" holds more than {MAX_LISTED} files, counting each path its symlinks reach",
+                    job.given
+                );
+            }
+        }
         _ => bail!(
             "Could not scan for classes inside \"{}\" which does not appear to be a file nor a folder",
             job.given
@@ -570,8 +597,18 @@ fn save(job: &Job, listing: &Listing, file: &Path, found: &Found) -> Result<()> 
     Ok(())
 }
 
-/// Lists the files below `dir`; false when it went through a symlink.
-fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) -> bool {
+/// The most files one classmap directory may list. The largest packages hold tens of thousands; only symlinks that
+/// alias directories over and over reach this.
+const MAX_LISTED: usize = 1_000_000;
+
+/// Lists the files below `dir`; false when it went through a symlink. A linked directory that is one of the walk's
+/// own ancestors (`ancestors`, real paths) is a cycle and is not entered again: its files are listed already.
+fn walk(
+    dir: &str,
+    real: &Path,
+    out: &mut Vec<(String, PathBuf)>,
+    ancestors: &mut Vec<PathBuf>,
+) -> bool {
     const VCS: [&str; 4] = ["_svn", "CVS", "_darcs", ".arch-params"];
     let mut plain = true;
     for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
@@ -593,8 +630,16 @@ fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) -> bool {
         } else {
             continue;
         };
+        if out.len() >= MAX_LISTED {
+            break;
+        }
         if is_dir {
-            plain &= walk(&path, &real, out);
+            if ancestors.contains(&real) {
+                continue;
+            }
+            ancestors.push(real.clone());
+            plain &= walk(&path, &real, out, ancestors);
+            ancestors.pop();
         } else {
             out.push((path, real));
         }
@@ -789,5 +834,74 @@ $x = 'unterminated class Fake5 {}
             [("Foo\\Bar\\Baz_Qux".to_string(), at("Foo/Bar/Baz/Qux.php"))]
         );
         std::fs::remove_dir_all(&t).unwrap();
+    }
+
+    /// Four links back to the directory itself: following each again gave 4^40 paths before the kernel's link
+    /// limit stopped it. Each is a cycle, so the class is listed once, at its own path.
+    #[test]
+    fn links_back_to_an_ancestor_are_not_walked_again() {
+        let t = std::env::temp_dir().join(format!("pun-classmap-cycle-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&t);
+        std::fs::create_dir_all(t.join("d/sub")).unwrap();
+        std::fs::write(t.join("d/sub/A.php"), "<?php class A {}\n").unwrap();
+        for link in ["l1", "l2", "l3"] {
+            std::os::unix::fs::symlink(t.join("d"), t.join("d/sub").join(link)).unwrap();
+        }
+        std::os::unix::fs::symlink(t.join("d/sub"), t.join("d/sub/l4")).unwrap();
+        let dir = t.join("d").to_string_lossy().into_owned();
+        let job = Job {
+            dir: dir.clone(),
+            given: dir.clone(),
+            exclude: None,
+            rule: Rule::Classmap,
+            namespace: String::new(),
+            cache: None,
+        };
+        let mut map = ClassMap::default();
+        map.scan_all(&[job], "/usr").unwrap();
+        assert_eq!(
+            map.sorted(),
+            [("A".to_string(), format!("{dir}/sub/A.php"))]
+        );
+        std::fs::remove_dir_all(&t).unwrap();
+    }
+
+    /// Conflicts keep the order they were found in, each class's paths in order. 100,000 classes with a second file
+    /// each searched the earlier conflicts (5e9 comparisons of one long prefix); indexed, this takes milliseconds.
+    #[test]
+    fn conflicts_keep_their_order_and_are_found_by_name() {
+        let mut map = ClassMap::default();
+        for (class, path) in [
+            ("B", "b1"),
+            ("A", "a1"),
+            ("A", "a2"),
+            ("B", "b2"),
+            ("B", "b1"),
+            ("A", "a3"),
+        ] {
+            map.add(class, path);
+        }
+        let paths = |v: &[&str]| v.iter().map(ToString::to_string).collect::<Vec<_>>();
+        assert_eq!(
+            map.ambiguous,
+            [
+                ("A".to_string(), paths(&["a2", "a3"])),
+                ("B".to_string(), paths(&["b2"])),
+            ]
+        );
+
+        let class = |i: usize| format!("{}{i:06}", "Vendor\\Package\\".repeat(20));
+        let started = std::time::Instant::now();
+        let mut many = ClassMap::default();
+        for i in 0..100_000 {
+            many.add(&class(i), "first.php");
+            many.add(&class(i), "second.php");
+        }
+        assert_eq!(many.ambiguous.len(), 100_000);
+        assert_eq!(
+            many.ambiguous[99_999],
+            (class(99_999), paths(&["second.php"]))
+        );
+        assert!(started.elapsed() < std::time::Duration::from_secs(10));
     }
 }
