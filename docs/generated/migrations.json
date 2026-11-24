@@ -6106,17 +6106,21 @@
         "name": "AddNameToBooleanArgument",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/add-name-to-boolean-argument-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: named-args",
-        "unsupported": true
+        "rules": [
+          "lint/functions/add-boolean-argument-name"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddNameToNullArgument",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/add-name-to-null-argument-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: named-args",
-        "unsupported": true
+        "rules": [
+          "lint/functions/add-null-argument-name"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddOverrideAttributeToOverriddenMethods",
@@ -7328,9 +7332,11 @@
         "name": "ExplicitAttributeNamedArgs",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/explicit-attribute-named-args-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: named-args",
-        "unsupported": true
+        "rules": [
+          "lint/functions/add-attribute-argument-names"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ExplicitBoolCompare",

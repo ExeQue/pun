@@ -6265,6 +6265,60 @@
       "ported": true
     },
     {
+      "id": "lint/functions/add-attribute-argument-names",
+      "command": "lint",
+      "group": "functions",
+      "summary": "Convert positional arguments on attributes into named arguments, using the attribute constructor parameter names",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ExplicitAttributeNamedArgs",
+        "ExplicitAttributeNamedArgsRector",
+        "Rector\\CodeQuality\\Rector\\Attribute\\ExplicitAttributeNamedArgsRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/functions/add-boolean-argument-name",
+      "command": "lint",
+      "group": "functions",
+      "summary": "Add parameter names to boolean arguments.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "AddNameToBooleanArgument",
+        "AddNameToBooleanArgumentRector",
+        "Rector\\CodeQuality\\Rector\\CallLike\\AddNameToBooleanArgumentRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/functions/add-null-argument-name",
+      "command": "lint",
+      "group": "functions",
+      "summary": "Add parameter names to null arguments.",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "AddNameToNullArgument",
+        "AddNameToNullArgumentRector",
+        "Rector\\CodeQuality\\Rector\\CallLike\\AddNameToNullArgumentRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/functions/no-assign-in-argument",
       "command": "lint",
       "group": "functions",

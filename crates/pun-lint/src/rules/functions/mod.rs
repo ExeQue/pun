@@ -1,3 +1,4 @@
+pub(super) mod add_argument_names;
 pub(super) mod no_assign_in_argument;
 pub(super) mod no_call_user_func_method;
 pub(super) mod no_extra_arguments;

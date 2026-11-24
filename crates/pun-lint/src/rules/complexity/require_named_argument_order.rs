@@ -118,6 +118,7 @@ pub(crate) fn sorted(
     (spans.iter().zip(args).any(|(new, old)| *new != old.0)).then_some(spans)
 }
 
+#[derive(Clone, Copy)]
 pub(crate) enum Target<'a> {
     Function(&'a Expression<'a>),
     Method(&'a Expression<'a>, &'a ClassLikeMemberSelector<'a>),
@@ -131,25 +132,34 @@ pub(crate) fn callee<'f>(
     ancestors: &[Node<'_, '_>],
 ) -> Option<&'f FunctionLikeMetadata> {
     let codebase = &facts.codebase;
-    let (class, method) = match target {
-        Target::Function(function) => {
-            let Expression::Identifier(name) = function else {
-                return None;
-            };
-            return function_names(ancestors, name)
-                .iter()
-                .find_map(|n| codebase.get_function(n.as_bytes()));
-        }
+    if let Target::Function(function) = target {
+        let Expression::Identifier(name) = function else {
+            return None;
+        };
+        return function_names(ancestors, name)
+            .iter()
+            .find_map(|n| codebase.get_function(n.as_bytes()));
+    }
+    let (class, method) = callee_method(facts, target, ancestors)?;
+    codebase.get_declaring_method(class.as_bytes(), method)
+}
+
+/// The class and method a method call, static call or `new` calls.
+pub(crate) fn callee_method<'t>(
+    facts: &Facts,
+    target: Target<'t>,
+    ancestors: &[Node<'_, '_>],
+) -> Option<(String, &'t [u8])> {
+    match target {
         Target::Method(object, ClassLikeMemberSelector::Identifier(method)) => {
-            (object_class(facts, ancestors, object)?, method.value)
+            Some((object_class(facts, ancestors, object)?, method.value))
         }
         Target::Static(class, ClassLikeMemberSelector::Identifier(method)) => {
-            (class_name(ancestors, class)?, method.value)
+            Some((class_name(ancestors, class)?, method.value))
         }
-        Target::New(class) => (class_name(ancestors, class)?, &b"__construct"[..]),
-        Target::Method(..) | Target::Static(..) => return None,
-    };
-    codebase.get_declaring_method(class.as_bytes(), method)
+        Target::New(class) => Some((class_name(ancestors, class)?, &b"__construct"[..])),
+        _ => None,
+    }
 }
 
 fn class_name(ancestors: &[Node<'_, '_>], class: &Expression<'_>) -> Option<String> {
