@@ -232,8 +232,11 @@ impl Repository for Filtered<'_> {
         stabilities: &Stabilities,
         loaded: &Loaded,
     ) -> Result<Found> {
-        let batch: Vec<(String, Constraint)> =
-            batch.iter().filter(|(n, _)| self.allowed(n)).cloned().collect();
+        let batch: Vec<(String, Constraint)> = batch
+            .iter()
+            .filter(|(n, _)| self.allowed(n))
+            .cloned()
+            .collect();
         if batch.is_empty() {
             return Ok(Found {
                 names: vec![],
@@ -252,13 +255,19 @@ impl Repository for Filtered<'_> {
     fn advisories(&mut self, names: &[String]) -> Result<Vec<Advisory>> {
         let names: Vec<String> = names.iter().filter(|n| self.allowed(n)).cloned().collect();
         let found = self.inner.advisories(&names)?;
-        Ok(found.into_iter().filter(|a| self.allowed(&a.package)).collect())
+        Ok(found
+            .into_iter()
+            .filter(|a| self.allowed(&a.package))
+            .collect())
     }
 
     fn list_entries(&mut self, names: &[String]) -> Result<Vec<ListEntry>> {
         let names: Vec<String> = names.iter().filter(|n| self.allowed(n)).cloned().collect();
         let found = self.inner.list_entries(&names)?;
-        Ok(found.into_iter().filter(|e| self.allowed(&e.package)).collect())
+        Ok(found
+            .into_iter()
+            .filter(|e| self.allowed(&e.package))
+            .collect())
     }
 }
 
@@ -561,7 +570,9 @@ impl<'a> PoolBuilder<'a> {
         for &p in &packages {
             // As Composer's pool filters, the repositories are asked about the name of each package in the pool,
             // except the root and platform packages.
-            if matches!(arena[p].origin, Origin::Root | Origin::Platform) || is_platform(&arena[p].name) {
+            if matches!(arena[p].origin, Origin::Root | Origin::Platform)
+                || is_platform(&arena[p].name)
+            {
                 continue;
             }
             names.insert(arena[p].name.clone());

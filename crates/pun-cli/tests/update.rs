@@ -491,6 +491,52 @@ fn require_and_remove_on_branches() {
     );
 }
 
+/// The global config.json's policy applies under the project's, as Composer merges the two, and a config.json that
+/// isn't JSON stops the run before any repository is asked, as Composer's `JsonFile::read`.
+#[test]
+fn update_reads_the_global_config_as_composer() {
+    let d = common::scratch("update", "global-config");
+    let home = d.join(".composer");
+    let repositories = r#""repositories": [{"packagist.org": false}, {"type": "package", "package": [{"name": "acme/c", "version": "1.0.0", "time": "2020-01-01"}, {"name": "acme/c", "version": "1.1.0", "time": "2999-01-01"}]}]"#;
+    common::write_files(
+        &d,
+        &[("app/composer.json", r#"{"require": {"acme/c": "^1.0"}}"#)],
+    );
+    let project = d.join("app");
+    let env = [("COMPOSER_HOME", home.to_str().unwrap())];
+    for (config, want) in [
+        ("", "1.1.0"),
+        (
+            r#""config": {"policy": {"cooldown": {"period": "7 days"}}},"#,
+            "1.0.0",
+        ),
+    ] {
+        common::write_files(
+            &home,
+            &[("config.json", &format!("{{{config}{repositories}}}"))],
+        );
+        let (_, err, code) = common::pty::pun_with(&project, &["update", "--dry-run"], &env);
+        assert_eq!(
+            (err.as_str(), code),
+            (
+                format!("Lock changes:\n + acme/c {want}\n").as_str(),
+                Some(0)
+            ),
+            "{config}"
+        );
+    }
+    std::fs::write(home.join("config.json"), "{").unwrap();
+    let (_, err, code) = common::pty::pun_with(&project, &["update", "--dry-run"], &env);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains(&format!(
+            "{} does not contain valid JSON",
+            home.join("config.json").display()
+        )),
+        "{err}"
+    );
+}
+
 /// The autoloader options write what Composer 2.11.2 writes for the fixture project without its
 /// `optimize-autoloader` config: `-o` adds the PSR-4 classes to the class map, `-a` also makes it authoritative,
 /// and the APCu options set the prefix, a random 20-character one without `--apcu-autoloader-prefix`.

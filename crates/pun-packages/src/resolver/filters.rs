@@ -290,7 +290,10 @@ impl Filters {
             .or_else(|| (malware_env == Some(true)).then_some(&*EMPTY));
         if let Some(m) = malware {
             // Composer's schema rejects another scope in composer.json; it would otherwise never block.
-            let scope = m.get("block-scope").and_then(Value::as_str).unwrap_or("all");
+            let scope = m
+                .get("block-scope")
+                .and_then(Value::as_str)
+                .unwrap_or("all");
             if !["update", "install", "all"].contains(&scope) {
                 bail!(
                     "Invalid block-scope for policy list \"malware\": expected one of \"update\", \"install\", \"all\", got \"{scope}\"."
@@ -503,6 +506,100 @@ impl Filters {
         }
         None
     }
+}
+
+/// The project's `config` with the `policy` and `audit` of the global config.json layered under it, as Composer's
+/// `Config::merge` layers them: lists merge key by key, their `ignore` rules add up, and `false` disables.
+pub fn merge_config(
+    global: &Map<String, Value>,
+    project: Option<&Map<String, Value>>,
+) -> Map<String, Value> {
+    let mut out = project.cloned().unwrap_or_default();
+    if let Some(g) = global.get("audit").filter(|v| v.is_object()) {
+        let mut audit = g.clone();
+        if let Some(Value::Object(p)) = project.and_then(|c| c.get("audit")) {
+            let ignore = php_merge(audit.get("ignore"), p.get("ignore"));
+            let a = audit.as_object_mut().expect("an object");
+            a.extend(p.clone());
+            a.insert("ignore".into(), ignore);
+        }
+        out.insert("audit".into(), audit);
+    }
+    if let Some(g) = global.get("policy") {
+        let mut policy = merge_policy(Value::Bool(true), g);
+        if let Some(p) = project.and_then(|c| c.get("policy")) {
+            policy = merge_policy(policy, p);
+        }
+        out.insert("policy".into(), policy);
+    }
+    out
+}
+
+/// PHP's `array_merge` of two JSON values: lists append, objects overwrite key by key.
+fn php_merge(a: Option<&Value>, b: Option<&Value>) -> Value {
+    match (a, b) {
+        (Some(Value::Array(a)), Some(Value::Array(b))) => {
+            Value::Array([a.clone(), b.clone()].concat())
+        }
+        (Some(Value::Object(a)), Some(Value::Object(b))) => {
+            let mut m = a.clone();
+            m.extend(b.clone());
+            Value::Object(m)
+        }
+        (_, Some(b)) => b.clone(),
+        (Some(a), None) => a.clone(),
+        (None, None) => Value::Array(vec![]),
+    }
+}
+
+fn merge_policy(current: Value, val: &Value) -> Value {
+    let val = if *val == Value::Bool(true) {
+        Value::Object(Map::new())
+    } else {
+        val.clone()
+    };
+    let Value::Object(val) = val else {
+        return if val == Value::Bool(false) {
+            val
+        } else {
+            current
+        };
+    };
+    let mut current = match current {
+        Value::Object(m) => m,
+        _ => Map::new(),
+    };
+    for (name, list) in val {
+        if name == "ignore-unreachable" {
+            current.insert(name, list);
+            continue;
+        }
+        let list = if list == Value::Bool(true) {
+            Value::Object(Map::new())
+        } else {
+            list
+        };
+        let merged = match (current.get(&name), &list) {
+            (_, Value::Bool(false)) | (None | Some(Value::Bool(false)), _) => list,
+            (Some(Value::Object(existing)), Value::Object(incoming)) => {
+                let mut m = existing.clone();
+                m.extend(incoming.clone());
+                for key in ["ignore", "ignore-id", "ignore-severity", "ignore-source"] {
+                    if let (
+                        Some(e @ (Value::Array(_) | Value::Object(_))),
+                        Some(i @ (Value::Array(_) | Value::Object(_))),
+                    ) = (existing.get(key), incoming.get(key))
+                    {
+                        m.insert(key.into(), php_merge(Some(e), Some(i)));
+                    }
+                }
+                Value::Object(m)
+            }
+            _ => list,
+        };
+        current.insert(name, merged);
+    }
+    Value::Object(current)
 }
 
 /// A release date as Composer's `Package::prepareDateString` reads it: a JSON integer or a string of digits is a Unix
@@ -833,6 +930,49 @@ mod tests {
     }
 
     #[test]
+    fn merges_global_policy_as_composer() {
+        use serde_json::json;
+        let merged =
+            |g: Value, p: Value| Value::Object(merge_config(g.as_object().unwrap(), p.as_object()));
+        assert_eq!(
+            merged(
+                json!({"policy": {"cooldown": {"period": "7 days", "ignore": ["a/a"]}, "malware": false}}),
+                json!({"policy": {"cooldown": {"ignore": ["b/b"]}, "malware": {"block-scope": "update"}}, "x": 1})
+            ),
+            json!({"policy": {"cooldown": {"period": "7 days", "ignore": ["a/a", "b/b"]}, "malware": {"block-scope": "update"}}, "x": 1})
+        );
+        assert_eq!(
+            merged(
+                json!({"policy": {"cooldown": {"period": 60}}}),
+                json!({"policy": {"cooldown": false}})
+            ),
+            json!({"policy": {"cooldown": false}})
+        );
+        assert_eq!(
+            merged(json!({"policy": false}), json!({})),
+            json!({"policy": false})
+        );
+        assert_eq!(
+            merged(
+                json!({"policy": false}),
+                json!({"policy": {"abandoned": true}})
+            ),
+            json!({"policy": {"abandoned": {}}})
+        );
+        assert_eq!(
+            merged(
+                json!({"audit": {"ignore": ["CVE-1"], "abandoned": "report"}}),
+                json!({"audit": {"ignore": ["CVE-2"]}})
+            ),
+            json!({"audit": {"ignore": ["CVE-1", "CVE-2"], "abandoned": "report"}})
+        );
+        assert_eq!(
+            merged(json!({"repositories": []}), json!({"a": 1})),
+            json!({"a": 1})
+        );
+    }
+
+    #[test]
     fn removes_as_composer() {
         use serde_json::json;
         let now = 1_794_614_400;
@@ -885,10 +1025,18 @@ mod tests {
         );
         // A Unix `published-time`, as Composer's `Package::prepareDateString` reads it, wins over an old `time`.
         for published in [json!(now - 60), json!((now - 60).to_string())] {
-            let p = package(json!({"name": "acme/b", "version": "1.0.0", "time": "2020-01-01", "published-time": published}));
-            assert_eq!(removal(&f, &p, &[], false).as_deref(), Some("cooldown"), "{published}");
+            let p = package(
+                json!({"name": "acme/b", "version": "1.0.0", "time": "2020-01-01", "published-time": published}),
+            );
+            assert_eq!(
+                removal(&f, &p, &[], false).as_deref(),
+                Some("cooldown"),
+                "{published}"
+            );
         }
-        let p = package(json!({"name": "acme/b", "version": "1.0.0", "time": "2020-01-01", "published-time": now - 30 * 86400}));
+        let p = package(
+            json!({"name": "acme/b", "version": "1.0.0", "time": "2020-01-01", "published-time": now - 30 * 86400}),
+        );
         assert_eq!(removal(&f, &p, &[], false), None);
     }
 }

@@ -155,12 +155,24 @@ fn pre_update(project: &Project, a: &InstallArgs, plan: &Plan) -> Result<()> {
     Ok(project.dispatch(a, "pre-update-cmd")?)
 }
 
-/// The global config.json's `repositories`.
-fn global_repositories() -> Option<Value> {
-    let (home, _) = composer_dirs()?;
-    let text = std::fs::read_to_string(home.join("config.json")).ok()?;
-    let config: Value = serde_json::from_str(&text).ok()?;
-    config.get("repositories").cloned()
+/// The global config.json, when there is one. As Composer, one that can't be read or isn't JSON stops the run: its
+/// repositories and policy would otherwise be dropped without a word.
+fn global_config() -> Result<Option<Map<String, Value>>> {
+    let Some((home, _)) = composer_dirs() else {
+        return Ok(None);
+    };
+    let path = home.join("config.json");
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e).with_context(|| format!("can't read {}", path.display())),
+    };
+    match serde_json::from_str(&text)
+        .with_context(|| format!("{} does not contain valid JSON", path.display()))?
+    {
+        Value::Object(m) => Ok(Some(m)),
+        _ => bail!("{} does not contain a JSON object", path.display()),
+    }
 }
 
 /// The packages and the options they were resolved with, or the problems in sentences.
@@ -190,17 +202,28 @@ fn resolve(project: &Project, plan: &Plan, a: &InstallArgs) -> Result<Resolved> 
         .and_then(Value::as_object);
     let platform = platform::detect(&php, overrides, pun_config::cache_dir().as_deref())?;
     let fetcher = fetcher(&project.root, &project.manifest);
-    let global = global_repositories();
+    let global = global_config()?;
     let env = |k: &str| std::env::var(k).ok();
+    // The global config's policy applies under the project's, as Composer merges the two configs.
+    let mut manifest = std::borrow::Cow::Borrowed(&project.manifest);
+    if let Some(Value::Object(g)) = global.as_ref().and_then(|g| g.get("config")) {
+        let project_config = project.manifest.get("config").and_then(Value::as_object);
+        let merged = resolver::filters::merge_config(g, project_config);
+        if project_config != Some(&merged) && !merged.is_empty() {
+            manifest
+                .to_mut()
+                .insert("config".into(), Value::Object(merged));
+        }
+    }
     let repositories = repos::open(
         &project.root,
         &project.manifest,
-        global.as_ref(),
+        global.as_ref().and_then(|g| g.get("repositories")),
         &fetcher,
         &env,
     )?;
     let resolved = resolver::resolve(
-        &project.manifest,
+        &manifest,
         platform,
         repositories,
         project.lock.as_ref(),
