@@ -72,13 +72,12 @@ pub(super) fn from_spatie_class(
     class: &Class<'_>,
     snake_case: bool,
 ) -> Edit {
-    let names: Vec<String> = Doc::of(ctx, ancestors, node_span(class).start)
-        .map(|doc| {
+    let names: Vec<String> =
+        Doc::of(ctx, ancestors, node_span(class).start).map_or_else(Vec::new, |doc| {
             (0..doc.len())
                 .filter_map(|i| method_tag_name(doc.text(i)))
                 .collect()
-        })
-        .unwrap_or_default();
+        });
     let mut scalar = None;
     let mut members = Vec::new();
     if !names.is_empty() {
@@ -208,7 +207,7 @@ fn mapping_from_class(class: &Class<'_>) -> Vec<(String, Value)> {
             Some(Expression::LegacyArray(a)) => &a.elements,
             _ => continue,
         };
-        for element in elements.iter() {
+        for element in elements {
             let ArrayElement::KeyValue(item) = element else {
                 continue;
             };
