@@ -14567,6 +14567,24 @@
       "ported": true
     },
     {
+      "id": "lint/refactor/change-method-visibility",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Change visibility of method from parent class",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ChangeMethodVisibility",
+        "ChangeMethodVisibilityRector",
+        "Rector\\Visibility\\Rector\\Class_\\ChangeMethodVisibilityRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/refactor/no-negated-condition",
       "command": "lint",
       "group": "refactor",
@@ -14675,6 +14693,24 @@
       "ported": true
     },
     {
+      "id": "lint/refactor/remove-interfaces",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Remove interfaces from class",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Removing\\Rector\\Class_\\RemoveInterfacesRector",
+        "RemoveInterfaces",
+        "RemoveInterfacesRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/refactor/remove-phpdoc-annotation",
       "command": "lint",
       "group": "refactor",
@@ -14688,6 +14724,24 @@
       ],
       "upstream": [
         "general_phpdoc_annotation_remove"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/refactor/rename-attribute",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Rename attribute class names",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Renaming\\Rector\\Class_\\RenameAttributeRector",
+        "RenameAttribute",
+        "RenameAttributeRector"
       ],
       "ported": true
     },
@@ -14817,6 +14871,24 @@
       "ported": true
     },
     {
+      "id": "lint/refactor/rename-string",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Change string value",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Renaming\\Rector\\String_\\RenameStringRector",
+        "RenameString",
+        "RenameStringRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/refactor/replace-function-with-constant",
       "command": "lint",
       "group": "refactor",
@@ -14906,6 +14978,42 @@
         "RectorLaravel\\Rector\\StaticCall\\StaticFacadeToServiceMethodCallRector",
         "StaticFacadeToServiceMethodCall",
         "StaticFacadeToServiceMethodCallRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/refactor/replace-static-with-new",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Change static call to new instance",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Transform\\Rector\\StaticCall\\StaticCallToNewRector",
+        "StaticCallToNew",
+        "StaticCallToNewRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/refactor/wrap-return",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Wrap return value of specific method",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Transform\\Rector\\ClassMethod\\WrapReturnRector",
+        "WrapReturn",
+        "WrapReturnRector"
       ],
       "ported": true
     },

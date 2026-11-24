@@ -206,6 +206,7 @@ fn run_dirs_full(
 }
 
 const FORMAT_OVERLAP: &[&str] = &[
+    "ChangeMethodVisibilityRector/Fixture/fixture2.php.inc",
     "RenameClassRector/FixtureAutoImportNames/auto_import_conflict_name_all_fqcn_same_namespace.php.inc",
     "RenameClassRector/OracleAutoImportNames/doc_only_comment.php.inc",
     "RenameClassRector/OracleAutoImportNames/doc_on_only_use.php.inc",

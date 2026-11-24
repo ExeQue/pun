@@ -840,6 +840,12 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "refactor/replace-function-with-static" = { fix = "unsafe", ported = true, status = "decided", summary = "Turn defined function call to static method call" }
 "refactor/replace-static-with-function" = { fix = "unsafe", ported = true, status = "decided", summary = "Turn static call to function call" }
 "refactor/replace-static-with-method" = { fix = "unsafe", ported = true, status = "decided", summary = "Change static call to service method via constructor injection" }
+"refactor/change-method-visibility" = { fix = "unsafe", ported = true, status = "decided", note = "`visibility` takes Rector's `Visibility` constants (1 public, 2 protected, 4 private, 8 static, 16 abstract, 32 final). Pun reads the parent class as written in `extends`, where Rector reads it from reflection.", summary = "Change visibility of method from parent class" }
+"refactor/remove-interfaces" = { fix = "unsafe", ported = true, status = "decided", note = "Keeps an anonymous class's layout, where Rector reprints the class.", summary = "Remove interfaces from class" }
+"refactor/rename-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Rename attribute class names" }
+"refactor/rename-string" = { fix = "unsafe", ported = true, status = "decided", note = "Reads single- and double-quoted string literals; a heredoc or nowdoc, which php-parser also parses as a string, stays as it is.", summary = "Change string value" }
+"refactor/replace-static-with-new" = { fix = "unsafe", ported = true, status = "decided", note = "Keeps the layout of a multiline argument list, where Rector reprints it on one line.", summary = "Change static call to new instance" }
+"refactor/wrap-return" = { fix = "unsafe", ported = true, status = "decided", summary = "Wrap return value of specific method" }
 "security/add-sensitive-parameter" = { fix = "safe", intent = "suspicious", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Requires that parameters that are likely to contain sensitive information (e.g., passwords) are marked with the `#[SensitiveParameter]` attribute." }
 "security/no-debug-calls" = { fix = "unsafe", intent = "suspicious", sets = ["coding-style"], ported = true, status = "decided", summary = "Remove or report debug calls left in code: dd(), dump(), var_dump(), ray(), and ->dd()/->dump() in Pest expectations." }
 "security/no-eval" = { fix = "none", intent = "suspicious", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects unsafe uses of the `eval` construct." }
@@ -2361,7 +2367,7 @@ CatchExceptionNameMatchingType = { class = "Rector\\CodingStyle\\Rector\\Catch_\
 ChangeArrayPushToArrayAssign = { class = "Rector\\CodeQuality\\Rector\\FuncCall\\ChangeArrayPushToArrayAssignRector", pun = "lint/style/no-array-push", sets = ["code-quality"], options = "none", status = "decided" }
 ChangeConstantVisibility = { class = "Rector\\Visibility\\Rector\\ClassConst\\ChangeConstantVisibilityRector", unsupported = "in no set", status = "decided" }
 ChangeIfElseValueAssignToEarlyReturn = { class = "Rector\\EarlyReturn\\Rector\\If_\\ChangeIfElseValueAssignToEarlyReturnRector", pun = "lint/style/prefer-early-return", sets = ["code-quality"], options = "none", status = "decided" }
-ChangeMethodVisibility = { class = "Rector\\Visibility\\Rector\\Class_\\ChangeMethodVisibilityRector", unsupported = "in no set", sets = ["laravel-56", "laravel-57", "laravel-60", "laravel-90"], status = "decided" }
+ChangeMethodVisibility = { class = "Rector\\Visibility\\Rector\\Class_\\ChangeMethodVisibilityRector", pun = "lint/refactor/change-method-visibility", sets = ["laravel-56", "laravel-57", "laravel-60", "laravel-90"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 ChangeNestedForeachIfsToEarlyContinue = { class = "Rector\\EarlyReturn\\Rector\\Foreach_\\ChangeNestedForeachIfsToEarlyContinueRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
 ChangeNestedIfsToEarlyReturn = { class = "Rector\\EarlyReturn\\Rector\\If_\\ChangeNestedIfsToEarlyReturnRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
 ChangeOrIfContinueToMultiContinue = { class = "Rector\\EarlyReturn\\Rector\\If_\\ChangeOrIfContinueToMultiContinueRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
@@ -2583,7 +2589,7 @@ RemoveFinfoBufferContextArg = { class = "Rector\\Php85\\Rector\\FuncCall\\Remove
 RemoveFuncCall = { class = "Rector\\Removing\\Rector\\FuncCall\\RemoveFuncCallRector", pun = "lint/refactor/remove-function-call", sets = ["php85"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 RemoveFuncCallArg = { class = "Rector\\Removing\\Rector\\FuncCall\\RemoveFuncCallArgRector", pun = "lint/refactor/remove-function-argument", sets = ["php52", "php85", "php86"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 RemoveGetClassGetParentClassNoArgs = { class = "Rector\\Php83\\Rector\\FuncCall\\RemoveGetClassGetParentClassNoArgsRector", pun = "lint/php-8.3/prefer-self-class", sets = ["php83"], options = "none", status = "decided" }
-RemoveInterfaces = { class = "Rector\\Removing\\Rector\\Class_\\RemoveInterfacesRector", unsupported = "in no set", sets = ["laravel-53"], status = "decided" }
+RemoveInterfaces = { class = "Rector\\Removing\\Rector\\Class_\\RemoveInterfacesRector", pun = "lint/refactor/remove-interfaces", sets = ["laravel-53"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 RemoveMethodCallParam = { class = "Rector\\Arguments\\Rector\\MethodCall\\RemoveMethodCallParamRector", unsupported = "in no set", status = "decided" }
 RemoveMixedDocblockOverruledByNativeType = { class = "Rector\\DeadCode\\Rector\\ClassMethod\\RemoveMixedDocblockOverruledByNativeTypeRector", pun = "lint/phpdoc/no-mixed-overruled-by-native", sets = ["dead-code"], options = "none", status = "decided" }
 RemoveNextSameValueCondition = { class = "Rector\\DeadCode\\Rector\\Stmt\\RemoveNextSameValueConditionRector", pun = "lint/dead-code/no-redundant-condition", sets = ["dead-code"], options = "none", status = "decided" }
@@ -2635,7 +2641,7 @@ RemoveUselessVarTag = { class = "Rector\\DeadCode\\Rector\\Property\\RemoveUsele
 RemoveVoidDocblockFromMagicMethod = { class = "Rector\\DeadCode\\Rector\\ClassMethod\\RemoveVoidDocblockFromMagicMethodRector", pun = "lint/phpdoc/no-void-on-magic-method", sets = ["dead-code"], options = "none", status = "decided" }
 RemoveZeroBreakContinue = { class = "Rector\\Php54\\Rector\\Break_\\RemoveZeroBreakContinueRector", unsupported = "the code it rewrites does not compile on PHP 8.4 (`break 0` and `break $x` are fatal errors since PHP 5.4)", sets = ["php54"], status = "decided" }
 RenameAnnotation = { class = "Rector\\Renaming\\Rector\\ClassMethod\\RenameAnnotationRector", unsupported = "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)", status = "decided" }
-RenameAttribute = { class = "Rector\\Renaming\\Rector\\Class_\\RenameAttributeRector", unsupported = "in no set", sets = ["livewire-30"], status = "decided" }
+RenameAttribute = { class = "Rector\\Renaming\\Rector\\Class_\\RenameAttributeRector", pun = "lint/refactor/rename-attribute", sets = ["livewire-30"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 RenameCast = { class = "Rector\\Renaming\\Rector\\Cast\\RenameCastRector", pun = "lint/refactor/rename-cast", sets = ["php74", "php85"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 RenameClass = { class = "Rector\\Renaming\\Rector\\Name\\RenameClassRector", pun = "lint/refactor/rename-class", sets = ["laravel-130", "laravel-130-core", "laravel-130-without-attributes", "laravel-50", "laravel-51", "laravel-52", "laravel-53", "laravel-54", "laravel-55", "laravel-60", "laravel-70", "laravel-facade-aliases-to-full-names", "livewire-40", "phpunit:composer-based"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 RenameClassConstFetch = { class = "Rector\\Renaming\\Rector\\ClassConstFetch\\RenameClassConstFetchRector", pun = "lint/refactor/rename-class-constant", sets = ["php85"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
@@ -2650,7 +2656,7 @@ RenameParamToMatchType = { class = "Rector\\Naming\\Rector\\ClassMethod\\RenameP
 RenameProperty = { class = "Rector\\Renaming\\Rector\\PropertyFetch\\RenamePropertyRector", unsupported = "in no set", sets = ["laravel-100", "laravel-55", "laravel-58", "laravel-80"], status = "decided" }
 RenamePropertyToMatchType = { class = "Rector\\Naming\\Rector\\Class_\\RenamePropertyToMatchTypeRector", unsupported = "deprecated upstream (main)", status = "decided" }
 RenameStaticMethod = { class = "Rector\\Renaming\\Rector\\StaticCall\\RenameStaticMethodRector", unsupported = "in no set", status = "decided" }
-RenameString = { class = "Rector\\Renaming\\Rector\\String_\\RenameStringRector", unsupported = "in no set", status = "decided" }
+RenameString = { class = "Rector\\Renaming\\Rector\\String_\\RenameStringRector", pun = "lint/refactor/rename-string", options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 RenameVariableToMatchMethodCallReturnType = { class = "Rector\\Naming\\Rector\\Assign\\RenameVariableToMatchMethodCallReturnTypeRector", unsupported = "deprecated upstream (main)", status = "decided" }
 RenameVariableToMatchNewType = { class = "Rector\\Naming\\Rector\\ClassMethod\\RenameVariableToMatchNewTypeRector", unsupported = "deprecated upstream (main)", status = "decided" }
 RepeatedAndNotEqualToNotInArray = { class = "Rector\\CodeQuality\\Rector\\BooleanAnd\\RepeatedAndNotEqualToNotInArrayRector", pun = "lint/complexity/prefer-not-in-array", sets = ["code-quality"], options = "none", status = "decided" }
@@ -2732,7 +2738,7 @@ StaticArrowFunction = { class = "Rector\\CodingStyle\\Rector\\ArrowFunction\\Sta
 StaticCallOnNonStaticToInstanceCall = { class = "Rector\\Php70\\Rector\\StaticCall\\StaticCallOnNonStaticToInstanceCallRector", unsupported = "deprecated upstream (2.6.1, 2.7.0, main)", status = "decided" }
 StaticCallToFuncCall = { class = "Rector\\Transform\\Rector\\StaticCall\\StaticCallToFuncCallRector", pun = "lint/refactor/replace-static-with-function", sets = ["php80", "laravel-53"], options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 StaticCallToMethodCall = { class = "Rector\\Transform\\Rector\\StaticCall\\StaticCallToMethodCallRector", unsupported = "deprecated upstream (2.8.4, main)", status = "decided" }
-StaticCallToNew = { class = "Rector\\Transform\\Rector\\StaticCall\\StaticCallToNewRector", unsupported = "in no set", status = "decided" }
+StaticCallToNew = { class = "Rector\\Transform\\Rector\\StaticCall\\StaticCallToNewRector", pun = "lint/refactor/replace-static-with-new", options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 StaticClosure = { class = "Rector\\CodingStyle\\Rector\\Closure\\StaticClosureRector", unsupported = "deprecated upstream (2.6.1, 2.7.0, main)", status = "decided" }
 StaticToSelfOnFinalClass = { class = "Rector\\Php55\\Rector\\ClassConstFetch\\StaticToSelfOnFinalClassRector", pun = "lint/classes/prefer-self-in-final", sets = ["php55"], options = "none", status = "decided" }
 StrContains = { class = "Rector\\Php80\\Rector\\NotIdentical\\StrContainsRector", pun = "lint/style/prefer-str-contains", sets = ["php-polyfills", "php80"], options = "none", status = "decided" }
@@ -2794,7 +2800,7 @@ WakeupToUnserialize = { class = "Rector\\Php85\\Rector\\Class_\\WakeupToUnserial
 WhileEachToForeach = { class = "Rector\\Php72\\Rector\\While_\\WhileEachToForeachRector", pun = "lint/php-7.2/prefer-foreach-over-each", sets = ["php72"], options = "none", status = "decided" }
 WhileNullableToInstanceof = { class = "Rector\\TypeDeclaration\\Rector\\While_\\WhileNullableToInstanceofRector", unsupported = "deprecated upstream (main)", status = "decided" }
 WrapEncapsedVariableInCurlyBraces = { class = "Rector\\CodingStyle\\Rector\\Encapsed\\WrapEncapsedVariableInCurlyBracesRector", unsupported = "deprecated upstream (2.6.1, 2.7.0, main)", status = "decided" }
-WrapReturn = { class = "Rector\\Transform\\Rector\\ClassMethod\\WrapReturnRector", unsupported = "in no set", status = "decided" }
+WrapReturn = { class = "Rector\\Transform\\Rector\\ClassMethod\\WrapReturnRector", pun = "lint/refactor/wrap-return", options = "configurable: options carry 1:1 (same keys, kebab-cased)", status = "decided" }
 WrapVariableVariableNameInCurlyBraces = { class = "Rector\\Php70\\Rector\\Variable\\WrapVariableVariableNameInCurlyBracesRector", pun = "lint/php-7.0/prefer-braced-variable-variable", sets = ["php70"], options = "none", status = "decided" }
 
 [upstream.rector-laravel]

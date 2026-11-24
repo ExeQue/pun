@@ -6770,9 +6770,11 @@
         "name": "ChangeMethodVisibility",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/change-method-visibility-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/change-method-visibility"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "ChangeNestedForeachIfsToEarlyContinue",
@@ -8852,9 +8854,11 @@
         "name": "RemoveInterfaces",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-interfaces-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/remove-interfaces"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "RemoveMethodCallParam",
@@ -9350,9 +9354,11 @@
         "name": "RenameAttribute",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/rename-attribute-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/rename-attribute"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "RenameCast",
@@ -9484,9 +9490,11 @@
         "name": "RenameString",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/rename-string-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/rename-string"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "RenameVariableToMatchMethodCallReturnType",
@@ -10264,9 +10272,11 @@
         "name": "StaticCallToNew",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/static-call-to-new-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/replace-static-with-new"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "StaticClosure",
@@ -10850,9 +10860,11 @@
         "name": "WrapReturn",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/wrap-return-rector",
-        "rules": [],
-        "note": "in no set",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/wrap-return"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "WrapVariableVariableNameInCurlyBraces",
