@@ -71,13 +71,14 @@ impl Auth {
         }
     }
 
+    /// The credential for the URL's origin: its host, plus the port when the URL names one. As Composer's
+    /// `Url::getOrigin`, a credential for `host` never goes to `host:8443`, which may be another service.
     fn header(&self, url: &str) -> Option<&str> {
         let host = url.split("://").nth(1)?.split(['/', '?', '#']).next()?;
         let host = host.rsplit_once('@').map_or(host, |h| h.1);
-        let bare = host.split(':').next().unwrap_or(host);
         self.headers
             .iter()
-            .find(|h| h.0 == host || h.0 == bare)
+            .find(|h| h.0 == host)
             .map(|h| h.1.as_str())
     }
 }
@@ -1031,13 +1032,14 @@ mod tests {
     fn archives_are_checked_cached_and_authorized() {
         const BODY: &[u8] = b"archive bytes";
         let dir = scratch("archive");
+        let (base, seen) = serve(BODY, 3);
+        let origin = base.trim_start_matches("http://");
         std::fs::write(
             dir.join("auth.json"),
-            r#"{"http-basic": {"127.0.0.1": {"username": "user", "password": "pass"}}}"#,
+            format!(r#"{{"http-basic": {{"{origin}": {{"username": "user", "password": "pass"}}}}}}"#),
         )
         .unwrap();
         let auth = Auth::load(&dir, None, None);
-        let (base, seen) = serve(BODY, 3);
         let url = format!("{base}/a.zip");
         let fetcher = Fetcher::new(Some(dir.join("cache")), auth.clone(), false);
 
@@ -1148,7 +1150,7 @@ mod tests {
         let home = scratch("auth-home");
         std::fs::write(
             home.join("auth.json"),
-            r#"{"bearer": {"repo.acme.test": "home", "other.test": "o"}}"#,
+            r#"{"bearer": {"repo.acme.test": "home", "other.test": "o", "port.test:8443": "p"}}"#,
         )
         .unwrap();
         let env = r#"{"http-basic": {"basic.test": {"username": "ab", "password": "c"}, "skip.test": "x"}, "github-oauth": {"skip.test": 1}, "gitlab-token": {"skip.test": 1}, "bearer": {"skip.test": 1}}"#;
@@ -1170,10 +1172,10 @@ mod tests {
             Some("Bearer gl")
         );
         assert_eq!(auth.header("https://git.acme.test/x"), Some("Basic dTp0"));
-        assert_eq!(
-            auth.header("https://me@repo.acme.test:8443/p.zip"),
-            Some("Bearer br")
-        );
+        assert_eq!(auth.header("https://me@repo.acme.test/p.zip"), Some("Bearer br"));
+        assert_eq!(auth.header("https://repo.acme.test:8443/p.zip"), None);
+        assert_eq!(auth.header("https://port.test:8443/p.zip"), Some("Bearer p"));
+        assert_eq!(auth.header("https://port.test/p.zip"), None);
         assert_eq!(auth.header("https://other.test/x"), Some("Bearer o"));
         assert_eq!(auth.header("https://packagist.org/x"), None);
         std::fs::remove_dir_all(&dir).unwrap();

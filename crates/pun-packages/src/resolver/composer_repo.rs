@@ -930,7 +930,9 @@ mod tests {
         ];
         let (base, seen, _) = serve(FILES);
         let dir = scratch("errors");
-        std::fs::write(dir.join("auth.json"), r#"{"bearer": {"127.0.0.1": "t0k"}}"#).unwrap();
+        let origin = base.trim_start_matches("http://");
+        let auth = format!(r#"{{"bearer": {{"{origin}": "t0k"}}}}"#);
+        std::fs::write(dir.join("auth.json"), auth).unwrap();
         let fetcher = Fetcher::new(None, crate::fetch::Auth::load(&dir, None, None), false);
         let fails = |repo: &str, name: &str| {
             let require = Map::from_iter([(name.to_string(), Value::from("*"))]);
