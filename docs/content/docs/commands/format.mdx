@@ -58,7 +58,7 @@ Formatted 2 files, 482 unchanged · 484 files in 0.21s
 
 - A rule that Pun doesn't implement is a config error. Pun names it and exits 2 before editing any file.
 - Pint's risky and code-deleting fixers are lint rules. `pun format` alone doesn't apply a full Pint config. Use `pun check --fix`.
-- Blade formatting needs Node.js with Prettier.
+- Blade formatting with Prettier needs Node.js. `[format] blade = "native"` needs none, but doesn't sort Tailwind classes.
 - No Pint `txt` or `xml` formats, and no `--bail`, `--cache-file`, `--ansi` or `--no-ansi`.
 
 ## Exit codes
