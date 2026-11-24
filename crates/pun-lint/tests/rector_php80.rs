@@ -8,7 +8,8 @@ use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoIntGetHeadersFormat, NoUnusedCatchVariable, NoVersionCompareOperatorAlias,
-    PreferGetDebugType, PreferStaticClass,
+    PreferEndsWithFunction, PreferGetDebugType, PreferNullsafeOverTernary,
+    PreferStartsWithFunction, PreferStaticClass, PreferStrContainsOverMbStrpos,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -50,5 +51,31 @@ fn class_on_this_variable_object() {
     check(
         || Box::new(PreferStaticClass),
         "ClassOnThisVariableObjectRector",
+    );
+}
+
+#[test]
+fn mb_str_contains() {
+    check(
+        || Box::new(PreferStrContainsOverMbStrpos),
+        "MbStrContainsRector",
+    );
+}
+
+#[test]
+fn str_ends_with() {
+    check(|| Box::new(PreferEndsWithFunction), "StrEndsWithRector");
+}
+
+#[test]
+fn str_starts_with() {
+    check(|| Box::new(PreferStartsWithFunction), "StrStartsWithRector");
+}
+
+#[test]
+fn ternary_to_nullsafe_coalesce() {
+    check(
+        || Box::new(PreferNullsafeOverTernary),
+        "TernaryToNullsafeCoalesceRector",
     );
 }

@@ -36,11 +36,39 @@ Change ternary type resolve to get_debug_type()
 In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
+<Card title="prefer-nullsafe-over-ternary" href="/docs/rules/lint/php-8.0/prefer-nullsafe-over-ternary">
+
+Change null check ternary around a method call or property fetch to nullsafe operator
+
+In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+
+</Card>
 <Card title="prefer-static-class" href="/docs/rules/lint/php-8.0/prefer-static-class">
 
 Change $this::class to static::class or self::class depends on class modifier
 
 In the `modernize` set. Safe fix. Runs only when `[php] version` is 8.0 or later.
+
+</Card>
+<Card title="prefer-str-contains-over-mb-strpos" href="/docs/rules/lint/php-8.0/prefer-str-contains-over-mb-strpos">
+
+Replace mb_strpos() !== false and mb_strstr()  with str_contains()
+
+In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+
+</Card>
+<Card title="prefer-str-ends-with" href="/docs/rules/lint/php-8.0/prefer-str-ends-with">
+
+Change helper functions to `str_ends_with()`
+
+In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
+
+</Card>
+<Card title="prefer-str-starts-with" href="/docs/rules/lint/php-8.0/prefer-str-starts-with">
+
+Change helper functions to str_starts_with()
+
+In the `modernize` set. Unsafe fix: it can change behavior. Runs only when `[php] version` is 8.0 or later.
 
 </Card>
 </CardGroup>

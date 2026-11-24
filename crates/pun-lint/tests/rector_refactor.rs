@@ -28,7 +28,7 @@ use pun_lint::rules::{
     PreferClassNameConstant, PreferReadonlyAnonymousClass, RemoveFunctionArgument,
     RemoveFunctionCall, RenameCast, RenameClass, RenameClassConstant, RenameConstant,
     RenameFunction, RenameMethod, ReplaceFunctionWithConstant, ReplaceFunctionWithNew,
-    ReplaceFunctionWithStatic, RequireStrictInArray,
+    ReplaceFunctionWithStatic, ReplaceStaticWithFunction, RequireStrictInArray,
 };
 use pun_lint::{Linter, Rule};
 use serde_json::{Value, json};
@@ -318,6 +318,26 @@ fn func_call_to_static_call() {
 }
 
 #[test]
+fn static_call_to_func_call() {
+    check(
+        ReplaceStaticWithFunction::default,
+        json!({"items": [{
+            "class": "Rector\\Tests\\Transform\\Rector\\StaticCall\\StaticCallToFuncCallRector\\Source\\SomeOldStaticClass",
+            "method": "render",
+            "function": "view",
+        }]}),
+        "StaticCallToFuncCallRector",
+    );
+    rejects(
+        ReplaceStaticWithFunction::default(),
+        &[(
+            json!({"items": [{"class": "C", "method": "m", "function": "a-b"}]}),
+            "\"a-b\" is not a valid function name",
+        )],
+    );
+}
+
+#[test]
 fn string_class_name_to_class_constant() {
     check(
         PreferClassNameConstant::default,
@@ -536,6 +556,10 @@ fn unconfigured_rules_do_nothing() {
         (
             Box::new(ReplaceFunctionWithStatic::default()),
             "FuncCallToStaticCallRector",
+        ),
+        (
+            Box::new(ReplaceStaticWithFunction::default()),
+            "StaticCallToFuncCallRector",
         ),
     ];
     for (rule, class) in cases {

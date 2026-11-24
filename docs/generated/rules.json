@@ -10903,6 +10903,26 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.0/prefer-nullsafe-over-ternary",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Change null check ternary around a method call or property fetch to nullsafe operator",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php80\\Rector\\Ternary\\TernaryToNullsafeCoalesceRector",
+        "TernaryToNullsafeCoalesce",
+        "TernaryToNullsafeCoalesceRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.0/prefer-static-class",
       "command": "lint",
       "group": "php-8.0",
@@ -10919,6 +10939,66 @@
         "ClassOnThisVariableObject",
         "ClassOnThisVariableObjectRector",
         "Rector\\Php80\\Rector\\ClassConstFetch\\ClassOnThisVariableObjectRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.0/prefer-str-contains-over-mb-strpos",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Replace mb_strpos() !== false and mb_strstr()  with str_contains()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "MbStrContains",
+        "MbStrContainsRector",
+        "Rector\\Php80\\Rector\\NotIdentical\\MbStrContainsRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.0/prefer-str-ends-with",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Change helper functions to str_ends_with()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php80\\Rector\\Identical\\StrEndsWithRector",
+        "StrEndsWith",
+        "StrEndsWithRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.0/prefer-str-starts-with",
+      "command": "lint",
+      "group": "php-8.0",
+      "summary": "Change helper functions to str_starts_with()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php80\\Rector\\Identical\\StrStartsWithRector",
+        "StrStartsWith",
+        "StrStartsWithRector"
       ],
       "ported": true
     },
@@ -14288,6 +14368,24 @@
         "FuncCallToStaticCall",
         "FuncCallToStaticCallRector",
         "RectorLaravel\\Rector\\FuncCall\\FuncCallToStaticCallRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/refactor/replace-static-with-function",
+      "command": "lint",
+      "group": "refactor",
+      "summary": "Turn static call to function call",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Transform\\Rector\\StaticCall\\StaticCallToFuncCallRector",
+        "StaticCallToFuncCall",
+        "StaticCallToFuncCallRector"
       ],
       "ported": true
     },

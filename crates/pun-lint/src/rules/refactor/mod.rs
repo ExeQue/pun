@@ -10,9 +10,11 @@ mod rename_constant;
 mod rename_function;
 mod rename_method;
 mod replace_function;
+mod replace_static_with_function;
 mod replace_static_with_method;
 
 pub use rename_method::MethodRename;
+pub use replace_static_with_function::StaticToFunction;
 pub use replace_static_with_method::StaticToMethod;
 
 use std::sync::LazyLock;
@@ -47,6 +49,7 @@ rules! {
         replace_function => ReplaceFunctionWithConstant::default(),
         replace_function => ReplaceFunctionWithNew::default(),
         replace_function => ReplaceFunctionWithStatic::default(),
+        replace_static_with_function => ReplaceStaticWithFunction::default(),
         replace_static_with_method => ReplaceStaticWithMethod::default(),
     }
 }

@@ -7561,7 +7561,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -7870,9 +7870,11 @@
         "name": "MbStrContains",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/mb-str-contains-rector",
-        "rules": [],
-        "note": "only in sets outside the eight prepared sets: php-polyfills",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/prefer-str-contains-over-mb-strpos"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "MbStrrposEncodingArgumentPosition",
@@ -10230,9 +10232,11 @@
         "name": "StaticCallToFuncCall",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/static-call-to-func-call-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/refactor/replace-static-with-function"
+        ],
+        "note": "Same. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "unsupported": false
       },
       {
         "name": "StaticCallToMethodCall",
@@ -10282,17 +10286,21 @@
         "name": "StrEndsWith",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/str-ends-with-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/prefer-str-ends-with"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "StrStartsWith",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/str-starts-with-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/prefer-str-starts-with"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "StrictArrayParamDimFetch",
@@ -10516,9 +10524,11 @@
         "name": "TernaryToNullsafeCoalesce",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-nullsafe-coalesce-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.0/prefer-nullsafe-over-ternary"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "TernaryToSpaceship",
