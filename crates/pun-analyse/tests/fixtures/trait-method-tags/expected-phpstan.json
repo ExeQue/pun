@@ -1,0 +1,44 @@
+{
+    "totals": {
+        "errors": 0,
+        "file_errors": 5
+    },
+    "files": {
+        "types.php": {
+            "errors": 5,
+            "messages": [
+                {
+                    "message": "Dumped type: string",
+                    "line": 55,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: string",
+                    "line": 56,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: string|null",
+                    "line": 57,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: string|null",
+                    "line": 58,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: string|null",
+                    "line": 59,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                }
+            ]
+        }
+    },
+    "errors": []
+}

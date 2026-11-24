@@ -26,6 +26,7 @@ pub fn inherit_methods_from_parent(
     let parent_is_trait = parent_metadata.kind.is_trait();
     let constructor_name = word("__construct");
     let clone_name = word("__clone");
+    let direct_traits: Vec<Word> = metadata.direct_trait_names().collect();
 
     let reverse_alias_map: Option<HashMap<Word, Vec<Word>>> = if parent_is_trait && !metadata.trait_alias_map.is_empty()
     {
@@ -152,10 +153,35 @@ pub fn inherit_methods_from_parent(
                     codebase.get_method_by_id(method_id).is_some_and(|method| method.flags.is_magic_method())
                 };
 
-                if implementing_method_id.get_class_name() == class_like_name
-                    || (is_pseudo(declaring_method_id) && !is_pseudo(implementing_method_id))
-                    || !(codebase.can_replace_inherited_method(*implementing_method_id, *declaring_method_id)
-                        || (is_pseudo(implementing_method_id) && !is_pseudo(declaring_method_id)))
+                // Pun: PhpClassReflectionExtension takes an `@method` tag over a native method when the tag's declaring
+                // class is no further away. A tag on a directly used trait counts as declared on the user (distance 0),
+                // so it wins over a sibling trait's native method: Carbon's `Serialization` tags `toJSON(): string`
+                // beside `Converter`'s native `?string` one.
+                let is_trait = |method_id: &MethodIdentifier| {
+                    codebase.class_likes.get(&method_id.get_class_name()).is_some_and(|class| class.kind.is_trait())
+                };
+                let direct_tag = |method_id: &MethodIdentifier| {
+                    parent_is_trait && is_pseudo(method_id) && direct_traits.contains(&method_id.get_class_name())
+                };
+                let sibling_native = |method_id: &MethodIdentifier| {
+                    !is_pseudo(method_id) && method_id.get_class_name() != class_like_name && is_trait(method_id)
+                };
+                // Interfaces come last in the hierarchy distances, so a trait's tag also wins over an interface's method
+                // (`CarbonInterface::toJSON(): ?string`).
+                if direct_tag(implementing_method_id) && sibling_native(declaring_method_id)
+                    || parent_metadata.kind.is_interface()
+                        && is_pseudo(implementing_method_id)
+                        && is_trait(implementing_method_id)
+                {
+                    return;
+                }
+                let tag_wins = direct_tag(declaring_method_id) && sibling_native(implementing_method_id);
+
+                if !tag_wins
+                    && (implementing_method_id.get_class_name() == class_like_name
+                        || (is_pseudo(declaring_method_id) && !is_pseudo(implementing_method_id))
+                        || !(codebase.can_replace_inherited_method(*implementing_method_id, *declaring_method_id)
+                            || (is_pseudo(implementing_method_id) && !is_pseudo(declaring_method_id))))
                 {
                     return;
                 }

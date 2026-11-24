@@ -1309,3 +1309,13 @@ Nonliteral strings still go through `retain()`.
   PHPStan's `TypeCombinator::intersect()` narrows the template's bound instead, so a lone template intersected
   with a union of non-templates is one `T of int|string` (`Methods/ReturnTypeRuleTest::testBug11776`'s
   `class-string<EnumAsFilterInterface<(int|string)&TOperation>>`).
+
+## Trait `@method` tags over sibling traits and interfaces
+
+`populator/methods.rs` `inherit_methods_from_parent()`: PhpClassReflectionExtension::createMethod() takes the
+`@method` tag when its declaring class is no further away than the native method's trait, and a tag on a directly used
+trait is declared on the user. So a direct trait's tag replaces a sibling trait's native method, and an interface's
+method does not replace a trait's tag (interfaces come last in the distances). Carbon's `Serialization` tags
+`toJSON(): string` beside `Converter`'s native `?string` and `CarbonInterface::toJSON(): ?string`.
+`pun-analyse/tests/trait_method_tags.rs` covers it. A trait tag over a parent class's native method still loses, as
+upstream decides it.
