@@ -35,10 +35,14 @@ def main():
             "repos": parse("PACKAGE-REPOS", []),
             "expect": parse("EXPECT", []),
         })
-    files = {
-        str(f.relative_to(source)): f.read_text()
-        for f in sorted(source.glob("*/composer.json"))
-    }
+    # A link may stay inside the fixtures but never read a file outside them into the tracked fixture.
+    inside = source.resolve()
+    files = {}
+    for f in sorted(source.glob("*/composer.json")):
+        real = f.resolve()
+        if not real.is_file() or not real.is_relative_to(inside):
+            sys.exit(f"{f}: not a file inside {source}")
+        files[str(f.relative_to(source))] = real.read_text()
     OUT.write_text(json.dumps({"cases": cases, "files": files}, indent=1) + "\n")
 
 
