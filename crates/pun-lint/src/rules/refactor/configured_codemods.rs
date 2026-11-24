@@ -326,15 +326,15 @@ impl Rule for RenameAttribute {
 }
 
 // php-parser's `Modifiers` flags
-const PUBLIC: i64 = 1;
-const PROTECTED: i64 = 2;
-const PRIVATE: i64 = 4;
+pub(crate) const PUBLIC: i64 = 1;
+pub(crate) const PROTECTED: i64 = 2;
+pub(crate) const PRIVATE: i64 = 4;
 const STATIC: i64 = 8;
 const ABSTRACT: i64 = 16;
 const FINAL: i64 = 32;
 const READONLY: i64 = 64;
 
-fn flag(modifier: &Modifier<'_>) -> i64 {
+pub(crate) fn flag(modifier: &Modifier<'_>) -> i64 {
     match modifier {
         Modifier::Public(_) => PUBLIC,
         Modifier::Protected(_) => PROTECTED,
@@ -348,7 +348,7 @@ fn flag(modifier: &Modifier<'_>) -> i64 {
 }
 
 /// php-parser's `pModifiers()`.
-fn print_modifiers(flags: i64) -> String {
+pub(crate) fn print_modifiers(flags: i64) -> String {
     [
         (FINAL, "final "),
         (ABSTRACT, "abstract "),

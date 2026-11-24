@@ -15,7 +15,10 @@ mod add_will_return_callback_false_fallback;
 mod add_will_return_callback_param_type;
 pub(crate) mod annotations;
 mod assert_calls;
+mod data_provider_upgrades;
 mod no_any_matcher;
+mod no_assert_class_has_attribute;
+mod no_assert_contains_on_string;
 mod no_assert_contains_only;
 mod no_assert_is_type;
 mod no_assert_same_type_mismatch;
@@ -28,21 +31,25 @@ mod no_expects_any;
 mod no_final_constructor_override;
 mod no_flipped_assertion;
 mod no_float_delta_parameter;
+mod no_mock_builder_set_methods;
 mod no_mock_intersection_property;
 mod no_negated_assertion;
 mod no_setup_override_attribute;
 mod no_stub_with_expectations;
 mod no_test_constructor;
+mod no_test_listener;
 mod no_unused_mock;
 mod no_unused_mock_property;
 mod no_value_object_mock;
 pub(crate) mod phpdoc_type;
 mod prefer_assert;
 mod prefer_assert_array_has_key;
+mod prefer_assert_contains_equals;
 mod prefer_assert_count;
 mod prefer_assert_instanceof;
 mod prefer_assert_instanceof_over_empty;
 mod prefer_assert_instances_of;
+mod prefer_assert_matches_regular_expression;
 mod prefer_assert_null_true_false;
 mod prefer_assert_string_contains;
 mod prefer_assert_true_false;
@@ -56,6 +63,7 @@ mod prefer_create_stub_in_coalesce;
 mod prefer_data_provider;
 mod prefer_data_provider_attribute;
 mod prefer_depends_attribute;
+mod prefer_expect_php_error;
 mod prefer_inline_create_stub;
 mod prefer_local_over_setup_property;
 mod prefer_merged_will_return_callback;
@@ -68,6 +76,7 @@ mod prefer_requires_attribute;
 mod prefer_simple_callback_assert;
 mod prefer_simple_mock_expectation;
 mod prefer_simple_with_matcher;
+mod prefer_specific_assert_equals;
 mod prefer_specific_true_false_assertion;
 mod prefer_specific_will_method;
 mod prefer_standalone_asserts_over_callback;
@@ -87,6 +96,7 @@ mod require_final_test_case;
 mod require_mock_expects;
 pub(crate) mod require_strict_types_in_tests;
 mod require_string_assert_argument;
+mod test_class_upgrades;
 mod test_methods;
 
 pub(crate) use crate::rules::support::expressions::text;
@@ -209,6 +219,19 @@ rules! {
         test_methods => RequireExplicitMockExpects,
         test_methods => RequireArrayKeyAssert,
         test_methods => AddSeeTestTag,
+        no_assert_contains_on_string => NoAssertContainsOnString,
+        prefer_assert_contains_equals => PreferAssertContainsEquals,
+        prefer_specific_assert_equals => PreferSpecificAssertEquals,
+        prefer_assert_matches_regular_expression => PreferAssertMatchesRegularExpression,
+        prefer_expect_php_error => PreferExpectPhpError,
+        no_assert_class_has_attribute => NoAssertClassHasAttribute,
+        no_mock_builder_set_methods => NoMockBuilderSetMethods,
+        data_provider_upgrades => RequirePublicDataProvider,
+        data_provider_upgrades => NoDataProviderTestPrefix,
+        data_provider_upgrades => NoScenarioAnnotation,
+        test_class_upgrades => AddProphecyTrait,
+        test_class_upgrades => AddParentTestConstructor,
+        no_test_listener => NoTestListener,
     }
 }
 

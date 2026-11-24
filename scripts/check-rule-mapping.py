@@ -15,8 +15,8 @@ Against the pinned upstream inventories in crates/pun-config/rules/upstream/*.js
 fails on: an in-scope Rector, rector-laravel, rector-phpunit or Pest rule, or an in-scope PHPStan, strict-rules,
 deprecation-rules or Larastan rule class, that has no entry or maps to no Pun rule; an entry that maps a deprecated or
 out-of-scope upstream rule (old Laravel upgrade set, no set, outside the in-scope sets) to a Pun rule (Rector's PHP
-upgrade rules below php82, its php-polyfills rules and the rules in no set or only in sets outside the eight prepared
-sets may map to one, and need not); a lint or
+upgrade rules below php82, its php-polyfills rules, the PHPUnit upgrade rules below phpunit110 and the rules in no set
+or only in sets outside the eight prepared sets may map to one, and need not); a lint or
 analyse rule with no or several primary sources (one Rector rule, CS-Fixer fixer, Pint fixer or PHPStan-family rule
 class) unless it is Mago-derived (`origin = "mago"`, Mago sources only) or `pun_only`; `merged` on a lint or analyse
 rule; a class entry whose identifiers differ from the inventory; an emitted identifier with no entry, or one whose rule
@@ -73,6 +73,9 @@ OLD_PHP = ("only in php52..php81 upgrade sets (below php82)", "only in sets outs
 # deprecated rules", PLAN.md §2, 2026-11-23); the inventories still mark them out of scope, so they are allowed, not
 # required.
 NO_SET = ("in no set", "in no rector-laravel/Pest set", "only in sets outside the eight prepared sets: ")
+# rector-phpunit's upgrade rules below phpunit110, and the core rules only its composer-based set configures, are being
+# ported too ("Upgrades below the floor too", PLAN.md §2, 2026-11-23) into the `phpunit` group; allowed, not required.
+OLD_PHPUNIT = "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)"
 
 
 def duplicates(text):
@@ -271,7 +274,8 @@ def in_scope(r):
 
 def may_port(r):
     reason = r.get("out_of_scope_reason") or ""
-    return in_scope(r) or (not r["deprecated"] and (reason in OLD_PHP or reason.startswith(NO_SET)))
+    return in_scope(r) or (not r["deprecated"]
+                           and (reason in OLD_PHP or reason == OLD_PHPUNIT or reason.startswith(NO_SET)))
 
 
 def why_out(r):
@@ -575,6 +579,10 @@ def selftest_upstream():
     rector["R\\NoSetRector"] = rec("R\\NoSetRector", False, False, NO_SET[0])
     old_php["rules"]["lint"]["style/prefer-bar"] = {}
     old_php["upstream"]["rector"]["NoSet"] = {"class": "R\\NoSetRector", "pun": "lint/style/prefer-bar"}
+    assert check_upstream(old_php, inv) == [], check_upstream(old_php, inv)
+    rector["R\\PhpUnit90Rector"] = rec("R\\PhpUnit90Rector", False, False, OLD_PHPUNIT)
+    old_php["rules"]["lint"]["phpunit/prefer-baz"] = {}
+    old_php["upstream"]["rector"]["PhpUnit90"] = {"class": "R\\PhpUnit90Rector", "pun": "lint/phpunit/prefer-baz"}
     assert check_upstream(old_php, inv) == [], check_upstream(old_php, inv)
     bad(lambda d: d["upstream"]["rector"]["Gone"].update(pun="lint/style/no-foo"), "deprecated upstream")
     bad(lambda d: d["upstream"]["rector"]["Foo"].pop("pun"), "in scope upstream but maps to no Pun rule")

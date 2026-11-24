@@ -1843,7 +1843,7 @@
         "rules": [
           "lint/phpunit/require-static-data-provider"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/require-static-data-provider\"].",
+        "note": "Merged with StaticDataProviderClassMethod. Options: renamed for TOML: [options.\"lint/phpunit/require-static-data-provider\"].",
         "unsupported": false
       },
       {
@@ -1863,7 +1863,7 @@
         "rules": [
           "lint/phpunit/no-assert-internal-type"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/no-assert-internal-type\"].",
+        "note": "Merged with SpecificAssertInternalType. Options: renamed for TOML: [options.\"lint/phpunit/no-assert-internal-type\"].",
         "unsupported": false
       },
       {
@@ -1873,7 +1873,7 @@
         "rules": [
           "lint/phpunit/prefer-expect-exception"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/prefer-expect-exception\"].",
+        "note": "Merged with DelegateExceptionArguments. Options: renamed for TOML: [options.\"lint/phpunit/prefer-expect-exception\"].",
         "unsupported": false
       },
       {
@@ -1913,7 +1913,7 @@
         "rules": [
           "lint/phpunit/prefer-create-mock"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/prefer-create-mock\"].",
+        "note": "Merged with GetMock. Options: renamed for TOML: [options.\"lint/phpunit/prefer-create-mock\"].",
         "unsupported": false
       },
       {
@@ -1943,7 +1943,7 @@
         "rules": [
           "lint/phpunit/no-expected-exception-annotation"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/no-expected-exception-annotation\"].",
+        "note": "Merged with ExceptionAnnotation. Options: renamed for TOML: [options.\"lint/phpunit/no-expected-exception-annotation\"].",
         "unsupported": false
       },
       {
@@ -4829,7 +4829,7 @@
         "rules": [
           "lint/phpunit/require-static-data-provider"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/require-static-data-provider\"].",
+        "note": "Merged with StaticDataProviderClassMethod. Options: renamed for TOML: [options.\"lint/phpunit/require-static-data-provider\"].",
         "unsupported": false
       },
       {
@@ -4849,7 +4849,7 @@
         "rules": [
           "lint/phpunit/no-assert-internal-type"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/no-assert-internal-type\"].",
+        "note": "Merged with SpecificAssertInternalType. Options: renamed for TOML: [options.\"lint/phpunit/no-assert-internal-type\"].",
         "unsupported": false
       },
       {
@@ -4859,7 +4859,7 @@
         "rules": [
           "lint/phpunit/prefer-expect-exception"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/prefer-expect-exception\"].",
+        "note": "Merged with DelegateExceptionArguments. Options: renamed for TOML: [options.\"lint/phpunit/prefer-expect-exception\"].",
         "unsupported": false
       },
       {
@@ -4899,7 +4899,7 @@
         "rules": [
           "lint/phpunit/prefer-create-mock"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/prefer-create-mock\"].",
+        "note": "Merged with GetMock. Options: renamed for TOML: [options.\"lint/phpunit/prefer-create-mock\"].",
         "unsupported": false
       },
       {
@@ -4929,7 +4929,7 @@
         "rules": [
           "lint/phpunit/no-expected-exception-annotation"
         ],
-        "note": "Same. Options: renamed for TOML: [options.\"lint/phpunit/no-expected-exception-annotation\"].",
+        "note": "Merged with ExceptionAnnotation. Options: renamed for TOML: [options.\"lint/phpunit/no-expected-exception-annotation\"].",
         "unsupported": false
       },
       {
@@ -9351,7 +9351,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
+        "note": "deprecated upstream (2.8.4: RenameAnnotationRector implements DeprecatedInterface and its refactor() throws; no set registers it)",
         "unsupported": true
       },
       {
@@ -12898,9 +12898,11 @@
         "name": "AddProphecyTrait",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/add-prophecy-trait-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/add-prophecy-trait"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AddReturnTypeToDepended",
@@ -13054,9 +13056,11 @@
         "name": "AssertEqualsParameterToSpecificMethodsType",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/assert-equals-parameter-to-specific-methods-type-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-specific-assert-equals"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AssertEqualsToSame",
@@ -13132,9 +13136,11 @@
         "name": "AssertRegExp",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/assert-reg-exp-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-assert-matches-regular-expression"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AssertSameBoolNullToSpecificMethod",
@@ -13306,9 +13312,11 @@
         "name": "DelegateExceptionArguments",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/delegate-exception-arguments-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-expect-exception"
+        ],
+        "note": "Merged with php_unit_expectation.",
+        "unsupported": false
       },
       {
         "name": "DependsAnnotationWithValueToAttribute",
@@ -13344,9 +13352,11 @@
         "name": "ExceptionAnnotation",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/exception-annotation-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-expected-exception-annotation"
+        ],
+        "note": "Merged with php_unit_no_expectation_annotation.",
+        "unsupported": false
       },
       {
         "name": "ExpectsParamToMockObject",
@@ -13372,9 +13382,11 @@
         "name": "ExplicitPhpErrorApi",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/explicit-php-error-api-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-expect-php-error"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ExpressionCreateMockToCreateStub",
@@ -13400,9 +13412,11 @@
         "name": "GetMock",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/get-mock-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-create-mock"
+        ],
+        "note": "Merged with php_unit_mock.",
+        "unsupported": false
       },
       {
         "name": "GetMockBuilderGetMockToCreateMock",
@@ -13518,9 +13532,11 @@
         "name": "ParentTestClassConstructor",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/parent-test-class-constructor-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/add-parent-test-constructor"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "PreferPHPUnitSelfCall",
@@ -13576,25 +13592,31 @@
         "name": "PropertyExistsWithoutAssert",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/property-exists-without-assert-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-assert-class-has-attribute"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "PublicDataProviderClassMethod",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/public-data-provider-class-method-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/require-public-data-provider"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveDataProviderTestPrefix",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/remove-data-provider-test-prefix-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-data-provider-test-prefix"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveEmptyTestMethod",
@@ -13648,9 +13670,11 @@
         "name": "RemoveSetMethodsMethodCall",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/remove-set-methods-method-call-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-mock-builder-set-methods"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveStandaloneCreateMock",
@@ -13714,9 +13738,11 @@
         "name": "ScenarioToTestAnnotation",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/scenario-to-test-annotation-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-scenario-annotation"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "SimplerWithIsInstanceOf",
@@ -13762,33 +13788,41 @@
         "name": "SpecificAssertContains",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/specific-assert-contains-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-assert-contains-on-string"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "SpecificAssertContainsWithoutIdentity",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/specific-assert-contains-without-identity-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/prefer-assert-contains-equals"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "SpecificAssertInternalType",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/specific-assert-internal-type-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-assert-internal-type"
+        ],
+        "note": "Merged with php_unit_dedicate_assert_internal_type.",
+        "unsupported": false
       },
       {
         "name": "StaticDataProviderClassMethod",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/static-data-provider-class-method-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/require-static-data-provider"
+        ],
+        "note": "Merged with php_unit_data_provider_static.",
+        "unsupported": false
       },
       {
         "name": "StringCastAssertStringContainsString",
@@ -13812,9 +13846,11 @@
         "name": "TestListenerToHooks",
         "tool": "rector-phpunit",
         "url": "https://getrector.com/rule-detail/test-listener-to-hooks-rector",
-        "rules": [],
-        "note": "only in PHPUnit upgrade sets below phpunit110 (below the Laravel 12 / PHPUnit 11 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/phpunit/no-test-listener"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "TestWithAnnotationToAttribute",

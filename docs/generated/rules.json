@@ -12371,6 +12371,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/add-parent-test-constructor",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "PHPUnit\\Framework\\TestCase requires a parent constructor call",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "ParentTestClassConstructor",
+        "ParentTestClassConstructorRector",
+        "Rector\\PHPUnit\\PHPUnit100\\Rector\\Class_\\ParentTestClassConstructorRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/add-property-type-container-get",
       "command": "lint",
       "group": "phpunit",
@@ -12447,6 +12466,25 @@
         "Rector\\TypeDeclaration\\Rector\\Class_\\TypedPropertyFromDocblockSetUpDefinedRector",
         "TypedPropertyFromDocblockSetUpDefined",
         "TypedPropertyFromDocblockSetUpDefinedRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/add-prophecy-trait",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Add Prophecy trait for method using $this->prophesize()",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AddProphecyTrait",
+        "AddProphecyTraitRector",
+        "Rector\\PHPUnit\\PHPUnit100\\Rector\\Class_\\AddProphecyTraitRector"
       ],
       "ported": true
     },
@@ -12592,6 +12630,44 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/no-assert-class-has-attribute",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Replace removed assertClassHas*Attribute() with property_exists()",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "PropertyExistsWithoutAssert",
+        "PropertyExistsWithoutAssertRector",
+        "Rector\\PHPUnit\\PHPUnit100\\Rector\\MethodCall\\PropertyExistsWithoutAssertRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/no-assert-contains-on-string",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Change assertContains()/assertNotContains() method to new string and iterable alternatives",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "Rector\\PHPUnit\\PHPUnit80\\Rector\\MethodCall\\SpecificAssertContainsRector",
+        "SpecificAssertContains",
+        "SpecificAssertContainsRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/no-assert-contains-only",
       "command": "lint",
       "group": "phpunit",
@@ -12622,9 +12698,14 @@
       "ecosystem": "phpunit",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector",
+        "rector-phpunit"
       ],
       "upstream": [
+        "Rector\\PHPUnit\\PHPUnit80\\Rector\\MethodCall\\SpecificAssertInternalTypeRector",
+        "SpecificAssertInternalType",
+        "SpecificAssertInternalTypeRector",
         "php_unit_dedicate_assert_internal_type"
       ],
       "ported": true
@@ -12733,6 +12814,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/no-data-provider-test-prefix",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Data provider methods cannot start with \"test\" prefix",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "Rector\\PHPUnit\\PHPUnit70\\Rector\\Class_\\RemoveDataProviderTestPrefixRector",
+        "RemoveDataProviderTestPrefix",
+        "RemoveDataProviderTestPrefixRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/no-empty-test",
       "command": "lint",
       "group": "phpunit",
@@ -12786,9 +12886,14 @@
       "ecosystem": "phpunit",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector",
+        "rector-phpunit"
       ],
       "upstream": [
+        "ExceptionAnnotation",
+        "ExceptionAnnotationRector",
+        "Rector\\PHPUnit\\PHPUnit60\\Rector\\ClassMethod\\ExceptionAnnotationRector",
         "php_unit_no_expectation_annotation"
       ],
       "ported": true
@@ -12876,6 +12981,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/no-mock-builder-set-methods",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Remove \"setMethods()\" method as never used, move methods to \"addMethods()\" if non-existent or @method magic",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "Rector\\PHPUnit\\PHPUnit100\\Rector\\MethodCall\\RemoveSetMethodsMethodCallRector",
+        "RemoveSetMethodsMethodCall",
+        "RemoveSetMethodsMethodCallRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/no-mock-intersection-property",
       "command": "lint",
       "group": "phpunit",
@@ -12914,6 +13038,25 @@
         "AssertNotOperator",
         "AssertNotOperatorRector",
         "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\AssertNotOperatorRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/no-scenario-annotation",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Change @scenario annotation to @test in a test class",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "Rector\\PHPUnit\\PHPUnit70\\Rector\\ClassMethod\\ScenarioToTestAnnotationRector",
+        "ScenarioToTestAnnotation",
+        "ScenarioToTestAnnotationRector"
       ],
       "ported": true
     },
@@ -12977,6 +13120,25 @@
         "ConstructClassMethodToSetUpTestCase",
         "ConstructClassMethodToSetUpTestCaseRector",
         "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\ConstructClassMethodToSetUpTestCaseRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/no-test-listener",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Refactor \"*TestListener.php\" to particular \"*Hook.php\" files",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "Rector\\PHPUnit\\PHPUnit90\\Rector\\Class_\\TestListenerToHooksRector",
+        "TestListenerToHooks",
+        "TestListenerToHooksRector"
       ],
       "ported": true
     },
@@ -13086,6 +13248,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/prefer-assert-contains-equals",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Change assertContains()/assertNotContains() with non-strict comparison to new specific alternatives",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "Rector\\PHPUnit\\PHPUnit90\\Rector\\MethodCall\\SpecificAssertContainsWithoutIdentityRector",
+        "SpecificAssertContainsWithoutIdentity",
+        "SpecificAssertContainsWithoutIdentityRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/prefer-assert-count",
       "command": "lint",
       "group": "phpunit",
@@ -13166,6 +13347,25 @@
         "Rector\\PHPUnit\\CodeQuality\\Rector\\Foreach_\\SimplifyForeachInstanceOfRector",
         "SimplifyForeachInstanceOf",
         "SimplifyForeachInstanceOfRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/prefer-assert-matches-regular-expression",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Turns preg_match comparisons to their method name alternatives in PHPUnit TestCase",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AssertRegExp",
+        "AssertRegExpRector",
+        "Rector\\PHPUnit\\PHPUnit90\\Rector\\MethodCall\\AssertRegExpRector"
       ],
       "ported": true
     },
@@ -13365,9 +13565,14 @@
       "ecosystem": "phpunit",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector",
+        "rector-phpunit"
       ],
       "upstream": [
+        "GetMock",
+        "GetMockRector",
+        "Rector\\PHPUnit\\PHPUnit50\\Rector\\StaticCall\\GetMockRector",
         "php_unit_mock"
       ],
       "ported": true
@@ -13565,10 +13770,34 @@
       "ecosystem": "phpunit",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector",
+        "rector-phpunit"
       ],
       "upstream": [
+        "DelegateExceptionArguments",
+        "DelegateExceptionArgumentsRector",
+        "Rector\\PHPUnit\\PHPUnit60\\Rector\\MethodCall\\DelegateExceptionArgumentsRector",
         "php_unit_expectation"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/prefer-expect-php-error",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Use explicit API for expecting PHP errors, warnings, and notices",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "ExplicitPhpErrorApi",
+        "ExplicitPhpErrorApiRector",
+        "Rector\\PHPUnit\\PHPUnit90\\Rector\\MethodCall\\ExplicitPhpErrorApiRector"
       ],
       "ported": true
     },
@@ -13891,6 +14120,25 @@
         "PreferTestsWithSnakeCase",
         "PreferTestsWithSnakeCaseRector",
         "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\PreferTestsWithSnakeCaseRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/phpunit/prefer-specific-assert-equals",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Change assertEquals()/assertNotEquals() method parameters to new specific alternatives",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "AssertEqualsParameterToSpecificMethodsType",
+        "AssertEqualsParameterToSpecificMethodsTypeRector",
+        "Rector\\PHPUnit\\PHPUnit80\\Rector\\MethodCall\\AssertEqualsParameterToSpecificMethodsTypeRector"
       ],
       "ported": true
     },
@@ -14450,6 +14698,25 @@
       "ported": true
     },
     {
+      "id": "lint/phpunit/require-public-data-provider",
+      "command": "lint",
+      "group": "phpunit",
+      "summary": "Change data provider methods to public",
+      "enabled": [],
+      "fix": "safe",
+      "ecosystem": "phpunit",
+      "tools": [
+        "rector",
+        "rector-phpunit"
+      ],
+      "upstream": [
+        "PublicDataProviderClassMethod",
+        "PublicDataProviderClassMethodRector",
+        "Rector\\PHPUnit\\PHPUnit100\\Rector\\Class_\\PublicDataProviderClassMethodRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/phpunit/require-size",
       "command": "lint",
       "group": "phpunit",
@@ -14478,9 +14745,14 @@
       "ecosystem": "phpunit",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector",
+        "rector-phpunit"
       ],
       "upstream": [
+        "Rector\\PHPUnit\\PHPUnit100\\Rector\\Class_\\StaticDataProviderClassMethodRector",
+        "StaticDataProviderClassMethod",
+        "StaticDataProviderClassMethodRector",
         "php_unit_data_provider_static"
       ],
       "ported": true

@@ -235,6 +235,11 @@ floor too", PLAN.md §2, 2026-11-23) into the `php-5.3` ... `php-8.1` groups. Th
 scope, so the checker allows a Pun rule for them and does not yet require one. A rule whose input no longer parses or
 compiles on PHP 8.3+ (`$s{0}`, an unparenthesized nested ternary) stays `unsupported` with that reason.
 
+rector-phpunit's upgrade rules below `phpunit110` go into the `phpunit` ecosystem group, not into `phpunit-<N>`
+groups: rector-phpunit has no per-version sets, only `composer-based`, which binds each rule to a phpunit/phpunit
+version, and a group follows the upstream set the way `php-5.3` ... `php-8.1` follow Rector's php53 ... php81 sets. They
+are in no lint set, like the other rules only `composer-based` registers, and the checker allows them, not requires them.
+
 Rules removed for being out of scope keep their Rust code until the perf rounds end.
 
 **Decisions** (assistant's calls where the request was silent):
