@@ -1,6 +1,9 @@
 //! Rector 2.8.4's own fixtures for the `php-8.1` rules, copied verbatim from rector-src (rules-tests/Php81/... and
 //! rules-tests/CodingStyle/...) into tests/rector/<Rector class>/Fixture. Each rule also runs on every node of its
 //! fixtures (`everywhere`) and must report what it reports on its target nodes.
+//!
+//! ArrayToFirstClassCallableRector/Pun/config/sentry.php.inc: Rector also rewrites the array callables a `config/`
+//! file returns, which Laravel's `config:cache` then cannot export; Pun leaves those and converts the rest.
 
 use crate::common::{run_class, run_dirs};
 use crate::rector_refactor::everywhere;

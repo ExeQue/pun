@@ -7,7 +7,7 @@ use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
     Access, Argument, ArrayElement, ClassLikeConstantSelector, ClassLikeMemberSelector, Expression,
-    Literal, MagicConstant, Node, NodeKind, Variable,
+    Literal, MagicConstant, Node, NodeKind, Statement, Variable,
 };
 
 use crate::problem::{Edit, Safety};
@@ -184,6 +184,9 @@ fn skipped_context(
     {
         return true;
     }
+    if is_config_value(ctx, ancestors) {
+        return true;
+    }
     let parent = ancestors
         .iter()
         .rev()
@@ -199,6 +202,31 @@ fn skipped_context(
         }
         _ => false,
     }
+}
+
+/// Not in Rector: the value a file under a `config/` directory returns, outside any function or class. Laravel's
+/// `config:cache` writes it out with `var_export()`, which takes an array callable but not the `Closure` a first-class
+/// callable makes.
+fn is_config_value(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
+    ctx.path
+        .parent()
+        .is_some_and(|dir| dir.components().any(|c| c.as_os_str() == "config"))
+        && ancestors
+            .iter()
+            .any(|a| matches!(a, Node::Return(_) | Node::Statement(Statement::Return(_))))
+        && !ancestors.iter().any(|a| {
+            matches!(
+                a,
+                Node::Function(_)
+                    | Node::Method(_)
+                    | Node::Closure(_)
+                    | Node::ArrowFunction(_)
+                    | Node::Class(_)
+                    | Node::AnonymousClass(_)
+                    | Node::Trait(_)
+                    | Node::Enum(_)
+            )
+        })
 }
 
 fn argument_skipped(
