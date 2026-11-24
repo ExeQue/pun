@@ -8298,6 +8298,25 @@
       "ported": true
     },
     {
+      "id": "lint/laravel/prefer-forwards-calls",
+      "command": "lint",
+      "group": "laravel",
+      "summary": "Replaces the use of call_user_func and call_user_func_array method with the CallForwarding trait",
+      "enabled": [],
+      "fix": "unsafe",
+      "ecosystem": "laravel",
+      "tools": [
+        "rector",
+        "rector-laravel"
+      ],
+      "upstream": [
+        "RectorLaravel\\Rector\\Class_\\UseForwardsCallsTraitRector",
+        "UseForwardsCallsTrait",
+        "UseForwardsCallsTraitRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/laravel/prefer-guarded-attribute",
       "command": "lint",
       "group": "laravel",

@@ -10,6 +10,7 @@ mod class_member_rules;
 mod conditional_helpers;
 mod document_string;
 mod factory_classes;
+mod forwards_calls;
 mod helper_calls;
 mod names;
 mod no_app_array_access;
@@ -210,6 +211,7 @@ rules! {
         upgrade_models => PreferFactoryStateMethods,
         upgrade_models => PreferModelFactoryMethod::default(),
         factory_classes => PreferFactoryClasses::default(),
+        forwards_calls => PreferForwardsCalls,
     }
 }
 

@@ -12220,9 +12220,11 @@
         "name": "UseForwardsCallsTrait",
         "tool": "rector-laravel",
         "url": "https://getrector.com/rule-detail/use-forwards-calls-trait-rector",
-        "rules": [],
-        "note": "in no rector-laravel/Pest set",
-        "unsupported": true
+        "rules": [
+          "lint/laravel/prefer-forwards-calls"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ValidationRuleArrayStringValueToArray",

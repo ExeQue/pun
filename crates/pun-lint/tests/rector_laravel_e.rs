@@ -1,5 +1,5 @@
 //! rector-laravel 2.7.3's own fixtures for its upgrade rules below Laravel 12, its package upgrade rules below the
-//! current majors, its legacy-factories and Lumen rules, copied verbatim from driftingly/rector-laravel at 699f25b
+//! current majors, its legacy-factories and Lumen rules and UseForwardsCallsTraitRector, copied verbatim from driftingly/rector-laravel at 699f25b
 //! (tests/Rector/...) into tests/rector/<Rector class>/Fixture (and its Source/), with rector-laravel's stubs/
 //! (tests/rector-laravel-stubs) known beside them. Oracle/ holds extra inputs with what Rector 2.8.4 and
 //! rector-laravel 2.7.3 (`.oracle/rector-ecosystem`, the rule alone, `phpVersion(80400)`, the stubs and Source/ on
@@ -10,7 +10,8 @@
 //!
 //! Pun/ holds the documented cases where Pun differs. UnifyModelDatesWithCastsRector/Pun/skip_constant_date: Pun reads
 //! only string literals in `$dates` and leaves a model that names a class constant alone, where Rector resolves the
-//! constant.
+//! constant. UseForwardsCallsTraitRector/Pun/dynamic_method_name: Pun leaves a call to `$this->{$m}(...)` alone, where
+//! Rector writes the variable's name as the method.
 
 use std::path::{Path, PathBuf};
 
@@ -22,9 +23,9 @@ use pun_lint::rules::{
     NoFakerPropertyAccess, PreferAssertSeeHtml, PreferAssertSentTimes, PreferAttributeAccessor,
     PreferCastsMethodFix, PreferComputedAttribute, PreferDateCasts, PreferDeferrableProvider,
     PreferDispatchSync, PreferFacadeFake, PreferFactoryClasses, PreferFactoryStateMethods,
-    PreferFakeHelper, PreferFakeOverExpects, PreferGeometryColumn, PreferMiddlewareArray,
-    PreferModelFactoryMethod, PreferPermanentRedirect, PreferQueueableTrait, PreferStripeMethod,
-    PreferUrlAttribute, PreferUsesArray, ReplaceEventStringWithConstant,
+    PreferFakeHelper, PreferFakeOverExpects, PreferForwardsCalls, PreferGeometryColumn,
+    PreferMiddlewareArray, PreferModelFactoryMethod, PreferPermanentRedirect, PreferQueueableTrait,
+    PreferStripeMethod, PreferUrlAttribute, PreferUsesArray, ReplaceEventStringWithConstant,
 };
 
 fn stubs() -> PathBuf {
@@ -280,4 +281,9 @@ fn factory_definition() {
         80400,
         &[&stubs()],
     );
+}
+
+#[test]
+fn use_forwards_calls_trait() {
+    check(PreferForwardsCalls, "UseForwardsCallsTraitRector");
 }
