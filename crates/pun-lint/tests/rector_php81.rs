@@ -7,10 +7,10 @@ use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible,
-    PreferEnumCaseOverSpatieCall, PreferEnumFrom, PreferFirstClassCallableArgument,
-    PreferFirstClassCallableOverArray, PreferFirstClassCallableOverArrowFunction,
-    PreferFirstClassCallableOverClosure, PreferNativeEnumOverMyCLabs, PreferNativeEnumOverSpatie,
-    PreferReadonlyProperty,
+    PreferEnumCaseOverMyCLabsCall, PreferEnumCaseOverSpatieCall, PreferEnumFrom,
+    PreferFirstClassCallableArgument, PreferFirstClassCallableOverArray,
+    PreferFirstClassCallableOverArrowFunction, PreferFirstClassCallableOverClosure,
+    PreferNativeEnumOverMyCLabs, PreferNativeEnumOverSpatie, PreferReadonlyProperty,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -129,5 +129,13 @@ fn read_only_property() {
     check(
         || Box::new(PreferReadonlyProperty),
         "ReadOnlyPropertyRector",
+    );
+}
+
+#[test]
+fn my_c_labs_method_call_to_enum_const() {
+    check(
+        || Box::new(PreferEnumCaseOverMyCLabsCall),
+        "MyCLabsMethodCallToEnumConstRector",
     );
 }

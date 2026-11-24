@@ -97,7 +97,7 @@ fn case_name(method: &ClassLikeMemberSelector<'_>) -> Option<String> {
 }
 
 /// `createClassConstFetch()`'s class: `self`, `static` and `parent` as written, any other name fully qualified.
-fn class_name(ancestors: &[Node<'_, '_>], class: &Expression<'_>) -> Option<String> {
+pub(super) fn class_name(ancestors: &[Node<'_, '_>], class: &Expression<'_>) -> Option<String> {
     match unparenthesize(class) {
         Expression::Identifier(id) => Some(format!("\\{}", resolve_class_name(ancestors, id))),
         Expression::Self_(_) => Some("self".to_string()),
