@@ -42,7 +42,8 @@ pub(super) use extensions::{Functions as AppFunctions, Methods as AppMethods};
 pub(super) use factories::has_magic_method as factory_magic_method;
 pub(crate) use forwards::late_builder;
 pub(super) use forwards::{
-    ModelForwards, ScopeStaticCalls, Tap, builder_name, facade_mixin_method, with_method_class,
+    ModelForwards, ScopeStaticCalls, Tap, builder_name, facade_mixin_method, facade_root_lacks,
+    with_method_class,
 };
 pub(super) use helpers::{
     AbortIf, ContainerOffsets, Functions as HelperFunctions, Methods as HelperMethods,

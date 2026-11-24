@@ -519,7 +519,10 @@ pub(super) fn check_static_method<'arena>(
             return;
         }
         if !known
-            && (c.level == 0 || call.is_some() && c.larastan.is_some())
+            && (c.level == 0
+                || call.is_some()
+                    && c.larastan.is_some()
+                    && !super::larastan::facade_root_lacks(c, class, name.value))
             && members::method(c, class, b"__callStatic").is_some()
             || call.is_some()
                 && !matches!(

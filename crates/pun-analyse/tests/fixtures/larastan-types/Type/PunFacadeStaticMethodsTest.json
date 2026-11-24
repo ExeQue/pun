@@ -1,0 +1,41 @@
+{
+    "test": "Type/PunFacadeStaticMethodsTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-facade-static-methods.php",
+            "declares": [
+                "punfacadestaticmethods\\calls"
+            ],
+            "asserts": [],
+            "errors": [
+                {
+                    "line": 14,
+                    "identifier": "staticMethod.notFound",
+                    "message": "Call to an undefined static method Illuminate\\Support\\Facades\\Cache::doesNotExist().",
+                    "tip": null
+                },
+                {
+                    "line": 15,
+                    "identifier": "staticMethod.notFound",
+                    "message": "Call to an undefined static method Illuminate\\Support\\Facades\\DB::doesNotExist().",
+                    "tip": null
+                },
+                {
+                    "line": 16,
+                    "identifier": "staticMethod.notFound",
+                    "message": "Call to an undefined static method Illuminate\\Support\\Facades\\Storage::doesNotExist().",
+                    "tip": null
+                },
+                {
+                    "line": 17,
+                    "identifier": "staticMethod.notFound",
+                    "message": "Call to an undefined static method Illuminate\\Support\\Facades\\Auth::doesNotExist().",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}

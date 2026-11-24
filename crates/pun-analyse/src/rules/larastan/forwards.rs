@@ -932,6 +932,27 @@ fn facade_mixin(
     None
 }
 
+/// FacadesMethodsExtension finds a facade's static method on its root's native methods, so a call that neither the
+/// facade's `@method` tags nor its root declare is undefined. A root Pun cannot resolve keeps the call unchecked.
+pub(crate) fn facade_root_lacks(
+    c: &super::super::Checker,
+    class: &mago_codex::metadata::class_like::ClassLikeMetadata,
+    method: &[u8],
+) -> bool {
+    let Some(larastan) = c.larastan else {
+        return false;
+    };
+    if !c.codebase.is_instance_of(class.name.as_bytes(), FACADE) {
+        return false;
+    }
+    let facade = String::from_utf8_lossy(class.original_name.as_bytes());
+    larastan
+        .macros
+        .facade_root(&larastan.app, &facade)
+        .and_then(|root| c.codebase.get_class_like(root.as_bytes()))
+        .is_some_and(|root| super::super::members::method(c, root, method).is_none())
+}
+
 pub(crate) fn facade_mixin_method<'a>(
     c: &super::super::Checker<'a, '_>,
     class: &'a mago_codex::metadata::class_like::ClassLikeMetadata,

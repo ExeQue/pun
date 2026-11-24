@@ -33,7 +33,9 @@
 //! Type/PunDynamicStaticCallTypesTest.json (the receiver types `staticMethod.dynamicCall` sees: a closure parameter
 //! narrowed by a nested callable, a relation-forwarded callback's `static`, a call after a nullsafe link, `when()`
 //! returning the relation, a stored closure sent to a union, a macro over an `@method` tag) has the config and
-//! PHPStan run of PunDynamicStaticCallsTest.
+//! PHPStan run of PunDynamicStaticCallsTest. Type/PunFacadeStaticMethodsTest.json (`staticMethod.notFound` on a
+//! method that neither a facade's `@method` tags nor its root declare) has errors from PHPStan 2.3.7 with Larastan
+//! 3.15.0 at level 8 in a Laravel 13 app.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
