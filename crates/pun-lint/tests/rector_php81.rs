@@ -7,7 +7,8 @@ use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoClosureFromCallable, NoNullPregSplitLimit, NoReflectionSetAccessible,
-    PreferFirstClassCallableArgument,
+    PreferFirstClassCallableArgument, PreferFirstClassCallableOverArray,
+    PreferFirstClassCallableOverArrowFunction, PreferFirstClassCallableOverClosure,
 };
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
@@ -44,5 +45,29 @@ fn null_to_strict_int_preg_split_limit_arg() {
     check(
         || Box::new(NoNullPregSplitLimit),
         "NullToStrictIntPregSlitFuncCallLimitArgRector",
+    );
+}
+
+#[test]
+fn array_to_first_class_callable() {
+    check(
+        || Box::new(PreferFirstClassCallableOverArray),
+        "ArrayToFirstClassCallableRector",
+    );
+}
+
+#[test]
+fn arrow_function_delegating_call_to_first_class_callable() {
+    check(
+        || Box::new(PreferFirstClassCallableOverArrowFunction),
+        "ArrowFunctionDelegatingCallToFirstClassCallableRector",
+    );
+}
+
+#[test]
+fn closure_delegating_call_to_first_class_callable() {
+    check(
+        || Box::new(PreferFirstClassCallableOverClosure),
+        "ClosureDelegatingCallToFirstClassCallableRector",
     );
 }
