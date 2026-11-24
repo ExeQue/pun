@@ -1,3 +1,10 @@
 pub(super) mod no_call_user_method;
+pub(super) mod no_list_from_string;
+pub(super) mod prefer_braced_variable_variable;
+pub(super) mod prefer_coalesce_return;
 pub(super) mod prefer_random_int;
+pub(super) mod prefer_spaceship;
+pub(super) mod prefer_spaceship_return;
+pub(super) mod prefer_static_method_call;
+pub(super) mod prefer_throwable_handler;
 pub(super) mod prefer_time;

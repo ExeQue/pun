@@ -7290,9 +7290,11 @@
         "name": "ExceptionHandlerTypehint",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/exception-handler-typehint-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-throwable-handler"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ExplicitAttributeNamedArgs",
@@ -7624,9 +7626,11 @@
         "name": "IfIssetToCoalescing",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/if-isset-to-coalescing-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-coalesce-return"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "IfToNullCoalescingAssign",
@@ -7640,9 +7644,11 @@
         "name": "IfToSpaceship",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/if-to-spaceship-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-spaceship-return"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "InlineArrayReturnAssign",
@@ -7780,9 +7786,11 @@
         "name": "ListSplitString",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/list-split-string-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/no-list-from-string"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ListSwapArrayOrder",
@@ -10480,17 +10488,21 @@
         "name": "TernaryToSpaceship",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-spaceship-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-spaceship"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ThisCallOnStaticMethodToStaticCall",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/this-call-on-static-method-to-static-call-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-static-method-call"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ThrowWithPreviousException",
@@ -10784,9 +10796,11 @@
         "name": "WrapVariableVariableNameInCurlyBraces",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/wrap-variable-variable-name-in-curly-braces-rector",
-        "rules": [],
-        "note": "only in php52..php81 upgrade sets (below php82)",
-        "unsupported": true
+        "rules": [
+          "lint/php-7.0/prefer-braced-variable-variable"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "AbortIf",

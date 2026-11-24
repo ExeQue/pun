@@ -6,7 +6,11 @@
 use crate::common::run_class;
 use crate::rector_refactor::everywhere;
 use pun_lint::Rule;
-use pun_lint::rules::{NoCallUserMethod, PreferRandomInt, PreferTime};
+use pun_lint::rules::{
+    NoCallUserMethod, NoListFromString, PreferBracedVariableVariable, PreferCoalesceReturn,
+    PreferRandomInt, PreferSpaceship, PreferSpaceshipReturn, PreferStaticMethodCall,
+    PreferThrowableHandler, PreferTime,
+};
 
 fn check(make: fn() -> Box<dyn Rule>, class: &str) {
     run_class(vec![make()], class);
@@ -28,5 +32,52 @@ fn rename_mktime_without_args_to_time() {
     check(
         || Box::new(PreferTime),
         "RenameMktimeWithoutArgsToTimeRector",
+    );
+}
+
+#[test]
+fn exception_handler_typehint() {
+    check(
+        || Box::new(PreferThrowableHandler),
+        "ExceptionHandlerTypehintRector",
+    );
+}
+
+#[test]
+fn if_isset_to_coalescing() {
+    check(
+        || Box::new(PreferCoalesceReturn),
+        "IfIssetToCoalescingRector",
+    );
+}
+
+#[test]
+fn if_to_spaceship() {
+    check(|| Box::new(PreferSpaceshipReturn), "IfToSpaceshipRector");
+}
+
+#[test]
+fn list_split_string() {
+    check(|| Box::new(NoListFromString), "ListSplitStringRector");
+}
+
+#[test]
+fn ternary_to_spaceship() {
+    check(|| Box::new(PreferSpaceship), "TernaryToSpaceshipRector");
+}
+
+#[test]
+fn this_call_on_static_method_to_static_call() {
+    check(
+        || Box::new(PreferStaticMethodCall),
+        "ThisCallOnStaticMethodToStaticCallRector",
+    );
+}
+
+#[test]
+fn wrap_variable_variable_name_in_curly_braces() {
+    check(
+        || Box::new(PreferBracedVariableVariable),
+        "WrapVariableVariableNameInCurlyBracesRector",
     );
 }

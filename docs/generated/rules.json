@@ -10043,6 +10043,66 @@
       "ported": true
     },
     {
+      "id": "lint/php-7.0/no-list-from-string",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "list() cannot split string directly anymore, use str_split()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ListSplitString",
+        "ListSplitStringRector",
+        "Rector\\Php70\\Rector\\Assign\\ListSplitStringRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-braced-variable-variable",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Ensure variable variables are wrapped in curly braces",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php70\\Rector\\Variable\\WrapVariableVariableNameInCurlyBracesRector",
+        "WrapVariableVariableNameInCurlyBraces",
+        "WrapVariableVariableNameInCurlyBracesRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-coalesce-return",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Change if with isset and return to coalesce",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "IfIssetToCoalescing",
+        "IfIssetToCoalescingRector",
+        "Rector\\Php70\\Rector\\StmtsAwareInterface\\IfIssetToCoalescingRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-7.0/prefer-random-int",
       "command": "lint",
       "group": "php-7.0",
@@ -10059,6 +10119,86 @@
         "RandomFunction",
         "RandomFunctionRector",
         "Rector\\Php70\\Rector\\FuncCall\\RandomFunctionRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-spaceship",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Use <=> spaceship instead of ternary with same effect",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php70\\Rector\\Ternary\\TernaryToSpaceshipRector",
+        "TernaryToSpaceship",
+        "TernaryToSpaceshipRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-spaceship-return",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Changes if/else to spaceship <=> where useful",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "IfToSpaceship",
+        "IfToSpaceshipRector",
+        "Rector\\Php70\\Rector\\If_\\IfToSpaceshipRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-static-method-call",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Changes $this->call() to static method to static call",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php70\\Rector\\MethodCall\\ThisCallOnStaticMethodToStaticCallRector",
+        "ThisCallOnStaticMethodToStaticCall",
+        "ThisCallOnStaticMethodToStaticCallRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-7.0/prefer-throwable-handler",
+      "command": "lint",
+      "group": "php-7.0",
+      "summary": "Change typehint from Exception to Throwable",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ExceptionHandlerTypehint",
+        "ExceptionHandlerTypehintRector",
+        "Rector\\Php70\\Rector\\FunctionLike\\ExceptionHandlerTypehintRector"
       ],
       "ported": true
     },
