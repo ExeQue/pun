@@ -1,6 +1,7 @@
 import { defineConfig } from "blume";
 import { devAgentation } from "./dev-agentation.ts";
 import { devModulePreload } from "./dev-modulepreload.ts";
+import { ruleTables } from "./rule-tables.ts";
 
 export default defineConfig({
   title: "Pun",
@@ -16,7 +17,7 @@ export default defineConfig({
     site: "https://pun.laravel.cloud",
   },
 
-  integrations: [devModulePreload(), devAgentation()],
+  integrations: [devModulePreload(), devAgentation(), ruleTables()],
 
   // The quickstart was merged into the introduction.
   redirects: [

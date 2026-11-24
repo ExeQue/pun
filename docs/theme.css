@@ -152,7 +152,28 @@
   }
 }
 
-/* A table's first column names a command or rule: keep it on one line so narrow screens wrap the description instead. */
-.prose td:first-child code {
-  white-space: nowrap;
+/* Tables full of rule IDs and upstream names (sets, presets, merged rules, options): Blume's bordered table with
+   smaller code. rule-tables.ts adds <wbr> so IDs break only at "/", "-", ".", "_" or between camelCase words. */
+.prose .blume-table-scroll table { font-size: .875rem; }
+:root .prose .blume-table-scroll td code {
+  font-size: .75rem; line-height: 1.7; white-space: normal; overflow-wrap: break-word;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.prose .blume-table-scroll th { background: var(--blume-muted); }
+.prose .blume-table-scroll td { vertical-align: top; }
+.prose .blume-table-scroll td a { text-decoration: none; }
+.prose .blume-table-scroll td a:hover code { color: var(--blume-accent); }
+/* On phones, tables with three or more columns stack as cards: the first cell on top, the rest as label + value. */
+@media (max-width: 640px) {
+  .prose table.pun-stack, .prose table.pun-stack tbody, .prose table.pun-stack tr { display: block; width: 100%; }
+  .prose table.pun-stack thead { display: none; }
+  .prose table.pun-stack tr { padding: .7rem .85rem; border: 0; }
+  .prose table.pun-stack tr + tr { border-top: 1px solid var(--blume-border); }
+  .prose table.pun-stack td { display: block; position: relative; padding: .1rem 0 .1rem 6.75rem; border: 0; }
+  .prose table.pun-stack td::before {
+    content: attr(data-label); position: absolute; left: 0; width: 6.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--blume-muted-foreground); font-size: .75rem; line-height: 1.9;
+  }
+  .prose table.pun-stack td:first-child { padding: 0 0 .3rem; }
+  .prose table.pun-stack td:first-child::before { content: none; }
 }
