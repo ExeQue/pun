@@ -215,14 +215,16 @@ fn gitlab(findings: &[Finding], general: &[String]) -> String {
     encode(&serde_json::Value::Array(list), true)
 }
 
+/// PHPStan escapes only a message's newlines. A `\r` also ends a workflow command, and a path is a property, so
+/// those get GitHub's own escapes too (`@actions/core`); output differs only when they hold such characters.
 fn github(findings: &[Finding], general: &[String]) -> String {
-    let message = |m: &str| crate::github::mentions(&m.replace('\n', "%0A"));
+    let message = |m: &str| crate::github::mentions(&m.replace('\n', "%0A").replace('\r', "%0D"));
     let mut out = String::new();
     for f in findings {
         let _ = writeln!(
             out,
             "::error file={},line={},col=0::{}",
-            f.rel,
+            crate::github::escape_property(&f.rel),
             line(f),
             message(&f.message)
         );

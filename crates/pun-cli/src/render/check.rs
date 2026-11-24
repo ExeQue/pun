@@ -73,7 +73,8 @@ impl Renderer {
         let location = self.path_link(&item.path, &location);
         let rules: Vec<String> = item.rules.iter().map(|r| self.rule(r)).collect();
         let rule = rules.join(", ");
-        let mut out = match &item.message {
+        let message = item.message.as_deref().map(super::visible);
+        let mut out = match &message {
             Some(m) if self.concise => {
                 format!("   {location}  {rule}  {}\n", self.look.paint(Role::Dim, m))
             }

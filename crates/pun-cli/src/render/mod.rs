@@ -109,9 +109,9 @@ impl Renderer {
     }
 
     pub(crate) fn diff(&self, unified: &str) -> String {
-        enum Row<'a> {
+        enum Row {
             Gap,
-            Line(Option<usize>, Option<usize>, char, &'a str),
+            Line(Option<usize>, Option<usize>, char, String),
         }
         let mut rows = vec![];
         let (mut old, mut new, mut hunks) = (0, 0, 0);
@@ -144,7 +144,7 @@ impl Renderer {
             };
             old += usize::from(sign != '+');
             new += usize::from(sign != '-');
-            rows.push(Row::Line(o, n, sign, text));
+            rows.push(Row::Line(o, n, sign, visible(text)));
         }
         let width = old.max(new).saturating_sub(1).max(1).to_string().len();
         let number = |n: Option<usize>| match n {
@@ -166,7 +166,7 @@ impl Renderer {
                 '-' => self.look.paint(Role::Error, &format!("-{text}")),
                 '+' => self.look.paint(Role::Ok, &format!("+{text}")),
                 _ if text.is_empty() => String::new(),
-                _ => format!(" {}", self.look.paint(Role::Dim, text)),
+                _ => format!(" {}", self.look.paint(Role::Dim, &text)),
             };
             let space = if code.is_empty() { "" } else { " " };
             let _ = writeln!(out, "   {numbers} {bar}{space}{code}");
@@ -195,14 +195,15 @@ impl Renderer {
         });
         let glyph = self.look.paint(role, glyph);
         let rule = self.rule(&problem.rule);
+        let message = visible(&problem.message);
         if self.concise {
             let location = self.path_link(&problem.path, &location);
             let label = label.map_or(String::new(), |l| {
                 format!("  {}", self.look.paint(Role::Dim, l))
             });
-            return format!(" {glyph} {location}  {rule}  {}{label}\n", problem.message);
+            return format!(" {glyph} {location}  {rule}  {message}{label}\n");
         }
-        let mut out = format!(" {glyph} {rule}  {}", problem.message);
+        let mut out = format!(" {glyph} {rule}  {message}");
         if let Some(label) = label {
             let used = 5 + problem.rule.chars().count() + problem.message.chars().count();
             let pad = LABEL_COLUMN.saturating_sub(used).max(2);
@@ -277,7 +278,7 @@ impl Renderer {
                 continue;
             };
             let (start, code) = text(line);
-            let shown: String = expand(code).chars().skip(strip).collect();
+            let shown: String = visible(&expand(code)).chars().skip(strip).collect();
             let number = self.look.paint(Role::Dim, &format!("{line:>width$}"));
             out.push_str(format!(" {number}{bar} {shown}").trim_end());
             out.push('\n');
@@ -426,7 +427,8 @@ impl Renderer {
     }
 
     pub(crate) fn path_link(&self, path: &Path, shown: &str) -> String {
-        self.look.link(&file_url(&self.root.join(path)), shown)
+        self.look
+            .link(&file_url(&self.root.join(path)), &visible(shown))
     }
 }
 
@@ -435,6 +437,20 @@ fn level(look: Look, level: Level) -> (&'static str, Role) {
         Level::Error => (look.glyph("✖", "x"), Role::Error),
         Level::Warning => (look.glyph("⚠", "!"), Role::Warning),
     }
+}
+
+/// `text` with each control character a terminal or a CI log would act on (an escape sequence, a line break that
+/// starts a workflow command) shown as a visible character instead, one for one, so columns still line up.
+pub(crate) fn visible(text: &str) -> String {
+    text.chars()
+        .map(|c| match c {
+            '\t' => c,
+            '\0'..='\x1f' => char::from_u32(0x2400 + u32::from(c)).unwrap_or('\u{FFFD}'),
+            '\x7f' => '\u{2421}',
+            '\u{80}'..='\u{9f}' => '\u{FFFD}',
+            c => c,
+        })
+        .collect()
 }
 
 fn expand(text: &str) -> String {

@@ -232,6 +232,34 @@ fn problem_block_sample_tab_and_no_context_after_a_blank_line() {
     );
 }
 
+/// Control characters in the source and in the path are shown, not sent to the terminal or the CI log: an escape
+/// sequence could hide the line, and a line break could start a GitHub workflow command.
+#[test]
+fn problem_block_shows_control_characters() {
+    let source = "<?php\n$a = \"\x1b[2K\x1b[1Ahidden\";\nnope();\n";
+    let start = source.find("nope").unwrap();
+    let p = problem(
+        "analyse/undefined/function",
+        "src/a\n::error file=x.php::forged.php",
+        (start, start + 4),
+        "Function nope not found.",
+        None,
+        Level::Error,
+    );
+    assert_eq!(
+        plain().problem(&p, source, &LineIndex::new(source)),
+        concat!(
+            " ✖ analyse/undefined/function  Function nope not found.\n",
+            "  ╭─ src/a␊::error file=x.php::forged.php:3:1\n",
+            " 2│ $a = \"␛[2K␛[1Ahidden\";\n",
+            " 3│ nope();\n",
+            "  │ ━━━━\n",
+            "  ╰─\n",
+        )
+    );
+    assert_eq!(visible("a\tb\x7f\u{9b}é"), "a\tb␡\u{FFFD}é");
+}
+
 #[test]
 fn problems_are_separated_by_a_blank_line() {
     let (a, b) = (post_controller(), profile_controller());
