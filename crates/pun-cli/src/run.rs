@@ -1166,13 +1166,18 @@ fn add_findings(results: &mut Vec<FileResult>, analysed: &crate::analyse::Analys
         }
         i
     };
+    // One line index per file, not per finding: a file can have thousands of findings.
+    let mut indexes: HashMap<usize, LineIndex> = HashMap::new();
     for f in &analysed.findings {
-        let i = index_of(results, &f.file);
+        let i = index_of(results, f.source());
         let r = &mut results[i];
         if f.rule == "parser-error" && matches!(r.status, Status::Invalid | Status::Lint) {
             continue;
         }
-        let p = crate::analyse::problem(f, &r.source, &LineIndex::new(&r.source));
+        let index = indexes
+            .entry(i)
+            .or_insert_with(|| LineIndex::new(&r.source));
+        let p = crate::analyse::problem(f, &r.source, index);
         r.problems.push(p);
     }
     for m in &analysed.malformed {
