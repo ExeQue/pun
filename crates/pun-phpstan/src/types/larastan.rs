@@ -23,6 +23,34 @@ pub fn with_larastan_strings<R>(
     ANSWER.with(|a| a.set(answer, f))
 }
 
+struct Late;
+impl Family for Late {
+    type Of<'a> = dyn Fn(&str, &[Type]) -> Option<Type> + 'a;
+}
+
+thread_local! {
+    static LATE: Scoped<Late> = Scoped::new();
+}
+
+/// Runs `f` with Larastan's `builder-of` and `relation-of` resolved by `resolve` when a type test compares them.
+pub fn with_larastan_late_types<R>(
+    resolve: &dyn Fn(&str, &[Type]) -> Option<Type>,
+    f: impl FnOnce() -> R,
+) -> R {
+    LATE.with(|l| l.set(resolve, f))
+}
+
+/// LateResolvableTypeTrait: `accepts()` and `isSuperTypeOf()` ask the resolved type, `getResult()`, even while it
+/// holds a template, so `builder-of<TModel, 'rel'>` tests as the builder of `TModel`'s bound's relation.
+pub(super) fn resolve_late(t: &Type) -> Option<Type> {
+    match t {
+        Type::Object(name, args, _) if name == "builder-of" || name == "relation-of" => LATE
+            .with(|l| l.get(|resolve| resolve(name, args)))
+            .flatten(),
+        _ => None,
+    }
+}
+
 fn ask(query: StringQuery<'_>) -> Tri {
     ANSWER
         .with(|a| a.get(|answer| answer(query)))

@@ -2128,9 +2128,12 @@ pub(super) fn with_classes<R>(c: &Checker, f: impl FnOnce() -> R) -> R {
                 .is_some(),
         ),
     };
+    let late = |name: &str, args: &[Type]| super::larastan::resolve_late(c.codebase, name, args);
     symbols::with_classes(&|name| classes.get(name), || {
         symbols::with_functions(&functions, || {
-            pun_phpstan::types::with_larastan_strings(&strings, f)
+            pun_phpstan::types::with_larastan_strings(&strings, || {
+                pun_phpstan::types::with_larastan_late_types(&late, f)
+            })
         })
     })
 }

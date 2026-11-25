@@ -13,6 +13,12 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
     if let T::LateArrayShape(s) = b {
         return is_super_type_of(a, &s.resolve());
     }
+    if let Some(b) = super::larastan::resolve_late(b) {
+        return is_super_type_of(a, &b);
+    }
+    if let Some(a) = super::larastan::resolve_late(a) {
+        return is_super_type_of(&a, b);
+    }
     if let T::SubtractedObject { object, excluded } = b
         && matches!(a, T::Object(..) | T::Static(..) | T::This(_))
     {

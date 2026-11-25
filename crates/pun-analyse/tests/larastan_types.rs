@@ -35,7 +35,9 @@
 //! returning the relation, a stored closure sent to a union, a macro over an `@method` tag) has the config and
 //! PHPStan run of PunDynamicStaticCallsTest. Type/PunFacadeStaticMethodsTest.json (`staticMethod.notFound` on a
 //! method that neither a facade's `@method` tags nor its root declare) has errors from PHPStan 2.3.7 with Larastan
-//! 3.15.0 at level 8 in a Laravel 13 app.
+//! 3.15.0 at level 8 in a Laravel 13 app. Type/PunGenericScopeClosuresTest.json (closures sent to `where()` and
+//! `whereHas()` in scopes generic in their model, where `builder-of<TModel, 'rel'>` holds a template) has errors from
+//! PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

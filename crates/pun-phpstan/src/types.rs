@@ -34,7 +34,7 @@ pub use const_array::ShapeBuilder;
 pub use decide::decide_type;
 pub use describe::float_to_string;
 pub use intersect::intersect;
-pub use larastan::{StringQuery, with_larastan_strings};
+pub use larastan::{StringQuery, with_larastan_late_types, with_larastan_strings};
 pub use late_shape::LateArrayShape;
 pub use reasons::accepts_reasons;
 pub use super_type::{is_super_type_of, to_benevolent};

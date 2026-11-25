@@ -10,7 +10,6 @@ tests/Type/data/view-exists.php:10
 # typed before TRelation is inferred from the argument's key, so they stay `Relation<mixed, mixed, mixed>` or `Builder<Model>`
 tests/Integration/data/bug-2516.php
 tests/Integration/data/bug-2545.php
-tests/Integration/data/builder-of-type.php
 tests/Integration/data/model-builder.php
 tests/Integration/data/model-property-fill.php
 tests/Integration/data/model-with-relations.php

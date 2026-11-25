@@ -84,6 +84,12 @@ pub fn accepts_with(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Tri {
     if let T::LateArrayShape(s) = b {
         return accepts_with(a, &s.resolve(), strict, sm);
     }
+    if let Some(b) = super::larastan::resolve_late(b) {
+        return accepts_with(a, &b, strict, sm);
+    }
+    if let Some(a) = super::larastan::resolve_late(a) {
+        return accepts_with(&a, b, strict, sm);
+    }
     let rec = |x: &Type, y: &Type| accepts_with(x, y, strict, sm);
     let compound = b.is_compound();
     let by = || accepted_by(a, b, strict, sm);

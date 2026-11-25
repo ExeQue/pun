@@ -747,7 +747,7 @@ fn late_of(
     name: &str,
     args: &[pun_phpstan::types::Type],
 ) -> pun_phpstan::types::Type {
-    use pun_phpstan::types::{NeverKind, Type, union};
+    use pun_phpstan::types::{NeverKind, Type};
     fn late(t: &Type) -> bool {
         let found = std::cell::Cell::new(matches!(t, Type::Static(..)));
         t.traverse(&|inner| {
@@ -759,11 +759,46 @@ fn late_of(
     if args.iter().any(late) {
         return Type::Object(name.into(), args.to_vec(), false);
     }
+    resolve_late(codebase, name, args).unwrap_or(Type::Never(NeverKind::Implicit))
+}
+
+/// BuilderOfType::getResult() of a template: the builder of the template's bound, generic in the template itself.
+fn template_builder(
+    codebase: &mago_codex::metadata::CodebaseMetadata,
+    t: &pun_phpstan::types::Type,
+) -> Option<pun_phpstan::types::Type> {
+    use pun_phpstan::types::Type;
+    let Type::Template(template) = t else {
+        return None;
+    };
+    let [model] = template.bound.object_class_names().try_into().ok()?;
+    let builder = forwards::builder_name(codebase, model.as_bytes());
+    let generic =
+        (codebase.get_class_like(builder.as_bytes())).is_some_and(|k| !k.template_types.is_empty());
+    let arguments = if generic { vec![t.clone()] } else { vec![] };
+    Some(Type::Object(
+        crate::text(builder.as_bytes()),
+        arguments,
+        false,
+    ))
+}
+
+/// BuilderOfType's and RelationOfType's `getResult()`, also while an argument holds a template (whose bound's
+/// classes are the models); `None` when nothing resolves.
+pub(crate) fn resolve_late(
+    codebase: &mago_codex::metadata::CodebaseMetadata,
+    name: &str,
+    args: &[pun_phpstan::types::Type],
+) -> Option<pun_phpstan::types::Type> {
+    use pun_phpstan::types::{Type, union};
+    if let ("builder-of", [t @ Type::Template(_)]) = (name, args) {
+        return template_builder(codebase, t);
+    }
     let models: Vec<TAtomic> = (args[0].object_class_names().iter())
         .map(|n| TAtomic::Object(TObject::Named(TNamedObject::new(mago_word::word(n)))))
         .collect();
     if models.is_empty() {
-        return Type::Never(NeverKind::Implicit);
+        return None;
     }
     let model = TUnion::from_vec(models);
     let key = args.get(1).map(|key| match key.constant_strings() {
@@ -791,8 +826,7 @@ fn late_of(
         )
     }
     let arguments: Vec<TUnion> = std::iter::once(model).chain(key).collect();
-    forwards::late_builder(codebase, name.as_bytes(), &arguments)
-        .map_or(Type::Never(NeverKind::Implicit), |t| from(&t))
+    forwards::late_builder(codebase, name.as_bytes(), &arguments).map(|t| from(&t))
 }
 
 fn type_node(
@@ -852,20 +886,10 @@ fn type_node(
         ])),
         // BuilderOfType::getResult() while the type holds a template (the return rules resolve it so): the builder of
         // the template's bound, generic in the template itself
-        ("builder-of", [t @ Type::Template(template)])
-            if RESOLVE_UNRESOLVABLE.with(std::cell::Cell::get)
-                && template.bound.object_class_names().len() == 1 =>
+        ("builder-of", [t @ Type::Template(_)])
+            if RESOLVE_UNRESOLVABLE.with(std::cell::Cell::get) =>
         {
-            let model = &template.bound.object_class_names()[0];
-            let builder = forwards::builder_name(codebase, model.as_bytes());
-            let generic = (codebase.get_class_like(builder.as_bytes()))
-                .is_some_and(|k| !k.template_types.is_empty());
-            let arguments = if generic { vec![t.clone()] } else { vec![] };
-            Some(Type::Object(
-                crate::text(builder.as_bytes()),
-                arguments,
-                false,
-            ))
+            template_builder(codebase, t)
         }
         ("builder-of", [_] | [_, _]) | ("relation-of", [_, _]) => {
             Some(late_of(codebase, name, args))

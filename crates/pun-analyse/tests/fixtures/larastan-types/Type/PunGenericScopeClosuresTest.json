@@ -1,0 +1,36 @@
+{
+    "test": "Type/PunGenericScopeClosuresTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-generic-scope-closures.php",
+            "declares": [
+                "pungenericscopeclosures\\note",
+                "pungenericscopeclosures\\post"
+            ],
+            "asserts": [],
+            "errors": [
+                {
+                    "line": 31,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $column of method Illuminate\\Database\\Eloquent\\Builder<TModel of Illuminate\\Database\\Eloquent\\Model>::where() expects array<int|string, mixed>|(Closure(Illuminate\\Database\\Eloquent\\Builder<TModel>): mixed)|Illuminate\\Contracts\\Database\\Query\\Expression|string, Closure(int): 1 given.",
+                    "tip": null
+                },
+                {
+                    "line": 32,
+                    "identifier": "argument.type",
+                    "message": "Parameter #2 $callback of method Illuminate\\Database\\Eloquent\\Builder<TModel of Illuminate\\Database\\Eloquent\\Model>::whereHas() expects (Closure(builder-of<TModel, 'notes'>): mixed)|null, Closure(int): 1 given.",
+                    "tip": null
+                },
+                {
+                    "line": 46,
+                    "identifier": "argument.type",
+                    "message": "Parameter #2 $callback of method Illuminate\\Database\\Eloquent\\Builder<TModel of PunGenericScopeClosures\\Post>::whereHas() expects (Closure(builder-of<TModel, 'notes'>): mixed)|null, Closure(int): 1 given.",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}
