@@ -360,13 +360,7 @@ impl<'arena> Reader<'_, 'arena> {
         for s in statements {
             match s {
                 Statement::Expression(e) => match e.expression {
-                    Expression::Assignment(a) if a.operator.is_assign() => {
-                        let Expression::Variable(Variable::Direct(v)) = a.lhs else {
-                            return Err(self.unreadable(a.lhs.span()));
-                        };
-                        let value = self.eval(a.rhs)?;
-                        self.vars.borrow_mut().insert(v.name.to_vec(), value);
-                    }
+                    Expression::Assignment(a) if a.operator.is_assign() => self.assign(a)?,
                     Expression::Yield(Yield::Value(y)) => {
                         let list = yielded.get_or_insert_with(Vec::new);
                         let key = Key::Int(next_key(list));
@@ -396,6 +390,7 @@ impl<'arena> Reader<'_, 'arena> {
                         v => Ok(Out::Single(Box::new(rule_of(v)?))),
                     };
                 }
+                Statement::Foreach(f) => self.foreach(f)?,
                 Statement::Noop(_) => {}
                 s => return Err(self.unreadable(s.span())),
             }
@@ -407,6 +402,169 @@ impl<'arena> Reader<'_, 'arena> {
                     .collect::<Result<_, String>>()?,
             )),
             None => Err("a test method returns a rule builder or an iterable of them".into()),
+        }
+    }
+
+    /// `$x = ...;` or `$x[] = ...;`.
+    fn assign(&self, a: &Assignment<'arena>) -> Result<(), String> {
+        let (name, append) = match a.lhs {
+            Expression::Variable(Variable::Direct(v)) => (v.name, false),
+            Expression::ArrayAppend(ArrayAppend {
+                array: Expression::Variable(Variable::Direct(v)),
+                ..
+            }) => (v.name, true),
+            _ => return Err(self.unreadable(a.lhs.span())),
+        };
+        let value = self.eval(a.rhs)?;
+        if !append {
+            self.vars.borrow_mut().insert(name.to_vec(), value);
+            return Ok(());
+        }
+        let mut vars = self.vars.borrow_mut();
+        // PHP creates the array when `$x` is undefined; `$x` holding anything but an array is beyond Pun.
+        match vars
+            .entry(name.to_vec())
+            .or_insert_with(|| V::Array(Vec::new()))
+        {
+            V::Array(list) => {
+                let key = Key::Int(next_key(list));
+                list.push((key, value));
+                Ok(())
+            }
+            _ => Err(self.unreadable(a.span())),
+        }
+    }
+
+    /// A `foreach` over a statically known array whose body only assigns local variables, such as
+    /// `$selectors[] = Selector::classname($class);`.
+    fn foreach(&self, f: &Foreach<'arena>) -> Result<(), String> {
+        let V::Array(list) = self.eval(f.expression)? else {
+            return Err(self.unreadable(f.expression.span()));
+        };
+        let var = |e: &Expression<'arena>| match e {
+            Expression::Variable(Variable::Direct(v)) => Ok(v.name.to_vec()),
+            e => Err(self.unreadable(e.span())),
+        };
+        let (key, value) = match &f.target {
+            ForeachTarget::Value(t) => (None, var(t.value)?),
+            ForeachTarget::KeyValue(t) => (Some(var(t.key)?), var(t.value)?),
+        };
+        for (k, v) in list {
+            if let Some(key) = &key {
+                let k = match k {
+                    Key::Int(i) => V::Int(i),
+                    Key::Str(s) => V::Str(s),
+                };
+                self.vars.borrow_mut().insert(key.clone(), k);
+            }
+            self.vars.borrow_mut().insert(value.clone(), v);
+            for s in f.body.statements() {
+                self.loop_statement(s)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn loop_statement(&self, s: &Statement<'arena>) -> Result<(), String> {
+        match s {
+            Statement::Block(b) => (b.statements.iter()).try_for_each(|s| self.loop_statement(s)),
+            Statement::Expression(e) => match e.expression {
+                Expression::Assignment(a) if a.operator.is_assign() => self.assign(a),
+                _ => Err(self.unreadable(e.span())),
+            },
+            Statement::Noop(_) => Ok(()),
+            s => Err(self.unreadable(s.span())),
+        }
+    }
+
+    /// `array_map($callback, $array)` with one array: the callback applied to each value, keys kept.
+    fn array_map(&self, call: &FunctionCall<'arena>) -> Result<V, String> {
+        let unreadable = || Err(self.unreadable(call.span()));
+        let [Argument::Positional(callback), Argument::Positional(array)] =
+            call.argument_list.arguments.as_slice()
+        else {
+            return unreadable();
+        };
+        if callback.ellipsis.is_some() || array.ellipsis.is_some() {
+            return unreadable();
+        }
+        let V::Array(list) = self.eval(array.value)? else {
+            return unreadable();
+        };
+        (list.into_iter())
+            .map(|(k, v)| Ok((k, self.call(callback.value, v)?)))
+            .collect::<Result<_, String>>()
+            .map(V::Array)
+    }
+
+    /// Calls `callback` with one argument: a Selector factory as a first-class callable or a string, or a closure
+    /// or arrow function of one parameter whose body Pun can read.
+    fn call(&self, callback: &Expression<'arena>, value: V) -> Result<V, String> {
+        let unreadable = || Err(self.unreadable(callback.span()));
+        let selector = |class: &str, method: &str| {
+            if !SELECTOR.contains(&class.to_ascii_lowercase().as_str()) {
+                return unreadable();
+            }
+            let args = vec![Arg {
+                name: None,
+                value: value.clone(),
+            }];
+            (self.selector(&method.to_ascii_lowercase(), args))
+                .map(V::Selector)
+                .map_err(|why| format!("{}: {why}", self.unreadable(callback.span())))
+        };
+        let parameter = |list: &FunctionLikeParameterList<'arena>| match list.parameters.as_slice()
+        {
+            [p] if p.ampersand.is_none() && p.ellipsis.is_none() => Some(p.variable.name.to_vec()),
+            _ => None,
+        };
+        match callback {
+            Expression::PartialApplication(PartialApplication::StaticMethod(p))
+                if p.argument_list.is_first_class_callable() =>
+            {
+                let (Some(class), ClassLikeMemberSelector::Identifier(m)) =
+                    (self.class_name(p.class), &p.method)
+                else {
+                    return unreadable();
+                };
+                selector(&class, &text(m.value))
+            }
+            Expression::Literal(Literal::String(s)) => {
+                let Some((class, method)) = s.value.map(text).and_then(|s| {
+                    let (c, m) = s.split_once("::")?;
+                    Some((c.trim_start_matches('\\').to_string(), m.to_string()))
+                }) else {
+                    return unreadable();
+                };
+                selector(&class, &method)
+            }
+            Expression::ArrowFunction(f) if f.ampersand.is_none() => {
+                let Some(name) = parameter(&f.parameter_list) else {
+                    return unreadable();
+                };
+                // An arrow function sees the enclosing variables; its parameter shadows one of them.
+                let saved = self.vars.borrow_mut().insert(name.clone(), value);
+                let out = self.eval(f.expression);
+                let mut vars = self.vars.borrow_mut();
+                match saved {
+                    Some(v) => vars.insert(name, v),
+                    None => vars.remove(&name),
+                };
+                out
+            }
+            Expression::Closure(c) if c.ampersand.is_none() && c.use_clause.is_none() => {
+                let (Some(name), [Statement::Return(Return { value: Some(e), .. })]) =
+                    (parameter(&c.parameter_list), c.body.statements.as_slice())
+                else {
+                    return unreadable();
+                };
+                // A closure without `use` sees only its parameter.
+                let outer = self.vars.replace(HashMap::from([(name, value)]));
+                let out = self.eval(e);
+                self.vars.replace(outer);
+                out
+            }
+            _ => unreadable(),
         }
     }
 
@@ -518,6 +676,13 @@ impl<'arena> Reader<'_, 'arena> {
                 }
                 unreadable()
             }
+            Expression::Call(Call::Function(call))
+                if matches!(call.function, Expression::Identifier(id)
+                    if self.names.get(&id.span()).rsplit(|b| *b == b'\\').next()
+                        .is_some_and(|n| n.eq_ignore_ascii_case(b"array_map"))) =>
+            {
+                self.array_map(call)
+            }
             Expression::Call(Call::Method(call)) => {
                 let ClassLikeMemberSelector::Identifier(m) = &call.method else {
                     return unreadable();
@@ -571,19 +736,33 @@ impl<'arena> Reader<'_, 'arena> {
     }
 
     fn args(&self, list: &ArgumentList<'arena>) -> Result<Vec<Arg>, String> {
-        (list.arguments.iter())
-            .map(|a| match a {
-                Argument::Positional(p) if p.ellipsis.is_none() => Ok(Arg {
+        let mut out = Vec::new();
+        for a in &list.arguments {
+            match a {
+                Argument::Positional(p) if p.ellipsis.is_none() => out.push(Arg {
                     name: None,
                     value: self.eval(p.value)?,
                 }),
-                Argument::Named(n) => Ok(Arg {
+                // `...$array` passes int keys as positional arguments and string keys as named ones.
+                Argument::Positional(p) => {
+                    let V::Array(list) = self.eval(p.value)? else {
+                        return Err(self.unreadable(a.span()));
+                    };
+                    out.extend(list.into_iter().map(|(k, value)| Arg {
+                        name: match k {
+                            Key::Int(_) => None,
+                            Key::Str(s) => Some(s),
+                        },
+                        value,
+                    }));
+                }
+                Argument::Named(n) => out.push(Arg {
                     name: Some(text(n.name.value)),
                     value: self.eval(n.value)?,
                 }),
-                a => Err(self.unreadable(a.span())),
-            })
-            .collect()
+            }
+        }
+        Ok(out)
     }
 
     fn selector(&self, method: &str, args: Vec<Arg>) -> Result<Selector, String> {
