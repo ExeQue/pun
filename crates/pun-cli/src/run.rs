@@ -1,3 +1,4 @@
+use crate::baseline::{self, Baseline, Kind};
 use crate::cache::{self, Cache};
 use crate::lint_plan::{self, CliLevel, Engine, On, Plan};
 use crate::render::{Look, RunError, Spinner};
@@ -10,6 +11,7 @@ use pun_lint::problem::ignore::{Ignores, covers};
 use pun_lint::problem::{LineIndex, Problem};
 use rayon::prelude::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Write as _;
 use std::io::{IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -33,6 +35,12 @@ pub(crate) struct LintOpts {
     pub(crate) deny_warnings: bool,
     pub(crate) max_warnings: Option<usize>,
     pub(crate) concise: bool,
+    /// `pun lint --generate-baseline [file]`.
+    #[expect(
+        clippy::option_option,
+        reason = "clap: the flag is absent, bare, or given a file"
+    )]
+    pub(crate) generate_baseline: Option<Option<PathBuf>>,
 }
 
 type Run = Result<Option<(Vec<u8>, Vec<&'static str>)>, LintError>;
@@ -244,7 +252,22 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         cache.save(&results.iter().map(|r| r.rel.as_str()).collect());
     }
 
-    let mut unmatched_baseline = 0;
+    let mut unmatched_lint = 0;
+    if lints {
+        if let Some(path) = &lint.generate_baseline
+            && !results.iter().any(FileResult::is_error)
+        {
+            return generate_baseline(a, &cfg, path.as_deref(), &results, started);
+        }
+        if let Some(path) = &cfg.lint.baseline {
+            let b = Baseline::read(&cfg.root.join(path), Kind::Lint)?;
+            let mut left = b.left();
+            apply_baseline(&mut left, &mut results, &mut remaining, dry_run);
+            unmatched_lint = left.unmatched();
+        }
+    }
+
+    let mut unmatched_analyse = 0;
     let mut general = vec![];
     let mut total = files.len();
     if let Stage::Check { .. } = stage
@@ -252,7 +275,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     {
         let paths = selected.as_ref().map_or(&a.paths, |(_, s)| s);
         let analysed = crate::analyse::analyse(&cfg, paths, true)?;
-        unmatched_baseline = analysed.unmatched_baseline;
+        unmatched_analyse = analysed.unmatched_baseline;
         general.clone_from(&analysed.general);
         total = total.max(analysed.files);
         add_findings(&mut results, &analysed, &root);
@@ -269,7 +292,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         elapsed: started.elapsed(),
         github: a.github_actions && human,
         concise: lint.concise,
-        unmatched_baseline,
+        unmatched_baseline: (unmatched_lint, unmatched_analyse),
         general: &general,
     };
     report::emit(
@@ -283,6 +306,107 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     let exit = exit(stage, a, lint, &ctx, &results);
     eprint!("{}", base.profile_report());
     Ok(exit)
+}
+
+/// The message of a token rule's baseline entry: those rules report a file, not each place they change.
+const TOKEN_FIX: &str = "the rule's fix changes this file";
+
+/// The lint rule IDs among a file's fixers.
+fn lint_ids(applied: &[&'static str]) -> impl Iterator<Item = &'static str> {
+    (applied.iter())
+        .map(|n| pun_config::rule_of(n).unwrap_or(n))
+        .filter(|id| id.starts_with("lint/"))
+}
+
+/// Each lint problem of a dry run's `results` as (file, rule, message): the native rules' problems, and each token
+/// rule that would change a file, once per file.
+fn lint_problems(results: &[FileResult]) -> Vec<(&str, &str, &str)> {
+    let mut out = vec![];
+    for r in results {
+        let problems = (r.problems.iter()).filter(|p| p.rule.starts_with("lint/"));
+        out.extend(problems.map(|p| (r.rel.as_str(), p.rule.as_str(), p.message.as_str())));
+        if r.status == Status::Fixed {
+            out.extend(lint_ids(&r.applied).map(|id| (r.rel.as_str(), id, TOKEN_FIX)));
+        }
+    }
+    out
+}
+
+/// Hides the lint problems the baseline covers, after the `@pun-ignore` comments: native problems, and the token
+/// rules a dry run (or `--fix` left for later) would apply. Fixes `--fix` applied are not problems and stay.
+fn apply_baseline(
+    left: &mut baseline::Left,
+    results: &mut [FileResult],
+    remaining: &mut Vec<FileResult>,
+    dry_run: bool,
+) {
+    let drop_fixers = |r: &mut FileResult, left: &mut baseline::Left| {
+        let rel = r.rel.clone();
+        r.applied.retain(|n| {
+            let id = pun_config::rule_of(n).unwrap_or(n);
+            !(id.starts_with("lint/") && left.take(&rel, id, TOKEN_FIX))
+        });
+    };
+    for r in results.iter_mut() {
+        let rel = r.rel.clone();
+        (r.problems)
+            .retain(|p| !(p.rule.starts_with("lint/") && left.take(&rel, &p.rule, &p.message)));
+        if dry_run && r.status == Status::Fixed {
+            drop_fixers(r, left);
+            if r.applied.is_empty() {
+                r.status = Status::NoChanges;
+                r.diff.clear();
+                r.line = 0;
+            }
+        }
+    }
+    for r in remaining.iter_mut() {
+        drop_fixers(r, left);
+    }
+    remaining.retain(|r| !r.applied.is_empty());
+}
+
+/// `pun lint --generate-baseline [file]`: every lint problem into the baseline; nothing is reported, the exit code
+/// is 0.
+fn generate_baseline(
+    a: &FormatArgs,
+    cfg: &Config,
+    path: Option<&Path>,
+    results: &[FileResult],
+    started: std::time::Instant,
+) -> Result<Exit> {
+    let path = match path {
+        Some(path) => path.to_path_buf(),
+        None => PathBuf::from(
+            cfg.lint
+                .baseline
+                .as_deref()
+                .unwrap_or(Kind::Lint.default_file()),
+        ),
+    };
+    let problems = lint_problems(results);
+    Baseline::of(problems.iter().copied()).write(&cfg.root.join(&path), Kind::Lint)?;
+    let counted = crate::agent::count(problems.len(), "problem");
+    let shown = path.display();
+    if a.quiet {
+        return Ok(Exit::Success);
+    }
+    if crate::agent::enabled() {
+        let detail = [format!("baseline {shown} written with {counted}")];
+        print!("{}", crate::agent::render("ok", &detail, "", &[], false));
+        return Ok(Exit::Success);
+    }
+    let mut message = format!("Baseline generated with {counted} in {shown}");
+    if cfg.lint.baseline.as_deref() != Some(path.to_string_lossy().as_ref()) {
+        let _ = write!(
+            message,
+            "; add `baseline = \"{shown}\"` under [lint] in pun.toml to use it"
+        );
+    }
+    let r = crate::render::Renderer::new(Look::stdout(a.color()), &cfg.root);
+    let elapsed = started.elapsed().as_secs_f64();
+    print!("{}", r.done(&format!("{message} ({elapsed:.2}s)")));
+    Ok(Exit::Success)
 }
 
 /// The lint plan, or the config error that names every format and lint rule Pun hasn't ported.
