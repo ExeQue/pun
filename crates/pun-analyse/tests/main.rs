@@ -176,6 +176,7 @@ mod stub_native_types;
 mod template_argument_marker_bounds;
 mod terminated_statement_scopes;
 mod trait_constant_initializers;
+mod trait_inherited_phpdoc;
 mod trait_method_tags;
 mod try_certainty;
 mod undefined_offset_writes;

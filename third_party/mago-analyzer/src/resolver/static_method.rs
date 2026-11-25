@@ -447,7 +447,13 @@ where
     A: Arena,
 {
     let mut method_id = MethodIdentifier::new(defining_class_metadata.original_name, method_name);
-    let declaring_method_id = context.codebase.get_declaring_method_identifier(&method_id);
+    // Pun: a trait method's per-class copy, which carries the PHPDoc the class inherits for it, comes first, as in
+    // the instance method resolver.
+    let declaring_method_id = if context.codebase.get_method_by_id(&method_id).is_some() {
+        method_id
+    } else {
+        context.codebase.get_declaring_method_identifier(&method_id)
+    };
     let scope_private_method = || {
         let scope_metadata = private_member_scope(
             context.codebase,

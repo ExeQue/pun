@@ -340,6 +340,86 @@ pub fn inherit_method_docblocks(
     }
 
     apply_inheritance_work(codebase, inheritance_work, parallel);
+    inherit_trait_method_docblocks(codebase);
+}
+
+/// Pun: PHPStan reflects a trait method per class that uses the trait, with that class as its declaring class, so
+/// PhpDocInheritanceResolver gives the method the PHPDoc of the class's parents and interfaces (spatie/laravel-data's
+/// `BaseData::collect()` takes `BaseData` contract's conditional `@return`). Mago keeps one metadata under the
+/// trait. A class that uses a trait method which inherits something gets its own copy under `(class, method)`, with
+/// the inheritance applied, and so does each descendant that inherits the method from that class. The analyzer
+/// looks a method up under the receiver's class before its declaring class, so it finds the copy.
+fn inherit_trait_method_docblocks(codebase: &mut CodebaseMetadata) {
+    let mut users: Vec<(Word, Word, (Word, Word))> = Vec::new();
+    for (class_name, class_metadata) in &codebase.class_likes {
+        if class_metadata.kind.is_trait() {
+            continue;
+        }
+        for (method_name, declaring) in &class_metadata.declaring_method_ids {
+            let trait_method = (declaring.get_class_name(), *method_name);
+            if class_metadata.appearing_method_ids.get(method_name).map(MethodIdentifier::get_class_name)
+                != Some(*class_name)
+                || !class_metadata.overridden_method_ids.contains_key(method_name)
+                || codebase.function_likes.contains_key(&(*class_name, *method_name))
+                || !codebase.class_likes.get(&trait_method.0).is_some_and(|t| t.kind.is_trait())
+                || !codebase.function_likes.get(&trait_method).is_some_and(|m| !m.flags.is_magic_method())
+            {
+                continue;
+            }
+            users.push((*class_name, *method_name, trait_method));
+        }
+    }
+    users.sort_unstable();
+
+    let mut copied = Vec::new();
+    for (class_name, method_name, trait_method) in users {
+        let Some(copy) = codebase.function_likes.get(&trait_method).cloned() else {
+            continue;
+        };
+        codebase.function_likes.insert((class_name, method_name), copy);
+        let mut work = Vec::new();
+        if let Some(class_metadata) = codebase.class_likes.get(&class_name) {
+            collect_inheritance_work(class_name, class_metadata, codebase, &mut work);
+        }
+        let inheritance = work
+            .into_iter()
+            .find(|item| item.2 == method_name)
+            .and_then(|item| resolve_method_inheritance(codebase, item));
+        match inheritance {
+            Some(inheritance) => {
+                apply_method_inheritance(codebase, inheritance);
+                copied.push((class_name, method_name, trait_method));
+            }
+            None => {
+                codebase.function_likes.remove(&(class_name, method_name));
+            }
+        }
+    }
+
+    for (class_name, method_name, trait_method) in copied {
+        let Some(descendants) = codebase.all_class_like_descendants.get(&class_name) else {
+            continue;
+        };
+        let mut descendants: Vec<Word> = descendants
+            .iter()
+            .copied()
+            .filter(|descendant| {
+                codebase.class_likes.get(descendant).is_some_and(|d| {
+                    d.declaring_method_ids.get(&method_name)
+                        == Some(&MethodIdentifier::new(trait_method.0, trait_method.1))
+                        && d.appearing_method_ids.get(&method_name).map(MethodIdentifier::get_class_name)
+                            == Some(class_name)
+                })
+            })
+            .collect();
+        descendants.sort_unstable();
+        let Some(copy) = codebase.function_likes.get(&(class_name, method_name)).cloned() else {
+            continue;
+        };
+        for descendant in descendants {
+            codebase.function_likes.entry((descendant, method_name)).or_insert_with(|| copy.clone());
+        }
+    }
 }
 
 fn collect_parallel_inheritance_work<T>(

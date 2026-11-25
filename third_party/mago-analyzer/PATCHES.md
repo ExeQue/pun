@@ -4321,3 +4321,11 @@ latter's `lowercase-string` keys unbounded, so they stayed `lowercase-string` an
   `ClosureReturnTypeRector` port would otherwise add `\Countable&\Traversable`, which Rector, reading PHPStan's
   type, cannot write and leaves out
   (`crates/pun-lint/tests/rector/ClosureReturnTypeRector/Pun/iterable_member.php.inc`).
+
+## Trait method copies in static calls
+
+`resolver/static_method.rs` `resolve_method_from_metadata()`: a static call takes the method metadata stored under the
+called class before its declaring class, as the instance method resolver already does. mago-codex's populator stores
+a trait method's per-class copy there when the class inherits a PHPDoc for it (mago-codex's PATCHES.md, "Trait
+methods inheriting the using class's PHPDoc"), so `PostData::collect($rows)` takes the `BaseData` contract's
+conditional return type. A class without a copy still resolves to the declaring method.

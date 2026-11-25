@@ -370,6 +370,11 @@ fn declared<'a>(
         if let Some(Method::User { f, .. }) = found.take()
             && declaring.is_none_or(|d| d.span == f.span)
         {
+            // The populator's per-class copy of a trait method, with the PHPDoc this class inherits for it.
+            let f = codebase
+                .get_method(parent.name.as_bytes(), lower.as_bytes())
+                .filter(|copy| copy.span == f.span)
+                .unwrap_or(f);
             found = Some(user(c, parent, f, *lower));
             active.remove(&parent.name);
             pending.pop();

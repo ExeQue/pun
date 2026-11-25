@@ -1319,3 +1319,16 @@ method does not replace a trait's tag (interfaces come last in the distances). C
 `toJSON(): string` beside `Converter`'s native `?string` and `CarbonInterface::toJSON(): ?string`.
 `pun-analyse/tests/trait_method_tags.rs` covers it. A trait tag over a parent class's native method still loses, as
 upstream decides it.
+
+## Trait methods inheriting the using class's PHPDoc
+
+`populator/docblock.rs` `inherit_trait_method_docblocks()`: PHPStan reflects a trait method once per class that uses
+the trait, with that class as the declaring class, so PhpDocInheritanceResolver gives it the PHPDoc of the class's
+parents and interfaces. spatie/laravel-data's `BaseData` trait method `collect()` takes the `BaseData` contract's
+conditional `@return`. Mago keeps one metadata under the trait. After the regular docblock inheritance, a class that
+uses a trait method which inherits something from its parents or interfaces gets its own copy under
+`(class, method)` with the inheritance applied, and each descendant that inherits the method through that class gets
+the same copy. A class whose parents and interfaces document nothing for the method gets no copy and keeps the
+trait's metadata. The analyzer's method resolvers look a method up under the receiver's class first (see
+mago-analyzer's PATCHES.md, "Trait method copies in static calls"), and `pun-analyse`'s `members::declared()` takes
+the copy over the trait's method. `pun-analyse/tests/trait_inherited_phpdoc.rs` covers it.

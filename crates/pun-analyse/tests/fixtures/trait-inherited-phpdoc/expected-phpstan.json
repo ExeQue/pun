@@ -1,0 +1,80 @@
+{
+    "totals": {
+        "errors": 0,
+        "file_errors": 11
+    },
+    "files": {
+        "types.php": {
+            "errors": 11,
+            "messages": [
+                {
+                    "message": "Dumped type: array<int, TraitInheritedPhpDoc\\Child>",
+                    "line": 90,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: int",
+                    "line": 91,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: array<int, TraitInheritedPhpDoc\\Direct>",
+                    "line": 92,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: array|int",
+                    "line": 93,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: int<1, max>",
+                    "line": 94,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: non-empty-string",
+                    "line": 95,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: int",
+                    "line": 96,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: int",
+                    "line": 97,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: string",
+                    "line": 98,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: array|int",
+                    "line": 99,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                },
+                {
+                    "message": "Dumped type: int",
+                    "line": 100,
+                    "ignorable": false,
+                    "identifier": "phpstan.dumpType"
+                }
+            ]
+        }
+    },
+    "errors": []
+}
