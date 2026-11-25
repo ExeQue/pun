@@ -3,9 +3,10 @@
 // pun's php-rules worker (prototype): runs a project's own PHPStan rule classes (`[analyse] php-rules`) on the files
 // `pun analyse` checks. pun runs it with `php -r`, so no script lands in a temporary directory.
 //
-// It loads the project's vendor/autoload.php and PHPStan's phar (vendor/phpstan/phpstan/phpstan.phar), and boots
-// PHPStan's own container from the php-rules neon files, without a level's config, so the registry holds only the
-// rules those files register and the reflection provider is PHPStan's real one. Each file is parsed with PHPStan's
+// It loads the project's vendor/autoload.php and PHPStan's phar (vendor/phpstan/phpstan/phpstan.phar), boots
+// PHPStan's own container from the php-rules neon files, without a level's config, and runs their `bootstrapFiles`
+// as PHPStan does (Larastan's boots the Laravel app), so the reflection provider is PHPStan's real one. It runs the
+// project's own rules only: rule classes of PHPStan, Larastan and phpat are Pun's native ports (pun_rules()). Each file is parsed with PHPStan's
 // rich parser (so `phpstan.parser.richParserNodeVisitor` services run) and walked; every node goes to the rules
 // whose getNodeType() it is an instance of, with a Scope of which only a subset works (PunScopeBase below).
 // `getType()` asks pun for the type of the expression's byte span, as a PHPDoc type string.
@@ -88,8 +89,40 @@ function pun_boot(array $setup): PHPStan\DependencyInjection\Container
     }
     file_put_contents($neon, implode("\n", $lines) . "\n");
     $factory = new PHPStan\DependencyInjection\ContainerFactory($setup['root']);
+    $container = $factory->create($tmp, [$neon], $setup['paths'], [$setup['root']], $setup['paths'], '0');
+    // as CommandHelper::executeBootstrapFile()
+    foreach ($container->getParameter('bootstrapFiles') as $file) {
+        if (!is_file($file)) {
+            throw new PunUnsupported("Bootstrap file {$file} does not exist.");
+        }
+        try {
+            (static function (string $file) use ($container): void {
+                require_once $file;
+            })($file);
+        } catch (Throwable $e) {
+            throw new PunUnsupported(sprintf('%s thrown in %s on line %d while loading bootstrap file %s: %s', get_class($e), $e->getFile(), $e->getLine(), $file, $e->getMessage()), 0, $e);
+        }
+    }
 
-    return $factory->create($tmp, [$neon], $setup['paths'], [$setup['root']], $setup['paths'], '0');
+    return $container;
+}
+
+/**
+ * The autoloaders registered since `$before` that aren't Composer's, for BetterReflection's autoload-functions source
+ * locator, as bin/phpstan and BootstrapFilesRunner collect them (e.g. Laravel's facade aliases).
+ *
+ * @param list<callable> $before
+ */
+function pun_autoload_functions(array $before): void
+{
+    foreach (spl_autoload_functions() as $after) {
+        if (is_array($after) && ($after[0] instanceof Composer\Autoload\ClassLoader || $after[0] === 'PHPStan\\PharAutoloader')) {
+            continue;
+        }
+        if (!in_array($after, $before, true)) {
+            $GLOBALS['__phpstanAutoloadFunctions'][] = $after;
+        }
+    }
 }
 
 /** The virtual nodes the worker builds. */
@@ -447,11 +480,13 @@ try {
     $pharLoader = require 'phar://' . $setup['phar'] . '/vendor/autoload.php';
     require_once 'phar://' . $setup['phar'] . '/preload.php';
     $pharLoader->unregister();
+    $autoloadersBefore = spl_autoload_functions();
     require_once $setup['autoload'];
     // PHPStan's own classes (and its php-parser) win over the project's copies, as in bin/phpstan
     $pharLoader->register(true);
     pun_define_scope();
     $container = pun_boot($setup);
+    pun_autoload_functions($autoloadersBefore);
     $rules = pun_rules($container);
     PunWorker::send(['ready' => count($rules)]);
 } catch (Throwable $e) {
