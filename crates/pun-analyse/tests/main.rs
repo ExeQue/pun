@@ -15,6 +15,7 @@ mod assignment_target_reads;
 mod assignment_targets;
 mod attribute_reflection;
 mod attributes;
+mod autoload_required_files;
 mod branch_declaration_effects;
 mod builtin_callable_variants;
 mod builtin_method_effects;
