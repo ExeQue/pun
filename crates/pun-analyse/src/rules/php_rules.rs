@@ -11,6 +11,11 @@ use pun_phpstan::types::to_phpdoc_fully_qualified;
 use super::Checker;
 
 pub(super) fn check(c: &Checker, path: &Path, rules: &crate::PhpRules) -> Vec<Error> {
+    // a trait's body is checked with the class that uses it, as PHPStan does
+    let analysed = (c.trait_context.as_ref()).map_or(path, |t| Path::new(&t.class_file));
+    if !rules.covers(analysed) {
+        return Vec::new();
+    }
     let context = (c.trait_context.as_ref()).map(|t| (t.class.as_str(), t.trait_name.as_str()));
     let type_at = |start, end| {
         // only spans Pun recorded a type for answer (driver.rs records every expression's); a span the two parsers

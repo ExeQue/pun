@@ -620,6 +620,7 @@ fn analyse() {
             phpat: None,
             php_rules: vec![],
             php_rules_workers: None,
+            php_rules_paths: vec![],
             rules: a.rules.clone(),
             bleeding_edge: false,
             report_unmatched: true,
@@ -2082,13 +2083,54 @@ fn php_rules_parameter() {
     // `php-rules-workers` reaches it as `punPhpRulesWorkers`; 0 is a config error
     let workers = |n: &str| {
         let d = dir(&[("pun.toml", &format!("{on}php-rules-workers = {n}\n"))]);
-        (load(&d, &Options::default()).map(|c| c.analyse.parameters(&d).get_str("punPhpRulesWorkers").cloned()))
-            .map_err(|e| e.to_string())
+        (load(&d, &Options::default()).map(|c| {
+            c.analyse
+                .parameters(&d)
+                .get_str("punPhpRulesWorkers")
+                .cloned()
+        }))
+        .map_err(|e| e.to_string())
     };
     assert_eq!(workers("3"), Ok(Some(V::Int(3))));
     assert!(workers("0").is_err());
     let off = format!("{on}\n[analyse.rules]\n\"style/project-rule\" = \"off\"\n");
     assert_eq!(rules(&off), None);
+}
+
+/// `[analyse] php-rules-paths` reaches pun-analyse as `punPhpRulesPaths`, absolute; a path outside the project, or
+/// the key without `php-rules`, is a config error.
+#[test]
+fn php_rules_paths_parameter() {
+    use pun_phpstan::Value as V;
+    let d = dir(&[]);
+    let root = d.join("project");
+    std::fs::create_dir_all(root.join("app")).unwrap();
+    std::fs::create_dir_all(d.join("outside")).unwrap();
+    let at = root.join("pun.toml").display().to_string();
+    let load_with = |toml: &str| {
+        std::fs::write(root.join("pun.toml"), toml).unwrap();
+        load(&root, &Options::default()).map_err(|e| e.to_string())
+    };
+    let on = "[analyse]\npreset = \"phpstan/level_0\"\nphp-rules = [\"phpstan.neon\"]\n";
+    let a = load_with(&format!("{on}php-rules-paths = [\"app\"]\n"))
+        .unwrap()
+        .analyse;
+    let want = V::Array(pun_phpstan::Array::list([V::str(
+        root.join("app").to_string_lossy().into_owned(),
+    )]));
+    assert_eq!(a.parameters(&root).get_str("punPhpRulesPaths"), Some(&want));
+    assert_eq!(
+        load_with(&format!("{on}php-rules-paths = [\"../outside\"]\n")).err(),
+        Some(format!(
+            "{at}: [analyse] php-rules-paths: \"../outside\" is outside the project"
+        ))
+    );
+    assert_eq!(
+        load_with("[analyse]\nphp-rules-paths = [\"app\"]\n").err(),
+        Some(format!(
+            "{at}: [analyse] php-rules-paths: name the neon files in php-rules too"
+        ))
+    );
 }
 
 #[test]
