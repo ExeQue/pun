@@ -1548,3 +1548,40 @@ final class HungryRule implements Rule
         "{stderr}"
     );
 }
+
+/// The worker doesn't run phpat's (or PHPStan's, or Larastan's) rule classes, which a project's phpstan.neon brings in
+/// with the extensions it includes: Pun runs them natively.
+#[test]
+fn php_rules_skip_phpat_rules() {
+    let rule = r"<?php
+
+namespace PHPat\Rule;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\Rule;
+
+/** @implements Rule<Node\Stmt\Expression> */
+final class Extra implements Rule
+{
+    public function getNodeType(): string
+    {
+        return Node\Stmt\Expression::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        return $scope->isInFirstLevelStatement() ? [] : [];
+    }
+}
+";
+    let Some(d) = php_rules_project("php-rules-phpat", None) else {
+        return;
+    };
+    std::fs::write(d.join("rules/Extra.php"), rule).unwrap();
+    let neon = format!("{PHP_RULES_NEON}    - PHPat\\Rule\\Extra\n");
+    std::fs::write(d.join("rules.neon"), neon).unwrap();
+    let (out, code) = run(&d, &[PUN, "analyse"], &["--error-format=raw"]);
+    assert!(out.contains("Calls Foo::dangerous() in run()."), "{out}");
+    assert_eq!(code, Some(1), "{out}");
+}

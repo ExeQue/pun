@@ -102,11 +102,11 @@ const PUN_VIRTUAL_NODES = [
 /** @return list<PHPStan\Rules\Rule<PhpParser\Node>> */
 function pun_rules(PHPStan\DependencyInjection\Container $container): array
 {
-    // ponytail: PHPStan's config.neon registers some of its own rules at every level; Pun runs PHPStan's rules
-    // natively, so the worker keeps the rest. Reading the php-rules neon files' `rules:` would be exact.
+    // PHPStan's config.neon, and the Larastan and phpat extensions a project's phpstan.neon includes, register rules
+    // Pun runs natively (or that need PHPStan's full Scope): the worker runs the project's own rules only.
     $rules = array_filter(
         $container->getServicesByTag('phpstan.rules.rule'),
-        static fn (object $rule): bool => !str_starts_with(get_class($rule), 'PHPStan\\'),
+        static fn (object $rule): bool => !preg_match('/^(PHPStan|PHPat|Larastan|NunoMaduro\\\\Larastan)\\\\/', get_class($rule)),
     );
     foreach ($rules as $rule) {
         $type = $rule->getNodeType();
