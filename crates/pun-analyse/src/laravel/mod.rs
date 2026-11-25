@@ -963,9 +963,14 @@ impl ExpressionHook for ModelAttributes {
         let name = String::from_utf8_lossy(property.value);
         let dollar = format!("${name}");
         let mut types = Vec::new();
+        let (mut short_circuits, mut properties, mut non_nullable) = (false, 0, 0);
         for atomic in object_type.types.iter() {
             let ty = match atomic {
-                TAtomic::Null if nullsafe => get_null(),
+                TAtomic::Null if nullsafe => {
+                    short_circuits = true;
+                    types.push(get_null());
+                    continue;
+                }
                 TAtomic::Object(TObject::Named(n))
                     if n.name.as_bytes().eq_ignore_ascii_case(PROXY.as_bytes()) =>
                 {
@@ -1033,9 +1038,11 @@ impl ExpressionHook for ModelAttributes {
                 }
                 _ => return Ok(()),
             };
+            properties += 1;
+            non_nullable += usize::from(!ty.is_nullable());
             types.push(ty);
         }
-        let ty = match types.len() {
+        let mut ty = match types.len() {
             0 => return Ok(()),
             1 => types.pop().unwrap_or_else(get_mixed),
             _ => TUnion::from_vec(
@@ -1045,6 +1052,12 @@ impl ExpressionHook for ModelAttributes {
                     .collect(),
             ),
         };
+        // The `null` of a nullsafe fetch on a null receiver short-circuits the rest of the chain, as
+        // analyze_property_access() marks it, so `$a?->relation->method()` stays nullable
+        // (NullsafeShortCircuitingHelper)
+        if short_circuits && properties > 0 && non_nullable == properties {
+            ty.set_nullsafe_null(true);
+        }
         context.set_expression_type(expr, ty);
         Ok(())
     }
