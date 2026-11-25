@@ -4338,3 +4338,13 @@ PHPStan's CoalesceHandler specifies the fetch on the isset-success edge too, and
 `$row->item_id ?? 'none'` on a `mixed` `$row`, `$row->item_id` stays `mixed`. Pun's `no-always-true-if` port read
 `!($row->item_id !== null)` in a loop as always true from the leftover `null`
 (`crates/pun-lint/tests/rector/RemoveAlwaysTrueIfConditionRector/Oracle/skip_coalesced_property_in_loop.php.inc`).
+## Unpacked appends that may add nothing
+
+`invocation/post_process.rs` `appends_only_possibly_empty_values()`: the prelude's `@param-out` for `array_push()` and
+`array_unshift()` always makes the array non-empty. PHPStan's
+`FuncCallScopeEffectsHelper::getArrayFunctionAppendingType()` instead marks each unpacked value optional when the
+unpacked array may be empty, so `array_unshift($pending, ...($tree[$node] ?? []))` leaves a possibly empty
+`$pending` possibly empty. When every value argument is unpacked from a possibly empty array and the array itself may
+be empty, the out type now also allows `array{}`. Without it, `while ($pending !== [])` around `array_shift()` was
+reported always true and the code after the loop unreachable (shipfastlabs/pun#38, item 1). Covered by
+`crates/pun-analyse/tests/unpacked_appends.rs`, whose expectations are PHPStan 2.3.5's.

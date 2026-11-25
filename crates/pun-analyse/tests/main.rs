@@ -183,6 +183,7 @@ mod try_certainty;
 mod undefined_offset_writes;
 mod unmatched_catch_observation;
 mod unmatched_ignores;
+mod unpacked_appends;
 mod unpacked_keys;
 mod unpacked_overloads;
 mod unsealed_shape_parameters;
