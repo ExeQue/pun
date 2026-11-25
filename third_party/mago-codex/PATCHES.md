@@ -1332,3 +1332,12 @@ the same copy. A class whose parents and interfaces document nothing for the met
 trait's metadata. The analyzer's method resolvers look a method up under the receiver's class first (see
 mago-analyzer's PATCHES.md, "Trait method copies in static calls"), and `pun-analyse`'s `members::declared()` takes
 the copy over the trait's method. `pun-analyse/tests/trait_inherited_phpdoc.rs` covers it.
+
+## Object shapes satisfied by classes with more properties
+
+`ttype/comparator/atomic_comparator.rs` `is_contained_by()`: upstream treats a PHPDoc `object{id: string}` as sealed and
+rejects a class that declares any property the shape does not name. PHPStan's `ObjectShapeType::isSuperTypeOf()` asks
+only for the shape's own properties, so a template `T of object{id: string}` (or `Model&object{id: string}`) infers an
+Eloquent model with `@property string $id`, or a class with `public string $id` beside other properties. The check of
+the class's other properties is removed. A public static property no longer counts as the shape's property, as it is
+not an instance property. `pun-analyse/tests/fixtures/larastan-types/Type/PunObjectShapesTest.json` covers it.

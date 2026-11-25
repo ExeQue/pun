@@ -434,6 +434,11 @@ fn object_shape(a: &Type, props: &[(String, Type, bool)], b: &Type, strict: bool
             .map(|(_, ty, _)| accepts(ty, &property, strict))
             .fold(Tri::Yes, Tri::and);
     }
+    if let Some(result) =
+        super::properties::shape_takes(props, b, true, &|x, y| accepts(x, y, strict))
+    {
+        return result;
+    }
     props
         .iter()
         .filter(|(name, _, optional)| !optional && !class.properties.contains(name))

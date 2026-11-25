@@ -17,6 +17,7 @@ mod intersect;
 mod larastan;
 mod late_shape;
 mod mixed;
+mod properties;
 mod queries;
 mod reasons;
 mod sort;
@@ -36,6 +37,7 @@ pub use describe::float_to_string;
 pub use intersect::intersect;
 pub use larastan::{StringQuery, with_larastan_late_types, with_larastan_strings};
 pub use late_shape::LateArrayShape;
+pub use properties::{FoundProperty, ObjectProperty, with_object_properties};
 pub use reasons::accepts_reasons;
 pub use super_type::{is_super_type_of, to_benevolent};
 pub use templates::{

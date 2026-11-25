@@ -2107,9 +2107,12 @@ fn serialize(t: &Type) -> String {
 pub(super) fn with_classes<R>(c: &Checker, f: impl FnOnce() -> R) -> R {
     let classes = Classes::new(c);
     let functions = |name: &str| c.codebase.get_function(name.as_bytes()).is_some();
+    let properties = |t: &Type, name: &str| c.object_property(t, name);
     let Some(larastan) = c.larastan else {
         return symbols::with_classes(&|name| classes.get(name), || {
-            symbols::with_functions(&functions, f)
+            symbols::with_functions(&functions, || {
+                pun_phpstan::types::with_object_properties(&properties, f)
+            })
         });
     };
     let strings = |query: pun_phpstan::types::StringQuery<'_>| match query {
@@ -2132,7 +2135,9 @@ pub(super) fn with_classes<R>(c: &Checker, f: impl FnOnce() -> R) -> R {
     symbols::with_classes(&|name| classes.get(name), || {
         symbols::with_functions(&functions, || {
             pun_phpstan::types::with_larastan_strings(&strings, || {
-                pun_phpstan::types::with_larastan_late_types(&late, f)
+                pun_phpstan::types::with_larastan_late_types(&late, || {
+                    pun_phpstan::types::with_object_properties(&properties, f)
+                })
             })
         })
     })

@@ -1,0 +1,114 @@
+{
+    "test": "Type/PunObjectShapesTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-object-shapes.php",
+            "declares": [
+                "punobjectshapes\\account",
+                "punobjectshapes\\hidden",
+                "punobjectshapes\\inttag",
+                "punobjectshapes\\magic",
+                "punobjectshapes\\native",
+                "punobjectshapes\\notag",
+                "punobjectshapes\\open",
+                "punobjectshapes\\post",
+                "punobjectshapes\\shared",
+                "punobjectshapes\\tagged",
+                "punobjectshapes\\uses"
+            ],
+            "asserts": [
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110
+            ],
+            "errors": [
+                {
+                    "line": 93,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::shape() expects object{id: string}, PunObjectShapes\\NoTag given.",
+                    "tip": "Property ($id) type string does not accept type int."
+                },
+                {
+                    "line": 94,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::shape() expects object{id: string}, PunObjectShapes\\IntTag given.",
+                    "tip": "Property ($id) type string does not accept type int."
+                },
+                {
+                    "line": 96,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::shape() expects object{id: string}, PunObjectShapes\\Tagged given.",
+                    "tip": "PunObjectShapes\\Tagged does not have property $id."
+                },
+                {
+                    "line": 97,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::shape() expects object{id: string}, PunObjectShapes\\Open given.",
+                    "tip": "PunObjectShapes\\Open does not have property $id."
+                },
+                {
+                    "line": 99,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::shape() expects object{id: string}, PunObjectShapes\\Hidden given.",
+                    "tip": "Property PunObjectShapes\\Hidden::$id is not public."
+                },
+                {
+                    "line": 100,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::shape() expects object{id: string}, PunObjectShapes\\Shared given.",
+                    "tip": "Property PunObjectShapes\\Shared::$id is static."
+                },
+                {
+                    "line": 102,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::named() expects object{name: string}, PunObjectShapes\\NoTag given.",
+                    "tip": "PunObjectShapes\\NoTag might not have property $name."
+                },
+                {
+                    "line": 106,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::bounded() expects object{id: string}, PunObjectShapes\\Tagged given.",
+                    "tip": "PunObjectShapes\\Tagged does not have property $id."
+                },
+                {
+                    "line": 106,
+                    "identifier": "argument.templateType",
+                    "message": "Unable to resolve the template type T in call to method PunObjectShapes\\Uses::bounded()",
+                    "tip": "See: https://phpstan.org/blog/solving-phpstan-error-unable-to-resolve-template-type"
+                },
+                {
+                    "line": 107,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $o of method PunObjectShapes\\Uses::bounded() expects object{id: string}, PunObjectShapes\\Shared given.",
+                    "tip": "Property PunObjectShapes\\Shared::$id is static."
+                },
+                {
+                    "line": 107,
+                    "identifier": "argument.templateType",
+                    "message": "Unable to resolve the template type T in call to method PunObjectShapes\\Uses::bounded()",
+                    "tip": "See: https://phpstan.org/blog/solving-phpstan-error-unable-to-resolve-template-type"
+                },
+                {
+                    "line": 110,
+                    "identifier": "argument.type",
+                    "message": "Parameter #1 $m of method PunObjectShapes\\Uses::model() expects Illuminate\\Database\\Eloquent\\Model&object{id: string}, PunObjectShapes\\Account given.",
+                    "tip": "Property ($id) type string does not accept type int<0, max>."
+                },
+                {
+                    "line": 110,
+                    "identifier": "argument.templateType",
+                    "message": "Unable to resolve the template type TModel in call to method PunObjectShapes\\Uses::model()",
+                    "tip": "See: https://phpstan.org/blog/solving-phpstan-error-unable-to-resolve-template-type"
+                }
+            ]
+        }
+    ]
+}

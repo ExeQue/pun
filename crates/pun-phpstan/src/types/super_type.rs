@@ -331,7 +331,15 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
                 }
                 result
             }
-            T::Object(..) | T::Static(..) | T::This(_) => Tri::Maybe,
+            T::Object(..) | T::Static(..) | T::This(_)
+                if b.object_class_names().iter().any(|c| c == "stdClass") =>
+            {
+                Tri::Maybe
+            }
+            T::Object(..) | T::Static(..) | T::This(_) => {
+                super::properties::shape_takes(props, b, false, &is_super_type_of)
+                    .unwrap_or(Tri::Maybe)
+            }
             _ => Tri::No,
         },
         T::Iterable(key, value) => b

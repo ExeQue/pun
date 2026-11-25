@@ -37,7 +37,10 @@
 //! method that neither a facade's `@method` tags nor its root declare) has errors from PHPStan 2.3.7 with Larastan
 //! 3.15.0 at level 8 in a Laravel 13 app. Type/PunGenericScopeClosuresTest.json (closures sent to `where()` and
 //! `whereHas()` in scopes generic in their model, where `builder-of<TModel, 'rel'>` holds a template) has errors from
-//! PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app.
+//! PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app. Type/PunObjectShapesTest.json (classes passed
+//! to an `object{...}` shape and a template bound to one: `@property` tags only with `__get`, Larastan's model
+//! columns and key, native, protected and static properties, and the property types) has its assertions and errors
+//! from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app with the same `users` table.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

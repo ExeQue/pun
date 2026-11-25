@@ -124,6 +124,89 @@ impl<'a> Checker<'a, '_> {
         })
     }
 
+    /// The instance property `name` of `t` as PHPStan's reflection answers it for `ObjectShapeType`.
+    pub(in super::super) fn object_property(
+        &self,
+        t: &Type,
+        name: &str,
+    ) -> pun_phpstan::types::ObjectProperty {
+        let property = format!("${name}");
+        // ObjectType::hasInstanceProperty() is maybe without a class reflection.
+        if class_of(t).is_some_and(|n| self.class_like(n).found().is_none()) {
+            return pun_phpstan::types::ObjectProperty {
+                has: Tri::Maybe,
+                has_static: false,
+                found: None,
+            };
+        }
+        let has = self.has_property(t, property.as_bytes(), false);
+        pun_phpstan::types::ObjectProperty {
+            has,
+            has_static: self.has_property(t, property.as_bytes(), true).yes(),
+            found: if has.no() {
+                None
+            } else {
+                self.found_property(t, property.as_bytes())
+            },
+        }
+    }
+
+    /// `getInstanceProperty()`: a declared property, then a `@property` tag of a class that allows dynamic
+    /// properties, then Larastan's model property.
+    fn found_property(
+        &self,
+        t: &Type,
+        property: &[u8],
+    ) -> Option<pun_phpstan::types::FoundProperty> {
+        let k = self.class_like(class_of(t)?).found()?;
+        if let Some(d) = self
+            .codebase
+            .get_declaring_property_class(k.name.as_bytes(), property)
+            .and_then(|d| self.codebase.get_class_like(d.as_bytes()))
+            && let Some(p) = d.properties.get(&word(property))
+        {
+            return Some(pun_phpstan::types::FoundProperty {
+                is_public: p.read_visibility.is_public(),
+                is_static: p.flags.is_static(),
+                is_readable: !p.flags.is_virtual_property() || p.hooks.contains_key(&word("get")),
+                readable_type: declared::property_of(self, d, p, &property[1..]),
+            });
+        }
+        if property_access::allows_dynamic_properties(self, k)
+            && let Some(p) = k
+                .magic_property_ids
+                .get(&word(property))
+                .and_then(|d| self.codebase.get_magic_property(d.as_bytes(), property))
+        {
+            return Some(pun_phpstan::types::FoundProperty {
+                is_public: true,
+                is_static: false,
+                is_readable: !p.flags.is_writeonly(),
+                readable_type: p
+                    .type_metadata
+                    .as_ref()
+                    .map_or_else(pun_phpstan::types::mixed, |t| {
+                        self.to_phpstan(&t.type_union)
+                    }),
+            });
+        }
+        let larastan = self.larastan?;
+        let class = k.original_name.as_str_lossy().into_owned();
+        let name = String::from_utf8_lossy(&property[1..]).into_owned();
+        let ty = crate::laravel::accessor_type(self.codebase, &class, &name).or_else(|| {
+            (larastan.models)
+                .get(&class.to_ascii_lowercase())?
+                .get(&name)
+                .cloned()
+        })?;
+        Some(pun_phpstan::types::FoundProperty {
+            is_public: true,
+            is_static: false,
+            is_readable: true,
+            readable_type: self.to_phpstan(&ty),
+        })
+    }
+
     fn property_of(
         &self,
         t: &Type,

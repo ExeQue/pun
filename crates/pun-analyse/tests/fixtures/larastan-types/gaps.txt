@@ -333,3 +333,6 @@ tests/Type/data/redis-driver-predis.php:16
 # a `@var` above a statement that is not an assignment (VarTagChangedExpressionTypeRule's varTag.nativeType) is not ported
 tests/Type/data/abort.php
 tests/Type/data/throw.php
+# a template bound to an `object{...}` shape infers a model from its migration columns only in the argument check: the
+# call's return type comes from Mago's comparator, which sees `@property` tags and declared properties but not columns
+tests/Type/data/pun-object-shapes.php:108

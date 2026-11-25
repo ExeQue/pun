@@ -464,7 +464,7 @@ pub fn is_contained_by(
                     // property governs; otherwise a magic `@property*` tag applies, when the
                     // class has a `__get` to serve it.
                     let declared_property = match real_property {
-                        Some(real) if real.read_visibility.is_public() => Some(real),
+                        Some(real) if real.read_visibility.is_public() && !real.flags.is_static() => Some(real),
                         _ if class_like_metadata.flags.allows_dynamic_properties()
                             || class_like_metadata.declaring_method_ids.contains_key(&word("__get")) =>
                         {
@@ -506,19 +506,8 @@ pub fn is_contained_by(
                     }
                 }
 
-                if container_object_with_properties.sealed {
-                    // For sealed objects, we need to ensure the input object doesn't have
-                    // properties that aren't in the container type
-                    for property_name in class_like_metadata.declaring_property_ids.keys() {
-                        let actual_property_name = word(property_name.as_bytes().trim_prefix(b"$"));
-
-                        // Check if this property exists in our container's known properties
-                        if !container_object_with_properties.known_properties.contains_key(&actual_property_name) {
-                            return false; // Input object has a property not allowed in sealed container
-                        }
-                    }
-                }
-
+                // Pun: PHPStan's ObjectShapeType::isSuperTypeOf() asks only for the shape's properties, so a class
+                // with more properties than a PHPDoc `object{...}` names still satisfies it.
                 true
             }
             TObject::NonexistentParent
