@@ -296,6 +296,8 @@ impl Tokens {
         self.tokens.reserve(raw.len());
         self.found_kinds = vec![0; Kind::ALL.len()];
         self.found_contents.clear();
+        // The transformers below find block ends, so the old code's block pairs must be gone first.
+        *self.blocks.get_mut() = BlockCache::default();
         for r in &raw {
             let tok = Token {
                 id: r.kind,

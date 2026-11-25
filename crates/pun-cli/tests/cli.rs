@@ -419,6 +419,34 @@ fn diffs_like_pint() {
     );
 }
 
+/// `"=" = "align"` re-tokenizes each file mid-run; on these two (from #39 and #40) the transformers then read block
+/// pairs left over from the previous code, so `format` hung on the first and panicked on the second. Pint's
+/// `no_unused_imports` is off because in Pun it is a lint rule.
+#[test]
+fn aligns_equals_like_pint() {
+    let Some(oracle) = oracle() else { return };
+    let cx = Ctx { oracle };
+    let dir = scratch("cli", "align");
+    let tree = [
+        ("composer.json", r#"{"require":{"php":"^8.4"}}"#),
+        (
+            "pint.json",
+            r#"{"preset":"laravel","rules":{"no_unused_imports":false,"binary_operator_spaces":{"default":"single_space","operators":{"=>":"align","=":"align","|":"no_space"}}}}"#,
+        ),
+        (
+            "app/Hang.php",
+            include_str!("fixtures/align_equals_hang.php"),
+        ),
+        (
+            "app/Crash.php",
+            include_str!("fixtures/align_equals_crash.php"),
+        ),
+    ];
+    for args in [&[][..], &["--test", "--format=json"]] {
+        cx.same(&dir, &tree, &[], args, &[], b"");
+    }
+}
+
 /// A report or baseline path that is a symlink in the project leading out of it is refused, and the file it leads to
 /// keeps its content; a link outside the project (`/dev/stdout`) is the user's own and is written through.
 #[test]
