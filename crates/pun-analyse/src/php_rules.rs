@@ -90,8 +90,9 @@ impl PhpRules {
         let token = format!("\u{1e}pun-php-rules-{}-{nanos}:", std::process::id());
         // `php -r`: the worker needs no file, which a containerized php (lerd) can't read from /tmp
         let code = WORKER.trim_start_matches("<?php");
+        // no memory limit, as PHPStan's `--memory-limit=-1`: php's default 128M doesn't parse a large file
         let child = Command::new("php")
-            .args(["-r", code])
+            .args(["-d", "memory_limit=-1", "-r", code])
             .current_dir(root)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
