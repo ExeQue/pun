@@ -75,6 +75,7 @@ pub(super) fn registry(
     registry.register_method_provider(super::date_format::DateFormat);
     registry.register_method_provider(super::randomizer::Randomizer);
     registry.register_method_provider(super::enum_methods::EnumMethods);
+    registry.register_method_provider(super::exception_codes::ExceptionCodes);
     registry.register_function_provider(super::flip_intersect::FlipIntersect);
     registry
 }

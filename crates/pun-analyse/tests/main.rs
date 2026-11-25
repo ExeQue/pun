@@ -63,6 +63,7 @@ mod duplicate_array_keys;
 mod dynamic_callable_references;
 mod dynamic_methods;
 mod error_marker;
+mod exception_codes;
 mod explicit_mixed_producers;
 mod extended_mixins;
 mod failed_arguments;

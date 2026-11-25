@@ -31,6 +31,7 @@ mod driver;
 mod dynamic_fetch;
 mod enum_methods;
 mod enums;
+mod exception_codes;
 mod facts;
 mod flip_intersect;
 mod function_callable;
