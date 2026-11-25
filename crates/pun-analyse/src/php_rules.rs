@@ -79,6 +79,8 @@ impl Drop for Worker {
 pub struct PhpRules {
     setup: Value,
     root: PathBuf,
+    /// `[analyse] php-rules-paths`: the paths a checked file must be in, when set.
+    only: Option<Vec<PathBuf>>,
     max: usize,
     pool: Mutex<Pool>,
     idle: Condvar,
@@ -97,13 +99,15 @@ struct Pool {
 
 impl PhpRules {
     /// Prepares the workers for the project in `root`: its vendor/autoload.php and vendor/phpstan/phpstan/phpstan.phar,
-    /// the rules the `neon` files register, and `paths` as PHPStan's analysed paths. At most `max` workers run, each
+    /// the rules the `neon` files register, and `paths` as PHPStan's analysed paths (and, with `only`, the only paths
+    /// whose files the rules check). At most `max` workers run, each
     /// started when a file needs it. `cache` is the result cache's file and the caller's part of its run key (Pun's
     /// version, binary and config), or `None` to run without it.
     pub fn start(
         root: &Path,
         neon: &[PathBuf],
         paths: &[PathBuf],
+        only: bool,
         max: usize,
         cache: Option<(PathBuf, &str)>,
     ) -> PhpRules {
@@ -123,6 +127,7 @@ impl PhpRules {
         PhpRules {
             setup,
             root: root.to_path_buf(),
+            only: only.then(|| paths.to_vec()),
             max: max.max(1),
             pool: Mutex::new(Pool::default()),
             idle: Condvar::new(),
@@ -334,6 +339,11 @@ impl PhpRules {
         if self.failure().is_none() {
             cache.save(loaded);
         }
+    }
+
+    /// Whether the rules check `file`, an analysed file: it is in `[analyse] php-rules-paths`, when set.
+    pub(crate) fn covers(&self, file: &Path) -> bool {
+        (self.only.as_ref()).is_none_or(|paths| paths.iter().any(|p| file.starts_with(p)))
     }
 
     /// Why the worker stopped during the run, if it did.

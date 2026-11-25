@@ -95,6 +95,13 @@ impl Analyse {
             if let Some(n) = self.php_rules_workers {
                 p.set(Key::from("punPhpRulesWorkers"), Value::Int(n.into()));
             }
+            if !self.php_rules_paths.is_empty() {
+                let paths = absolute(&self.php_rules_paths).into_iter().map(Value::str);
+                p.set(
+                    Key::from("punPhpRulesPaths"),
+                    Value::Array(Array::list(paths)),
+                );
+            }
         }
     }
 

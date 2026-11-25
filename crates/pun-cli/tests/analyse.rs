@@ -1692,3 +1692,34 @@ fn php_rules_result_cache() {
     assert_eq!(analyse(&[], &[("PUN_NO_CACHE", "1")]).1, all);
     assert_eq!(analyse(&[], &[]), (cold, String::new()));
 }
+
+/// `[analyse] php-rules-paths` keeps the rules to its paths, while the native analysis still covers `[analyse] paths`.
+#[test]
+fn php_rules_paths_keep_the_rules_to_their_paths() {
+    let Some(d) = php_rules_project("php-rules-paths", None) else {
+        return;
+    };
+    let other = "<?php\n\nnamespace App;\n\nclass Other\n{\n    public function run(): void\n    {\n        undefined_fn();\n    }\n}\n";
+    std::fs::create_dir_all(d.join("src/other")).unwrap();
+    std::fs::write(d.join("src/other/b.php"), other).unwrap();
+    let toml = std::fs::read_to_string(d.join("pun.toml")).unwrap();
+    let (all, _, _) = pun(&d, &["--error-format=raw", "--no-cache"], &[]);
+    assert!(
+        all.contains("Calls Foo::dangerous() in run().")
+            && all.contains("Class App\\Other is not final."),
+        "{all}"
+    );
+    std::fs::write(
+        d.join("pun.toml"),
+        format!("{toml}php-rules-paths = [\"src/other\"]\n"),
+    )
+    .unwrap();
+    let (out, err, code) = pun(&d, &["--error-format=raw", "--no-cache"], &[]);
+    assert_eq!(code, Some(1), "{out}{err}");
+    assert!(
+        !out.contains("Calls Foo::dangerous()")
+            && out.contains("Class App\\Other is not final.")
+            && out.contains("Function undefined_fn not found."),
+        "{out}"
+    );
+}
