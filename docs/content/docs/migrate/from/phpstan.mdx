@@ -26,7 +26,7 @@ Run `pun migrate --from phpstan`. It follows the config's includes. That covers 
 | spaze/phpstan-disallowed-calls' or tomasvotruba/type-coverage's `extension.neon` | Built in: `disallowed-calls = "on"` or `type-coverage = "on"` in `[extensions]`. When phpstan.neon doesn't load the package but composer.lock locks it, the switch is `"off"`, because PHPStan doesn't run its rules |
 | A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere. `pun analyse` also reports the check's errors under the lint rule's ID, because the lint rule sees no types and can miss some |
 | `@phpstan-ignore method.notFound` | `@pun-ignore analyse/undefined/method` |
-| Baselines | Not copied. Run `pun analyse --generate-baseline`. |
+| Baselines | Not copied. Run `pun analyse --generate-baseline`, and `pun lint --generate-baseline` for the checks that became lint rules. |
 | `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`, and an `"on"` line for each rule it turns on |
 | `phpVersion: 80400`, or `{min, max}` | `[php] version = "8.4"`, from `min`. A different `max` is reported and skipped |
 | Custom extensions, `rules:` classes, services tagged `phpstan.*` | Reported and skipped, one line each |
