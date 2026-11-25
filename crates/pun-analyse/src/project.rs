@@ -341,7 +341,9 @@ impl Project {
         }
         let neon: Vec<PathBuf> = self.php_rules_config.iter().map(PathBuf::from).collect();
         let workers = (self.php_rules_workers).unwrap_or_else(|| {
-            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get).min(8)
+            std::thread::available_parallelism()
+                .map_or(1, std::num::NonZeroUsize::get)
+                .min(8)
         });
         let rules = crate::PhpRules::start(&self.current_working_directory, &neon, paths, workers);
         self.php_rules = Some(std::sync::Arc::new(rules));

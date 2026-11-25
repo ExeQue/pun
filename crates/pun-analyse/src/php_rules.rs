@@ -126,9 +126,20 @@ impl PhpRules {
         let token = format!("\u{1e}pun-php-rules-{}-{n}-{nanos}:", std::process::id());
         // `php -r`: the worker needs no file, which a containerized php (lerd) can't read from /tmp
         let code = WORKER.trim_start_matches("<?php");
-        // no memory limit, as PHPStan's `--memory-limit=-1`: php's default 128M doesn't parse a large file
+        // no memory limit, as PHPStan's `--memory-limit=-1`: php's default 128M doesn't parse a large file. pcov and
+        // Xdebug off: a php with coverage on (lerd's has pcov.enabled=1) runs the worker about twice as slow, and
+        // PHPStan restarts itself without Xdebug for the same reason
         let child = Command::new("php")
-            .args(["-d", "memory_limit=-1", "-r", code])
+            .args([
+                "-d",
+                "memory_limit=-1",
+                "-d",
+                "pcov.enabled=0",
+                "-d",
+                "xdebug.mode=off",
+                "-r",
+                code,
+            ])
             .current_dir(&self.root)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -152,7 +163,10 @@ impl PhpRules {
 
     /// An idle worker, a new one while fewer than `max` run, or `None` once a worker failed.
     fn checkout(&self) -> Option<Result<Worker, String>> {
-        let mut pool = self.pool.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut pool = self
+            .pool
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         loop {
             if pool.stopped {
                 return None;
@@ -171,7 +185,10 @@ impl PhpRules {
 
     /// Keeps the failure for [`PhpRules::failure`] and stops the pool: Pun can't report half the rules' errors.
     fn fail(&self, e: String) {
-        let mut pool = self.pool.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut pool = self
+            .pool
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         pool.stopped = true;
         pool.idle.clear();
         drop(pool);
@@ -223,7 +240,10 @@ impl PhpRules {
         };
         match ask() {
             Ok(errors) => {
-                let mut pool = self.pool.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut pool = self
+                    .pool
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 if !pool.stopped {
                     pool.idle.push(worker);
                 }
