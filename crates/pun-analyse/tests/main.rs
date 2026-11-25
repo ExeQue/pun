@@ -111,6 +111,7 @@ mod levels;
 mod local_coalesce_declaration_effects;
 mod magic_return_types;
 mod mago;
+mod match_subject_reads;
 mod method_accessories;
 mod method_callable;
 mod method_exists_false;

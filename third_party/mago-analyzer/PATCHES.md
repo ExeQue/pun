@@ -4376,3 +4376,11 @@ AuthsMethodsExtension find methods only, so a property lookup skips those mixins
 `$user->can()` from `App\User` but `$user->email` stays `property.notFound` (shipfastlabs/pun#57). A docblock
 `@mixin` carries its tag's span and is unaffected.
 `pun-analyse/tests/fixtures/larastan-types/Type/PunAuthContractsTest.json` covers it.
+## Match subjects that hold a synthetic variable
+
+`variable_flow/builder.rs` `expression()`: a `match` whose subject has no expression id (`$order?->kind`,
+`$order->kind ?? null`) compares a synthetic `$-tmp-match-` variable in its arms, and that variable carries the
+subject's span. Its flow was recorded under that span, replacing the subject's, so the subject's reads were lost and
+`$order` was reported `variable.unused`, where PHPStan's VariableFlowBuilder reads the subject expression
+(shipfastlabs/pun#48). The synthetic variable records no flow. `crates/pun-analyse/tests/match_subject_reads.rs`
+covers it.
