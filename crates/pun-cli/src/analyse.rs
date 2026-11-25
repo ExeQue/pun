@@ -16,6 +16,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 #[derive(Args, Default, Clone)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one bool per command-line flag"
+)]
 pub(crate) struct AnalyseArgs {
     /// The files or directories to analyse (default: `[analyse] paths`, else `[files] paths`, else the project).
     paths: Vec<PathBuf>,
@@ -38,6 +42,10 @@ pub(crate) struct AnalyseArgs {
     /// Print each finding on one line.
     #[arg(long)]
     concise: bool,
+    /// Run every `[analyse] php-rules` check, without reading or writing their result cache (Pun; also
+    /// `PUN_NO_CACHE=1`).
+    #[arg(long)]
+    no_cache: bool,
     /// `raw`: add each error's identifier, as PHPStan's `-v` does.
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
@@ -170,6 +178,7 @@ fn project(
     cfg: &Config,
     analysed: Vec<PathBuf>,
     analysed_paths: &[PathBuf],
+    no_cache: bool,
 ) -> Result<pun_analyse::Project> {
     use pun_phpstan::ignore::IgnoredErrors;
     use pun_phpstan::{Array, Key, Value};
@@ -245,7 +254,13 @@ fn project(
     project
         .load_phpat()
         .map_err(|e| run_error(format!("[extensions] phpat: {e}"), None))?;
-    project.start_php_rules(&analysed_paths.iter().map(PathBuf::from).collect::<Vec<_>>());
+    let cache = php_rules_cache(cfg, no_cache);
+    project.start_php_rules(
+        &analysed_paths.iter().map(PathBuf::from).collect::<Vec<_>>(),
+        cache
+            .as_ref()
+            .map(|(file, key)| (file.clone(), key.as_str())),
+    );
     let routed = pun_config::identifiers_of_rules(|r| on.contains(r) || lint_on.contains(r));
     project.reported = Some(std::sync::Arc::new(move |id| {
         if method_rules.consistent_constructor
@@ -271,9 +286,31 @@ fn project(
     Ok(project)
 }
 
+/// The php-rules' result cache file, beside the result cache of `pun lint`, and the part of its key that covers Pun and
+/// the config; `None` when the caches are off.
+fn php_rules_cache(cfg: &Config, no_cache: bool) -> Option<(PathBuf, String)> {
+    if crate::cache::disabled(no_cache) {
+        return None;
+    }
+    let file = crate::cache::Cache::default_file(&cfg.root)?;
+    let exe = std::env::current_exe().ok()?;
+    let key = format!(
+        "{} {:?} {cfg:?}",
+        env!("CARGO_PKG_VERSION"),
+        crate::cache::stat(&exe)
+    );
+    Some((file.with_extension("php-rules.json"), key))
+}
+
 /// Analyse `paths` (or the configured paths) under `cfg`: enabled rules only, `@pun-ignore` comments and the
 /// baseline applied (unless `baseline` is false, for `--generate-baseline`).
-pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Result<Analysed> {
+/// `no_cache` runs every php-rules check, without their result cache.
+pub(crate) fn analyse(
+    cfg: &Config,
+    paths: &[PathBuf],
+    use_baseline: bool,
+    no_cache: bool,
+) -> Result<Analysed> {
     // mimalloc returns freed pages to the OS after 100 ms instead of 1 s: the parse trees and scratch of one phase
     // are gone before the next one peaks, which takes 5-7% off the peak RSS of laravel-pint and larastan. A purge
     // already scheduled keeps its 1 s deadline, so the collection runs those now.
@@ -296,11 +333,14 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
     if paths.is_empty() {
         paths.push(cfg.root.clone());
     }
-    let project = project(cfg, files, &paths)?;
+    let project = project(cfg, files, &paths, no_cache)?;
     let analysis =
         pun_analyse::analyse_project(&project).map_err(|e| run_error(e.to_string(), None))?;
-    if let Some(e) = (project.php_rules.as_ref()).and_then(|r| r.failure()) {
-        return Err(run_error(format!("[analyse] php-rules: {e}"), None));
+    if let Some(rules) = &project.php_rules {
+        if let Some(e) = rules.failure() {
+            return Err(run_error(format!("[analyse] php-rules: {e}"), None));
+        }
+        rules.save();
     }
     let project_rule = |id: &str| {
         (project.php_rules.as_ref())
@@ -383,7 +423,7 @@ pub(crate) fn hidden_by_line_ignores(
     files: Vec<PathBuf>,
 ) -> Result<std::collections::HashMap<(String, i64), Vec<&'static str>>> {
     let paths = files.clone();
-    let mut project = project(cfg, files, &paths)?;
+    let mut project = project(cfg, files, &paths, true)?;
     project.options.set(
         pun_analyse::ProjectOptions::REPORT_IGNORES_WITHOUT_COMMENTS,
         true,
@@ -483,7 +523,7 @@ pub(crate) fn run(a: &AnalyseArgs) -> Result<Exit> {
     if let Some(path) = &a.generate_baseline {
         return generate_baseline(a, &cfg, path.as_deref(), started);
     }
-    let analysed = analyse(&cfg, &a.paths, true)?;
+    let analysed = analyse(&cfg, &a.paths, true, a.no_cache)?;
     present(a, &cfg, &analysed, started)
 }
 
@@ -577,7 +617,7 @@ fn generate_baseline(
         Some(path) => path.to_path_buf(),
         None => PathBuf::from(cfg.analyse.baseline.as_deref().unwrap_or(baseline::DEFAULT)),
     };
-    let mut analysed = analyse(cfg, &a.paths, false)?;
+    let mut analysed = analyse(cfg, &a.paths, false, a.no_cache)?;
     if analysed
         .findings
         .iter()

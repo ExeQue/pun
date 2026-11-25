@@ -9,13 +9,13 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 const WORKER: &str = include_str!("php_rules_worker.php");
 
 /// An error a project rule reported.
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub(crate) struct RuleError {
     pub(crate) message: String,
     pub(crate) line: i64,
@@ -84,6 +84,7 @@ pub struct PhpRules {
     idle: Condvar,
     failure: Mutex<Option<String>>,
     identifiers: Mutex<HashSet<String>>,
+    cache: Option<crate::php_rules_cache::Cache>,
 }
 
 #[derive(Default)]
@@ -97,23 +98,37 @@ struct Pool {
 impl PhpRules {
     /// Prepares the workers for the project in `root`: its vendor/autoload.php and vendor/phpstan/phpstan/phpstan.phar,
     /// the rules the `neon` files register, and `paths` as PHPStan's analysed paths. At most `max` workers run, each
-    /// started when a file needs it.
-    pub fn start(root: &Path, neon: &[PathBuf], paths: &[PathBuf], max: usize) -> PhpRules {
+    /// started when a file needs it. `cache` is the result cache's file and the caller's part of its run key (Pun's
+    /// version, binary and config), or `None` to run without it.
+    pub fn start(
+        root: &Path,
+        neon: &[PathBuf],
+        paths: &[PathBuf],
+        max: usize,
+        cache: Option<(PathBuf, &str)>,
+    ) -> PhpRules {
         let path = |p: &Path| p.to_string_lossy().into_owned();
+        let setup = json!({
+            "root": path(root),
+            "autoload": path(&root.join("vendor/autoload.php")),
+            "phar": path(&root.join("vendor/phpstan/phpstan/phpstan.phar")),
+            "neon": neon.iter().map(|n| path(&root.join(n))).collect::<Vec<_>>(),
+            "paths": paths.iter().map(|p| path(p)).collect::<Vec<_>>(),
+        });
+        let cache = cache.map(|(file, key)| {
+            let parts = [key, WORKER, &setup.to_string()];
+            let key = crate::php_rules_cache::run_key(root, neon, &parts);
+            crate::php_rules_cache::Cache::open(file, key)
+        });
         PhpRules {
-            setup: json!({
-                "root": path(root),
-                "autoload": path(&root.join("vendor/autoload.php")),
-                "phar": path(&root.join("vendor/phpstan/phpstan/phpstan.phar")),
-                "neon": neon.iter().map(|n| path(&root.join(n))).collect::<Vec<_>>(),
-                "paths": paths.iter().map(|p| path(p)).collect::<Vec<_>>(),
-            }),
+            setup,
             root: root.to_path_buf(),
             max: max.max(1),
             pool: Mutex::new(Pool::default()),
             idle: Condvar::new(),
             failure: Mutex::new(None),
             identifiers: Mutex::new(HashSet::new()),
+            cache,
         }
     }
 
@@ -202,19 +217,56 @@ impl PhpRules {
 
     /// Runs the rules on `file`, or on the body of a trait it declares in the context of a class that uses it
     /// (`in_trait`: the class and the trait); `type_at(start, end)` answers the worker's type questions with a PHPDoc type. A
-    /// failure stops the pool and is kept for [`PhpRules::failure`].
+    /// failure stops the pool and is kept for [`PhpRules::failure`]. With the result cache, an unchanged check
+    /// answers from it, and a new result is kept with `deps()`, the files it depends on.
     pub(crate) fn check(
         &self,
         file: &Path,
         in_trait: Option<(&str, &str)>,
-        mut type_at: impl FnMut(u32, u32) -> Option<String>,
+        type_at: impl FnMut(u32, u32) -> Option<String>,
+        deps: impl FnOnce() -> Vec<PathBuf>,
     ) -> Vec<RuleError> {
+        let check = (
+            file.to_path_buf(),
+            in_trait.map(|(c, t)| (c.to_string(), t.to_string())),
+        );
+        let errors = match self.cache.as_ref().and_then(|c| c.hit(&check)) {
+            Some(errors) => errors,
+            None => {
+                let Some(errors) = self.run(file, in_trait, type_at) else {
+                    return Vec::new();
+                };
+                if let Some(cache) = &self.cache {
+                    cache.keep(check, deps(), errors.clone());
+                }
+                errors
+            }
+        };
+        let mut ids = self
+            .identifiers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        ids.extend(
+            errors
+                .iter()
+                .map(|e| e.identifier.clone().unwrap_or_default()),
+        );
+        errors
+    }
+
+    /// Runs the rules on one check in a worker; `None` when the pool stopped.
+    fn run(
+        &self,
+        file: &Path,
+        in_trait: Option<(&str, &str)>,
+        mut type_at: impl FnMut(u32, u32) -> Option<String>,
+    ) -> Option<Vec<RuleError>> {
         let mut worker = match self.checkout() {
-            None => return Vec::new(),
+            None => return None,
             Some(Ok(worker)) => worker,
             Some(Err(e)) => {
                 self.fail(e);
-                return Vec::new();
+                return None;
             }
         };
         let mut ask = || -> Result<Vec<RuleError>, String> {
@@ -249,21 +301,38 @@ impl PhpRules {
                 }
                 drop(pool);
                 self.idle.notify_one();
-                let mut ids = self
-                    .identifiers
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner);
-                ids.extend(
-                    errors
-                        .iter()
-                        .map(|e| e.identifier.clone().unwrap_or_default()),
-                );
-                errors
+                Some(errors)
             }
             Err(e) => {
                 self.fail(format!("{}: {e}", file.display()));
-                Vec::new()
+                None
             }
+        }
+    }
+
+    /// Writes the result cache, with the PHP files the workers loaded (their rules and bootstrap files), unless a
+    /// worker failed. The analysis is over, so every worker is idle.
+    pub fn save(&self) {
+        let Some(cache) = &self.cache else {
+            return;
+        };
+        let mut loaded = Vec::new();
+        let mut pool = self
+            .pool
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for worker in &mut pool.idle {
+            let files = (worker.send(&json!({"loaded": true})))
+                .and_then(|()| worker.receive())
+                .map(|mut reply| reply.get_mut("files").map(Value::take).unwrap_or_default());
+            match files.map(serde_json::from_value::<Vec<PathBuf>>) {
+                Ok(Ok(files)) => loaded.extend(files),
+                _ => return,
+            }
+        }
+        drop(pool);
+        if self.failure().is_none() {
+            cache.save(loaded);
         }
     }
 
