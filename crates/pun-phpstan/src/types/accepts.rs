@@ -348,7 +348,7 @@ pub fn accepts_with(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Tri {
             }
         }
         T::Accessory(Accessory::List) => accessory(b.is_list()),
-        T::Accessory(Accessory::NonEmptyArray) => {
+        T::Accessory(Accessory::NonEmptyArray | Accessory::OversizedArray) => {
             accessory(b.is_array().and(b.is_iterable_at_least_once()))
         }
         T::Accessory(Accessory::HasMethod(_)) => {
@@ -525,6 +525,9 @@ fn accepted_by(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Tri {
                 {
                     return Tri::Maybe;
                 }
+            }
+            if b.is_oversized_array().yes() && !result.no() {
+                return Tri::Yes;
             }
             result
         }
