@@ -43,6 +43,9 @@
 //! from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app with the same `users` table.
 //! Type/PunNullsafeRelationsTest.json (a relation property read through `?->`, then a method chain and `??`) has
 //! its assertions from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app.
+//! Type/PunNullableModelColumnsTest.json (a migration column read with `->` on a nullable model, as from
+//! `Collection::first()`) has its assertions and errors from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a
+//! Laravel 13 app with the same `users` table.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

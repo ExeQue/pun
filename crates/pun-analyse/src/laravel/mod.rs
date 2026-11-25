@@ -960,6 +960,13 @@ impl ExpressionHook for ModelAttributes {
         let Some(object_type) = context.get_expression_type(object) else {
             return Ok(());
         };
+        // MutatingScope::getInstancePropertyReflection() reads `->` on the receiver's members that have the
+        // property, so a nullable receiver's `null` adds nothing; only a nullsafe fetch's `null` stays
+        let object_type = if nullsafe || object_type.has_nullsafe_null() || object_type.is_null() {
+            object_type.clone()
+        } else {
+            object_type.remove_null()
+        };
         let name = String::from_utf8_lossy(property.value);
         let dollar = format!("${name}");
         let mut types = Vec::new();
