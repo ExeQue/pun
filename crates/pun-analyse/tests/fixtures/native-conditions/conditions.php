@@ -43,3 +43,14 @@ function implicit($flag): int {
     if ($flag) { return 1; }
     return 2;
 }
+
+/** @param callable(resource): void $consume */
+function closedByCallee(string $path, callable $consume): void {
+    $stream = fopen($path, 'rb');
+    if ($stream === false) { return; }
+    try {
+        $consume($stream);
+    } finally {
+        if (is_resource($stream)) { fclose($stream); }
+    }
+}

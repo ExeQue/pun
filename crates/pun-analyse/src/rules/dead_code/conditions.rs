@@ -442,10 +442,17 @@ fn skipped(e: &Expression) -> bool {
 
 impl Checker<'_, '_> {
     fn constant(&self, e: &Expression) -> Option<bool> {
-        if skipped(unparen(e)) {
+        if skipped(unparen(e)) || self.is_resource_check(e) {
             return None;
         }
         self.truthiness(e)
+    }
+
+    /// PHPStan has no type-specifying extension for `is_resource()`, whose result stays `bool`: a resource can be
+    /// closed (by a callee, for one) while its type stays `resource`.
+    fn is_resource_check(&self, e: &Expression) -> bool {
+        matches!(unparen(e), Expression::Call(Call::Function(f))
+            if matches!(function_of(self, f.function), Some(noop::Function::Builtin(b)) if b.name.eq_ignore_ascii_case("is_resource")))
     }
 
     fn conditions_checked(&self) -> bool {
