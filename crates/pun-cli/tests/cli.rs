@@ -1209,6 +1209,7 @@ operators = "off"
 phpdoc = "off"
 statements = "off"
 strings = "off"
+style = "off"
 types = "off"
 undefined = "off"
 "undefined/method" = { check-function-name-case = true }
