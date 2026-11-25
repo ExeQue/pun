@@ -1349,3 +1349,11 @@ not an instance property. `pun-analyse/tests/fixtures/larastan-types/Type/PunObj
 and keeps the template as the collection's model, giving `Collection<int, TRow of Model>`. mago-analyzer's
 `resolve_union()` calls it (mago-analyzer's PATCHES.md, "`collection-of` returns that hold a template";
 shipfastlabs/pun#38, item 5).
+## Type aliases of a used trait
+
+`ttype/atomic/alias/mod.rs` `TAlias::resolve()`: a trait method analysed in the context of its using class builds its
+inline `@var` types with the using class's name, so `@var list<Node>` named `Catalog`'s alias `Node`, which only the
+trait declares, and resolved to `mixed`. PHPStan resolves the trait's docblocks in the trait's own name scope. An alias
+the class neither declares nor imports is now looked up on the traits it uses (and theirs); a class's own docblocks
+never build such an alias, as its type context does not hold the trait's aliases (shipfastlabs/pun#49).
+`crates/pun-analyse/tests/trait_type_aliases.rs` covers it.
