@@ -101,6 +101,13 @@ fn glob_directories(pattern: &str) -> Vec<String> {
     found
 }
 
+/// MigrationHelper's migration files below `directories`.
+pub(crate) fn migration_files(directories: &[PathBuf]) -> Vec<PathBuf> {
+    files_below(directories, &|path| {
+        path.to_ascii_lowercase().ends_with(".php")
+    })
+}
+
 /// The files below `directories` whose path `matches`, by path; RecursiveDirectoryIterator does not enter a linked
 /// directory.
 fn files_below(directories: &[PathBuf], matches: &dyn Fn(&str) -> bool) -> Vec<PathBuf> {
@@ -458,9 +465,7 @@ fn scan_tables(
         }
     }
     // MigrationHelper::initializeTables(): the migrations on top, by file name (a stable `uasort`)
-    let mut migrations = files_below(app.migrations, &|path| {
-        path.to_ascii_lowercase().ends_with(".php")
-    });
+    let mut migrations = migration_files(app.migrations);
     migrations.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
     for file in migrations
         .iter()

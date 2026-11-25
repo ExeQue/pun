@@ -583,6 +583,11 @@ pub(crate) fn build(
             .flat_map(|e| e.class_aliases())
             .collect(),
     };
+    // Larastan's SchemaAggregator asks PHPStan's reflection about a migration's `Schema` class, which reflects any
+    // autoloaded class: the migrations' names have to reach the vendor classes they use (a facade subclass).
+    let migrations: Vec<PathBuf> = (project.larastan.iter())
+        .flat_map(|l| crate::laravel::migration_files(&l.migration_directories))
+        .collect();
     let mut seen = HashSet::new();
     let mut files: Vec<_> = project
         .analysed
@@ -590,6 +595,7 @@ pub(crate) fn build(
         .map(|p| (p, FileType::Host))
         .chain(project.scanned.iter().map(|p| (p, FileType::Vendored)))
         .chain(project.stubs.iter().map(|p| (p, FileType::Patch)))
+        .chain(migrations.iter().map(|p| (p, FileType::Vendored)))
         .filter(|(p, _)| seen.insert(*p))
         .collect();
     let eager = files.len();

@@ -95,4 +95,10 @@ final class Probe
         dumpType($m[1]->count);
         dumpType($m[1]->open);
     }
+
+    public function facadeSubclass(Models\EnhancedThing $thing): void
+    {
+        dumpType($thing->label);
+        dumpType($thing->body);
+    }
 }

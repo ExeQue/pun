@@ -3,7 +3,9 @@
 //!
 //! tests/fixtures/laravel-schema holds the app files: `database/schema` has MySQL dumps that reach every branch of
 //! iamcal/sql-parser that IamcalSqlParser reads, dumps it fails on, a file that is not a dump and a nested directory;
-//! the migrations sit in two directories a glob matches and in a hidden one it does not.
+//! the migrations sit in two directories a glob matches and in a hidden one it does not. One migration calls
+//! `Schema::create()` through a subclass of the Schema facade that only Composer's autoload map (`packages/tpetry`)
+//! declares, as tpetry/laravel-postgresql-enhanced's facade (#27); its lines come from PHPStan 2.3.7 + Larastan 3.15.0.
 //!
 //! Expected: tests/fixtures/laravel-schema/expected-phpstan.json, PHPStan 2.3.6 + Larastan 3.15.0's errors at level 2
 //! on a Laravel 13.43 app with the same files (its AppServiceProvider calls `App\Support\Macros::register()`), with
@@ -25,6 +27,7 @@ fn analyse(disabled: bool) -> Errors {
     let mut parameters = Array::new();
     parameters.set(Key::from("level"), Parameter::Int(2));
     parameters.set(Key::from("noModelMake"), Parameter::Bool(true));
+    parameters.set(Key::from("fileExtensions"), list(&["php"]));
     parameters.set(
         Key::from("databaseMigrationsPath"),
         list(&[
