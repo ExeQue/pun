@@ -618,12 +618,14 @@ fn analyse() {
             ecosystems: vec![],
             larastan: false,
             phpat: None,
+            php_rules: vec![],
+            php_rules_workers: None,
             rules: a.rules.clone(),
             bleeding_edge: false,
             report_unmatched: true,
         }
     );
-    assert_eq!(a.rules.len(), 151 + 106 + 75 - 11);
+    assert_eq!(a.rules.len(), 152 + 106 + 75 - 11);
     assert!(has(&a, "analyse/undefined/method") && !has(&a, "analyse/types/missing-return-type"));
     let preset = |p: &str, lock: bool| {
         let on = if lock {
@@ -639,17 +641,17 @@ fn analyse() {
         let a = an(&files);
         (a.rules.len(), a.switches)
     };
-    assert_eq!(preset("basic", false), (151, vec![]));
-    assert_eq!(preset("essential", true), (151 + 106, vec![]));
-    assert_eq!(preset("recommended", true), (151 + 106 + 75, vec![]));
+    assert_eq!(preset("basic", false), (152, vec![]));
+    assert_eq!(preset("essential", true), (152 + 106, vec![]));
+    assert_eq!(preset("recommended", true), (152 + 106 + 75, vec![]));
     assert_eq!(
         preset("strict", true),
-        (151 + 106 + 75 + 35, vec!["union-types", "nullables"])
+        (152 + 106 + 75 + 35, vec!["union-types", "nullables"])
     );
     assert_eq!(
         preset("max", false),
         (
-            370 - 15,
+            371 - 15,
             vec![
                 "union-types",
                 "nullables",
@@ -685,7 +687,7 @@ laravel = "on"
             Some("pun-baseline.toml".into())
         )
     );
-    assert_eq!(a.rules.len(), 151 + 2 + 14 - 1);
+    assert_eq!(a.rules.len(), 152 + 2 + 14 - 1);
     let rule = |id: &str| {
         a.rules
             .iter()
@@ -705,7 +707,7 @@ laravel = "on"
     ]);
     assert_eq!(
         (a.rules.len(), a.ecosystems.len()),
-        (151 + 106 + 75 - 11, 0)
+        (152 + 106 + 75 - 11, 0)
     );
 }
 /// `phpstan/level_<n>` runs what `phpstan analyse --level <n>` runs: PHPStan core's rules of that level and below
@@ -748,7 +750,8 @@ fn phpstan_level_presets() {
             below.is_subset(&on),
             "level {level} drops rules of a lower level"
         );
-        for id in &on {
+        // the project's own rules (`php-rules`) run at every level
+        for id in on.iter().filter(|id| *id != crate::PHP_RULES_RULE) {
             assert_eq!(package_of(id), Some("phpstan"), "{id} at level {level}");
         }
         below = on;
@@ -2073,6 +2076,33 @@ fn analyse_parameters() {
         p.get_str("deprecationRulesInstalled"),
         Some(&V::Bool(false))
     );
+}
+
+/// `[analyse] php-rules` reaches pun-analyse as `punPhpRules`, absolute, while its rule is on (at a PHPStan level
+/// preset too), and not at all when the rule is off.
+#[test]
+fn php_rules_parameter() {
+    use pun_phpstan::Value as V;
+    let rules = |toml: &str| {
+        let d = dir(&[("pun.toml", toml)]);
+        let a = load(&d, &Options::default()).unwrap().analyse;
+        let want = V::Array(pun_phpstan::Array::list([V::str(
+            d.join("tests/rules.neon").to_string_lossy().into_owned(),
+        )]));
+        (a.parameters(&d).get_str("punPhpRules").cloned()).map(|p| p == want)
+    };
+    let on = "[analyse]\npreset = \"phpstan/level_0\"\nphp-rules = [\"tests/rules.neon\"]\n";
+    assert_eq!(rules(on), Some(true));
+    // `php-rules-workers` reaches it as `punPhpRulesWorkers`; 0 is a config error
+    let workers = |n: &str| {
+        let d = dir(&[("pun.toml", &format!("{on}php-rules-workers = {n}\n"))]);
+        (load(&d, &Options::default()).map(|c| c.analyse.parameters(&d).get_str("punPhpRulesWorkers").cloned()))
+            .map_err(|e| e.to_string())
+    };
+    assert_eq!(workers("3"), Ok(Some(V::Int(3))));
+    assert!(workers("0").is_err());
+    let off = format!("{on}\n[analyse.rules]\n\"style/project-rule\" = \"off\"\n");
+    assert_eq!(rules(&off), None);
 }
 
 #[test]

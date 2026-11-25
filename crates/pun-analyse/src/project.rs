@@ -86,6 +86,11 @@ pub struct Project {
     /// `parameters.phpat` with the test classes, when phpat is on; [`Project::load_phpat`] reads the tests.
     pub phpat_config: Option<crate::phpat::Config>,
     pub phpat: Option<std::sync::Arc<crate::phpat::Rules>>,
+    /// `[analyse] php-rules`: the neon files whose rules the PHP workers run; [`Project::start_php_rules`] prepares them.
+    pub php_rules_config: Vec<String>,
+    /// `[analyse] php-rules-workers`: the most PHP workers that run them; `None` is the number of cores, at most 8.
+    pub php_rules_workers: Option<usize>,
+    pub php_rules: Option<std::sync::Arc<crate::PhpRules>>,
     pub type_aliases: Vec<(String, String)>,
     pub stubs: Vec<PathBuf>,
     pub reported: Option<Reported>,
@@ -326,6 +331,20 @@ impl Project {
         let rules = crate::phpat::Rules::load(self, config)?;
         self.phpat = Some(std::sync::Arc::new(rules));
         Ok(())
+    }
+
+    /// Prepares the php-rules workers when `php_rules_config` names neon files, with `paths` as PHPStan's analysed
+    /// paths. They start when a file needs them; a worker that can't start fails the run ([`crate::PhpRules::failure`]).
+    pub fn start_php_rules(&mut self, paths: &[PathBuf]) {
+        if self.php_rules_config.is_empty() {
+            return;
+        }
+        let neon: Vec<PathBuf> = self.php_rules_config.iter().map(PathBuf::from).collect();
+        let workers = (self.php_rules_workers).unwrap_or_else(|| {
+            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get).min(8)
+        });
+        let rules = crate::PhpRules::start(&self.current_working_directory, &neon, paths, workers);
+        self.php_rules = Some(std::sync::Arc::new(rules));
     }
 
     pub fn from_config(root: &Path, params: &Array) -> Project {
@@ -617,6 +636,15 @@ impl Project {
             carbon: crate::Carbon::from_params(root, params),
             phpat_config: phpat_config(params),
             phpat: None,
+            php_rules_config: strings(params, "punPhpRules")
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
+            php_rules_workers: match params.get_str("punPhpRulesWorkers") {
+                Some(Value::Int(n)) => usize::try_from(*n).ok(),
+                _ => None,
+            },
+            php_rules: None,
             type_aliases: params
                 .get_str("typeAliases")
                 .and_then(Value::as_array)
@@ -724,6 +752,9 @@ impl Project {
             carbon: None,
             phpat_config: None,
             phpat: None,
+            php_rules_config: Vec::new(),
+            php_rules_workers: None,
+            php_rules: None,
             type_aliases: Vec::new(),
             stubs: Vec::new(),
             reported: None,
