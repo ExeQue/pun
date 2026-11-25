@@ -120,6 +120,10 @@ impl PhpRules {
             "paths": paths.iter().map(|p| path(p)).collect::<Vec<_>>(),
         });
         let cache = cache.map(|(file, key)| {
+            // the setup without the analysed paths: a run on a few files (`pun analyse app/Foo.php`) keeps the cache;
+            // the configured paths and `php-rules-paths` are in the caller's key
+            let mut setup = setup.clone();
+            setup["paths"] = Value::Null;
             let parts = [key, WORKER, &setup.to_string()];
             let key = crate::php_rules_cache::run_key(root, neon, &parts);
             crate::php_rules_cache::Cache::open(file, key)

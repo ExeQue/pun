@@ -1622,8 +1622,8 @@ final class LogRule implements Rule
 
 /// The php-rules' result cache: a second run gives the first one's output byte for byte without running a check;
 /// a changed file runs again with the files that depend on it (a parent class's subclasses, a trait's users, and the
-/// trait in their context); a changed config runs everything, and `--no-cache` and `PUN_NO_CACHE` run everything
-/// without the cache.
+/// trait in their context), also in a run on some of the files; a changed rule or config runs everything, and
+/// `--no-cache` and `PUN_NO_CACHE` run everything without the cache.
 #[test]
 fn php_rules_result_cache() {
     let Some(d) = php_rules_project("php-rules-cache", Some(("LogRule", LOG_RULE))) else {
@@ -1682,6 +1682,11 @@ fn php_rules_result_cache() {
     assert_eq!(analyse(&[], &[]).1, "child.php t.php");
     append("src/base.php");
     assert_eq!(analyse(&[], &[]).1, "base.php child.php t.php");
+    assert_eq!(analyse(&[], &[]).1, "");
+    // a run on some of the files reads and keeps the same cache
+    assert_eq!(analyse(&["src/child.php"], &[]).1, "");
+    append("src/child.php");
+    assert_eq!(analyse(&["src/child.php", "src/t.php"], &[]).1, "child.php t.php");
     assert_eq!(analyse(&[], &[]).1, "");
     append("rules/FinalClassRule.php");
     assert_eq!(analyse(&[], &[]).1, all);
