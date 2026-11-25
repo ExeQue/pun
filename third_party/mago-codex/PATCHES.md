@@ -1341,3 +1341,11 @@ only for the shape's own properties, so a template `T of object{id: string}` (or
 Eloquent model with `@property string $id`, or a class with `public string $id` beside other properties. The check of
 the class's other properties is removed. A public static property no longer counts as the shape's property, as it is
 not an instance property. `pun-analyse/tests/fixtures/larastan-types/Type/PunObjectShapesTest.json` covers it.
+
+## `collection-of` of a template model
+
+`ttype/expander.rs` `collection_of_unresolvable()`: Larastan's `CollectionOfType::getResult()` resolves
+`collection-of<TModel>` while `TModel` is still a template. It picks the collection class from the template's bound
+and keeps the template as the collection's model, giving `Collection<int, TRow of Model>`. mago-analyzer's
+`resolve_union()` calls it (mago-analyzer's PATCHES.md, "`collection-of` returns that hold a template";
+shipfastlabs/pun#38, item 5).

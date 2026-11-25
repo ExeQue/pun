@@ -46,6 +46,9 @@
 //! Type/PunNullableModelColumnsTest.json (a migration column read with `->` on a nullable model, as from
 //! `Collection::first()`) has its assertions and errors from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a
 //! Laravel 13 app with the same `users` table.
+//! Type/PunTemplateRelationCollectionsTest.json (`get()` on a `HasMany` whose related model is a template, a
+//! `collection-of` holding the template) has its assertion from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a
+//! Laravel 13 app.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

@@ -4348,3 +4348,10 @@ unpacked array may be empty, so `array_unshift($pending, ...($tree[$node] ?? [])
 be empty, the out type now also allows `array{}`. Without it, `while ($pending !== [])` around `array_shift()` was
 reported always true and the code after the loop unreachable (shipfastlabs/pun#38, item 1). Covered by
 `crates/pun-analyse/tests/unpacked_appends.rs`, whose expectations are PHPStan 2.3.5's.
+## `collection-of` returns that hold a template
+
+`invocation/resolver.rs` `resolve_union()`: a `collection-of` atom left in a call's resolved return type because its
+model is still a template (`HasMany<TRow, User>::get()` inside a method templated on `TRow of Model`) resolves through
+mago-codex's `expander::collection_of_unresolvable()`, as PHPStan's `ResolvedFunctionVariantWithOriginal` resolves
+late-resolvable types. Without it the return type was the unknown class `collection-of` (shipfastlabs/pun#38, item
+5). `pun-analyse/tests/fixtures/larastan-types/Type/PunTemplateRelationCollectionsTest.json` covers it.
