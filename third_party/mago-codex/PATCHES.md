@@ -1365,3 +1365,11 @@ names fewer (`HasMany<TRelated, TDeclaring>` extending `Relation<TRelated, TDecl
 arguments were dropped, so `$customer->invoices()->clone()` was a bare `HasMany` and the related model's scopes were
 undefined. PHPStan's GenericStaticType keeps the receiver's. They are now counted against the declaring class's
 templates (shipfastlabs/pun#52). `crates/pun-analyse/tests/static_of_fewer_templates.rs` covers it.
+## Trait method copies, parents first
+
+`populator/docblock.rs` `inherit_trait_method_docblocks()`: the classes whose trait method gets its own copy were
+handled in name order, so `AppInvoice` (extending `VendorInvoice`, each using a trait that overrides
+`Model::fireModelEvent()` without types) built its copy before `VendorInvoice` had one and inherited nothing, and its
+`$event` and `$halt` were reported `missingType.parameter`. PHPStan's PhpDocInheritanceResolver walks up to the original
+declaration. The copies are now built parents first (shipfastlabs/pun#60).
+`crates/pun-analyse/tests/trait_override_chains.rs` covers it.

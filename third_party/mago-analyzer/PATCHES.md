@@ -4393,3 +4393,11 @@ analysed in the context of its using class (`trait_context_class`) kept the trai
 template type map. The expanded signature types now replace the trait's templates with the class's `@use` arguments
 (from `template_extended_parameters`), also inside the constraint of the method's own templates
 (shipfastlabs/pun#50). `crates/pun-analyse/tests/trait_use_templates.rs` covers it.
+## Trait overrides between a parameter and its documented ancestor
+
+`statement/function_like/mod.rs` `trait_context_parameter_type()`: a trait method analysed in its using class takes
+an untyped parameter's PHPDoc type from the method it overrides in the class's parents. When the nearest parent's
+method is itself an untyped trait override (`AppInvoice extends VendorInvoice`, each using a trait that overrides
+`Model::fireModelEvent()`), the walk stopped there and `$event` was `mixed`. PhpDocInheritanceResolver walks on to
+the original declaration, so the walk now continues past a parent whose method a trait declares without a PHPDoc type
+(shipfastlabs/pun#60). `crates/pun-analyse/tests/trait_override_chains.rs` covers it.

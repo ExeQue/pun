@@ -966,7 +966,19 @@ fn trait_context_parameter_type<A: Arena>(
             .codebase
             .get_declaring_method_identifier(&MethodIdentifier::new(parent.name, function_like_metadata.name));
         if let Some(method) = context.codebase.get_method_by_id(&declaring) {
-            let parameter_type = method.parameters.get(offset)?.get_type_metadata().filter(|t| t.from_docblock)?;
+            let parameter_type = method.parameters.get(offset)?.get_type_metadata().filter(|t| t.from_docblock);
+            // a trait's untyped override in the parent: the inheritance walks on to the parent's own parents
+            let Some(parameter_type) = parameter_type else {
+                if context
+                    .codebase
+                    .get_class_like(declaring.get_class_name().as_bytes())
+                    .is_some_and(|declaring| declaring.kind.is_trait())
+                {
+                    parent_name = parent.direct_parent_class;
+                    continue;
+                }
+                return None;
+            };
             let Some(parameters) = class
                 .template_extended_parameters
                 .get(&declaring.get_class_name())

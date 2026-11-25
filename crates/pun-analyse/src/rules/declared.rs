@@ -928,9 +928,16 @@ fn inherit(
         {
             return None;
         }
-        let parent_doc = method_doc(c, declaring.0, &lower, depth + 1)?;
+        // a method a trait gives `parent` is reflected with `parent` as its declaring class, whose own parents the
+        // PHPDoc inheritance walks on to (PhpDocInheritanceResolver)
+        let owner = if declaring.0.kind.is_trait() {
+            parent
+        } else {
+            declaring.0
+        };
+        let parent_doc = method_doc(c, owner, &lower, depth + 1)?;
         let parent_doc = {
-            let map = |t: Type| ancestor_types(class, declaring.0, &t);
+            let map = |t: Type| ancestor_types(class, owner, &t);
             Resolved {
                 params: parent_doc
                     .params

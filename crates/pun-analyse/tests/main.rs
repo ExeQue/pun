@@ -184,6 +184,7 @@ mod terminated_statement_scopes;
 mod trait_constant_initializers;
 mod trait_inherited_phpdoc;
 mod trait_method_tags;
+mod trait_override_chains;
 mod trait_type_aliases;
 mod trait_use_templates;
 mod try_certainty;
