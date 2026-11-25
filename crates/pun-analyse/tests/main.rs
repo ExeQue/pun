@@ -29,6 +29,7 @@ mod callback_gather;
 mod called_on_types;
 mod capture_feedback;
 mod carbon;
+mod chained_matches;
 mod class_constant_initializers;
 mod class_constants;
 mod class_names;
