@@ -51,6 +51,9 @@
 //! Type/PunPaginatorThroughTest.json (`through()` on the paginators, whose `@return $this` reads its
 //! `@phpstan-this-out`) has its assertions and errors from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a
 //! Laravel 13 app.
+//! Type/PunAuthContractsTest.json (methods on the Authenticatable, CanResetPassword and Authorizable contracts found
+//! on the auth model, as AuthsMethodsExtension finds them) has its assertions and errors from PHPStan 2.3.7 with
+//! Larastan 3.15.0 at level 8 in a Laravel 13 app whose first auth model also extends `Illuminate\Foundation\Auth\User`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

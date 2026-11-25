@@ -4367,3 +4367,12 @@ ResolvedFunctionVariantWithOriginal's object callback does without a template ar
 argument toggle does a covariant position keep the exact type. `through(fn (User $user): array => ['id' => $user->id])`
 is `LengthAwarePaginator<int, array{id: int}>` and `Box<covariant T>::map(fn () => 5)` is `Box<int>`.
 `pun-analyse/tests/fixtures/larastan-types/Type/PunPaginatorThroughTest.json` covers it.
+## Contract forwards find no properties
+
+`resolver/property.rs`: pun-analyse forwards a Laravel contract to its concrete class, and the auth contracts
+(`Authenticatable`, `CanResetPassword`, `Authorizable`) to the auth models, by adding them as mixins with the class's
+own span (`crates/pun-analyse/src/larastan/app.rs` `contract_mixins()`). Larastan's ContractsMethodsExtension and
+AuthsMethodsExtension find methods only, so a property lookup skips those mixins: `Authenticatable $user` has
+`$user->can()` from `App\User` but `$user->email` stays `property.notFound` (shipfastlabs/pun#57). A docblock
+`@mixin` carries its tag's span and is unaffected.
+`pun-analyse/tests/fixtures/larastan-types/Type/PunAuthContractsTest.json` covers it.
