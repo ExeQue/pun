@@ -835,7 +835,7 @@ fn phpstan_baseline_extensions_options_and_ignores() {
     let Some(strict) = oracle("phpstan/vendor/phpstan/phpstan-strict-rules") else {
         return;
     };
-    let neon = "includes:\n    - phpstan-baseline.neon\n    - vendor/phpstan/phpstan-strict-rules/rules.neon\n    - vendor/nesbot/carbon/extension.neon\nparameters:\n    level: 9\n    paths:\n        - src\n    additionalConstructors:\n        - App\\Foo::init\n    treatPhpDocTypesAsCertain: false\n    ignoreErrors:\n        - '#Call to an undefined method#'\n";
+    let neon = "includes:\n    - phpstan-baseline.neon\n    - vendor/phpstan/phpstan-strict-rules/rules.neon\n    - vendor/nesbot/carbon/extension.neon\n    - vendor/phpstan/phpstan-mockery/extension.neon\nparameters:\n    level: 9\n    paths:\n        - src\n    additionalConstructors:\n        - App\\Foo::init\n    treatPhpDocTypesAsCertain: false\n    ignoreErrors:\n        - '#Call to an undefined method#'\n";
     let d = project(
         "phpstan-extras",
         &[
@@ -854,9 +854,15 @@ fn phpstan_baseline_extensions_options_and_ignores() {
                 "vendor/nesbot/carbon/lazy/Carbon/UnprotectedDatePeriod.php",
                 "<?php\n",
             ),
+            // phpstan/phpstan-mockery 2.0.0's extension.neon, its services only
+            (
+                "vendor/phpstan/phpstan-mockery/extension.neon",
+                "services:\n    -\n        class: PHPStan\\Mockery\\Type\\MockDynamicReturnTypeExtension\n        tags:\n            - phpstan.broker.dynamicStaticMethodReturnTypeExtension\n",
+            ),
+            // Locked, but phpstan.neon doesn't load it: its switch is off, as PHPStan runs none of its rules.
             (
                 "composer.lock",
-                r#"{"packages":[{"name":"nesbot/carbon","version":"3.15.1"}]}"#,
+                r#"{"packages":[{"name":"nesbot/carbon","version":"3.15.1"}],"packages-dev":[{"name":"spaze/phpstan-disallowed-calls","version":"v4.15.1"}]}"#,
             ),
         ],
     );
@@ -882,9 +888,17 @@ fn phpstan_baseline_extensions_options_and_ignores() {
         out.contains("\n ! phpstan-baseline.neon was not copied. Run `pun analyse --generate-baseline` for a Pun baseline.\n"),
         "{out}"
     );
-    assert!(!out.contains("nesbot/carbon"), "{out}");
+    assert!(
+        !out.contains("nesbot/carbon") && !out.contains("phpstan-mockery"),
+        "{out}"
+    );
     let toml = read(&d, "pun.toml");
-    assert!(toml.contains("[extensions]\ncarbon = \"on\"\n"), "{toml}");
+    assert!(
+        toml.contains(
+            "[extensions]\ncarbon = \"on\"\nmockery = \"on\"\ndisallowed-calls = \"off\"\n\n"
+        ),
+        "{toml}"
+    );
     assert!(
         toml.contains(
             "\"control-flow/unhandled-match\" = { treat-php-doc-types-as-certain = false }\n"

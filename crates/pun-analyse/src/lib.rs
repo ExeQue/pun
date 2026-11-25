@@ -7,6 +7,7 @@ mod extension;
 mod larastan;
 mod laravel;
 mod mago;
+mod mockery;
 mod parser;
 mod project;
 mod relative_path;

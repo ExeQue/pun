@@ -209,6 +209,17 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   `Carbon\DatePeriodBase`. It also gives every class that implements `CarbonInterface` the macros that
   `X::macro('name', ...)` calls register in the analysed, scanned and bootstrap files. Pun reads those calls
   statically, as it reads Larastan's.
+- **phpstan-mockery is built in** (Pushpak, 2026-11-25): `[extensions] mockery = "on"`. `pun init` and
+  `pun migrate` write it when composer.lock locks mockery/mockery or phpstan/phpstan-mockery, and `pun migrate` also
+  when phpstan.neon includes phpstan-mockery. It has no rules and no pun.toml options.
+- **spaze/phpstan-disallowed-calls is built in** (Pushpak, 2026-11-25): `[extensions] disallowed-calls = "on"` runs
+  the `disallowed` analyse group. Its neon parameters are rule options (`[phpstan-parameters]`), not an
+  `[extensions.<x>]` table. `pun migrate` writes the switch from phpstan.neon: `"on"` when PHPStan loads the package,
+  `"off"` when it doesn't and composer.lock locks it, so Pun reports nothing PHPStan didn't.
+- **tomasvotruba/type-coverage is built in** (Pushpak, 2026-11-25): `[extensions] type-coverage = "on"` runs the
+  `type-coverage` analyse group, with its parameters as rule options and migrate's switch as for disallowed-calls.
+  `pun analyse` keeps an error without an identifier (its measure mode) and one whose identifier an extension's
+  config entry names (`Project::extension_identifiers`, for disallowed-calls' `errorIdentifier`).
 
 ### Engines
 
@@ -339,6 +350,9 @@ Done: the gate passed at ea7a84bc2d4c4f4b90ad177d911e6ade3accf253.
 | Work | Status |
 | --- | --- |
 | analyse 3: finish level 0 and the level-2 class rules (counts in §0). Not yet: `debug/dump-scope` and `debug/dump-native-type` | todo |
+| analyse mockery: port phpstan-mockery 2.0.0 into `crates/pun-analyse/src/mockery.rs` (the switch, migrate and oracle are in) | doing |
+| analyse disallowed-calls: port spaze/phpstan-disallowed-calls 4.15.1 into `crates/pun-analyse/src/rules/disallowed/` (the switch, migrate and oracle are in) | doing |
+| analyse type-coverage: port tomasvotruba/type-coverage 2.5.1 into `crates/pun-analyse/src/rules/type_coverage.rs` (the switch, migrate and oracle are in) | doing |
 | analyse Mago 1.61 loop memo: re-enable `statement/loop/memo.rs` (the nested-loop speedup), disabled in the 1.61.0 bump because a hit replays only issues, expression types and assignment targets; its key or replay needs Pun's native lane, `variable_state` and observation artifacts (third_party/mago-analyzer/PATCHES.md "Mago 1.61.0 merge adaptations") | todo |
 | analyse Mago 1.61 parity: on a 60-file Symfony sample at level 9 against PHPStan 2.3.5, the bump brought 37 regressions: 13 lost true positives (e.g. `nullCoalesce.variable` on `??=`, `identical.alwaysFalse`) and 24 new false positives (e.g. `variable.undefined`, `instanceof.alwaysFalse` between mixed and Closure). That sample ran before the 1.61 fix commits up to 386b4efc2. Next: rerun it and fix what is left toward PHPStan | todo |
 | analyse static return coercion: `rules/types/returns.rs` reads a named object returned from a `static` method as `static`, so `return $instance` of type `Foo` from `Foo::create(): static` is accepted; PHPStan reports `return.type` (GAPS in tests/coverage.rs, trait-private-members) | todo |

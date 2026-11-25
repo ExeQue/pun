@@ -96,6 +96,7 @@ pub(crate) struct Checks {
     internal: Option<super::internal::Names>,
     pub(super) type_aliases: Vec<(String, String)>,
     reported: Option<crate::project::Reported>,
+    extension_identifiers: HashSet<String>,
     method_rules: crate::MethodRules,
     pub(super) strict: crate::StrictRules,
     pub(super) exceptions: crate::Exceptions,
@@ -144,11 +145,18 @@ fn patched_docs(codebase: &CodebaseMetadata) -> HashMap<Span, Span> {
 }
 
 impl Checks {
+    /// Drops the errors of rules that are off. Pun's own rules always give an identifier, so an error without one
+    /// comes from an extension that is on (type-coverage's measure mode), as one with an identifier its config entry
+    /// names does.
     pub(crate) fn keep_reported(&self, errors: &mut Vec<Error>) {
         if let Some(reported) = &self.reported {
             errors.retain(|e| {
-                let id = e.identifier.as_deref().unwrap_or_default();
-                id == "phpstan.parse" || id.starts_with("larastan.collected.") || reported(id)
+                e.identifier.as_deref().is_none_or(|id| {
+                    id == "phpstan.parse"
+                        || id.starts_with("larastan.collected.")
+                        || self.extension_identifiers.contains(id)
+                        || reported(id)
+                })
             });
         }
     }
@@ -401,6 +409,7 @@ impl Checks {
             }),
             type_aliases: project.type_aliases.clone(),
             reported: project.reported.clone(),
+            extension_identifiers: project.extension_identifiers.clone(),
             method_rules: project.method_rules,
             patched_docs: patched_docs(codebase),
             classes: Default::default(),

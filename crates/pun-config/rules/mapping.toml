@@ -35,7 +35,7 @@
 
 [meta]
 schema = 2
-upstream = { php-cs-fixer = "3.95.25", pint = "1.32.1 (oracle .oracle/pint)", rector = "2.8.4", rector-laravel = "driftingly/rector-laravel 2.7.3", pest-plugin-rector = "5.x-dev@8c1b780", rector-phpunit = "dev-main@22c6dae (bundled with Rector 2.8.4)", phpstan = "2.3.5", phpstan-strict-rules = "2.0.12", phpstan-deprecation-rules = "2.0.5", larastan = "3.14.0", mago = "1.61.0" }
+upstream = { php-cs-fixer = "3.95.25", pint = "1.32.1 (oracle .oracle/pint)", rector = "2.8.4", rector-laravel = "driftingly/rector-laravel 2.7.3", pest-plugin-rector = "5.x-dev@8c1b780", rector-phpunit = "dev-main@22c6dae (bundled with Rector 2.8.4)", phpstan = "2.3.5", phpstan-strict-rules = "2.0.12", phpstan-deprecation-rules = "2.0.5", larastan = "3.14.0", phpstan-mockery = "2.0.0", phpstan-disallowed-calls = "4.15.1", type-coverage = "2.5.1", mago = "1.61.0" }
 ecosystems = ["laravel", "pest", "phpunit"]
 presets = { format = ["laravel", "psr12", "empty"], lint = ["essential", "recommended", "strict"], analyse = ["basic", "essential", "recommended", "strict", "max"] }
 # [analyse] type switches each analyse preset turns on (cumulative); PHPStan levels 7-10
@@ -79,6 +79,8 @@ whitespace = "Indentation, blank lines, line endings and trailing whitespace"
 laravel = "Laravel (ecosystem: on when composer.lock has laravel/framework)"
 pest = "Pest (ecosystem: on when composer.lock has pestphp/pest)"
 phpunit = "PHPUnit (ecosystem: on when composer.lock has phpunit/phpunit)"
+disallowed = "Calls and uses the project's config forbids (ecosystem: on with [extensions] disallowed-calls)"
+"type-coverage" = "Type declaration coverage (ecosystem: on with [extensions] type-coverage)"
 "laravel-5.7" = "Upgrade to Laravel 5.7: code a newer Laravel removes, deprecates or does better"
 "laravel-5.8" = "Upgrade to Laravel 5.8: code a newer Laravel removes, deprecates or does better"
 laravel-8 = "Upgrade to Laravel 8: code a newer Laravel removes, deprecates or does better"

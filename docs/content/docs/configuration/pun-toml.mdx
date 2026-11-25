@@ -70,7 +70,7 @@ A plain entry is a path from the project root. Format is the exception: as in Pi
 
 ## [extensions]
 
-Extensions add the rules and analysis for a framework or test tool. Each one is off until `[extensions]` turns it on, so `pun.toml` alone shows what runs. A locked package never turns an extension on by itself. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) turn on each extension whose package [`composer.lock`](#dependencies) locks.
+Extensions add the rules and analysis for a framework or test tool. Each one is off until `[extensions]` turns it on, so `pun.toml` alone shows what runs. A locked package never turns an extension on by itself. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) turn on each extension whose package [`composer.lock`](#dependencies) locks. `pun migrate` also follows phpstan.neon: it turns on an extension whose PHPStan extension phpstan.neon loads, and writes `disallowed-calls` or `type-coverage` as `"off"` when composer.lock locks its package but phpstan.neon doesn't load it.
 
 | Extension | Package `pun migrate` looks for | What it turns on |
 | --- | --- | --- |
@@ -78,6 +78,9 @@ Extensions add the rules and analysis for a framework or test tool. Each one is 
 | `pest` | `pestphp/pest` | The `pest` lint rules |
 | `phpunit` | `phpunit/phpunit` | The `phpunit` lint rules |
 | `carbon` | `nesbot/carbon` | Carbon's PHPStan extension in analyse: the methods that `Carbon::macro()` registers, and `Carbon\DatePeriodBase` |
+| `mockery` | `mockery/mockery` or `phpstan/phpstan-mockery` | phpstan-mockery's PHPStan extension in analyse. Not ported yet: it changes nothing |
+| `disallowed-calls` | `spaze/phpstan-disallowed-calls` | The `disallowed` analyse rules. Not ported yet: it changes nothing |
+| `type-coverage` | `tomasvotruba/type-coverage` | The `type-coverage` analyse rules. Not ported yet: it changes nothing |
 
 | Value | Effect |
 | --- | --- |

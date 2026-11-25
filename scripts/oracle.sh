@@ -13,7 +13,9 @@
 #                         5.x-dev@8c1b780, pinned by scripts/oracle-rector-ecosystem/composer.lock (the rule mapping's
 #                         rector-laravel and Pest inventories; rector-phpunit is bundled in rector/rector).
 #   .oracle/phpstan-src   phpstan-src at the tag 2.3.5 (Rule classes and tests; the PHPStan inventories).
-#   .oracle/phpstan       phpstan/phpstan 2.3.5 + larastan 3.14.0 + strict/deprecation rules, pinned by scripts/oracle-phpstan/composer.lock.
+#   .oracle/phpstan       phpstan/phpstan 2.3.5 + larastan 3.14.0 + strict/deprecation rules + phpstan-mockery 2.0.0
+#                         (mockery/mockery 1.6.15) + spaze/phpstan-disallowed-calls 4.15.1 + tomasvotruba/type-coverage
+#                         2.5.1, pinned by scripts/oracle-phpstan/composer.lock.
 #   .oracle/phpstan-phar  that PHAR extracted, for reading (export-phpstan-api-stub.php, export-phpdoc-parser-fixtures.php).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"

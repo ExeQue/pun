@@ -86,6 +86,9 @@ pub struct Project {
     pub type_aliases: Vec<(String, String)>,
     pub stubs: Vec<PathBuf>,
     pub reported: Option<Reported>,
+    /// The identifiers an enabled extension's config entries give its errors (disallowed-calls' `errorIdentifier`):
+    /// kept although no rule claims them, as an extension's errors without an identifier are.
+    pub extension_identifiers: std::collections::HashSet<String>,
     pub method_rules: MethodRules,
 }
 
@@ -600,6 +603,7 @@ impl Project {
                 .map(PathBuf::from)
                 .collect(),
             reported: None,
+            extension_identifiers: std::collections::HashSet::new(),
             method_rules: MethodRules::default(),
         };
         let stubs: Vec<_> = (project.extensions())
@@ -694,6 +698,7 @@ impl Project {
             type_aliases: Vec::new(),
             stubs: Vec::new(),
             reported: None,
+            extension_identifiers: std::collections::HashSet::new(),
             method_rules: MethodRules::default(),
         }
     }

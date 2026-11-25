@@ -830,7 +830,15 @@ fn extensions() {
     let shown = c.show();
     assert_eq!(
         shown["extensions"],
-        json!({"laravel": "on", "pest": "off", "phpunit": "off", "carbon": "off"})
+        json!({
+            "laravel": "on",
+            "pest": "off",
+            "phpunit": "off",
+            "carbon": "off",
+            "mockery": "off",
+            "disallowed-calls": "off",
+            "type-coverage": "off"
+        })
     );
     // Left out of [extensions], an extension is off even with its package locked.
     let c = load_(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]).unwrap();
@@ -841,7 +849,7 @@ fn extensions() {
     let e = |toml: &str| format!("{:#}", load_(&[("pun.toml", toml)]).unwrap_err());
     assert!(
         e("[extensions]\nsymfony = \"on\"\n").ends_with(
-            "pun.toml: [extensions] `symfony` is not an extension: expected `laravel`, `pest`, `phpunit`, `carbon`"
+            "pun.toml: [extensions] `symfony` is not an extension: expected `laravel`, `pest`, `phpunit`, `carbon`, `mockery`, `disallowed-calls`, `type-coverage`"
         )
     );
     assert!(

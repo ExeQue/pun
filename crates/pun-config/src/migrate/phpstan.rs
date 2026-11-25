@@ -33,7 +33,7 @@ pub struct Phpstan {
     pub changed: Vec<(String, Value)>,
 }
 
-const BUILT_IN: [(&str, Option<&str>); 7] = [
+const BUILT_IN: [(&str, Option<&str>); 10] = [
     ("larastan/larastan", Some("larastan")),
     ("phpstan/phpstan-strict-rules", Some("phpstan-strict-rules")),
     (
@@ -44,6 +44,12 @@ const BUILT_IN: [(&str, Option<&str>); 7] = [
     ("phpstan/phpstan-phpunit", None),
     ("phpstan/extension-installer", None),
     ("nesbot/carbon", None),
+    ("phpstan/phpstan-mockery", None),
+    (
+        "spaze/phpstan-disallowed-calls",
+        Some("phpstan-disallowed-calls"),
+    ),
+    ("tomasvotruba/type-coverage", Some("type-coverage")),
 ];
 
 const HANDLED: [&str; 19] = [
@@ -673,7 +679,30 @@ pub fn with_pun_preset(analyse: &str, level: u8) -> String {
     out
 }
 
+/// `[extensions]`'s body (`id = "on"` lines) with each extension whose package phpstan.neon loads turned on. The
+/// rule packages it doesn't load are off even when composer.lock locks them, so Pun reports no errors PHPStan never
+/// did (PLAN.md §2).
+fn loaded_extensions(body: &str, phpstan: &Phpstan) -> String {
+    let rule_packages = [
+        &crate::extensions::DISALLOWED_CALLS,
+        &crate::extensions::TYPE_COVERAGE,
+    ];
+    let mut out = String::new();
+    for e in crate::extensions::ALL {
+        let locked = body.lines().any(|l| l == format!("{} = \"on\"", e.id));
+        let loaded = (e.packages.iter()).any(|p| phpstan.extensions.contains(*p));
+        let value = match (loaded, locked) {
+            (false, true) if rule_packages.contains(&e) => "off",
+            (true, _) | (false, true) => "on",
+            (false, false) => continue,
+        };
+        writeln!(out, "{} = \"{value}\"", e.id).unwrap();
+    }
+    out
+}
+
 pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Analysed> {
+    parts.extensions = loaded_extensions(&parts.extensions, phpstan);
     let preset = AnalysePreset::phpstan_of(phpstan.level, phpstan.max);
     if let Some(v) = &phpstan.php_version {
         parts.php = format!("version = \"{v}\"\n");

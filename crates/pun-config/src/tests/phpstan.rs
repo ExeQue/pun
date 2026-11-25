@@ -110,10 +110,10 @@ final class GeneratedConfig
     ),
     'version' => '3.15.1',
   ),
-  'phpstan/phpstan-mockery' => 
+  'phpstan/phpstan-webmozart-assert' => 
   array (
-    'install_path' => '/p/vendor/phpstan/phpstan-mockery',
-    'relative_install_path' => '../../phpstan-mockery',
+    'install_path' => '/p/vendor/phpstan/phpstan-webmozart-assert',
+    'relative_install_path' => '../../phpstan-webmozart-assert',
     'extra' => 
     array (
       'includes' => 
@@ -155,7 +155,7 @@ fn reads_level_paths_ignores_and_includes() {
             ("vendor/larastan/larastan/extension.neon", ""),
             ("vendor/foo/bar/rules.neon", ""),
             ("vendor/phpstan/phpstan/conf/extra.neon", ""),
-            ("vendor/phpstan/phpstan-mockery/extension.neon", ""),
+            ("vendor/phpstan/phpstan-webmozart-assert/extension.neon", ""),
             ("vendor/nesbot/carbon/extension.neon", ""),
             ("vendor/phpstan/phpstan-strict-rules/rules.neon", ""),
             (
@@ -197,7 +197,7 @@ fn reads_level_paths_ignores_and_includes() {
         [
             "build/custom.neon",
             "foo/bar",
-            "phpstan/phpstan-mockery",
+            "phpstan/phpstan-webmozart-assert",
             "parameter additionalConstructors",
             "parameter checkBenevolentUnionTypes",
             "parameter checkMissingTypehints",
@@ -285,6 +285,36 @@ fn reads_level_paths_ignores_and_includes() {
         "{}",
         parts.render()
     );
+}
+
+#[test]
+fn turns_on_the_extensions_phpstan_loads() {
+    let neon = "includes:\n    - vendor/phpstan/phpstan-mockery/extension.neon\n    - vendor/tomasvotruba/type-coverage/config/extension.neon\nparameters:\n    level: 5\n";
+    let d = project(
+        neon,
+        &[
+            ("vendor/phpstan/phpstan-mockery/extension.neon", ""),
+            (
+                "vendor/tomasvotruba/type-coverage/config/extension.neon",
+                "",
+            ),
+        ],
+    );
+    let p = from_phpstan(&d, &d.join("phpstan.neon")).unwrap();
+    assert!(p.unsupported.is_empty(), "{:?}", p.unsupported);
+    // What composer.lock turned on: carbon stays on, and disallowed-calls goes off, as PHPStan doesn't load it.
+    let mut parts = Parts {
+        extensions: "carbon = \"on\"\ndisallowed-calls = \"on\"\n".into(),
+        ..Parts::default()
+    };
+    compose(&d, &mut parts, &p).unwrap();
+    assert_eq!(
+        parts.extensions,
+        "carbon = \"on\"\nmockery = \"on\"\ndisallowed-calls = \"off\"\ntype-coverage = \"on\"\n"
+    );
+    let cfg = crate::from_toml(&d, &parts.render()).unwrap();
+    let on: Vec<&str> = cfg.extensions.iter().map(|e| e.id).collect();
+    assert_eq!(on, ["carbon", "mockery", "type-coverage"]);
 }
 
 #[test]
