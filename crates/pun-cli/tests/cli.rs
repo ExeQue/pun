@@ -1104,6 +1104,7 @@ fn extension_list_says_why_each_is_on() {
 pest     off  Rules for Pest tests: pestphp/pest v4.1.0 is locked; turn it on with pest = "on" in [extensions]
 phpunit  off  Rules for PHPUnit tests: not in pun.toml
 carbon   off  Carbon's macros and DatePeriodBase in analyse: not in pun.toml
+phpat    off  phpat's architecture tests in analyse: not in pun.toml
 "#;
     assert_eq!(
         pun(&dir, &["extension", "list"]),
@@ -1128,6 +1129,7 @@ carbon   off  Carbon's macros and DatePeriodBase in analyse: not in pun.toml
                 ("pest", false, None),
                 ("phpunit", false, None),
                 ("carbon", false, None),
+                ("phpat", false, None),
             ],
             Some(0)
         )
@@ -1220,6 +1222,7 @@ laravel = "off"
 pest = "off"
 phpunit = "off"
 carbon = "off"
+phpat = "off"
 
 [format]
 preset = "empty"
