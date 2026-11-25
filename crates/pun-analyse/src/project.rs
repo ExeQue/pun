@@ -335,7 +335,8 @@ impl Project {
 
     /// Prepares the php-rules workers when `php_rules_config` names neon files, with `paths` as PHPStan's analysed
     /// paths. They start when a file needs them; a worker that can't start fails the run ([`crate::PhpRules::failure`]).
-    pub fn start_php_rules(&mut self, paths: &[PathBuf]) {
+    /// `cache` is the result cache's file and the caller's part of its key ([`crate::PhpRules::start`]).
+    pub fn start_php_rules(&mut self, paths: &[PathBuf], cache: Option<(PathBuf, &str)>) {
         if self.php_rules_config.is_empty() {
             return;
         }
@@ -345,7 +346,8 @@ impl Project {
                 .map_or(1, std::num::NonZeroUsize::get)
                 .min(8)
         });
-        let rules = crate::PhpRules::start(&self.current_working_directory, &neon, paths, workers);
+        let root = &self.current_working_directory;
+        let rules = crate::PhpRules::start(root, &neon, paths, workers, cache);
         self.php_rules = Some(std::sync::Arc::new(rules));
     }
 

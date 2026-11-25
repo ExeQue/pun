@@ -9,6 +9,7 @@ mod laravel;
 mod mago;
 mod parser;
 mod php_rules;
+mod php_rules_cache;
 mod phpat;
 mod project;
 mod relative_path;

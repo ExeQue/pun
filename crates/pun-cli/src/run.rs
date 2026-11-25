@@ -251,7 +251,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         && selected.as_ref().is_none_or(|(_, s)| !s.is_empty())
     {
         let paths = selected.as_ref().map_or(&a.paths, |(_, s)| s);
-        let analysed = crate::analyse::analyse(&cfg, paths, true)?;
+        let analysed = crate::analyse::analyse(&cfg, paths, true, a.pun.no_cache)?;
         unmatched_baseline = analysed.unmatched_baseline;
         general.clone_from(&analysed.general);
         total = total.max(analysed.files);
@@ -383,8 +383,7 @@ fn open_cache(
     prettier: &str,
     project: Option<&[PathBuf]>,
 ) -> Option<Cache> {
-    let set = |k: &str| std::env::var_os(k).is_some_and(|v| !v.is_empty() && v != "0");
-    if a.pun.no_cache || set("PUN_NO_CACHE") || std::env::var_os("PUN_PROFILE").is_some() {
+    if cache::disabled(a.pun.no_cache) {
         return None;
     }
     let file = Cache::default_file(&cfg.root)?;
