@@ -245,9 +245,7 @@ fn project(
     project
         .load_phpat()
         .map_err(|e| run_error(format!("[extensions] phpat: {e}"), None))?;
-    project
-        .start_php_rules(&analysed_paths.iter().map(PathBuf::from).collect::<Vec<_>>())
-        .map_err(|e| run_error(format!("[analyse] php-rules: {e}"), None))?;
+    project.start_php_rules(&analysed_paths.iter().map(PathBuf::from).collect::<Vec<_>>());
     let routed = pun_config::identifiers_of_rules(|r| on.contains(r) || lint_on.contains(r));
     project.reported = Some(std::sync::Arc::new(move |id| {
         if method_rules.consistent_constructor

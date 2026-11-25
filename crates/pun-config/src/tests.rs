@@ -619,6 +619,7 @@ fn analyse() {
             larastan: false,
             phpat: None,
             php_rules: vec![],
+            php_rules_workers: None,
             rules: a.rules.clone(),
             bleeding_edge: false,
             report_unmatched: true,
@@ -2087,6 +2088,14 @@ fn php_rules_parameter() {
     };
     let on = "[analyse]\npreset = \"phpstan/level_0\"\nphp-rules = [\"tests/rules.neon\"]\n";
     assert_eq!(rules(on), Some(true));
+    // `php-rules-workers` reaches it as `punPhpRulesWorkers`; 0 is a config error
+    let workers = |n: &str| {
+        let d = dir(&[("pun.toml", &format!("{on}php-rules-workers = {n}\n"))]);
+        (load(&d, &Options::default()).map(|c| c.analyse.parameters(&d).get_str("punPhpRulesWorkers").cloned()))
+            .map_err(|e| e.to_string())
+    };
+    assert_eq!(workers("3"), Ok(Some(V::Int(3))));
+    assert!(workers("0").is_err());
     let off = format!("{on}\n[analyse.rules]\n\"style/project-rule\" = \"off\"\n");
     assert_eq!(rules(&off), None);
 }

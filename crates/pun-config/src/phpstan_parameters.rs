@@ -92,6 +92,9 @@ impl Analyse {
         if !self.php_rules.is_empty() && self.on().contains(PHP_RULES_RULE) {
             let neon = absolute(&self.php_rules).into_iter().map(Value::str);
             p.set(Key::from("punPhpRules"), Value::Array(Array::list(neon)));
+            if let Some(n) = self.php_rules_workers {
+                p.set(Key::from("punPhpRulesWorkers"), Value::Int(n.into()));
+            }
         }
     }
 

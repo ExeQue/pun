@@ -1,4 +1,4 @@
-//! `[analyse] php-rules` (prototype): the project's own PHPStan rule classes, run by one long-lived `php` worker
+//! `[analyse] php-rules` (prototype): the project's own PHPStan rule classes, run by a pool of long-lived `php` workers
 //! (`php_rules_worker.php`, protocol in its header) on PHPStan's container and reflection, with the expression types
 //! Pun inferred. An opt-in exception to "no PHP fallback" (context/PLAN.md §2): the rules are the project's code.
 
@@ -6,7 +6,8 @@ use std::collections::HashSet;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Condvar, Mutex};
 
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -73,27 +74,62 @@ impl Drop for Worker {
     }
 }
 
-/// The running worker, shared by the analysis threads.
+/// A pool of workers, shared by the analysis threads: each file checks out an idle worker, and a new one starts (in
+/// that thread, so several start at once) while fewer than `max` run.
 pub struct PhpRules {
-    // ponytail: one worker behind a lock serializes the rule phase of every file; a pool of workers if it shows.
-    worker: Mutex<Option<Worker>>,
+    setup: Value,
+    root: PathBuf,
+    max: usize,
+    pool: Mutex<Pool>,
+    idle: Condvar,
     failure: Mutex<Option<String>>,
     identifiers: Mutex<HashSet<String>>,
 }
 
+#[derive(Default)]
+struct Pool {
+    idle: Vec<Worker>,
+    started: usize,
+    /// A worker failed: the run reports the failure and the others stop.
+    stopped: bool,
+}
+
 impl PhpRules {
-    /// Starts `php` on the project in `root`: its vendor/autoload.php and vendor/phpstan/phpstan/phpstan.phar, the
-    /// rules the `neon` files register, and `paths` as PHPStan's analysed paths.
-    pub fn start(root: &Path, neon: &[PathBuf], paths: &[PathBuf]) -> Result<PhpRules, String> {
+    /// Prepares the workers for the project in `root`: its vendor/autoload.php and vendor/phpstan/phpstan/phpstan.phar,
+    /// the rules the `neon` files register, and `paths` as PHPStan's analysed paths. At most `max` workers run, each
+    /// started when a file needs it.
+    pub fn start(root: &Path, neon: &[PathBuf], paths: &[PathBuf], max: usize) -> PhpRules {
+        let path = |p: &Path| p.to_string_lossy().into_owned();
+        PhpRules {
+            setup: json!({
+                "root": path(root),
+                "autoload": path(&root.join("vendor/autoload.php")),
+                "phar": path(&root.join("vendor/phpstan/phpstan/phpstan.phar")),
+                "neon": neon.iter().map(|n| path(&root.join(n))).collect::<Vec<_>>(),
+                "paths": paths.iter().map(|p| path(p)).collect::<Vec<_>>(),
+            }),
+            root: root.to_path_buf(),
+            max: max.max(1),
+            pool: Mutex::new(Pool::default()),
+            idle: Condvar::new(),
+            failure: Mutex::new(None),
+            identifiers: Mutex::new(HashSet::new()),
+        }
+    }
+
+    /// Starts one worker and waits until it has booted PHPStan.
+    fn spawn(&self) -> Result<Worker, String> {
+        static WORKERS: AtomicUsize = AtomicUsize::new(0);
         let nanos = (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH))
             .map_or(0, |d| d.as_nanos());
-        let token = format!("\u{1e}pun-php-rules-{}-{nanos}:", std::process::id());
+        let n = WORKERS.fetch_add(1, Ordering::Relaxed);
+        let token = format!("\u{1e}pun-php-rules-{}-{n}-{nanos}:", std::process::id());
         // `php -r`: the worker needs no file, which a containerized php (lerd) can't read from /tmp
         let code = WORKER.trim_start_matches("<?php");
         // no memory limit, as PHPStan's `--memory-limit=-1`: php's default 128M doesn't parse a large file
         let child = Command::new("php")
             .args(["-d", "memory_limit=-1", "-r", code])
-            .current_dir(root)
+            .current_dir(&self.root)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn();
@@ -107,38 +143,62 @@ impl PhpRules {
             stdout: BufReader::new(stdout),
             token: token.clone(),
         };
-        let path = |p: &Path| p.to_string_lossy().into_owned();
-        worker.send(&json!({
-            "token": token,
-            "root": path(root),
-            "autoload": path(&root.join("vendor/autoload.php")),
-            "phar": path(&root.join("vendor/phpstan/phpstan/phpstan.phar")),
-            "neon": neon.iter().map(|n| path(&root.join(n))).collect::<Vec<_>>(),
-            "paths": paths.iter().map(|p| path(p)).collect::<Vec<_>>(),
-        }))?;
+        let mut setup = self.setup.clone();
+        setup["token"] = json!(token);
+        worker.send(&setup)?;
         worker.receive()?;
-        Ok(PhpRules {
-            worker: Mutex::new(Some(worker)),
-            failure: Mutex::new(None),
-            identifiers: Mutex::new(HashSet::new()),
-        })
+        Ok(worker)
+    }
+
+    /// An idle worker, a new one while fewer than `max` run, or `None` once a worker failed.
+    fn checkout(&self) -> Option<Result<Worker, String>> {
+        let mut pool = self.pool.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        loop {
+            if pool.stopped {
+                return None;
+            }
+            if let Some(worker) = pool.idle.pop() {
+                return Some(Ok(worker));
+            }
+            if pool.started < self.max {
+                pool.started += 1;
+                drop(pool);
+                return Some(self.spawn());
+            }
+            pool = (self.idle.wait(pool)).unwrap_or_else(std::sync::PoisonError::into_inner);
+        }
+    }
+
+    /// Keeps the failure for [`PhpRules::failure`] and stops the pool: Pun can't report half the rules' errors.
+    fn fail(&self, e: String) {
+        let mut pool = self.pool.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        pool.stopped = true;
+        pool.idle.clear();
+        drop(pool);
+        self.idle.notify_all();
+        let mut failure = self
+            .failure
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        failure.get_or_insert(e);
     }
 
     /// Runs the rules on `file`, or on the body of a trait it declares in the context of a class that uses it
     /// (`in_trait`: the class and the trait); `type_at(start, end)` answers the worker's type questions with a PHPDoc type. A
-    /// failure stops the worker and is kept for [`PhpRules::failure`]: Pun can't report half the rules' errors.
+    /// failure stops the pool and is kept for [`PhpRules::failure`].
     pub(crate) fn check(
         &self,
         file: &Path,
         in_trait: Option<(&str, &str)>,
         mut type_at: impl FnMut(u32, u32) -> Option<String>,
     ) -> Vec<RuleError> {
-        let mut guard = self
-            .worker
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let Some(worker) = guard.as_mut() else {
-            return Vec::new();
+        let mut worker = match self.checkout() {
+            None => return Vec::new(),
+            Some(Ok(worker)) => worker,
+            Some(Err(e)) => {
+                self.fail(e);
+                return Vec::new();
+            }
         };
         let mut ask = || -> Result<Vec<RuleError>, String> {
             let mut request = json!({"file": file.to_string_lossy()});
@@ -163,6 +223,12 @@ impl PhpRules {
         };
         match ask() {
             Ok(errors) => {
+                let mut pool = self.pool.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                if !pool.stopped {
+                    pool.idle.push(worker);
+                }
+                drop(pool);
+                self.idle.notify_one();
                 let mut ids = self
                     .identifiers
                     .lock()
@@ -175,12 +241,7 @@ impl PhpRules {
                 errors
             }
             Err(e) => {
-                *guard = None;
-                let mut failure = self
-                    .failure
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner);
-                failure.get_or_insert_with(|| format!("{}: {e}", file.display()));
+                self.fail(format!("{}: {e}", file.display()));
                 Vec::new()
             }
         }

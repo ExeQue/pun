@@ -170,6 +170,7 @@ Laravel, Pest, and PHPUnit rules also need their [extension](#extensions). PHP u
 | `scan` | Files and folders Pun reads for their classes, functions, and constants but doesn't analyse, as in PHPStan's `scanFiles` and `scanDirectories` |
 | `bootstrap` | PHPStan's `bootstrapFiles`. Pun doesn't run them: it reads their symbols as `scan` does, and Larastan reads their macros |
 | `php-rules` | Prototype. Neon files, usually `["phpstan.neon"]`, whose PHPStan rule classes (`rules:` and services tagged `phpstan.rules.rule`) Pun runs in a PHP worker, on the project's `vendor/autoload.php` and `vendor/phpstan/phpstan`. Their errors report under `analyse/style/project-rule`. See [custom rules](#custom-phpstan-rules-prototype) |
+| `php-rules-workers` | How many PHP workers run `php-rules` at once. Default: the number of CPU cores, at most 8 |
 | `bleeding-edge` | `true` infers types as PHPStan's `bleedingEdge.neon` does, except sealed and unsealed array shapes. Default `false` |
 | `union-types`, `nullables`, `explicit-mixed`, `implicit-mixed` | `true` or `false` turns one type switch on or off: PHPStan's level 7, 8, 9, or 10 check. Default: on in the presets that cover that level (`strict` for the first two, `max` for all four, and each `phpstan/level_<n>` from its level) |
 | `report-unmatched` | `false` reports no unmatched `@phpstan-ignore` comment and is the default of each `[[analyse.ignore]]` entry, as PHPStan's `reportUnmatchedIgnoredErrors`. Default `true` |
@@ -180,7 +181,7 @@ Every analyse finding is an error.
 
 ### Custom PHPStan rules (prototype)
 
-`php-rules` is the one place where Pun runs PHP. Pun starts one `php` process per run, without a memory limit (as PHPStan's `--memory-limit=-1`). It boots PHPStan from the neon files you list, with their includes, parameters and `bootstrapFiles` (Larastan's boots your Laravel app), so your rules get PHPStan's own reflection and container, and answers each `$scope->getType()` with the type Pun inferred. A project without `php-rules` runs no PHP.
+`php-rules` is the one place where Pun runs PHP. Pun runs your rules in a pool of `php` workers, as PHPStan runs its parallel workers: up to `php-rules-workers` of them (default: the number of CPU cores, at most 8), each started when a file needs it. Each worker runs without a memory limit (as PHPStan's `--memory-limit=-1`) and holds its own booted PHPStan and app, so a large project can take several hundred MB per worker; lower `php-rules-workers` if memory is tight. Each boots PHPStan from the neon files you list, with their includes, parameters and `bootstrapFiles` (Larastan's boots your Laravel app), so your rules get PHPStan's own reflection and container, and Pun answers each `$scope->getType()` with the type Pun inferred. A project without `php-rules` runs no PHP.
 
 List your `phpstan.neon`, so your rules see the same parameters and booted app as under PHPStan:
 
