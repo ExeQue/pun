@@ -87,7 +87,9 @@ function pun_boot(array $setup): PHPStan\DependencyInjection\Container
     foreach ($setup['paths'] as $path) {
         $lines[] = '        - ' . json_encode($path);
     }
-    file_put_contents($neon, implode("\n", $lines) . "\n");
+    // the workers of one run write the same file: write it whole, then rename
+    file_put_contents($neon . '.' . getmypid(), implode("\n", $lines) . "\n");
+    rename($neon . '.' . getmypid(), $neon);
     $factory = new PHPStan\DependencyInjection\ContainerFactory($setup['root']);
     $container = $factory->create($tmp, [$neon], $setup['paths'], [$setup['root']], $setup['paths'], '0');
     // as CommandHelper::executeBootstrapFile()

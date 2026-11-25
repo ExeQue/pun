@@ -641,6 +641,7 @@ impl Config {
                 scan: &a.scan,
                 bootstrap: &a.bootstrap,
                 php_rules: &a.php_rules,
+                php_rules_workers: a.php_rules_workers,
                 ignore: &a.ignore,
             },
         };
@@ -709,6 +710,8 @@ struct ShownAnalyse<'a> {
     bootstrap: &'a [String],
     #[serde(rename = "php-rules", skip_serializing_if = "<[_]>::is_empty")]
     php_rules: &'a [String],
+    #[serde(rename = "php-rules-workers", skip_serializing_if = "Option::is_none")]
+    php_rules_workers: Option<u16>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     ignore: &'a [Ignore],
 }
