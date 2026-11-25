@@ -3,7 +3,7 @@
 per rule, with what real Pint does to it.
 
 Rules: every fixer Pinkary's config enables (scripts/data/pinkary-effective.json, with its effective options), plus
-new_with_parentheses and Pint/phpdoc_type_annotations_only (laravel preset / Pest config), plus the 17 Pun/ rules.
+new_with_parentheses and Pint/phpdoc_type_annotations_only (laravel preset / Pest config), plus the 16 Pun/ fixers.
 For a Pint rule the input is the first upstream fixture input (crates/pun-fixers/tests/fixtures/<rule>.json) that real
 Pint changes with `{"preset": "empty", "rules": {<rule>: <options>}}` (falling back to the fixture case's own
 configuration); `expected` is the file Pint writes and `test_stdout`/`test_exit` what `pint --test` prints and
@@ -24,7 +24,6 @@ ENV = {'PATH': os.environ['PATH'], 'HOME': os.environ.get('HOME', '/tmp')}
 # First mago_cases pair of each Pun/ fixer (crates/pun-fixers/src/fixers/pun_<name>.rs), wrappers expanded.
 PUN = {
     'Pun/final_controller': ("<?php\n\nclass UserController\n{\n}\n", "<?php\n\nfinal class UserController\n{\n}\n"),
-    'Pun/no_implicit_model_query': ("<?php\n\n$users = User::where('is_active', true)->get();\n", "<?php\n\n$users = User::query()->where('is_active', true)->get();\n"),
     'Pun/no_only': ("<?php\n\ntest('example', function () {\n    expect(true)->toBeTrue();\n})->only();\n", "<?php\n\ntest('example', function () {\n    expect(true)->toBeTrue();\n});\n"),
     'Pun/no_redundant_isset': ("<?php isset($a[0], $a[0][1]);", "<?php isset($a[0][1]);"),
     'Pun/no_redundant_literal_return': ("<?php\n\nfunction getValue($x) {\n    if ($x === null) {\n        return null;\n    }\n    return $x;\n}\n", "<?php\n\nfunction getValue($x) {\n    return $x;\n}\n"),

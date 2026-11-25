@@ -48,7 +48,6 @@ fn pun_risky_rules() {
         risky,
         [
             "Pun/final_controller",
-            "Pun/no_implicit_model_query",
             "Pun/prefer_array_spread",
             "Pun/prefer_first_class_callable",
             "Pun/use_dedicated_expectation"

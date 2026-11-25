@@ -11415,7 +11415,7 @@
         "rules": [
           "lint/laravel/no-implicit-model-query"
         ],
-        "note": "Merged with Pun/no_implicit_model_query, no-implicit-model-query. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
+        "note": "Merged with no-implicit-model-query. Options: configurable: options carry 1:1 (same keys, kebab-cased).",
         "unsupported": false
       },
       {
@@ -26337,16 +26337,6 @@
         "unsupported": false
       },
       {
-        "name": "Pun/no_implicit_model_query",
-        "tool": "pun",
-        "url": "https://mago.carthage.software/1.61.0/en/tools/linter/rules/",
-        "rules": [
-          "lint/laravel/no-implicit-model-query"
-        ],
-        "note": "Merged with EloquentMagicMethodToQueryBuilder, no-implicit-model-query. Options: same.",
-        "unsupported": false
-      },
-      {
         "name": "Pun/no_only",
         "tool": "pun",
         "url": "https://mago.carthage.software/1.61.0/en/tools/linter/rules/",
@@ -27175,7 +27165,7 @@
         "rules": [
           "lint/laravel/no-implicit-model-query"
         ],
-        "note": "Merged with Pun/no_implicit_model_query, EloquentMagicMethodToQueryBuilder. Options: same.",
+        "note": "Merged with EloquentMagicMethodToQueryBuilder. Options: same.",
         "unsupported": false
       },
       {

@@ -3,7 +3,7 @@
 The `Pun/*` rules are opt-in lint rules beyond Pint, adopted from [Mago's linter](https://mago.carthage.software/1.61.0/en/tools/linter/rules/).
 None of them is a format rule, so `pun format` stays byte-identical to Pint.
 
-Each is one file in `crates/pun-fixers/src/fixers/pun_*.rs` that uses the same `Fixer` trait and registration as the
+Each but `Pun/no_implicit_model_query` is one file in `crates/pun-fixers/src/fixers/pun_*.rs` that uses the same `Fixer` trait and registration as the
 ports, and runs at priority 0. A pint.json names them `Pun/<name>`; `pun migrate` turns
 `"Pun/prefer_fake_helper": true` into `"laravel/prefer-fake-helper" = "error"`. Turn one on by its lint ID under
 `[lint.rules]` in `pun.toml`; `pun lint --fix` and `pun check --fix` apply the fix. Mago's test cases are the unit
@@ -18,7 +18,7 @@ from `crates/pun-config/rules/mapping.toml`; "no set" means the rule is only on 
 | `Pun/prefer_dedicated_status_assertion` | `laravel/prefer-dedicated-status-assertion` | `->assertStatus(404)` → `->assertNotFound()` (25 codes); skips calls with comments inside | safe, code-quality |
 | `Pun/prefer_fake_helper` | `laravel/prefer-fake-helper` | `$this->faker` → `fake()` in classes named `*Factory`; skips write contexts, where `fake()` would not compile | unsafe, code-quality |
 | `Pun/prefer_array_validation_rules` | `laravel/prefer-array-validation-rules` | `'required\|string'` → `['required', 'string']` in `rules()` and in the rules array of `Validator::make()`, `Factory::make()` and `Request::validate()` (rector-laravel's call sites), for string-literal keys whose value is the whole literal | safe, code-quality |
-| `Pun/no_implicit_model_query` | `laravel/no-implicit-model-query` | `User::where(...)` → `User::query()->where(...)`; a name heuristic, resolves `use ... as` aliases | risky, unsafe, code-quality |
+| `Pun/no_implicit_model_query` | `laravel/no-implicit-model-query` | `User::where(...)` → `User::query()->where(...)`; a native lint rule (`crates/pun-lint/src/rules/laravel/no_implicit_model_query.rs`), not a fixer: the class must be an Eloquent model that does not declare the method, as rector-laravel checks | unsafe, code-quality |
 | `Pun/final_controller` | `laravel/require-final-controller` | makes non-abstract classes named `*Controller` `final`; skips a class named exactly `Controller` and controllers extended in the same file. Risky: subclasses and mocks in other files break | risky, unsafe, no set |
 | `Pun/use_specific_expectations` | `pest/prefer-specific-expectations` | `expect($x)->toBe(true\|false\|null)` → `->toBeTrue()` / `->toBeFalse()` / `->toBeNull()`; only rewrites that keep the test's meaning | safe, coding-style |
 | `Pun/use_dedicated_expectation` | `pest/prefer-dedicated-expectation` | `expect(is_array($x))->toBeTrue()` → `expect($x)->toBeArray()`, likewise `str_starts_with`, `str_ends_with`, `property_exists` and other exact-matcher `is_*` checks; keeps `->not`. Risky: some matchers also require a string or object | risky, unsafe, coding-style |

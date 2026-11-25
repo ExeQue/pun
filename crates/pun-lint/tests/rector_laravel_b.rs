@@ -15,10 +15,10 @@ use pun_lint::Rule;
 use pun_lint::rules::{
     AddFactoryExtendsPhpdoc, AddHasFactoryTrait, AddLegacyRelationGenerics, AddNewRelationGenerics,
     AddQueryClosureType, AddRelationGenerics, AddRelationQueryClosureType, AddTapClosureType,
-    ContainerService, NoAppArrayAccess, NoCollectionAliases, NoNegatedContains, NoNegatedFilter,
-    NoNegatedWhen, NoUselessValueCall, NoUselessWithCall, PreferClassContainerKey,
-    PreferClosureOnlyBind, PreferCollectionAll, PreferDispatchHelper, PreferEnvironmentCheck,
-    PreferLatestOldest, PreferProtectedModelMethods, PreferRequestValidate,
+    ContainerService, NoAppArrayAccess, NoCollectionAliases, NoImplicitModelQuery,
+    NoNegatedContains, NoNegatedFilter, NoNegatedWhen, NoUselessValueCall, NoUselessWithCall,
+    PreferClassContainerKey, PreferClosureOnlyBind, PreferCollectionAll, PreferDispatchHelper,
+    PreferEnvironmentCheck, PreferLatestOldest, PreferProtectedModelMethods, PreferRequestValidate,
     PreferTypedAssertClosure,
 };
 
@@ -105,6 +105,22 @@ fn make_model_attributes_and_scopes_protected() {
     check(
         PreferProtectedModelMethods,
         "MakeModelAttributesAndScopesProtectedRector",
+    );
+}
+
+/// `lint/laravel/no-implicit-model-query` rewrites only Mago's list of builder methods, so rector-laravel's fixtures
+/// (`find`, scopes, its `exclude_methods`) do not apply. EloquentMagicMethodToQueryBuilderRector/Pun/ holds a model and a
+/// class that is no model, each in its own file under Source/, with what rector-laravel 2.7.3 wrote for them: the
+/// model's calls start with `query()`, the other class's `latest()` and `where()` stay (issue #35).
+#[test]
+fn eloquent_magic_method_to_query_builder() {
+    let stubs = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector-laravel-stubs");
+    run_dirs(
+        vec![Box::new(NoImplicitModelQuery)],
+        "EloquentMagicMethodToQueryBuilderRector",
+        &["Pun"],
+        80400,
+        &[&stubs],
     );
 }
 

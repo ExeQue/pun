@@ -2493,14 +2493,6 @@
   "test_exit": 1
  },
  {
-  "rule": "Pun/no_implicit_model_query",
-  "file": "test.php",
-  "pun.toml": "[format]\npreset = \"empty\"\n\n[lint.rules]\n\"laravel/no-implicit-model-query\" = \"error\"\n",
-  "input": "<?php\n\n$users = User::where('is_active', true)->get();\n",
-  "expected": "<?php\n\n$users = User::query()->where('is_active', true)->get();\n",
-  "test_exit": 1
- },
- {
   "rule": "Pun/no_only",
   "file": "test.php",
   "pun.toml": "[format]\npreset = \"empty\"\n\n[lint.rules]\n\"pest/no-only\" = \"error\"\n",

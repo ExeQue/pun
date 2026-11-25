@@ -24,7 +24,6 @@ To skip it in some files or lines, add an [override](/docs/configuration/pun-tom
 
 ## Replaces
 
-- [`Pun/no_implicit_model_query`](https://mago.carthage.software/1.61.0/en/tools/linter/rules/) (pun)
 - [`EloquentMagicMethodToQueryBuilder`](https://getrector.com/rule-detail/eloquent-magic-method-to-query-builder-rector) (rector-laravel)
 - [`no-implicit-model-query`](https://mago.carthage.software/1.61.0/en/tools/linter/rules/#no-implicit-model-query) (mago-linter)
 
@@ -33,5 +32,7 @@ To skip it in some files or lines, add an [override](/docs/configuration/pun-tom
 These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
 - `lint/laravel/prefer-query-builder-call`
+
+As rector-laravel checks, the class must be an Eloquent model that does not declare the method itself; a class that is no model, or that Pun cannot find, is left alone. As Mago does, only query builder methods such as `where()`, `orderBy()` and `latest()` count, on a class written by name.
 
 [More lint/laravel rules](/docs/rules/lint/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

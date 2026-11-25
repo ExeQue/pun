@@ -8049,7 +8049,6 @@
       "upstream": [
         "EloquentMagicMethodToQueryBuilder",
         "EloquentMagicMethodToQueryBuilderRector",
-        "Pun/no_implicit_model_query",
         "RectorLaravel\\Rector\\StaticCall\\EloquentMagicMethodToQueryBuilderRector",
         "no-implicit-model-query"
       ],

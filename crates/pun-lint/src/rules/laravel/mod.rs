@@ -16,6 +16,7 @@ mod names;
 mod no_app_array_access;
 mod no_collection_aliases;
 mod no_controller_middleware;
+mod no_implicit_model_query;
 mod no_negated_blank_filled;
 mod no_negated_contains;
 mod no_negated_filter;
@@ -185,6 +186,7 @@ rules! {
         helper_calls => NoDumpCalls::default(),
         helper_calls => PreferComponentsProperty,
         helper_calls => NoFactoryModelProperty,
+        no_implicit_model_query => NoImplicitModelQuery,
         query_calls => PreferWhereNull,
         query_calls => PreferDateShorthand,
         query_calls => PreferWhereLike::default(),

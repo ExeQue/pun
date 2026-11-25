@@ -917,6 +917,10 @@ fn check_formats_like_pint_beside_lint_fixes() {
         &[
             ("pun.toml", toml),
             (
+                "User.php",
+                "<?php\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\nclass User extends Model\n{\n    //\n}\n",
+            ),
+            (
                 "A.php",
                 "<?php\n\n$a = User::where(1)->first();\nif (! $a) {\n    echo 1;\n}\n",
             ),
