@@ -4329,3 +4329,12 @@ called class before its declaring class, as the instance method resolver already
 a trait method's per-class copy there when the class inherits a PHPDoc for it (mago-codex's PATCHES.md, "Trait
 methods inheriting the using class's PHPDoc"), so `PostData::collect($rows)` takes the `BaseData` contract's
 conditional return type. A class without a copy still resolves to the declaring method.
+
+## Property fetches after `??`
+
+`expression/binary/null_coalesce.rs`: upstream 1.61 specifies only the root variable on the isset-success edge of
+`$o->p ?? $b`, while the right-hand edge pins `$o->p` to `null`, so after the join the fetch's only value is `null`.
+PHPStan's CoalesceHandler specifies the fetch on the isset-success edge too, and the join keeps its read type: after
+`$row->item_id ?? 'none'` on a `mixed` `$row`, `$row->item_id` stays `mixed`. Pun's `no-always-true-if` port read
+`!($row->item_id !== null)` in a loop as always true from the leftover `null`
+(`crates/pun-lint/tests/rector/RemoveAlwaysTrueIfConditionRector/Oracle/skip_coalesced_property_in_loop.php.inc`).
