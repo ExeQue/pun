@@ -1473,3 +1473,48 @@ final class FirstLevelRule implements Rule
         "{stderr}"
     );
 }
+
+/// A fatal error in the worker (here a rule that runs out of memory) stops the run with PHP's message.
+#[test]
+fn php_rules_fatal_error_is_a_run_error() {
+    let rule = r"<?php
+
+namespace App\Rules;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\Rule;
+
+/** @implements Rule<Node\Stmt\Class_> */
+final class HungryRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return Node\Stmt\Class_::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        ini_set('memory_limit', '512M');
+
+        return [str_repeat('x', 1 << 30)];
+    }
+}
+";
+    let Some(d) = php_rules_project("php-rules-fatal", Some(("HungryRule", rule))) else {
+        return;
+    };
+    let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+        .current_dir(&d)
+        .env("PUN_AGENT", "0")
+        .args(["analyse", "--error-format=json"])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert_eq!(out.status.code(), Some(2), "{stderr}");
+    assert!(
+        stderr.contains("[analyse] php-rules: ")
+            && stderr.contains("PHP Fatal error: Allowed memory size of 536870912 bytes exhausted"),
+        "{stderr}"
+    );
+}

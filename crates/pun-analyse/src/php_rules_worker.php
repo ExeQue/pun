@@ -23,6 +23,7 @@
 
 ini_set('display_errors', 'stderr');
 error_reporting(E_ALL & ~E_DEPRECATED);
+gc_disable(); // as bin/phpstan; pun starts php with memory_limit=-1, as PHPStan's --memory-limit=-1
 ob_start(); // rule output must not reach the protocol
 define('__PHPSTAN_RUNNING__', true);
 
@@ -59,6 +60,16 @@ function pun_describe(Throwable $e): string
 final class PunUnsupported extends LogicException
 {
 }
+
+// A fatal error (memory, a rule's parse error) ends the worker: tell pun why, as PHPStan's own shutdown function does.
+$punReservedMemory = str_repeat('pun', 10000);
+register_shutdown_function(static function (): void {
+    $GLOBALS['punReservedMemory'] = null;
+    $error = error_get_last();
+    if ($error !== null && isset(PunWorker::$token) && ($error['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR)) !== 0) {
+        PunWorker::send(['error' => "PHP Fatal error: {$error['message']} in {$error['file']} on line {$error['line']}"]);
+    }
+});
 
 /** @param array<mixed> $setup */
 function pun_boot(array $setup): PHPStan\DependencyInjection\Container
