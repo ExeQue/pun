@@ -95,6 +95,18 @@ impl Rule for PreferLatestOldest {
         {
             return;
         }
+        // Not in Rector: Larastan types `latest()`/`oldest()`'s column on an Eloquent builder as a property of its
+        // model, so it rejects a column qualified by a joined table (`f.filed_on`) that `orderBy()` accepted.
+        if matches!(get_value(ctx, ancestors, column), Got::Str(s, _) if s.contains('.'))
+            && is_object_type(
+                ctx,
+                ancestors,
+                call.object,
+                "Illuminate\\Contracts\\Database\\Eloquent\\Builder",
+            )
+        {
+            return;
+        }
         let direction = match arg_at(&arguments, "direction", 1) {
             None => "asc".to_string(),
             Some(at) => match get_value(ctx, ancestors, arguments[at].value()) {

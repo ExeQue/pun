@@ -597,7 +597,7 @@ lumen = "Lumen routes: the Lumen framework's own route syntax"
 "laravel/prefer-help-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the help property to use the Help attribute" }
 "laravel/prefer-hidden-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes model hidden property to use the hidden attribute" }
 "laravel/prefer-job-connection-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the connection property to use the Connection attribute on queue jobs" }
-"laravel/prefer-latest-oldest" = { fix = "unsafe", preset = "strict", ported = true, status = "decided", summary = "Changes orderBy() to latest() or oldest()" }
+"laravel/prefer-latest-oldest" = { fix = "unsafe", preset = "strict", ported = true, status = "decided", note = "Unlike Rector, it leaves a column with a table prefix (`f.filed_on`) on an Eloquent builder or relation: Larastan types `latest()` and `oldest()`'s column as a property of the builder's model, so it rejects a joined table's column that `orderBy()` accepted.", summary = "Changes orderBy() to latest() or oldest()" }
 "laravel/prefer-max-exceptions-attribute" = { fix = "unsafe", ported = true, status = "decided", summary = "Changes the maxExceptions property to use the MaxExceptions attribute" }
 "laravel/prefer-nullsafe" = { fix = "unsafe", preset = "strict", ported = true, status = "decided", summary = "Convert simple calls to optional helper to use the nullsafe operator" }
 "laravel/prefer-pivot-class" = { fix = "unsafe", preset = "strict", ported = false, status = "decided", summary = "Changes the pivot table name of a many to many relation to the pivot model class." }
