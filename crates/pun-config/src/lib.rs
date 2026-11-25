@@ -252,6 +252,19 @@ fn top_preset(
     Ok(Some(p))
 }
 
+/// `[analyse] php-rules-paths` needs `php-rules`, and stays in the project.
+fn php_rules_paths(root: &Path, at: &impl std::fmt::Display, analyse: &Analyse) -> Result<()> {
+    if !analyse.php_rules_paths.is_empty() && analyse.php_rules.is_empty() {
+        bail!("{at}: [analyse] php-rules-paths: name the neon files in php-rules too");
+    }
+    for p in &analyse.php_rules_paths {
+        if !inside(root, p) {
+            bail!("{at}: [analyse] php-rules-paths: \"{p}\" is outside the project");
+        }
+    }
+    Ok(())
+}
+
 /// `[lint] baseline` and `[analyse] baseline`, and their directories, must stay inside the project.
 fn baseline_inside(
     root: &Path,
@@ -335,6 +348,7 @@ fn parse(
     let analyse = schema::analyse(path, analyse, &files, &gates)?;
     baseline_inside(root, &at, "lint", lint.baseline.as_deref())?;
     baseline_inside(root, &at, "analyse", analyse.baseline.as_deref())?;
+    php_rules_paths(root, &at, &analyse)?;
     let laravel = gates.switches.get(extensions::LARAVEL.id) == Some(&extensions::Switch::On);
     let preset = format_preset(
         opts.preset.as_deref().or(f.preset.as_deref()),
@@ -649,6 +663,7 @@ impl Config {
                 bootstrap: &a.bootstrap,
                 php_rules: &a.php_rules,
                 php_rules_workers: a.php_rules_workers,
+                php_rules_paths: &a.php_rules_paths,
                 ignore: &a.ignore,
             },
         };
@@ -721,6 +736,8 @@ struct ShownAnalyse<'a> {
     php_rules: &'a [String],
     #[serde(rename = "php-rules-workers", skip_serializing_if = "Option::is_none")]
     php_rules_workers: Option<u16>,
+    #[serde(rename = "php-rules-paths", skip_serializing_if = "<[_]>::is_empty")]
+    php_rules_paths: &'a [String],
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     ignore: &'a [Ignore],
 }

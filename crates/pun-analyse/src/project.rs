@@ -90,6 +90,8 @@ pub struct Project {
     pub php_rules_config: Vec<String>,
     /// `[analyse] php-rules-workers`: the most PHP workers that run them; `None` is the number of cores, at most 8.
     pub php_rules_workers: Option<usize>,
+    /// `[analyse] php-rules-paths`: the absolute paths the workers check; empty is every analysed file.
+    pub php_rules_paths: Vec<PathBuf>,
     pub php_rules: Option<std::sync::Arc<crate::PhpRules>>,
     pub type_aliases: Vec<(String, String)>,
     pub stubs: Vec<PathBuf>,
@@ -333,17 +335,26 @@ impl Project {
         Ok(())
     }
 
-    /// Prepares the php-rules workers when `php_rules_config` names neon files, with `paths` as PHPStan's analysed
-    /// paths. They start when a file needs them; a worker that can't start fails the run ([`crate::PhpRules::failure`]).
-    pub fn start_php_rules(&mut self, paths: &[PathBuf]) {
+    /// Prepares the php-rules workers when `php_rules_config` names neon files, with `paths` (or `php_rules_paths`,
+    /// which the workers then keep to) as PHPStan's analysed paths. They start when a file needs them; a worker that can't start fails the run ([`crate::PhpRules::failure`]).
+    /// `cache` is the result cache's file and the caller's part of its key ([`crate::PhpRules::start`]).
+    pub fn start_php_rules(&mut self, paths: &[PathBuf], cache: Option<(PathBuf, &str)>) {
         if self.php_rules_config.is_empty() {
             return;
         }
         let neon: Vec<PathBuf> = self.php_rules_config.iter().map(PathBuf::from).collect();
         let workers = (self.php_rules_workers).unwrap_or_else(|| {
-            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get).min(8)
+            std::thread::available_parallelism()
+                .map_or(1, std::num::NonZeroUsize::get)
+                .min(8)
         });
-        let rules = crate::PhpRules::start(&self.current_working_directory, &neon, paths, workers);
+        let root = &self.current_working_directory;
+        let (paths, only) = if self.php_rules_paths.is_empty() {
+            (paths, false)
+        } else {
+            (&self.php_rules_paths[..], true)
+        };
+        let rules = crate::PhpRules::start(root, &neon, paths, only, workers, cache);
         self.php_rules = Some(std::sync::Arc::new(rules));
     }
 
@@ -644,6 +655,10 @@ impl Project {
                 Some(Value::Int(n)) => usize::try_from(*n).ok(),
                 _ => None,
             },
+            php_rules_paths: strings(params, "punPhpRulesPaths")
+                .into_iter()
+                .map(PathBuf::from)
+                .collect(),
             php_rules: None,
             type_aliases: params
                 .get_str("typeAliases")
@@ -754,6 +769,7 @@ impl Project {
             phpat: None,
             php_rules_config: Vec::new(),
             php_rules_workers: None,
+            php_rules_paths: Vec::new(),
             php_rules: None,
             type_aliases: Vec::new(),
             stubs: Vec::new(),

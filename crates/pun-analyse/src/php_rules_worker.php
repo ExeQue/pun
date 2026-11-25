@@ -21,6 +21,8 @@
 // class that uses it; the worker may ask {"type": [start, end]} (byte offsets,
 // end exclusive) any number of times, each answered by pun with {"type": "<PHPDoc type>" | null}, and finishes
 // with {"errors": [{"message", "line", "identifier", "tip", "nonIgnorable"}]} or {"error": "..."}.
+// For its result cache, pun may send {"loaded": true} once the run is over; the worker answers with
+// {"files": [...]}, the PHP files it has loaded.
 
 ini_set('display_errors', 'stderr');
 error_reporting(E_ALL & ~E_DEPRECATED);
@@ -159,8 +161,10 @@ function pun_rules(PHPStan\DependencyInjection\Container $container): array
  */
 function pun_check(PHPStan\DependencyInjection\Container $container, array $rules, string $file, ?string $class = null, ?string $trait = null): array
 {
+    // PHPStan's cached rich parser, as PHPStan parses an analysed file: its LRU cache of ASTs parses a trait's file
+    // once, not once for each class that uses it
     /** @var PHPStan\Parser\Parser $parser */
-    $parser = $container->getService('currentPhpVersionRichParser');
+    $parser = $container->getService('cachedRichParser');
     $walker = new PunWalker(
         $rules,
         $container->getByType(PHPStan\Reflection\ReflectionProvider::class),
@@ -498,6 +502,11 @@ try {
 
 while (true) {
     $request = PunWorker::receive();
+    if (isset($request['loaded'])) {
+        // for pun's result cache: the PHP files the rules, the bootstrap files and the checks loaded
+        PunWorker::send(['files' => array_values(array_filter(get_included_files(), static fn (string $f): bool => !str_starts_with($f, 'phar://')))]);
+        continue;
+    }
     try {
         $errors = pun_check($container, $rules, $request['file'], $request['class'] ?? null, $request['trait'] ?? null);
         PunWorker::send(['errors' => $errors]);

@@ -26,6 +26,7 @@ pun analyse --generate-baseline   # accept current errors
 | `--format=<fmt>` | Report as `raw`, `json`, `checkstyle`, `junit`, `gitlab`, `github` or `teamcity`. Alias: `--error-format`. |
 | `--concise` | One line per error. |
 | `--max-processes=<n>` | Limit threads. Default: one per core. |
+| `--no-cache` | Run every [`php-rules`](/docs/configuration/pun-toml#custom-phpstan-rules-prototype) check again, without their result cache. |
 | `--color=<when>` | `auto`, `always` or `never`. |
 | `-v` | Add identifiers to `raw` output. |
 | `-q` | Print nothing. The exit code gives the result. |

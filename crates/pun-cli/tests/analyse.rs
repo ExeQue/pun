@@ -1406,7 +1406,10 @@ fn php_rules_project(name: &str, extra_rule: Option<(&str, &str)>) -> Option<Pat
         ("rules/DangerousCallRule.php", DANGEROUS_CALL_RULE),
         ("rules/FinalClassRule.php", FINAL_CLASS_RULE),
         ("rules/ClassNameRule.php", CLASS_NAME_RULE),
-        ("bootstrap.php", "<?php\n\nconst APP_BOOTED = 'the bootstrap';\n"),
+        (
+            "bootstrap.php",
+            "<?php\n\nconst APP_BOOTED = 'the bootstrap';\n",
+        ),
         (
             "vendor/autoload.php",
             "<?php\n\nforeach (glob(__DIR__ . '/../rules/*.php') as $rule) {\n    require_once $rule;\n}\n",
@@ -1456,7 +1459,9 @@ fn php_rules_match_phpstan() {
         let want = run(&d, &phpstan, &[format]);
         assert!(
             want.0.contains("Calls Foo::dangerous() in run().")
-                && want.0.contains("Foo@anonymous/a.php:25) after the bootstrap."),
+                && want
+                    .0
+                    .contains("Foo@anonymous/a.php:25) after the bootstrap."),
             "{want:?}"
         );
         assert_eq!(run(&d, &[PUN, "analyse"], &[format]), want, "{format}");
@@ -1586,4 +1591,140 @@ final class Extra implements Rule
     let (out, code) = run(&d, &[PUN, "analyse"], &["--error-format=raw"]);
     assert!(out.contains("Calls Foo::dangerous() in run()."), "{out}");
     assert_eq!(code, Some(1), "{out}");
+}
+
+/// Logs the file of each method a check walks (a trait's methods in the context of a class that uses it too), to
+/// show which checks ran.
+const LOG_RULE: &str = r"<?php
+
+namespace App\Rules;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\Rule;
+
+/** @implements Rule<Node\Stmt\ClassMethod> */
+final class LogRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return Node\Stmt\ClassMethod::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        file_put_contents(getcwd() . '/checked.log', basename($scope->getFile()) . PHP_EOL, FILE_APPEND | LOCK_EX);
+
+        return [];
+    }
+}
+";
+
+/// The php-rules' result cache: a second run gives the first one's output byte for byte without running a check;
+/// a changed file runs again with the files that depend on it (a parent class's subclasses, a trait's users, and the
+/// trait in their context), also in a run on some of the files; a changed rule or config runs everything, and
+/// `--no-cache` and `PUN_NO_CACHE` run everything without the cache.
+#[test]
+fn php_rules_result_cache() {
+    let Some(d) = php_rules_project("php-rules-cache", Some(("LogRule", LOG_RULE))) else {
+        return;
+    };
+    let files = [
+        (
+            "src/base.php",
+            "<?php\n\nnamespace App;\n\nclass Base\n{\n    public function base(): void\n    {\n    }\n}\n",
+        ),
+        (
+            "src/t.php",
+            "<?php\n\nnamespace App;\n\ntrait T\n{\n    public function t(): void\n    {\n    }\n}\n",
+        ),
+        (
+            "src/child.php",
+            "<?php\n\nnamespace App;\n\nfinal class Child extends Base\n{\n    use T;\n\n    public function child(): void\n    {\n    }\n}\n",
+        ),
+    ];
+    for (f, c) in files {
+        std::fs::write(d.join(f), c).unwrap();
+    }
+    let cache = d.join("cache");
+    let cache = cache.to_str().unwrap();
+    let analyse = |args: &[&str], env: &[(&str, &str)]| {
+        let _ = std::fs::remove_file(d.join("checked.log"));
+        let env: Vec<_> = [("PUN_CACHE_DIR", cache)]
+            .into_iter()
+            .chain(env.iter().copied())
+            .collect();
+        let args: Vec<_> = ["--error-format=json"]
+            .into_iter()
+            .chain(args.iter().copied())
+            .collect();
+        let (out, err, code) = pun(&d, &args, &env);
+        assert_eq!(code, Some(1), "{out}{err}");
+        let log = std::fs::read_to_string(d.join("checked.log")).unwrap_or_default();
+        let mut checked: Vec<String> = log.lines().map(String::from).collect();
+        checked.sort();
+        checked.dedup();
+        (out, checked.join(" "))
+    };
+    let all = "a.php base.php child.php t.php";
+    let (cold, checked) = analyse(&[], &[]);
+    assert!(cold.contains("Calls Foo::dangerous() in run()."), "{cold}");
+    assert_eq!(checked, all);
+    assert_eq!(analyse(&[], &[]), (cold.clone(), String::new()));
+    let append = |f: &str| {
+        let mut source = std::fs::read_to_string(d.join(f)).unwrap();
+        source.push_str("\n// changed\n");
+        std::fs::write(d.join(f), source).unwrap();
+    };
+    append("src/a.php");
+    assert_eq!(analyse(&[], &[]), (cold.clone(), "a.php".to_string()));
+    append("src/t.php");
+    assert_eq!(analyse(&[], &[]).1, "child.php t.php");
+    append("src/base.php");
+    assert_eq!(analyse(&[], &[]).1, "base.php child.php t.php");
+    assert_eq!(analyse(&[], &[]).1, "");
+    // a run on some of the files reads and keeps the same cache
+    assert_eq!(analyse(&["src/child.php"], &[]).1, "");
+    append("src/child.php");
+    assert_eq!(analyse(&["src/child.php", "src/t.php"], &[]).1, "child.php t.php");
+    assert_eq!(analyse(&[], &[]).1, "");
+    append("rules/FinalClassRule.php");
+    assert_eq!(analyse(&[], &[]).1, all);
+    let neon = std::fs::read_to_string(d.join("rules.neon")).unwrap();
+    std::fs::write(d.join("rules.neon"), format!("{neon}# changed\n")).unwrap();
+    assert_eq!(analyse(&[], &[]).1, all);
+    assert_eq!(analyse(&["--no-cache"], &[]).1, all);
+    assert_eq!(analyse(&[], &[("PUN_NO_CACHE", "1")]).1, all);
+    assert_eq!(analyse(&[], &[]), (cold, String::new()));
+}
+
+/// `[analyse] php-rules-paths` keeps the rules to its paths, while the native analysis still covers `[analyse] paths`.
+#[test]
+fn php_rules_paths_keep_the_rules_to_their_paths() {
+    let Some(d) = php_rules_project("php-rules-paths", None) else {
+        return;
+    };
+    let other = "<?php\n\nnamespace App;\n\nclass Other\n{\n    public function run(): void\n    {\n        undefined_fn();\n    }\n}\n";
+    std::fs::create_dir_all(d.join("src/other")).unwrap();
+    std::fs::write(d.join("src/other/b.php"), other).unwrap();
+    let toml = std::fs::read_to_string(d.join("pun.toml")).unwrap();
+    let (all, _, _) = pun(&d, &["--error-format=raw", "--no-cache"], &[]);
+    assert!(
+        all.contains("Calls Foo::dangerous() in run().")
+            && all.contains("Class App\\Other is not final."),
+        "{all}"
+    );
+    std::fs::write(
+        d.join("pun.toml"),
+        format!("{toml}php-rules-paths = [\"src/other\"]\n"),
+    )
+    .unwrap();
+    let (out, err, code) = pun(&d, &["--error-format=raw", "--no-cache"], &[]);
+    assert_eq!(code, Some(1), "{out}{err}");
+    assert!(
+        !out.contains("Calls Foo::dangerous()")
+            && out.contains("Class App\\Other is not final.")
+            && out.contains("Function undefined_fn not found."),
+        "{out}"
+    );
 }

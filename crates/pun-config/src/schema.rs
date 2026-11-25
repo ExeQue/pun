@@ -488,6 +488,8 @@ pub struct Analyse {
     pub php_rules: Vec<String>,
     /// `php-rules-workers`: how many PHP workers run the `php-rules`; `None` is the number of cores, at most 8.
     pub php_rules_workers: Option<u16>,
+    /// `php-rules-paths`: the paths the `php-rules` run on, relative to the project; empty is all of `paths`.
+    pub php_rules_paths: Vec<String>,
     pub rules: Vec<AnalyseRule>,
     pub bleeding_edge: bool,
     /// PHPStan's `reportUnmatchedIgnoredErrors`: `false` reports no unmatched ignore comment and makes
@@ -567,6 +569,8 @@ pub(crate) struct AnalyseToml {
     php_rules: Vec<String>,
     #[serde(rename = "php-rules-workers")]
     php_rules_workers: Option<std::num::NonZeroU16>,
+    #[serde(default, rename = "php-rules-paths")]
+    php_rules_paths: Vec<String>,
     #[serde(default)]
     ignore: Vec<Ignore>,
     #[serde(default)]
@@ -1028,6 +1032,7 @@ pub(crate) fn analyse(
         bootstrap: t.bootstrap,
         php_rules: t.php_rules,
         php_rules_workers: t.php_rules_workers.map(std::num::NonZeroU16::get),
+        php_rules_paths: t.php_rules_paths,
         ignore,
         larastan: ecosystems.contains(&&extensions::LARAVEL)
             && crate::phpstan_parameters::larastan_supports(
