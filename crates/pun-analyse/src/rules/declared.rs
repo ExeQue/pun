@@ -143,7 +143,7 @@ pub(super) fn class_templates(c: &Checker, k: &ClassLikeMetadata) -> Vec<Templat
     templates(doc, &scope, &format!("class {}", original_name(k)))
 }
 
-fn trait_templates(
+pub(super) fn trait_templates(
     c: &Checker,
     t: &ClassLikeMetadata,
     context: &ClassLikeMetadata,
@@ -1292,6 +1292,21 @@ pub(super) fn reflected_phpdoc_signature(
 ) -> (HashMap<String, Type>, Option<Type>) {
     let resolved = reflected_doc(c, f, Some(declaring), name);
     (resolved.params, resolved.ret)
+}
+
+/// The PHPDoc of trait method `f` itself, resolved in `context` with the trait's templates as the class's `@use` gives
+/// them: `context` may override `f`, so `reflected_phpdoc_signature()` would find the override's PHPDoc instead.
+pub(super) fn trait_phpdoc_signature(
+    c: &Checker,
+    f: &FunctionLikeMetadata,
+    t: &ClassLikeMetadata,
+    context: &ClassLikeMetadata,
+) -> Option<(HashMap<String, Type>, Option<Type>)> {
+    let resolved = f
+        .has_docblock
+        .then(|| resolved_own(c, f, t, context))
+        .flatten()?;
+    Some((resolved.params, resolved.ret))
 }
 
 pub(super) fn function_phpdoc(c: &Checker, f: &Function) -> PhpDocTypes {

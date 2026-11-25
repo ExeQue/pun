@@ -4384,3 +4384,12 @@ subject's span. Its flow was recorded under that span, replacing the subject's, 
 `$order` was reported `variable.unused`, where PHPStan's VariableFlowBuilder reads the subject expression
 (shipfastlabs/pun#48). The synthetic variable records no flow. `crates/pun-analyse/tests/match_subject_reads.rs`
 covers it.
+## Trait templates bound by the using class's `@use`
+
+`statement/function_like/mod.rs` `trait_context_templates()`, called from `expand_type_union()`: a trait method
+analysed in the context of its using class (`trait_context_class`) kept the trait's own templates, so with
+`@use HoldsRows<Apple>` a `list<TRow>` parameter stayed `list<TRow of object>` and the method template
+`TPicked of TRow` kept the trait template as its bound. PHPStan resolves the trait's PHPDoc with the using class's
+template type map. The expanded signature types now replace the trait's templates with the class's `@use` arguments
+(from `template_extended_parameters`), also inside the constraint of the method's own templates
+(shipfastlabs/pun#50). `crates/pun-analyse/tests/trait_use_templates.rs` covers it.

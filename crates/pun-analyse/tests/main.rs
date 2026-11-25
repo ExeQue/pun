@@ -184,6 +184,7 @@ mod trait_constant_initializers;
 mod trait_inherited_phpdoc;
 mod trait_method_tags;
 mod trait_type_aliases;
+mod trait_use_templates;
 mod try_certainty;
 mod undefined_offset_writes;
 mod unmatched_catch_observation;
