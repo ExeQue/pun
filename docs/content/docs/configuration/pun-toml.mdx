@@ -166,6 +166,7 @@ Laravel, Pest, and PHPUnit rules also need their [extension](#extensions). PHP u
 | `stubs` | Stub files whose PHPDoc refines vendor symbols, as in PHPStan's `stubFiles` |
 | `scan` | Files and folders Pun reads for their classes, functions, and constants but doesn't analyse, as in PHPStan's `scanFiles` and `scanDirectories` |
 | `bootstrap` | PHPStan's `bootstrapFiles`. Pun doesn't run them: it reads their symbols as `scan` does, and Larastan reads their macros |
+| `php-rules` | Prototype. Neon files whose PHPStan rule classes (`rules:` and services tagged `phpstan.rules.rule`) Pun runs in a PHP worker, on the project's `vendor/autoload.php` and `vendor/phpstan/phpstan`. Their errors report under `analyse/style/project-rule`. See [custom rules](#custom-phpstan-rules-prototype) |
 | `bleeding-edge` | `true` infers types as PHPStan's `bleedingEdge.neon` does, except sealed and unsealed array shapes. Default `false` |
 | `union-types`, `nullables`, `explicit-mixed`, `implicit-mixed` | `true` or `false` turns one type switch on or off: PHPStan's level 7, 8, 9, or 10 check. Default: on in the presets that cover that level (`strict` for the first two, `max` for all four, and each `phpstan/level_<n>` from its level) |
 | `report-unmatched` | `false` reports no unmatched `@phpstan-ignore` comment and is the default of each `[[analyse.ignore]]` entry, as PHPStan's `reportUnmatchedIgnoredErrors`. Default `true` |
@@ -173,6 +174,17 @@ Laravel, Pest, and PHPUnit rules also need their [extension](#extensions). PHP u
 | `[[analyse.ignore]]` | Errors to ignore, as in PHPStan's `ignoreErrors` |
 
 Every analyse finding is an error.
+
+### Custom PHPStan rules (prototype)
+
+`php-rules` is the one place where Pun runs PHP. Pun starts one `php` process per run. It boots PHPStan from the neon files you list, so your rules get PHPStan's own reflection, and answers each `$scope->getType()` with the type Pun inferred. A project without `php-rules` runs no PHP.
+
+```toml pun.toml
+[analyse]
+php-rules = ["tests/PHPStan/rules.neon"]
+```
+
+The rules get the parsed nodes plus `InClassNode`, `InClassMethodNode` and `FileNode`. `Scope` answers `getFile()`, `getNamespace()`, `isInClass()`, `getClassReflection()`, `isInTrait()`, `getTraitReflection()`, `getFunctionName()`, `resolveName()` and `getType()`. A rule that calls another `Scope` method, asks for another PHPStan virtual node, or calls `InClassMethodNode::getMethodReflection()` stops `pun analyse` with an error (exit 2) that names it. A missing `php`, autoloader or PHPStan phar, or a rule class that doesn't load, is an error too.
 
 Each `[[analyse.ignore]]` entry takes these keys. An error is ignored when it matches every key given.
 
