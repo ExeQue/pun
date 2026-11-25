@@ -205,6 +205,12 @@ final class PunWalker
 
     private function node(PhpParser\Node $node): void
     {
+        $anonymous = null;
+        if ($node instanceof PhpParser\Node\Stmt\Class_ && $node->isAnonymous() && !isset($node->namespacedName)) {
+            // as PHPStan's NodeScopeResolver before it walks the class: names it AnonymousClass<hash>, with a null
+            // namespacedName
+            $anonymous = $this->reflection->getAnonymousClassReflection($node, new PunScope($this));
+        }
         $this->visit($node);
         // PHPStan also hands a nullsafe call or fetch to the rules as its plain counterpart
         if ($node instanceof PhpParser\Node\Expr\NullsafeMethodCall) {
@@ -220,12 +226,8 @@ final class PunWalker
             return;
         } elseif ($node instanceof PhpParser\Node\Stmt\ClassLike) {
             $name = $node->namespacedName?->toString();
-            if ($name === null || !$this->reflection->hasClass($name)) {
-                // ponytail: an anonymous class's body runs without a class reflection; PHPStan's
-                // getAnonymousClassReflection() needs its scope
-                $this->class = null;
-            } else {
-                $this->class = $this->reflection->getClass($name);
+            $this->class = $anonymous ?? ($name !== null && $this->reflection->hasClass($name) ? $this->reflection->getClass($name) : null);
+            if ($this->class !== null) {
                 $this->visit(new PHPStan\Node\InClassNode($node, $this->class));
             }
             $this->function = null;

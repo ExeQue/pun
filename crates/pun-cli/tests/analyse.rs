@@ -1301,8 +1301,36 @@ fn unreadable_phpat_test_is_a_run_error() {
     );
 }
 
-const PHP_RULES_NEON: &str =
-    "rules:\n    - App\\Rules\\DangerousCallRule\n    - App\\Rules\\FinalClassRule\n";
+const PHP_RULES_NEON: &str = "rules:\n    - App\\Rules\\DangerousCallRule\n    - App\\Rules\\FinalClassRule\n    - App\\Rules\\ClassNameRule\n";
+
+/// Reads a class's names as PHPStan leaves them (an anonymous class's `namespacedName` is set, to null).
+const CLASS_NAME_RULE: &str = r#"<?php
+
+namespace App\Rules;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Node\InClassNode;
+use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleErrorBuilder;
+
+/** @implements Rule<InClassNode> */
+final class ClassNameRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return InClassNode::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        $class = $node->getOriginalNode();
+        $name = $class->namespacedName?->toString() ?? 'null';
+
+        return [RuleErrorBuilder::message("Class {$class->name} ({$name}, {$node->getClassReflection()->getDisplayName()}).")->identifier('app.className')->build()];
+    }
+}
+"#;
 
 const DANGEROUS_CALL_RULE: &str = r#"<?php
 
@@ -1365,7 +1393,7 @@ final class FinalClassRule implements Rule
 }
 "#;
 
-const PHP_RULES_SOURCE: &str = "<?php\n\nnamespace App;\n\nclass Foo\n{\n    public function dangerous(): void\n    {\n    }\n}\n\nfinal class Bar\n{\n    public function run(Foo $foo, string $name): void\n    {\n        $foo->dangerous();\n        $name->dangerous();\n        // @phpstan-ignore app.dangerous\n        $foo->dangerous();\n    }\n}\n";
+const PHP_RULES_SOURCE: &str = "<?php\n\nnamespace App;\n\nclass Foo\n{\n    public function dangerous(): void\n    {\n    }\n}\n\nfinal class Bar\n{\n    public function run(Foo $foo, string $name): void\n    {\n        $foo->dangerous();\n        $name->dangerous();\n        // @phpstan-ignore app.dangerous\n        $foo->dangerous();\n    }\n}\n\nfunction make(): Foo\n{\n    return new class extends Foo {\n        public function run(): void\n        {\n            $this->dangerous();\n        }\n    };\n}\n";
 
 /// A project with `[analyse] php-rules` and the two rule classes above, whose vendor/ holds the oracle's PHPStan phar
 /// and an autoloader for the rules; `None` (the cases are skipped) without the oracle or a `php` that runs there.
@@ -1376,6 +1404,7 @@ fn php_rules_project(name: &str, extra_rule: Option<(&str, &str)>) -> Option<Pat
         ("src/a.php", PHP_RULES_SOURCE),
         ("rules/DangerousCallRule.php", DANGEROUS_CALL_RULE),
         ("rules/FinalClassRule.php", FINAL_CLASS_RULE),
+        ("rules/ClassNameRule.php", CLASS_NAME_RULE),
         (
             "vendor/autoload.php",
             "<?php\n\nforeach (glob(__DIR__ . '/../rules/*.php') as $rule) {\n    require_once $rule;\n}\n",
@@ -1405,8 +1434,8 @@ fn php_rules_project(name: &str, extra_rule: Option<(&str, &str)>) -> Option<Pat
     php.is_ok_and(|o| o.stdout == b"ok").then_some(d)
 }
 
-/// `[analyse] php-rules` runs the project's own PHPStan rules: `getType()`, the class reflection, tips and
-/// `@phpstan-ignore` give PHPStan's output byte for byte.
+/// `[analyse] php-rules` runs the project's own PHPStan rules: `getType()`, the class reflection (an anonymous
+/// class's too), tips and `@phpstan-ignore` give PHPStan's output byte for byte.
 #[test]
 fn php_rules_match_phpstan() {
     let Some(d) = php_rules_project("php-rules", None) else {
@@ -1424,7 +1453,8 @@ fn php_rules_match_phpstan() {
     for format in ["--error-format=json", "--error-format=raw"] {
         let want = run(&d, &phpstan, &[format]);
         assert!(
-            want.0.contains("Calls Foo::dangerous() in run()."),
+            want.0.contains("Calls Foo::dangerous() in run().")
+                && want.0.contains("Foo@anonymous/a.php:25)."),
             "{want:?}"
         );
         assert_eq!(run(&d, &[PUN, "analyse"], &[format]), want, "{format}");
