@@ -57,6 +57,9 @@
 //! Type/PunUntypedFactoriesTest.json (`Model::factory()` of a model whose untyped `newFactory()` and unbound
 //! HasFactory name no concrete factory, which ModelFactoryDynamicStaticMethodReturnTypeExtension types as an
 //! ErrorType) has its assertions and errors from PHPStan 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app.
+//! Type/PunTableAttributeTest.json (Laravel 13's `#[Table]` naming a model's table, named or positional, inherited by a
+//! subclass, and a declared `$table` winning over it) has its assertions and errors from PHPStan 2.3.7 with Larastan
+//! 3.15.0 at level 8 in a Laravel 13 app with a `users` table.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

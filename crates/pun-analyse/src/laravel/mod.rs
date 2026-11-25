@@ -37,6 +37,7 @@ use strings::{class_basename, plural_studly, singular, studly};
 
 const MODEL: &str = "Illuminate\\Database\\Eloquent\\Model";
 const ATTRIBUTE: &str = "Illuminate\\Database\\Eloquent\\Casts\\Attribute";
+const TABLE_ATTRIBUTE: &str = "Illuminate\\Database\\Eloquent\\Attributes\\Table";
 const CARBON_IMMUTABLE: &str = "Carbon\\CarbonImmutable";
 const PROXY: &str = "Illuminate\\Support\\HigherOrderCollectionProxy";
 
@@ -265,6 +266,66 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Collector<'_, '_, 'arena> {
                     }
                 }
                 _ => {}
+            }
+        }
+        // Laravel 13's `#[Table]` (Model::initializeModelAttributes()): its name, key, key type, incrementing and
+        // timestamps apply where the class itself doesn't declare the property; a parent's attribute is the parent's
+        // source in the chain `model()` walks
+        for attribute in class
+            .attribute_lists
+            .iter()
+            .flat_map(|list| list.attributes.iter())
+        {
+            if !self
+                .names
+                .get(&attribute.name.span())
+                .eq_ignore_ascii_case(TABLE_ATTRIBUTE.as_bytes())
+            {
+                continue;
+            }
+            let parameters = ["name", "key", "keyType", "incrementing", "timestamps"];
+            for (i, argument) in attribute
+                .argument_list
+                .iter()
+                .flat_map(|a| a.arguments.iter())
+                .enumerate()
+            {
+                let (parameter, value) = match argument {
+                    PartialArgument::Positional(a) => (parameters.get(i).copied(), a.value),
+                    PartialArgument::Named(a) => (
+                        parameters
+                            .iter()
+                            .copied()
+                            .find(|p| p.as_bytes() == a.name.value),
+                        a.value,
+                    ),
+                    _ => continue,
+                };
+                let bool = match value {
+                    Expression::Literal(Literal::True(_)) => Some(true),
+                    Expression::Literal(Literal::False(_)) => Some(false),
+                    _ => None,
+                };
+                match parameter {
+                    Some("name") if model.table.is_none() => {
+                        model.table = constant_string(self.names, value);
+                    }
+                    // `key: false` is a model without a primary key, which doesn't increment
+                    Some("key") if bool == Some(false) => {
+                        model.incrementing = model.incrementing.or(Some(false));
+                    }
+                    Some("key") if model.primary_key.is_none() => {
+                        model.primary_key = constant_string(self.names, value);
+                    }
+                    Some("keyType") if model.key_type.is_none() => {
+                        model.key_type = constant_string(self.names, value);
+                    }
+                    Some("incrementing") if model.incrementing.is_none() => {
+                        model.incrementing = bool;
+                    }
+                    Some("timestamps") if model.timestamps.is_none() => model.timestamps = bool,
+                    _ => {}
+                }
             }
         }
         self.scan
