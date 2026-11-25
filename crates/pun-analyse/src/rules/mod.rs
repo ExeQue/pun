@@ -56,6 +56,7 @@ mod operators;
 mod overriding;
 mod overriding_property;
 mod params;
+mod phpat;
 mod phpdoc_tags;
 mod phpdoc_types;
 mod printf_helper;

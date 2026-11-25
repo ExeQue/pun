@@ -97,6 +97,7 @@ pub(crate) struct Checks {
     pub(super) type_aliases: Vec<(String, String)>,
     reported: Option<crate::project::Reported>,
     method_rules: crate::MethodRules,
+    phpat: Option<std::sync::Arc<crate::phpat::Rules>>,
     pub(super) strict: crate::StrictRules,
     pub(super) exceptions: crate::Exceptions,
     too_wide: crate::TooWide,
@@ -379,6 +380,7 @@ impl Checks {
             switches.set(switch, project.options.contains(option));
         }
         Checks {
+            phpat: project.phpat.clone(),
             switches,
             natives,
             level: project.level,
@@ -736,6 +738,10 @@ pub(crate) fn check_file(
         &arena, file, program, &names, codebase, project, files, sources, None,
     );
     walk(&mut checker, program, project);
+    if let Some(rules) = &project.phpat {
+        let found = super::phpat::check(&checker, program, rules);
+        checker.errors.extend(found);
+    }
     let name = checker.file_name();
     let (mut lines, parse) = lines_to_ignore(&file.contents);
     let mut unmatched = lines.clone();
@@ -851,6 +857,10 @@ fn in_trait_context(
         renames: u.renames.clone(),
     });
     walk(&mut checker, program, project);
+    if let Some(rules) = &project.phpat {
+        let found = super::phpat::check(&checker, program, rules);
+        checker.errors.extend(found);
+    }
     let label = checker.label.clone();
     let (mut lines, _) = lines_to_ignore(&file.contents);
     lines.retain(|line, _| {

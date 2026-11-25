@@ -1,0 +1,854 @@
+//! Reads phpat test classes without running PHP: the test methods `TestParser` calls (public, with `#[TestRule]` or a
+//! name starting with `test`), and the `PHPat::rule()` builder chains they return or yield. Anything else, such as a
+//! value only PHP could compute or a builder method phpat 0.12.5 doesn't have, is an error naming the code.
+
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+
+use mago_allocator::LocalArena;
+use mago_database::file::{File, FileType};
+use mago_names::ResolvedNames;
+use mago_span::{HasSpan, Span};
+use mago_syntax::cst::*;
+
+use super::{Constraint, Kind, Pattern, Rule, Selector};
+use crate::Project;
+
+const PHPAT: &str = "phpat\\test\\phpat";
+const SELECTOR: [&str; 2] = [
+    "phpat\\selector\\selector",
+    "phpat\\selector\\selectorprimitive",
+];
+const TEST_RULE: &str = "phpat\\test\\attributes\\testrule";
+
+/// Where a builder is in phpat's step classes (`PHPat\Test\Builder\*Step`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Step {
+    Subject,
+    SubjectExcludeOrConstraint,
+    Constraint,
+    Should,
+    ShouldNot,
+    CanOnly,
+    Target,
+    TargetExcludeOrTipOrBuild,
+    TipOrBuild,
+    Build,
+}
+
+impl Step {
+    /// The step class and the classes it extends, whose methods it has.
+    fn with_parents(self) -> &'static [Step] {
+        match self {
+            Step::Subject => &[Step::Subject],
+            Step::SubjectExcludeOrConstraint => {
+                &[Step::SubjectExcludeOrConstraint, Step::Constraint]
+            }
+            Step::Constraint => &[Step::Constraint],
+            Step::Should => &[Step::Should],
+            Step::ShouldNot => &[Step::ShouldNot],
+            Step::CanOnly => &[Step::CanOnly],
+            Step::Target => &[Step::Target],
+            Step::TargetExcludeOrTipOrBuild => &[
+                Step::TargetExcludeOrTipOrBuild,
+                Step::TipOrBuild,
+                Step::Build,
+            ],
+            Step::TipOrBuild => &[Step::TipOrBuild, Step::Build],
+            Step::Build => &[Step::Build],
+        }
+    }
+}
+
+/// `ConstraintStep`'s deprecated aliases: the constraint method and the method it then calls.
+const ALIASES: [(&str, &str, &str); 25] = [
+    ("shouldbenamed", "should", "benamed"),
+    ("shouldbeabstract", "should", "beabstract"),
+    ("shouldnotbeabstract", "shouldnot", "beabstract"),
+    ("shouldbereadonly", "should", "bereadonly"),
+    ("shouldnotbereadonly", "shouldnot", "bereadonly"),
+    ("shouldbefinal", "should", "befinal"),
+    ("shouldnotbefinal", "shouldnot", "befinal"),
+    ("shouldbeenum", "should", "beenum"),
+    ("shouldnotbeenum", "shouldnot", "beenum"),
+    ("shouldbeinvokable", "should", "beinvokable"),
+    ("shouldnotbeinvokable", "shouldnot", "beinvokable"),
+    ("shouldnotdependon", "shouldnot", "dependon"),
+    ("canonlydependon", "canonly", "dependon"),
+    ("shouldnotconstruct", "shouldnot", "construct"),
+    ("shouldnotextend", "shouldnot", "extend"),
+    ("shouldnotimplement", "shouldnot", "implement"),
+    ("shouldimplement", "should", "implement"),
+    ("shouldnotinclude", "shouldnot", "include"),
+    ("shouldinclude", "should", "include"),
+    ("shouldextend", "should", "extend"),
+    (
+        "shouldhaveonlyonepublicmethod",
+        "should",
+        "haveonlyonepublicmethod",
+    ),
+    (
+        "shouldhaveonlyonepublicmethodnamed",
+        "should",
+        "haveonlyonepublicmethodnamed",
+    ),
+    ("shouldapplyattribute", "should", "applyattribute"),
+    ("shouldbeinterface", "should", "beinterface"),
+    ("shouldnotexist", "shouldnot", "exist"),
+];
+
+#[derive(Clone, Debug)]
+enum Key {
+    Int(i64),
+    Str(String),
+}
+
+impl Key {
+    fn text(&self) -> String {
+        match self {
+            Key::Int(i) => i.to_string(),
+            Key::Str(s) => s.clone(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+enum V {
+    Str(String),
+    Int(i64),
+    Bool(bool),
+    Null,
+    Array(Vec<(Key, V)>),
+    Selector(Selector),
+    Builder(Rc<RefCell<Rule>>, Step),
+}
+
+impl V {
+    fn kind(&self) -> &'static str {
+        match self {
+            V::Str(_) => "a string",
+            V::Int(_) => "an int",
+            V::Bool(_) => "a bool",
+            V::Null => "null",
+            V::Array(_) => "an array",
+            V::Selector(_) => "a selector",
+            V::Builder(..) => "a rule builder",
+        }
+    }
+}
+
+/// The next automatic key of a PHP array or generator: one above the largest int key so far.
+fn next_key(entries: &[(Key, V)]) -> i64 {
+    (entries.iter())
+        .filter_map(|(k, _)| match k {
+            Key::Int(i) => Some(i + 1),
+            Key::Str(_) => None,
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+struct Arg {
+    name: Option<String>,
+    value: V,
+}
+
+/// The file of `class`: its Composer autoload entry, else an analysed or scanned file that declares it.
+fn find_file(project: &Project, class: &str) -> Option<PathBuf> {
+    let lower = class.trim_start_matches('\\').to_ascii_lowercase();
+    if let Some(a) = (project.autoloaded.iter()).find(|a| a.class == lower.as_bytes()) {
+        return Some(a.path.clone());
+    }
+    let short = lower
+        .rsplit('\\')
+        .next()
+        .unwrap_or(&lower)
+        .as_bytes()
+        .to_vec();
+    (project.analysed.iter().chain(&project.scanned))
+        .find(|p| {
+            std::fs::read(p).is_ok_and(|b| {
+                b.to_ascii_lowercase()
+                    .windows(short.len())
+                    .any(|w| w == short)
+                    && declares(p, &b, &lower)
+            })
+        })
+        .cloned()
+}
+
+fn declares(path: &Path, contents: &[u8], lower: &str) -> bool {
+    let file = file(path, contents.to_vec());
+    let arena = LocalArena::new();
+    let (program, names) = crate::codebase::parse(&arena, &file);
+    class_likes(program)
+        .iter()
+        .any(|c| text(names.get(&c.name.span)).eq_ignore_ascii_case(lower))
+}
+
+fn file(path: &Path, contents: Vec<u8>) -> File {
+    File::new(
+        std::borrow::Cow::Owned(path.to_string_lossy().into_owned().into_bytes()),
+        FileType::Host,
+        Some(path.to_path_buf()),
+        std::borrow::Cow::Owned(contents),
+    )
+}
+
+fn text(b: &[u8]) -> String {
+    String::from_utf8_lossy(b).into_owned()
+}
+
+/// The top-level classes of a file, in namespaces too.
+fn class_likes<'a, 'arena>(program: &'a Program<'arena>) -> Vec<&'a Class<'arena>> {
+    fn of<'a, 'arena>(statements: &'a [Statement<'arena>], out: &mut Vec<&'a Class<'arena>>) {
+        for s in statements {
+            match s {
+                Statement::Class(c) => out.push(c),
+                Statement::Namespace(n) => of(n.statements().as_slice(), out),
+                _ => {}
+            }
+        }
+    }
+    let mut out = Vec::new();
+    of(program.statements.as_slice(), &mut out);
+    out
+}
+
+/// Reads the rules of test class `class`, its inherited test methods included.
+pub(super) fn read(project: &Project, class: &str) -> Result<Vec<Rule>, String> {
+    let mut seen = HashSet::new();
+    let mut rules = Vec::new();
+    let mut current = class.trim_start_matches('\\').to_string();
+    let mut test_name = None;
+    for _ in 0..64 {
+        let path = find_file(project, &current).ok_or_else(|| {
+            format!(
+                "phpat test class {current} was not found: Pun looks for it in Composer's autoload (autoload-dev included) and in the analysed and scanned files"
+            )
+        })?;
+        let contents = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let file = file(&path, contents);
+        let arena = LocalArena::new();
+        let (program, names) = crate::codebase::parse(&arena, &file);
+        let lower = current.to_ascii_lowercase();
+        let Some(c) = class_likes(program)
+            .into_iter()
+            .find(|c| text(names.get(&c.name.span)).eq_ignore_ascii_case(&lower))
+        else {
+            return Err(format!(
+                "{}: phpat test class {current} is not declared there",
+                path.display()
+            ));
+        };
+        let declared = text(names.get(&c.name.span));
+        let test_name = test_name.get_or_insert_with(|| declared.clone()).clone();
+        let reader = Reader {
+            file: &file,
+            names: &names,
+            class: c,
+            declared,
+            vars: RefCell::new(HashMap::new()),
+            depth: RefCell::new(0),
+        };
+        for member in &c.members {
+            let ClassLikeMember::Method(m) = member else {
+                continue;
+            };
+            let name = text(m.name.value);
+            if !seen.insert(name.to_ascii_lowercase()) || !reader.is_test(m) {
+                continue;
+            }
+            let MethodBody::Concrete(body) = &m.body else {
+                continue;
+            };
+            reader.vars.borrow_mut().clear();
+            let at = |e: String| {
+                format!(
+                    "{}:{}: phpat test {}::{name}(): {e}",
+                    path.display(),
+                    file.line_number(m.span().start.offset) + 1,
+                    reader.declared
+                )
+            };
+            let prefix = format!("{test_name}:{name}");
+            match reader.body(&body.statements).map_err(at)? {
+                Out::Single(rule) => rules.push(Rule {
+                    name: prefix,
+                    ..*rule
+                }),
+                Out::Many(list) => {
+                    for (key, rule) in list {
+                        rules.push(Rule {
+                            name: format!("{prefix}:{}", key.text()),
+                            ..rule
+                        });
+                    }
+                }
+            }
+        }
+        match &c.extends {
+            Some(e) => {
+                let Some(parent) = e.types.first() else { break };
+                current = text(names.get(&parent.span()));
+            }
+            None => break,
+        }
+    }
+    Ok(rules)
+}
+
+enum Out {
+    Single(Box<Rule>),
+    Many(Vec<(Key, Rule)>),
+}
+
+struct Reader<'a, 'arena> {
+    file: &'a File,
+    names: &'a ResolvedNames<'arena>,
+    class: &'a Class<'arena>,
+    declared: String,
+    vars: RefCell<HashMap<Vec<u8>, V>>,
+    depth: RefCell<u32>,
+}
+
+fn rule_of(v: V) -> Result<Rule, String> {
+    match v {
+        V::Builder(rule, _) => Ok(rule.borrow().clone()),
+        v => Err(format!(
+            "a test method returns a rule builder or an iterable of them, not {}",
+            v.kind()
+        )),
+    }
+}
+
+impl<'arena> Reader<'_, 'arena> {
+    fn source(&self, span: Span) -> String {
+        let s = text(&self.file.contents[span.to_range_usize()]);
+        let s = s.split_whitespace().collect::<Vec<_>>().join(" ");
+        if s.chars().count() > 80 {
+            format!("{}...", s.chars().take(77).collect::<String>())
+        } else {
+            s
+        }
+    }
+
+    fn unreadable(&self, span: Span) -> String {
+        format!(
+            "Pun reads phpat tests without running PHP and can't read `{}` (line {})",
+            self.source(span),
+            self.file.line_number(span.start.offset) + 1
+        )
+    }
+
+    /// `TestParser::parse()`'s test method filter.
+    fn is_test(&self, m: &Method<'arena>) -> bool {
+        let public = !m
+            .modifiers
+            .iter()
+            .any(|m| matches!(m, Modifier::Private(_) | Modifier::Protected(_)));
+        let attribute = (m.attribute_lists.iter())
+            .flat_map(|l| l.attributes.iter())
+            .any(|a| text(self.names.get(&a.name.span())).eq_ignore_ascii_case(TEST_RULE));
+        public && (attribute || m.name.value.starts_with(b"test"))
+    }
+
+    fn body(&self, statements: &Sequence<'arena, Statement<'arena>>) -> Result<Out, String> {
+        let mut yielded: Option<Vec<(Key, V)>> = None;
+        for s in statements {
+            match s {
+                Statement::Expression(e) => match e.expression {
+                    Expression::Assignment(a) if a.operator.is_assign() => {
+                        let Expression::Variable(Variable::Direct(v)) = a.lhs else {
+                            return Err(self.unreadable(a.lhs.span()));
+                        };
+                        let value = self.eval(a.rhs)?;
+                        self.vars.borrow_mut().insert(v.name.to_vec(), value);
+                    }
+                    Expression::Yield(Yield::Value(y)) => {
+                        let list = yielded.get_or_insert_with(Vec::new);
+                        let key = Key::Int(next_key(list));
+                        let value = y.value.map_or(Ok(V::Null), |v| self.eval(v))?;
+                        list.push((key, value));
+                    }
+                    Expression::Yield(Yield::Pair(y)) => {
+                        let key = self.key(y.key)?;
+                        let value = self.eval(y.value)?;
+                        yielded.get_or_insert_with(Vec::new).push((key, value));
+                    }
+                    _ => return Err(self.unreadable(e.span())),
+                },
+                Statement::Return(r) => {
+                    if yielded.is_some() {
+                        break;
+                    }
+                    let Some(value) = r.value else {
+                        return Err(self.unreadable(r.span()));
+                    };
+                    return match self.eval(value)? {
+                        V::Array(list) => Ok(Out::Many(
+                            (list.into_iter())
+                                .map(|(k, v)| Ok((k, rule_of(v)?)))
+                                .collect::<Result<_, String>>()?,
+                        )),
+                        v => Ok(Out::Single(Box::new(rule_of(v)?))),
+                    };
+                }
+                Statement::Noop(_) => {}
+                s => return Err(self.unreadable(s.span())),
+            }
+        }
+        match yielded {
+            Some(list) => Ok(Out::Many(
+                (list.into_iter())
+                    .map(|(k, v)| Ok((k, rule_of(v)?)))
+                    .collect::<Result<_, String>>()?,
+            )),
+            None => Err("a test method returns a rule builder or an iterable of them".into()),
+        }
+    }
+
+    fn key(&self, e: &Expression<'arena>) -> Result<Key, String> {
+        match self.eval(e)? {
+            V::Int(i) => Ok(Key::Int(i)),
+            V::Str(s) => Ok(match s.parse::<i64>() {
+                Ok(i) if i.to_string() == s => Key::Int(i),
+                _ => Key::Str(s),
+            }),
+            _ => Err(self.unreadable(e.span())),
+        }
+    }
+
+    fn eval(&self, e: &Expression<'arena>) -> Result<V, String> {
+        let depth = *self.depth.borrow();
+        if depth > 64 {
+            return Err(self.unreadable(e.span()));
+        }
+        *self.depth.borrow_mut() += 1;
+        let v = self.eval_inner(e);
+        *self.depth.borrow_mut() -= 1;
+        v
+    }
+
+    fn class_name(&self, e: &Expression<'arena>) -> Option<String> {
+        match e {
+            Expression::Identifier(id) => Some(text(self.names.get(&id.span()))),
+            Expression::Self_(_) | Expression::Static(_) => Some(self.declared.clone()),
+            _ => None,
+        }
+    }
+
+    fn eval_inner(&self, e: &Expression<'arena>) -> Result<V, String> {
+        let unreadable = || Err(self.unreadable(e.span()));
+        match e {
+            Expression::Parenthesized(p) => self.eval(p.expression),
+            Expression::Literal(Literal::String(s)) => match s.value {
+                Some(v) => Ok(V::Str(text(v))),
+                None => unreadable(),
+            },
+            Expression::Literal(Literal::Integer(i)) => match i.value.map(i64::try_from) {
+                Some(Ok(i)) => Ok(V::Int(i)),
+                _ => unreadable(),
+            },
+            Expression::Literal(Literal::True(_)) => Ok(V::Bool(true)),
+            Expression::Literal(Literal::False(_)) => Ok(V::Bool(false)),
+            Expression::Literal(Literal::Null(_)) => Ok(V::Null),
+            Expression::Binary(b) if matches!(b.operator, BinaryOperator::StringConcat(_)) => {
+                let piece = |v: V| match v {
+                    V::Str(s) => Some(s),
+                    V::Int(i) => Some(i.to_string()),
+                    _ => None,
+                };
+                match (piece(self.eval(b.lhs)?), piece(self.eval(b.rhs)?)) {
+                    (Some(l), Some(r)) => Ok(V::Str(l + &r)),
+                    _ => unreadable(),
+                }
+            }
+            Expression::Array(a) => self.array(a.elements.iter()),
+            Expression::LegacyArray(a) => self.array(a.elements.iter()),
+            Expression::Variable(Variable::Direct(v)) => match self.vars.borrow().get(v.name) {
+                Some(v) => Ok(v.clone()),
+                None => unreadable(),
+            },
+            Expression::Access(Access::ClassConstant(c)) => {
+                let ClassLikeConstantSelector::Identifier(constant) = &c.constant else {
+                    return unreadable();
+                };
+                let Some(class) = self.class_name(c.class) else {
+                    return unreadable();
+                };
+                if constant.value.eq_ignore_ascii_case(b"class") {
+                    return Ok(V::Str(class));
+                }
+                if !class.eq_ignore_ascii_case(&self.declared) {
+                    return unreadable();
+                }
+                let value = (self.class.members.iter()).find_map(|m| match m {
+                    ClassLikeMember::Constant(k) => {
+                        k.items.iter().find(|i| i.name.value == constant.value)
+                    }
+                    _ => None,
+                });
+                match value {
+                    Some(item) => self.eval(item.value),
+                    None => unreadable(),
+                }
+            }
+            Expression::Call(Call::StaticMethod(call)) => {
+                let (Some(class), ClassLikeMemberSelector::Identifier(m)) =
+                    (self.class_name(call.class), &call.method)
+                else {
+                    return unreadable();
+                };
+                let class = class.to_ascii_lowercase();
+                let method = text(m.value).to_ascii_lowercase();
+                let args = self.args(&call.argument_list)?;
+                if class == PHPAT && method == "rule" && args.is_empty() {
+                    return Ok(V::Builder(
+                        Rc::new(RefCell::new(Rule::default())),
+                        Step::Subject,
+                    ));
+                }
+                if SELECTOR.contains(&class.as_str()) {
+                    return (self.selector(&method, args))
+                        .map(V::Selector)
+                        .map_err(|why| format!("{}: {why}", self.unreadable(e.span())));
+                }
+                unreadable()
+            }
+            Expression::Call(Call::Method(call)) => {
+                let ClassLikeMemberSelector::Identifier(m) = &call.method else {
+                    return unreadable();
+                };
+                let V::Builder(rule, step) = self.eval(call.object)? else {
+                    return unreadable();
+                };
+                let args = self.args(&call.argument_list)?;
+                let method = text(m.value).to_ascii_lowercase();
+                (apply(&rule, step, &method, args))
+                    .map(|step| V::Builder(rule, step))
+                    .map_err(|why| format!("{}: {why}", self.unreadable(e.span())))
+            }
+            _ => unreadable(),
+        }
+    }
+
+    fn array<'b>(
+        &self,
+        elements: impl Iterator<Item = &'b ArrayElement<'arena>>,
+    ) -> Result<V, String>
+    where
+        'arena: 'b,
+    {
+        let mut out = Vec::new();
+        for element in elements {
+            match element {
+                ArrayElement::KeyValue(kv) => {
+                    let key = self.key(kv.key)?;
+                    let value = self.eval(kv.value)?;
+                    out.push((key, value));
+                }
+                ArrayElement::Value(v) => {
+                    let key = Key::Int(next_key(&out));
+                    let value = self.eval(v.value)?;
+                    out.push((key, value));
+                }
+                ArrayElement::Missing(_) => {}
+                ArrayElement::Variadic(v) => return Err(self.unreadable(v.span())),
+            }
+        }
+        // A later entry with the same key replaces the earlier one, keeping its position.
+        let mut deduped: Vec<(Key, V)> = Vec::new();
+        for (k, v) in out {
+            match deduped.iter_mut().find(|(d, _)| d.text() == k.text()) {
+                Some(entry) => entry.1 = v,
+                None => deduped.push((k, v)),
+            }
+        }
+        Ok(V::Array(deduped))
+    }
+
+    fn args(&self, list: &ArgumentList<'arena>) -> Result<Vec<Arg>, String> {
+        (list.arguments.iter())
+            .map(|a| match a {
+                Argument::Positional(p) if p.ellipsis.is_none() => Ok(Arg {
+                    name: None,
+                    value: self.eval(p.value)?,
+                }),
+                Argument::Named(n) => Ok(Arg {
+                    name: Some(text(n.name.value)),
+                    value: self.eval(n.value)?,
+                }),
+                a => Err(self.unreadable(a.span())),
+            })
+            .collect()
+    }
+
+    fn selector(&self, method: &str, args: Vec<Arg>) -> Result<Selector, String> {
+        let flag = |args: Vec<Arg>, name: &str| -> Result<(String, bool), String> {
+            let [s, regex] = bind(args, &[name, "regex"], &[None, Some(V::Bool(false))])?;
+            Ok((string(s)?, boolean(regex)?))
+        };
+        let pattern = |args: Vec<Arg>, name: &str| -> Result<Pattern, String> {
+            let (s, regex) = flag(args, name)?;
+            Pattern::new(s, regex)
+        };
+        let none = |args: &[Arg], s: Selector| {
+            if args.is_empty() {
+                Ok(s)
+            } else {
+                Err(format!("{method}() takes no arguments"))
+            }
+        };
+        Ok(match method {
+            "all" => none(&args, Selector::All)?,
+            "isexception" => none(&args, Selector::IsException)?,
+            "isthrowable" => none(&args, Selector::IsThrowable)?,
+            "iserror" => none(&args, Selector::IsError)?,
+            "isinterface" => none(&args, Selector::IsInterface)?,
+            "isabstract" => none(&args, Selector::IsAbstract)?,
+            "isfinal" => none(&args, Selector::IsFinal)?,
+            "istrait" => none(&args, Selector::IsTrait)?,
+            "isreadonly" => none(&args, Selector::IsReadonly)?,
+            "isenum" => none(&args, Selector::IsEnum)?,
+            "isattribute" => none(&args, Selector::IsAttribute)?,
+            "isstandardclass" => none(&args, Selector::IsStandardClass)?,
+            "innamespace" => Selector::Namespace(pattern(args, "namespace")?),
+            "classname" => Selector::Classname(pattern(args, "fqcn")?),
+            "withfilepath" => Selector::Filepath(pattern(args, "filename")?),
+            "implements" => Selector::Implements(pattern(args, "fqcn")?),
+            "extends" => Selector::Extends(pattern(args, "fqcn")?),
+            "includes" => Selector::Includes(pattern(args, "fqcn")?),
+            "appliesattribute" => {
+                let [s, regex, arguments] = bind(
+                    args,
+                    &["fqcn", "regex", "arguments"],
+                    &[None, Some(V::Bool(false)), Some(V::Array(Vec::new()))],
+                )?;
+                match arguments {
+                    V::Array(a) if a.is_empty() => {}
+                    _ => {
+                        return Err(
+                            "Pun does not support appliesAttribute()'s $arguments yet".into()
+                        );
+                    }
+                }
+                Selector::AppliesAttribute(Pattern::new(string(s)?, boolean(regex)?)?)
+            }
+            "not" => {
+                let [s] = bind(args, &["selector"], &[None])?;
+                Selector::NoneOf(vec![selector(s)?])
+            }
+            "allof" => Selector::AllOf(selectors(args)?),
+            "anyof" => Selector::AnyOf(selectors(args)?),
+            "noneof" => Selector::NoneOf(selectors(args)?),
+            "oneof" => Selector::OneOf(selectors(args)?),
+            "atleastcountof" | "atmostcountof" => {
+                let mut args = args.into_iter();
+                let count = match args.next() {
+                    Some(Arg {
+                        name: None,
+                        value: V::Int(i),
+                    }) => i,
+                    _ => return Err(format!("{method}() takes an int count first")),
+                };
+                let rest = selectors(args.collect())?;
+                if method == "atleastcountof" {
+                    Selector::AtLeastCountOf(count, rest)
+                } else {
+                    Selector::AtMostCountOf(count, rest)
+                }
+            }
+            _ => return Err(format!("phpat 0.12.5 has no selector {method}()")),
+        })
+    }
+}
+
+fn string(v: V) -> Result<String, String> {
+    match v {
+        V::Str(s) => Ok(s),
+        v => Err(format!("expected a string, got {}", v.kind())),
+    }
+}
+
+fn boolean(v: V) -> Result<bool, String> {
+    match v {
+        V::Bool(b) => Ok(b),
+        v => Err(format!("expected a bool, got {}", v.kind())),
+    }
+}
+
+fn selector(v: V) -> Result<Selector, String> {
+    match v {
+        V::Selector(s) => Ok(s),
+        v => Err(format!("expected a selector, got {}", v.kind())),
+    }
+}
+
+/// The selectors of a variadic `SelectorInterface ...$selectors` parameter.
+fn selectors(args: Vec<Arg>) -> Result<Vec<Selector>, String> {
+    (args.into_iter())
+        .map(|a| match a.name {
+            Some(n) => Err(format!("unknown named argument ${n}")),
+            None => selector(a.value),
+        })
+        .collect()
+}
+
+/// Binds arguments to a method's parameters as PHP does: positional ones in order (extra ones are ignored), then
+/// named ones by name; a parameter left without a value takes its default.
+fn bind<const N: usize>(
+    args: Vec<Arg>,
+    params: &[&str; N],
+    defaults: &[Option<V>; N],
+) -> Result<[V; N], String> {
+    let mut out: [Option<V>; N] = std::array::from_fn(|_| None);
+    let mut position = 0;
+    for a in args {
+        match a.name {
+            None => {
+                if position < N {
+                    out[position] = Some(a.value);
+                }
+                position += 1;
+            }
+            Some(n) => {
+                let i = (params.iter().position(|p| *p == n))
+                    .ok_or_else(|| format!("unknown named argument ${n}"))?;
+                if out[i].is_some() {
+                    return Err(format!("argument ${n} is given twice"));
+                }
+                out[i] = Some(a.value);
+            }
+        }
+    }
+    let mut values = Vec::with_capacity(N);
+    for (i, v) in out.into_iter().enumerate() {
+        match v.or_else(|| defaults[i].clone()) {
+            Some(v) => values.push(v),
+            None => return Err(format!("argument ${} is missing", params[i])),
+        }
+    }
+    Ok(values.try_into().unwrap_or_else(|_| unreachable!()))
+}
+
+fn strings(args: Vec<Arg>) -> Result<Vec<String>, String> {
+    (args.into_iter())
+        .map(|a| match a.name {
+            Some(n) => Err(format!("unknown named argument ${n}")),
+            None => string(a.value),
+        })
+        .collect()
+}
+
+/// Calls `method` on a builder at `step`, as phpat's step classes do, and returns the step it moves to.
+fn apply(
+    rule: &Rc<RefCell<Rule>>,
+    step: Step,
+    method: &str,
+    args: Vec<Arg>,
+) -> Result<Step, String> {
+    let has = |s: Step| step.with_parents().contains(&s);
+    if has(Step::Constraint)
+        && let Some((_, constraint, then)) = ALIASES.iter().find(|(m, ..)| *m == method)
+    {
+        let next = apply(rule, step, constraint, Vec::new())?;
+        return apply(rule, next, then, args);
+    }
+    let none = |args: &[Arg]| {
+        if args.is_empty() {
+            Ok(())
+        } else {
+            Err(format!("{method}() takes no arguments"))
+        }
+    };
+    let mut r = rule.borrow_mut();
+    let kind = |r: &mut Rule, kind: Kind, next: Step| {
+        r.kind = Some(kind);
+        Ok(next)
+    };
+    match method {
+        "classes" if has(Step::Subject) => {
+            r.subjects = selectors(args)?;
+            Ok(Step::SubjectExcludeOrConstraint)
+        }
+        "classes" if has(Step::Target) => {
+            r.targets = selectors(args)?;
+            Ok(Step::TargetExcludeOrTipOrBuild)
+        }
+        "excluding" if has(Step::SubjectExcludeOrConstraint) => {
+            r.subject_excludes = selectors(args)?;
+            Ok(Step::Constraint)
+        }
+        "excluding" if has(Step::TargetExcludeOrTipOrBuild) => {
+            r.target_excludes = selectors(args)?;
+            Ok(Step::TipOrBuild)
+        }
+        "should" | "shouldnot" | "canonly" if has(Step::Constraint) => {
+            none(&args)?;
+            let (constraint, next) = match method {
+                "should" => (Constraint::Should, Step::Should),
+                "shouldnot" => (Constraint::ShouldNot, Step::ShouldNot),
+                _ => (Constraint::CanOnly, Step::CanOnly),
+            };
+            r.constraint = Some(constraint);
+            Ok(next)
+        }
+        "because" if has(Step::TipOrBuild) => {
+            r.tips = strings(args)?;
+            Ok(Step::Build)
+        }
+        "nonignorable" if has(Step::Build) => {
+            none(&args)?;
+            r.non_ignorable = true;
+            Ok(step)
+        }
+        "benamed" | "haveonlyonepublicmethodnamed" if has(Step::Should) => {
+            let (names, k) = if method == "benamed" {
+                (["classname", "regex"], Kind::BeNamed)
+            } else {
+                (["name", "isRegex"], Kind::HaveOnlyOnePublicMethodNamed)
+            };
+            let [name, regex] = bind(args, &names, &[None, Some(V::Bool(false))])?;
+            r.name_param = Some(Pattern::new(string(name)?, boolean(regex)?)?);
+            kind(&mut r, k, Step::TipOrBuild)
+        }
+        _ => {
+            let target = |k| (k, Step::Target);
+            let tip = |k| (k, Step::TipOrBuild);
+            let found = match (step, method) {
+                (Step::Should | Step::ShouldNot | Step::CanOnly, "dependon") => {
+                    Some(target(Kind::Depend))
+                }
+                (Step::ShouldNot | Step::CanOnly, "construct") => Some(target(Kind::Construct)),
+                (Step::Should | Step::ShouldNot, m) => match m {
+                    "extend" => Some(target(Kind::Extend)),
+                    "implement" => Some(target(Kind::Implement)),
+                    "include" => Some(target(Kind::Include)),
+                    "beabstract" => Some(tip(Kind::BeAbstract)),
+                    "befinal" => Some(tip(Kind::BeFinal)),
+                    "bereadonly" => Some(tip(Kind::BeReadonly)),
+                    "beenum" => Some(tip(Kind::BeEnum)),
+                    "beinvokable" => Some(tip(Kind::BeInvokable)),
+                    "applyattribute" if step == Step::Should => Some(target(Kind::ApplyAttribute)),
+                    "beinterface" if step == Step::Should => Some(tip(Kind::BeInterface)),
+                    "haveonlyonepublicmethod" if step == Step::Should => {
+                        Some(tip(Kind::HaveOnlyOnePublicMethod))
+                    }
+                    "exist" if step == Step::ShouldNot => Some(tip(Kind::Exist)),
+                    _ => None,
+                },
+                _ => None,
+            };
+            let Some((k, next)) = found else {
+                return Err(format!(
+                    "phpat 0.12.5 has no {method}() at this point of the rule builder"
+                ));
+            };
+            none(&args)?;
+            kind(&mut r, k, next)
+        }
+    }
+}
