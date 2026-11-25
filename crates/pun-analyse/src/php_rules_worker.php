@@ -159,8 +159,10 @@ function pun_rules(PHPStan\DependencyInjection\Container $container): array
  */
 function pun_check(PHPStan\DependencyInjection\Container $container, array $rules, string $file, ?string $class = null, ?string $trait = null): array
 {
+    // PHPStan's cached rich parser, as PHPStan parses an analysed file: its LRU cache of ASTs parses a trait's file
+    // once, not once for each class that uses it
     /** @var PHPStan\Parser\Parser $parser */
-    $parser = $container->getService('currentPhpVersionRichParser');
+    $parser = $container->getService('cachedRichParser');
     $walker = new PunWalker(
         $rules,
         $container->getByType(PHPStan\Reflection\ReflectionProvider::class),
