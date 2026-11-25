@@ -1301,9 +1301,10 @@ fn unreadable_phpat_test_is_a_run_error() {
     );
 }
 
-const PHP_RULES_NEON: &str = "rules:\n    - App\\Rules\\DangerousCallRule\n    - App\\Rules\\FinalClassRule\n    - App\\Rules\\ClassNameRule\n";
+const PHP_RULES_NEON: &str = "parameters:\n    bootstrapFiles:\n        - bootstrap.php\nrules:\n    - App\\Rules\\DangerousCallRule\n    - App\\Rules\\FinalClassRule\n    - App\\Rules\\ClassNameRule\n";
 
-/// Reads a class's names as PHPStan leaves them (an anonymous class's `namespacedName` is set, to null).
+/// Reads a class's names as PHPStan leaves them (an anonymous class's `namespacedName` is set, to null) and a constant
+/// the bootstrap file defines.
 const CLASS_NAME_RULE: &str = r#"<?php
 
 namespace App\Rules;
@@ -1327,7 +1328,7 @@ final class ClassNameRule implements Rule
         $class = $node->getOriginalNode();
         $name = $class->namespacedName?->toString() ?? 'null';
 
-        return [RuleErrorBuilder::message("Class {$class->name} ({$name}, {$node->getClassReflection()->getDisplayName()}).")->identifier('app.className')->build()];
+        return [RuleErrorBuilder::message("Class {$class->name} ({$name}, {$node->getClassReflection()->getDisplayName()}) after " . APP_BOOTED . '.')->identifier('app.className')->build()];
     }
 }
 "#;
@@ -1405,6 +1406,7 @@ fn php_rules_project(name: &str, extra_rule: Option<(&str, &str)>) -> Option<Pat
         ("rules/DangerousCallRule.php", DANGEROUS_CALL_RULE),
         ("rules/FinalClassRule.php", FINAL_CLASS_RULE),
         ("rules/ClassNameRule.php", CLASS_NAME_RULE),
+        ("bootstrap.php", "<?php\n\nconst APP_BOOTED = 'the bootstrap';\n"),
         (
             "vendor/autoload.php",
             "<?php\n\nforeach (glob(__DIR__ . '/../rules/*.php') as $rule) {\n    require_once $rule;\n}\n",
@@ -1435,7 +1437,7 @@ fn php_rules_project(name: &str, extra_rule: Option<(&str, &str)>) -> Option<Pat
 }
 
 /// `[analyse] php-rules` runs the project's own PHPStan rules: `getType()`, the class reflection (an anonymous
-/// class's too), tips and `@phpstan-ignore` give PHPStan's output byte for byte.
+/// class's too), the bootstrap files, tips and `@phpstan-ignore` give PHPStan's output byte for byte.
 #[test]
 fn php_rules_match_phpstan() {
     let Some(d) = php_rules_project("php-rules", None) else {
@@ -1454,7 +1456,7 @@ fn php_rules_match_phpstan() {
         let want = run(&d, &phpstan, &[format]);
         assert!(
             want.0.contains("Calls Foo::dangerous() in run().")
-                && want.0.contains("Foo@anonymous/a.php:25)."),
+                && want.0.contains("Foo@anonymous/a.php:25) after the bootstrap."),
             "{want:?}"
         );
         assert_eq!(run(&d, &[PUN, "analyse"], &[format]), want, "{format}");
