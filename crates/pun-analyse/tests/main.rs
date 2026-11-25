@@ -128,6 +128,7 @@ mod native_properties;
 mod native_unset_transfer;
 mod nested_conditional_returns;
 mod nested_reference_writes;
+mod nested_shape_aliases;
 mod never_calls;
 mod never_identity;
 mod nsrt;
