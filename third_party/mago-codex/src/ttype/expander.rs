@@ -1333,7 +1333,11 @@ fn should_use_static_type_params(named: &TNamedObject, static_obj: &TNamedObject
         return true;
     };
 
-    let Some(class_metadata) = codebase.get_class_like_by_name(static_obj.name) else {
+    // Pun: the current arguments were filled in for the class `static` is declared in (`Relation`'s three), which may
+    // name more templates than the receiver's class (`HasMany`'s two)
+    let Some(class_metadata) =
+        codebase.get_class_like_by_name(named.name).or_else(|| codebase.get_class_like_by_name(static_obj.name))
+    else {
         return false;
     };
 

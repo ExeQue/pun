@@ -1357,3 +1357,11 @@ trait declares, and resolved to `mixed`. PHPStan resolves the trait's docblocks 
 the class neither declares nor imports is now looked up on the traits it uses (and theirs); a class's own docblocks
 never build such an alias, as its type context does not hold the trait's aliases (shipfastlabs/pun#49).
 `crates/pun-analyse/tests/trait_type_aliases.rs` covers it.
+## `static` of a class with fewer templates
+
+`ttype/expander.rs` `should_use_static_type_params()`: a `static` return carries the arguments filled in for the class
+that declares the method, and they were counted against the receiver class's templates. When the receiver's class
+names fewer (`HasMany<TRelated, TDeclaring>` extending `Relation<TRelated, TDeclaring, TResult>`), the receiver's own
+arguments were dropped, so `$customer->invoices()->clone()` was a bare `HasMany` and the related model's scopes were
+undefined. PHPStan's GenericStaticType keeps the receiver's. They are now counted against the declaring class's
+templates (shipfastlabs/pun#52). `crates/pun-analyse/tests/static_of_fewer_templates.rs` covers it.
