@@ -2086,7 +2086,7 @@ dependencies = [
 
 [[package]]
 name = "punphp"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "agent-detector",
  "anyhow",
@@ -2122,7 +2122,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-analyse"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "bincode",
  "bitflags 2.13.2",
@@ -2160,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-blade"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "oxc_allocator",
  "oxc_formatter",
@@ -2174,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-config"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "anyhow",
  "punphp-phpstan",
@@ -2186,7 +2186,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-extension"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "punphp-config",
  "punphp-fixers",
@@ -2196,7 +2196,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-fixers"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "anyhow",
  "foldhash",
@@ -2213,7 +2213,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-format"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "anyhow",
  "memchr",
@@ -2225,7 +2225,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-harness"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2237,7 +2237,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-lint"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "mago-allocator",
  "mago-analyzer",
@@ -2264,7 +2264,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-packages"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "flate2",
  "indexmap",
@@ -2284,7 +2284,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-phpstan"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "indexmap",
  "pcre2",
@@ -2295,7 +2295,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-tokens"
-version = "0.4.3-exp-1"
+version = "0.4.3-exp-2"
 dependencies = [
  "foldhash",
  "libc",
