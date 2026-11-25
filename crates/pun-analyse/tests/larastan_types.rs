@@ -60,6 +60,9 @@
 //! Type/PunTableAttributeTest.json (Laravel 13's `#[Table]` naming a model's table, named or positional, inherited by a
 //! subclass, and a declared `$table` winning over it) has its assertions and errors from PHPStan 2.3.7 with Larastan
 //! 3.15.0 at level 8 in a Laravel 13 app with a `users` table.
+//! Type/PunPackageViewsTest.json (`namespace::view` names a provider registers with `loadViewsFrom()`, here
+//! root/vendor/orchestra/testbench-core/laravel/app/Providers/PunViewsServiceProvider.php) has its errors from PHPStan
+//! 2.3.7 with Larastan 3.15.0 at level 8 in a Laravel 13 app whose registered provider loads the same views.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

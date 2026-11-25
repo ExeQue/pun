@@ -48,7 +48,7 @@ pub(crate) enum Definition {
     Mixin(String),
 }
 
-fn discovered_providers(root: &Path) -> Vec<PathBuf> {
+pub(crate) fn discovered_providers(root: &Path) -> Vec<PathBuf> {
     let composer = root.join("vendor/composer");
     let Some(installed) = std::fs::read(composer.join("installed.json"))
         .ok()
