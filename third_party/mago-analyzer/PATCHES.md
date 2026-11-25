@@ -4355,3 +4355,15 @@ model is still a template (`HasMany<TRow, User>::get()` inside a method template
 mago-codex's `expander::collection_of_unresolvable()`, as PHPStan's `ResolvedFunctionVariantWithOriginal` resolves
 late-resolvable types. Without it the return type was the unknown class `collection-of` (shipfastlabs/pun#38, item
 5). `pun-analyse/tests/fixtures/larastan-types/Type/PunTemplateRelationCollectionsTest.json` covers it.
+## `$this` returns take the `@phpstan-this-out` type
+
+`invocation/return_type_fetcher.rs`: a method whose return type is exactly `$this` and that declares a
+`@phpstan-this-out` type returns the this-out type, as PHPStan's
+`CalledOnTypeUnresolvedMethodPrototypeReflection` does. `LengthAwarePaginator<int, User>::through(fn ($user) =>
+$user->name)` then types as `LengthAwarePaginator<int, string>`, as Larastan's stub declares (shipfastlabs/pun#38,
+item 4). `generalize_template_arguments()` now generalizes a method template referenced anywhere
+inside a generic object of the return type (`Box<U>`, `static<TKey, TMapValue>`), covariant positions included, as
+ResolvedFunctionVariantWithOriginal's object callback does without a template argument frame; only under the template
+argument toggle does a covariant position keep the exact type. `through(fn (User $user): array => ['id' => $user->id])`
+is `LengthAwarePaginator<int, array{id: int}>` and `Box<covariant T>::map(fn () => 5)` is `Box<int>`.
+`pun-analyse/tests/fixtures/larastan-types/Type/PunPaginatorThroughTest.json` covers it.
