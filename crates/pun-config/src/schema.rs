@@ -483,6 +483,8 @@ pub struct Analyse {
     pub larastan: bool,
     /// phpat's settings, when the `phpat` extension is on.
     pub phpat: Option<extensions::Phpat>,
+    /// `php-rules` (prototype): neon files whose PHPStan rule classes a PHP worker runs.
+    pub php_rules: Vec<String>,
     pub rules: Vec<AnalyseRule>,
     pub bleeding_edge: bool,
     /// PHPStan's `reportUnmatchedIgnoredErrors`: `false` reports no unmatched ignore comment and makes
@@ -557,6 +559,8 @@ pub(crate) struct AnalyseToml {
     scan: Vec<String>,
     #[serde(default)]
     bootstrap: Vec<String>,
+    #[serde(default, rename = "php-rules")]
+    php_rules: Vec<String>,
     #[serde(default)]
     ignore: Vec<Ignore>,
     #[serde(default)]
@@ -1015,6 +1019,7 @@ pub(crate) fn analyse(
         stubs: t.stubs,
         scan: t.scan,
         bootstrap: t.bootstrap,
+        php_rules: t.php_rules,
         ignore,
         larastan: ecosystems.contains(&&extensions::LARAVEL)
             && crate::phpstan_parameters::larastan_supports(
@@ -1074,6 +1079,8 @@ pub fn phpstan_level_rules(level: u8, bleeding_edge: bool) -> BTreeSet<String> {
             out.insert(id.to_string());
         }
     }
+    // the project's own rules run in PHPStan at every level; the rule does nothing without `php-rules`
+    out.insert(crate::PHP_RULES_RULE.to_string());
     out
 }
 

@@ -25,6 +25,9 @@ const STRICT_RULES_PARAMETERS: [(&str, bool); 12] = [
 /// The analyse rule phpat's rules report under.
 pub(crate) const PHPAT_RULE: &str = "analyse/phpat/architecture-violation";
 
+/// The analyse rule the project's own PHPStan rules (`[analyse] php-rules`) report under.
+pub const PHP_RULES_RULE: &str = "analyse/style/project-rule";
+
 /// The bootstrap file nesbot/carbon's `extension.neon` names, from the project root.
 const CARBON_BOOTSTRAP: &str = "vendor/nesbot/carbon/lazy/Carbon/UnprotectedDatePeriod.php";
 
@@ -65,7 +68,7 @@ impl Analyse {
         u8::try_from(rules.chain(switches).max().unwrap_or(0)).expect("PHPStan levels are 0 to 10")
     }
 
-    /// `stubFiles`, `scanFiles`, `scanDirectories` and `bootstrapFiles`, as absolute paths: a `scan` entry that is a
+    /// `stubFiles`, `scanFiles`, `scanDirectories`, `bootstrapFiles` and `punPhpRules`, as absolute paths: a `scan` entry that is a
     /// directory is a scanned directory, any other a scanned file.
     fn file_parameters(&self, root: &Path, p: &mut Array) {
         let (dirs, files): (Vec<_>, Vec<_>) = (self.scan.iter())
@@ -84,6 +87,11 @@ impl Analyse {
         ] {
             let paths = paths.into_iter().map(Value::str);
             p.set(Key::from(name), Value::Array(Array::list(paths)));
+        }
+        // `punPhpRules`: the `php-rules` neon files, when their rule is on
+        if !self.php_rules.is_empty() && self.on().contains(PHP_RULES_RULE) {
+            let neon = absolute(&self.php_rules).into_iter().map(Value::str);
+            p.set(Key::from("punPhpRules"), Value::Array(Array::list(neon)));
         }
     }
 

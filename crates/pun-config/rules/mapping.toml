@@ -1347,6 +1347,7 @@ lumen = "Lumen routes: the Lumen framework's own route syntax"
 "statements/throw-expression-not-supported" = { preset = "basic", ported = true, status = "decided" }
 "strings/invalid-date-interval" = { preset = "recommended", ported = true, status = "decided" }
 "strings/invalid-date-time" = { preset = "recommended", ported = true, status = "decided" }
+"style/project-rule" = { preset = "basic", ported = true, status = "decided", pun_only = true, summary = "A rule of the project's own PHPStan rule classes (`[analyse] php-rules`, prototype) reported an error.", note = "Prototype: a PHP worker runs the rule classes the `php-rules` neon files register; every identifier they report goes to this rule." }
 "types/argument" = { preset = "basic", ported = true, status = "decided" }
 "types/argument-not-numeric" = { preset = "recommended", ported = true, status = "decided" }
 "types/argument-not-stringable" = { preset = "recommended", ported = true, status = "decided" }

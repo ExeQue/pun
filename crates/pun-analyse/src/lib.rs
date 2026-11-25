@@ -9,6 +9,7 @@ mod laravel;
 mod mago;
 mod mockery;
 mod parser;
+mod php_rules;
 mod phpat;
 mod project;
 mod relative_path;
@@ -24,6 +25,7 @@ pub use codebase::CouldNotReadFile;
 pub use extension::AnalyseExtension;
 pub use laravel::Laravel;
 pub use mago::{Dumped, MagoIssue, MagoRun, run_mago};
+pub use php_rules::PhpRules;
 pub use phpat::{Config as PhpatConfig, Rules as PhpatRules};
 pub use project::{
     ExceptionChecks, Exceptions, MethodRules, Project, ProjectOptions, Reported, StrictRules,

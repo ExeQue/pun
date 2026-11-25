@@ -8,6 +8,7 @@ mod mapping;
 pub mod migrate;
 pub mod options;
 mod phpstan_parameters;
+pub use phpstan_parameters::PHP_RULES_RULE;
 mod schema;
 
 pub use explain::{RULE_DOCS_URL, explain, rule_docs_url};
@@ -639,6 +640,7 @@ impl Config {
                 stubs: &a.stubs,
                 scan: &a.scan,
                 bootstrap: &a.bootstrap,
+                php_rules: &a.php_rules,
                 ignore: &a.ignore,
             },
         };
@@ -705,6 +707,8 @@ struct ShownAnalyse<'a> {
     scan: &'a [String],
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     bootstrap: &'a [String],
+    #[serde(rename = "php-rules", skip_serializing_if = "<[_]>::is_empty")]
+    php_rules: &'a [String],
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     ignore: &'a [Ignore],
 }

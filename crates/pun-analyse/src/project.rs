@@ -86,6 +86,9 @@ pub struct Project {
     /// `parameters.phpat` with the test classes, when phpat is on; [`Project::load_phpat`] reads the tests.
     pub phpat_config: Option<crate::phpat::Config>,
     pub phpat: Option<std::sync::Arc<crate::phpat::Rules>>,
+    /// `[analyse] php-rules`: the neon files whose rules the PHP worker runs; [`Project::start_php_rules`] starts it.
+    pub php_rules_config: Vec<String>,
+    pub php_rules: Option<std::sync::Arc<crate::PhpRules>>,
     pub type_aliases: Vec<(String, String)>,
     pub stubs: Vec<PathBuf>,
     pub reported: Option<Reported>,
@@ -328,6 +331,18 @@ impl Project {
         };
         let rules = crate::phpat::Rules::load(self, config)?;
         self.phpat = Some(std::sync::Arc::new(rules));
+        Ok(())
+    }
+
+    /// Starts the php-rules worker when `php_rules_config` names neon files, with `paths` as PHPStan's analysed
+    /// paths. A worker that can't start is an error that names the cause.
+    pub fn start_php_rules(&mut self, paths: &[PathBuf]) -> Result<(), String> {
+        if self.php_rules_config.is_empty() {
+            return Ok(());
+        }
+        let neon: Vec<PathBuf> = self.php_rules_config.iter().map(PathBuf::from).collect();
+        let rules = crate::PhpRules::start(&self.current_working_directory, &neon, paths)?;
+        self.php_rules = Some(std::sync::Arc::new(rules));
         Ok(())
     }
 
@@ -620,6 +635,11 @@ impl Project {
             carbon: crate::Carbon::from_params(root, params),
             phpat_config: phpat_config(params),
             phpat: None,
+            php_rules_config: strings(params, "punPhpRules")
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
+            php_rules: None,
             type_aliases: params
                 .get_str("typeAliases")
                 .and_then(Value::as_array)
@@ -728,6 +748,8 @@ impl Project {
             carbon: None,
             phpat_config: None,
             phpat: None,
+            php_rules_config: Vec::new(),
+            php_rules: None,
             type_aliases: Vec::new(),
             stubs: Vec::new(),
             reported: None,
