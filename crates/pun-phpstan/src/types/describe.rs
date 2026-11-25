@@ -273,6 +273,7 @@ impl Accessory {
             Accessory::DecimalIntString { inverse: true } => "non-decimal-int-string",
             Accessory::List => "list",
             Accessory::NonEmptyArray => "non-empty-array",
+            Accessory::OversizedArray => "oversized-array",
             Accessory::HasMethod(name) => return format!("hasMethod({name})").into_bytes(),
             Accessory::ModelProperty(t) => {
                 return description!("model property of ", t.describe_bytes(level));
@@ -296,6 +297,7 @@ impl Accessory {
             self,
             Accessory::List
                 | Accessory::NonEmptyArray
+                | Accessory::OversizedArray
                 | Accessory::HasMethod(_)
                 | Accessory::HasOffsetValue(..)
         )
@@ -529,7 +531,11 @@ fn describe_intersection_itself(this: &Type, types: &[Type], level: Level) -> Ve
         if level != Level::Precise
             && matches!(
                 t,
-                Type::Accessory(Accessory::HasMethod(_) | Accessory::HasOffsetValue(..))
+                Type::Accessory(
+                    Accessory::HasMethod(_)
+                        | Accessory::HasOffsetValue(..)
+                        | Accessory::OversizedArray
+                )
             )
         {
             continue;
