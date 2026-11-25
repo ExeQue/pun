@@ -27839,6 +27839,24 @@
       "ported": true
     },
     {
+      "id": "analyse/style/project-rule",
+      "command": "analyse",
+      "group": "style",
+      "summary": "A rule of the project's own PHPStan rule classes ([analyse] php-rules, prototype) reported an error.",
+      "enabled": [
+        "analyse-basic",
+        "analyse-essential",
+        "analyse-recommended",
+        "analyse-strict",
+        "analyse-max"
+      ],
+      "fix": "none",
+      "ecosystem": "core",
+      "tools": [],
+      "upstream": [],
+      "ported": true
+    },
+    {
       "id": "analyse/types/argument",
       "command": "analyse",
       "group": "types",

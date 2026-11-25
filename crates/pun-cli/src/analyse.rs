@@ -245,6 +245,9 @@ fn project(
     project
         .load_phpat()
         .map_err(|e| run_error(format!("[extensions] phpat: {e}"), None))?;
+    project
+        .start_php_rules(&analysed_paths.iter().map(PathBuf::from).collect::<Vec<_>>())
+        .map_err(|e| run_error(format!("[analyse] php-rules: {e}"), None))?;
     let routed = pun_config::identifiers_of_rules(|r| on.contains(r) || lint_on.contains(r));
     project.reported = Some(std::sync::Arc::new(move |id| {
         if method_rules.consistent_constructor
@@ -298,6 +301,14 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
     let project = project(cfg, files, &paths)?;
     let analysis =
         pun_analyse::analyse_project(&project).map_err(|e| run_error(e.to_string(), None))?;
+    if let Some(e) = (project.php_rules.as_ref()).and_then(|r| r.failure()) {
+        return Err(run_error(format!("[analyse] php-rules: {e}"), None));
+    }
+    let project_rule = |id: &str| {
+        (project.php_rules.as_ref())
+            .is_some_and(|r| r.reported(id))
+            .then_some(pun_config::PHP_RULES_RULE)
+    };
     let mut errors = analysis.errors;
     errors.extend(syntax_errors(&project.analysed, &errors));
     let mut general = analysis.general;
@@ -312,8 +323,8 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
         .collect();
     let mut findings: Vec<Finding> = (errors.into_iter())
         .map(|e| {
-            let rule =
-                rule_of_identifier(&e.identifier).unwrap_or(if e.identifier == "phpstan.parse" {
+            let rule = (rule_of_identifier(&e.identifier).or_else(|| project_rule(&e.identifier)))
+                .unwrap_or(if e.identifier == "phpstan.parse" {
                     "parser-error"
                 } else {
                     UNMATCHED_IGNORE

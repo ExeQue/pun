@@ -1017,7 +1017,7 @@ fn unmatched_ignores_of_files_left_out() {
 #[test]
 fn no_rules_detected() {
     let d = sample("no-rules", ERRORS);
-    let groups = "arrays attributes casing casts classes comments control-flow dead-code debug deprecated functions imports laravel operators phpdoc statements strings types undefined";
+    let groups = "arrays attributes casing casts classes comments control-flow dead-code debug deprecated functions imports laravel operators phpdoc statements strings style types undefined";
     let off: String = groups.split(' ').fold(String::new(), |mut out, g| {
         let _ = writeln!(out, "{g} = \"off\"");
         out
@@ -1297,6 +1297,179 @@ fn unreadable_phpat_test_is_a_run_error() {
     assert_eq!(out.status.code(), Some(2), "{stderr}");
     assert!(
         stderr.contains("[extensions] phpat: phpat test class Arch\\Missing was not found"),
+        "{stderr}"
+    );
+}
+
+const PHP_RULES_NEON: &str =
+    "rules:\n    - App\\Rules\\DangerousCallRule\n    - App\\Rules\\FinalClassRule\n";
+
+const DANGEROUS_CALL_RULE: &str = r#"<?php
+
+namespace App\Rules;
+
+use PhpParser\Node;
+use PhpParser\Node\Expr\MethodCall;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleErrorBuilder;
+use PHPStan\Type\ObjectType;
+
+/** @implements Rule<MethodCall> */
+final class DangerousCallRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return MethodCall::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        if (!$node->name instanceof Node\Identifier || $node->name->toString() !== 'dangerous'
+            || !(new ObjectType('App\Foo'))->isSuperTypeOf($scope->getType($node->var))->yes()) {
+            return [];
+        }
+
+        return [RuleErrorBuilder::message("Calls Foo::dangerous() in {$scope->getFunctionName()}().")->identifier('app.dangerous')->tip('Call safe() instead.')->build()];
+    }
+}
+"#;
+
+const FINAL_CLASS_RULE: &str = r#"<?php
+
+namespace App\Rules;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Node\InClassNode;
+use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleErrorBuilder;
+
+/** @implements Rule<InClassNode> */
+final class FinalClassRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return InClassNode::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        $class = $node->getClassReflection();
+        if ($class->isFinal() || !$class->isClass() || $scope->getNamespace() !== 'App') {
+            return [];
+        }
+
+        return [RuleErrorBuilder::message("Class {$class->getName()} is not final.")->identifier('app.final')->build()];
+    }
+}
+"#;
+
+const PHP_RULES_SOURCE: &str = "<?php\n\nnamespace App;\n\nclass Foo\n{\n    public function dangerous(): void\n    {\n    }\n}\n\nfinal class Bar\n{\n    public function run(Foo $foo, string $name): void\n    {\n        $foo->dangerous();\n        $name->dangerous();\n        // @phpstan-ignore app.dangerous\n        $foo->dangerous();\n    }\n}\n";
+
+/// A project with `[analyse] php-rules` and the two rule classes above, whose vendor/ holds the oracle's PHPStan phar
+/// and an autoloader for the rules; `None` (the cases are skipped) without the oracle or a `php` that runs there.
+fn php_rules_project(name: &str, extra_rule: Option<(&str, &str)>) -> Option<PathBuf> {
+    let phar = phpstan()?;
+    let mut neon = PHP_RULES_NEON.to_string();
+    let mut files = vec![
+        ("src/a.php", PHP_RULES_SOURCE),
+        ("rules/DangerousCallRule.php", DANGEROUS_CALL_RULE),
+        ("rules/FinalClassRule.php", FINAL_CLASS_RULE),
+        (
+            "vendor/autoload.php",
+            "<?php\n\nforeach (glob(__DIR__ . '/../rules/*.php') as $rule) {\n    require_once $rule;\n}\n",
+        ),
+        (
+            "phpstan.neon",
+            "includes:\n    - rules.neon\nparameters:\n    level: 0\n    paths:\n        - src\n",
+        ),
+        (
+            "pun.toml",
+            "[analyse]\npreset = \"phpstan/level_0\"\npaths = [\"src\"]\nphp-rules = [\"rules.neon\"]\n",
+        ),
+    ];
+    if let Some((class, source)) = extra_rule {
+        writeln!(neon, "    - App\\Rules\\{class}").unwrap();
+        files.push(("rules/Extra.php", source));
+    }
+    files.push(("rules.neon", &neon));
+    let d = project("analyse", name, &files);
+    std::fs::create_dir_all(d.join("vendor/phpstan/phpstan")).unwrap();
+    std::os::unix::fs::symlink(&phar, d.join("vendor/phpstan/phpstan/phpstan.phar")).unwrap();
+    // a containerized php (lerd) can't run a project under the system temporary directory
+    let php = Command::new("php")
+        .args(["-r", "echo is_file('vendor/autoload.php') ? 'ok' : '';"])
+        .current_dir(&d)
+        .output();
+    php.is_ok_and(|o| o.stdout == b"ok").then_some(d)
+}
+
+/// `[analyse] php-rules` runs the project's own PHPStan rules: `getType()`, the class reflection, tips and
+/// `@phpstan-ignore` give PHPStan's output byte for byte.
+#[test]
+fn php_rules_match_phpstan() {
+    let Some(d) = php_rules_project("php-rules", None) else {
+        return;
+    };
+    let phar = phpstan().unwrap();
+    let phpstan = [
+        "php",
+        phar.to_str().unwrap(),
+        "analyse",
+        "--no-progress",
+        "-c",
+        "phpstan.neon",
+    ];
+    for format in ["--error-format=json", "--error-format=raw"] {
+        let want = run(&d, &phpstan, &[format]);
+        assert!(
+            want.0.contains("Calls Foo::dangerous() in run()."),
+            "{want:?}"
+        );
+        assert_eq!(run(&d, &[PUN, "analyse"], &[format]), want, "{format}");
+    }
+}
+
+/// A Scope method the prototype doesn't answer stops the run (exit 2) with an error that names the rule and the method.
+#[test]
+fn php_rules_unsupported_scope_method_is_a_run_error() {
+    let rule = r"<?php
+
+namespace App\Rules;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\Rule;
+
+/** @implements Rule<Node\Stmt\Expression> */
+final class FirstLevelRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return Node\Stmt\Expression::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        return $scope->isInFirstLevelStatement() ? [] : [];
+    }
+}
+";
+    let Some(d) = php_rules_project("php-rules-unsupported", Some(("FirstLevelRule", rule))) else {
+        return;
+    };
+    let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+        .current_dir(&d)
+        .env("PUN_AGENT", "0")
+        .args(["analyse", "--error-format=json"])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert_eq!(out.status.code(), Some(2), "{stderr}");
+    assert!(
+        stderr.contains("[analyse] php-rules: ")
+            && stderr.contains("App\\Rules\\FirstLevelRule: Scope::isInFirstLevelStatement() is not supported by the php-rules prototype"),
         "{stderr}"
     );
 }
