@@ -24,6 +24,10 @@
 //! RemoveDeadInstanceOfRector/Pun/bare_body_holder: where the braceless body of an `if` is an `if` that gives way to
 //! several statements, Rector prints the outer `if` anew with braces; Pun leaves both.
 //!
+//! RecastingRemovalRector/Pun/skip_foreach_key: Rector, like PHPStan, types the keys of `$a[$string] = 1` as `string`
+//! and removes `(string)` from a `foreach` key, but PHP stores a numeric-string key (`'20'`) as an `int`, so
+//! `strlen($key)` throws a TypeError under `strict_types`; Pun keeps the cast.
+//!
 //! RemoveAlwaysTrueIfConditionRector/Pun/self_comparison: PHPStan types `$n === $n` as `true`; Mago's analysis gives
 //! `bool`, so Pun keeps the `if`.
 //!
