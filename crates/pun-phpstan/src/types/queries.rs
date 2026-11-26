@@ -322,6 +322,10 @@ impl Type {
 
     // PHPStan's Type::isOversizedArray(): only OversizedArrayType answers yes,
     // a constant array or a non-array answers no, any other array maybe.
+    // query() answers maybe for mixed, as MixedType does. MixedType's no for a
+    // subtracted type that covers oversized arrays is left out, since no caller
+    // asks a mixed: two ask an intersection, and is_super_type_of() sends a
+    // compound type such as mixed to is_sub_type_of() before accessory_super().
     pub(super) fn is_oversized_array(&self) -> Tri {
         self.query_c(&|t| match t {
             Type::Accessory(Accessory::OversizedArray) => Tri::Yes,

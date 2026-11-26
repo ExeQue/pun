@@ -889,6 +889,8 @@ impl Checker<'_, '_> {
                 match element {
                     ArrayElement::KeyValue(kv) => entries.push((Some(convert(kv.key)?), value)),
                     ArrayElement::Variadic(_) => match value {
+                        // PHPStan: OversizedArrayBuilder::build() expands every key of an
+                        // unpacked constant array, optional or not.
                         Type::ConstArray(a) => {
                             entries.extend(a.keys.into_iter().zip(a.values).map(|(key, value)| {
                                 ((!key.is_string().no()).then_some(key), value)
@@ -1466,6 +1468,9 @@ impl Checker<'_, '_> {
                     && let Some(known) = &l.known_elements
                     && known.len() > ARRAY_COUNT_LIMIT
                 {
+                    // PHPStan: an oversized array is built from a literal
+                    // (OversizedArrayBuilder::build()), whose items are never
+                    // optional, so the optional flag is dropped.
                     return oversized_array(
                         known.iter().map(|(i, (_, v))| {
                             (Some(Type::ConstInt(*i as i64)), self.to_phpstan(v))
@@ -1551,6 +1556,8 @@ impl Checker<'_, '_> {
                     .as_ref()
                     .is_some_and(|i| i.len() > ARRAY_COUNT_LIMIT) =>
                 {
+                    // PHPStan: as for lists above, an oversized array comes from a
+                    // literal, whose items are never optional.
                     oversized_array(
                         k.known_items
                             .iter()

@@ -419,7 +419,9 @@ impl ConstArray {
                     )));
                 }
             }
-        } else if self.is_iterable_at_least_once().yes() {
+        } else {
+            // PHPStan also checks isIterableAtLeastOnce() here, which 32
+            // required keys always pass.
             accessories.push(Type::Accessory(Accessory::NonEmptyArray));
         }
         if self.is_list.yes() {
