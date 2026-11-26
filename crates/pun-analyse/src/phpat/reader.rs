@@ -183,9 +183,9 @@ fn declares(path: &Path, contents: &[u8], lower: &str) -> bool {
     let file = file(path, contents.to_vec());
     let arena = LocalArena::new();
     let (program, names) = crate::codebase::parse(&arena, &file);
-    class_likes(program)
+    class_likes(program, &names)
         .iter()
-        .any(|c| text(names.get(&c.name.span)).eq_ignore_ascii_case(lower))
+        .any(|c| c.name.eq_ignore_ascii_case(lower))
 }
 
 fn file(path: &Path, contents: Vec<u8>) -> File {
@@ -201,87 +201,164 @@ fn text(b: &[u8]) -> String {
     String::from_utf8_lossy(b).into_owned()
 }
 
-/// The top-level classes of a file, in namespaces too.
-fn class_likes<'a, 'arena>(program: &'a Program<'arena>) -> Vec<&'a Class<'arena>> {
-    fn of<'a, 'arena>(statements: &'a [Statement<'arena>], out: &mut Vec<&'a Class<'arena>>) {
+/// A class or trait: its resolved name, its members and the class it extends.
+struct Decl<'a, 'arena> {
+    name: String,
+    members: &'a Sequence<'arena, ClassLikeMember<'arena>>,
+    extends: Option<&'a Extends<'arena>>,
+}
+
+/// The top-level classes and traits of a file, in namespaces too.
+fn class_likes<'a, 'arena>(
+    program: &'a Program<'arena>,
+    names: &ResolvedNames<'arena>,
+) -> Vec<Decl<'a, 'arena>> {
+    fn of<'a, 'arena>(
+        statements: &'a [Statement<'arena>],
+        names: &ResolvedNames<'arena>,
+        out: &mut Vec<Decl<'a, 'arena>>,
+    ) {
         for s in statements {
             match s {
-                Statement::Class(c) => out.push(c),
-                Statement::Namespace(n) => of(n.statements().as_slice(), out),
+                Statement::Class(c) => out.push(Decl {
+                    name: text(names.get(&c.name.span)),
+                    members: &c.members,
+                    extends: c.extends.as_ref(),
+                }),
+                Statement::Trait(t) => out.push(Decl {
+                    name: text(names.get(&t.name.span)),
+                    members: &t.members,
+                    extends: None,
+                }),
+                Statement::Namespace(n) => of(n.statements().as_slice(), names, out),
                 _ => {}
             }
         }
     }
     let mut out = Vec::new();
-    of(program.statements.as_slice(), &mut out);
+    of(program.statements.as_slice(), names, &mut out);
     out
 }
 
-/// Reads the rules of test class `class`, its inherited test methods included.
+/// What `read` has gathered so far for one test class.
+struct Gather<'p> {
+    project: &'p Project,
+    test_name: String,
+    /// The lowercase names of the methods read or overridden, which a trait or parent method of the same name loses to.
+    seen: HashSet<String>,
+    /// The lowercase names of the traits already read.
+    traits: HashSet<String>,
+    rules: Vec<Rule>,
+}
+
+/// Parses the file that declares the class or trait `name` and calls `f` with it; `what` names it in errors.
+fn with_decl<T>(
+    project: &Project,
+    name: &str,
+    what: &str,
+    f: impl for<'b, 'arena> FnOnce(
+        &Path,
+        &File,
+        &ResolvedNames<'arena>,
+        &Decl<'b, 'arena>,
+    ) -> Result<T, String>,
+) -> Result<T, String> {
+    let path = find_file(project, name).ok_or_else(|| {
+        format!(
+            "{what} was not found: Pun looks for it in Composer's autoload (autoload-dev included) and in the analysed and scanned files"
+        )
+    })?;
+    let contents = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let file = file(&path, contents);
+    let arena = LocalArena::new();
+    let (program, names) = crate::codebase::parse(&arena, &file);
+    let Some(decl) = class_likes(program, &names)
+        .into_iter()
+        .find(|c| c.name.eq_ignore_ascii_case(name))
+    else {
+        return Err(format!("{}: {what} is not declared there", path.display()));
+    };
+    f(&path, &file, &names, &decl)
+}
+
+/// Reads the rules of test class `class`, the test methods of its traits and parents included, as
+/// `ReflectionClass::getMethods()` lists them: a class's own method wins over a trait's, and both over a parent's.
 pub(super) fn read(project: &Project, class: &str) -> Result<Vec<Rule>, String> {
-    let mut seen = HashSet::new();
-    let mut rules = Vec::new();
-    let mut current = class.trim_start_matches('\\').to_string();
-    let mut test_name = None;
+    let mut gather = Gather {
+        project,
+        test_name: String::new(),
+        seen: HashSet::new(),
+        traits: HashSet::new(),
+        rules: Vec::new(),
+    };
+    let mut current = Some(class.trim_start_matches('\\').to_string());
     for _ in 0..64 {
-        let path = find_file(project, &current).ok_or_else(|| {
-            format!(
-                "phpat test class {current} was not found: Pun looks for it in Composer's autoload (autoload-dev included) and in the analysed and scanned files"
-            )
-        })?;
-        let contents = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let file = file(&path, contents);
-        let arena = LocalArena::new();
-        let (program, names) = crate::codebase::parse(&arena, &file);
-        let lower = current.to_ascii_lowercase();
-        let Some(c) = class_likes(program)
-            .into_iter()
-            .find(|c| text(names.get(&c.name.span)).eq_ignore_ascii_case(&lower))
-        else {
-            return Err(format!(
-                "{}: phpat test class {current} is not declared there",
-                path.display()
-            ));
-        };
-        let declared = text(names.get(&c.name.span));
-        let test_name = test_name.get_or_insert_with(|| declared.clone()).clone();
+        let Some(name) = current.take() else { break };
+        current = with_decl(
+            project,
+            &name,
+            &format!("phpat test class {name}"),
+            |path, file, names, decl| {
+                if gather.test_name.is_empty() {
+                    gather.test_name.clone_from(&decl.name);
+                }
+                gather.members(path, file, names, decl, &decl.name)?;
+                Ok((decl.extends)
+                    .and_then(|e| e.types.first())
+                    .map(|parent| text(names.get(&parent.span()))))
+            },
+        )?;
+    }
+    Ok(gather.rules)
+}
+
+impl Gather<'_> {
+    /// The test methods of `decl`, then those of the traits it uses. `declared` is the class `self` names: the test
+    /// class or parent whose `use` brought a trait in.
+    fn members<'arena>(
+        &mut self,
+        path: &Path,
+        file: &File,
+        names: &ResolvedNames<'arena>,
+        decl: &Decl<'_, 'arena>,
+        declared: &str,
+    ) -> Result<(), String> {
         let reader = Reader {
-            file: &file,
-            names: &names,
-            class: c,
-            declared,
+            file,
+            names,
+            members: decl.members,
+            declared: declared.to_string(),
             vars: RefCell::new(HashMap::new()),
             depth: RefCell::new(0),
         };
-        for member in &c.members {
+        for member in decl.members {
             let ClassLikeMember::Method(m) = member else {
                 continue;
             };
-            let name = text(m.name.value);
-            if !seen.insert(name.to_ascii_lowercase()) || !reader.is_test(m) {
-                continue;
-            }
             let MethodBody::Concrete(body) = &m.body else {
                 continue;
             };
+            let name = text(m.name.value);
+            if !self.seen.insert(name.to_ascii_lowercase()) || !reader.is_test(m) {
+                continue;
+            }
             reader.vars.borrow_mut().clear();
             let at = |e: String| {
                 format!(
-                    "{}:{}: phpat test {}::{name}(): {e}",
+                    "{}:{}: phpat test {declared}::{name}(): {e}",
                     path.display(),
                     file.line_number(m.span().start.offset) + 1,
-                    reader.declared
                 )
             };
-            let prefix = format!("{test_name}:{name}");
+            let prefix = format!("{}:{name}", self.test_name);
             match reader.body(&body.statements).map_err(at)? {
-                Out::Single(rule) => rules.push(Rule {
+                Out::Single(rule) => self.rules.push(Rule {
                     name: prefix,
                     ..*rule
                 }),
                 Out::Many(list) => {
                     for (key, rule) in list {
-                        rules.push(Rule {
+                        self.rules.push(Rule {
                             name: format!("{prefix}:{}", key.text()),
                             ..rule
                         });
@@ -289,15 +366,33 @@ pub(super) fn read(project: &Project, class: &str) -> Result<Vec<Rule>, String> 
                 }
             }
         }
-        match &c.extends {
-            Some(e) => {
-                let Some(parent) = e.types.first() else { break };
-                current = text(names.get(&parent.span()));
+        for member in decl.members {
+            let ClassLikeMember::TraitUse(u) = member else {
+                continue;
+            };
+            if let TraitUseSpecification::Concrete(s) = &u.specification
+                && !s.adaptations.is_empty()
+            {
+                return Err(format!(
+                    "{}:{}: phpat test class {declared}: Pun reads phpat tests without running PHP and can't read the trait adaptations in `{}` yet",
+                    path.display(),
+                    file.line_number(u.span().start.offset) + 1,
+                    reader.source(u.span())
+                ));
             }
-            None => break,
+            for t in &u.trait_names {
+                let name = text(names.get(&t.span()));
+                if !self.traits.insert(name.to_ascii_lowercase()) {
+                    continue;
+                }
+                let what = format!("trait {name} of phpat test class {declared}");
+                with_decl(self.project, &name, &what, |path, file, names, decl| {
+                    self.members(path, file, names, decl, declared)
+                })?;
+            }
         }
+        Ok(())
     }
-    Ok(rules)
 }
 
 enum Out {
@@ -308,7 +403,8 @@ enum Out {
 struct Reader<'a, 'arena> {
     file: &'a File,
     names: &'a ResolvedNames<'arena>,
-    class: &'a Class<'arena>,
+    /// The members of the class or trait whose method is read, where `self::X` looks up a constant.
+    members: &'a Sequence<'arena, ClassLikeMember<'arena>>,
     declared: String,
     vars: RefCell<HashMap<Vec<u8>, V>>,
     depth: RefCell<u32>,
@@ -606,10 +702,11 @@ impl<'arena> Reader<'_, 'arena> {
                 Some(v) => Ok(V::Str(text(v))),
                 None => unreadable(),
             },
-            Expression::Literal(Literal::Integer(i)) => match i.value.map(i64::try_from) {
-                Some(Ok(i)) => Ok(V::Int(i)),
-                _ => unreadable(),
-            },
+            // PHP reads a literal past PHP_INT_MAX as a float, which Pun doesn't read.
+            Expression::Literal(Literal::Integer(i)) => {
+                (i.value.and_then(|v| i64::try_from(v).ok()))
+                    .map_or_else(unreadable, |i| Ok(V::Int(i)))
+            }
             Expression::Literal(Literal::True(_)) => Ok(V::Bool(true)),
             Expression::Literal(Literal::False(_)) => Ok(V::Bool(false)),
             Expression::Literal(Literal::Null(_)) => Ok(V::Null),
@@ -643,7 +740,7 @@ impl<'arena> Reader<'_, 'arena> {
                 if !class.eq_ignore_ascii_case(&self.declared) {
                     return unreadable();
                 }
-                let value = (self.class.members.iter()).find_map(|m| match m {
+                let value = (self.members.iter()).find_map(|m| match m {
                     ClassLikeMember::Constant(k) => {
                         k.items.iter().find(|i| i.name.value == constant.value)
                     }
@@ -720,8 +817,10 @@ impl<'arena> Reader<'_, 'arena> {
                     let value = self.eval(v.value)?;
                     out.push((key, value));
                 }
-                ArrayElement::Missing(_) => {}
-                ArrayElement::Variadic(v) => return Err(self.unreadable(v.span())),
+                // PHP rejects an empty element outside list(); Pun doesn't read `...` in arrays yet.
+                ArrayElement::Missing(_) | ArrayElement::Variadic(_) => {
+                    return Err(self.unreadable(element.span()));
+                }
             }
         }
         // A later entry with the same key replaces the earlier one, keeping its position.
