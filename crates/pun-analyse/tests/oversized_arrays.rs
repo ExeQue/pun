@@ -38,22 +38,34 @@ fn oversized_literals_match_phpstan() {
     assert_eq!(errors(&project), want);
 }
 
-// Issue #61: the check of a large literal against its PHPDoc type grew with the
-// cube of the row count (a 4,000-row literal took a minute).
-#[test]
-fn large_literal_checked_against_phpdoc_stays_cheap() {
-    let mut rows = String::new();
-    for i in 0..4000 {
-        writeln!(rows, "['id-{i:06}', 'a', {i}, null],").unwrap();
-    }
-    let source = format!(
-        "<?php\n\nfinal class Data\n{{\n    /** @var array<string, list<array<int, int|string|null>>> */\n    public const array TABLES = ['rows' => [\n{rows}]];\n\n    /** @return array<string, list<array<int, int|string|null>>> */\n    public static function tables(): array\n    {{\n        return [...self::TABLES];\n    }}\n}}\n"
+fn check_rows(rows: usize) -> std::time::Duration {
+    let mut source = String::from(
+        "<?php\n\nfinal class Data\n{\n    /** @var array<string, list<array<int, int|string|null>>> */\n    public const array TABLES = ['rows' => [\n",
     );
-    let file = Path::new(env!("CARGO_TARGET_TMPDIR")).join("oversized-large-literal.php");
+    for i in 0..rows {
+        writeln!(source, "['id-{i:06}', 'a', {i}, null],").unwrap();
+    }
+    source.push_str("]];\n\n    /** @return array<string, list<array<int, int|string|null>>> */\n    public static function tables(): array\n    {\n        return [...self::TABLES];\n    }\n}\n");
+    let file = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("oversized-{rows}-rows.php"));
     std::fs::write(&file, source).unwrap();
     let mut project = Project::new(vec![file], Vec::new());
     project.level = 9;
     let started = std::time::Instant::now();
     assert_eq!(errors(&project), Vec::new());
-    assert!(started.elapsed().as_secs() < 60, "{:?}", started.elapsed());
+    started.elapsed()
+}
+
+// Issue #61: the check of a large literal against its PHPDoc type grew with the
+// cube of the row count (4,000 rows took about 38 s). Compare two sizes instead
+// of a wall-clock bound, which depends on the machine and the opt level: four
+// times the rows take about 2-4 times as long now, and up to 64 times as long
+// with the cubic check.
+#[test]
+fn large_literal_checked_against_phpdoc_stays_linear() {
+    let small = check_rows(1000);
+    let large = check_rows(4000);
+    assert!(
+        large < small * 10,
+        "1000 rows: {small:?}, 4000 rows: {large:?}"
+    );
 }
