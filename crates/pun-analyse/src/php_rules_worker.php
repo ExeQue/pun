@@ -77,10 +77,20 @@ register_shutdown_function(static function (): void {
     }
 });
 
+/**
+ * The worker's temporary directory, where PHPStan compiles its DI container.
+ *
+ * @param array<mixed> $setup
+ */
+function pun_tmp(array $setup): string
+{
+    return sys_get_temp_dir() . '/pun-php-rules-' . md5($setup['root']);
+}
+
 /** @param array<mixed> $setup */
 function pun_boot(array $setup): PHPStan\DependencyInjection\Container
 {
-    $tmp = sys_get_temp_dir() . '/pun-php-rules-' . md5($setup['root']);
+    $tmp = pun_tmp($setup);
     @mkdir($tmp, 0700, true);
     $neon = $tmp . '/pun.neon';
     $lines = ['includes:'];
@@ -512,8 +522,13 @@ try {
 while (true) {
     $request = PunWorker::receive();
     if (isset($request['loaded'])) {
-        // for pun's result cache: the PHP files the rules, the bootstrap files and the checks loaded
-        PunWorker::send(['files' => array_values(array_filter(get_included_files(), static fn (string $f): bool => !str_starts_with($f, 'phar://')))]);
+        // for pun's result cache: the PHP files the rules, the bootstrap files and the checks loaded. Not PHPStan's
+        // compiled containers in the temporary directory: their names change and a new machine (a CI job) has none,
+        // while the neon files, PHPStan's version and this worker they're built from are in the run key already
+        $tmp = pun_tmp($setup);
+        $generated = [$tmp . '/', (realpath($tmp) ?: $tmp) . '/'];
+        $kept = static fn (string $f): bool => !str_starts_with($f, 'phar://') && !str_starts_with($f, $generated[0]) && !str_starts_with($f, $generated[1]);
+        PunWorker::send(['files' => array_values(array_filter(get_included_files(), $kept))]);
         continue;
     }
     try {

@@ -133,6 +133,8 @@ pub(crate) struct Analysed {
     pub(crate) unmatched_baseline: usize,
     /// `@pun-ignore` comments without a rule ID, as problems (`ignore-comment`).
     pub(crate) malformed: Vec<Problem>,
+    /// The php-rules result cache's hits and misses, for `-v`.
+    pub(crate) php_rules_cache: Option<String>,
 }
 
 /// The syntax errors the engine did not report. It translates few of them into PHPParser's wording, and would
@@ -363,6 +365,7 @@ pub(crate) fn analyse(
         }
         rules.save();
     }
+    let php_rules_cache = (project.php_rules.as_ref()).and_then(|r| r.cache_summary());
     let project_rule = |id: &str| {
         (project.php_rules.as_ref())
             .is_some_and(|r| r.reported(id))
@@ -433,6 +436,7 @@ pub(crate) fn analyse(
         files: count,
         unmatched_baseline,
         malformed,
+        php_rules_cache,
     })
 }
 
@@ -552,6 +556,13 @@ pub(crate) fn run(a: &AnalyseArgs) -> Result<Exit> {
 fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant) -> Result<Exit> {
     let root = &cfg.root;
     let errors = analysed.findings.len() + analysed.malformed.len() + analysed.general.len();
+    if let Some(line) = analysed
+        .php_rules_cache
+        .as_ref()
+        .filter(|_| a.verbose > 0 && !a.quiet)
+    {
+        eprintln!("{line}");
+    }
     match a.format.as_deref() {
         // `-q` prints nothing, as PHPStan's `--quiet` (with any error format, under a coding agent too).
         _ if a.quiet => {}

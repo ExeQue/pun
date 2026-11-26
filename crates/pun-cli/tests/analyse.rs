@@ -1812,6 +1812,23 @@ fn php_rules_result_cache() {
     assert!(cold.contains("Calls Foo::dangerous() in run()."), "{cold}");
     assert_eq!(checked, all);
     assert_eq!(analyse(&[], &[]), (cold.clone(), String::new()));
+    // `-v` counts the hits; the loaded files the run key covers leave out the containers PHPStan compiled in the
+    // worker's temporary directory, which a new machine (a CI job) doesn't have
+    let args = ["--error-format=json", "--php-rules", "-v"];
+    let (_, err, _) = pun(&d, &args, &[("PUN_CACHE_DIR", cache)]);
+    assert!(
+        err.contains("php-rules cache: ") && err.contains(" hits, 0 misses\n"),
+        "{err}"
+    );
+    let results = std::fs::read_dir(d.join("cache/results")).unwrap();
+    let stored = (results.filter_map(Result::ok))
+        .find(|e| e.path().to_string_lossy().ends_with(".php-rules.json"))
+        .map(|e| std::fs::read_to_string(e.path()).unwrap())
+        .unwrap();
+    assert!(
+        stored.contains("FinalClassRule.php") && !stored.contains("/pun-php-rules-"),
+        "{stored}"
+    );
     let append = |f: &str| {
         let mut source = std::fs::read_to_string(d.join(f)).unwrap();
         source.push_str("\n// changed\n");
