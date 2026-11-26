@@ -260,7 +260,6 @@
 9 Methods/CallMethodsRuleTest::testReadOnlyPropertyPassedByReference
 9 Methods/CallMethodsRuleTest::testRecursiveIteratorIterator
 9 Methods/CallStaticMethodsRuleTest::testBug12558
-9 Methods/CallStaticMethodsRuleTest::testBug13267
 9 Methods/CallStaticMethodsRuleTest::testBug2164
 9 Methods/CallStaticMethodsRuleTest::testBug3641
 9 Methods/CallStaticMethodsRuleTest::testBugWrongMethodNameWithTemplateMixed
