@@ -156,7 +156,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   shipfastlabs/pun, and exits 0 when the rest migrated. A hand-written pun.toml naming an unknown or unported rule is a config
   error (exit 2).
 - **No PHP fallback.** Pun never runs PHP-CS-Fixer, Pint, Rector or PHPStan for a rule it lacks, and embeds no PHP.
-  System PHP is only the test oracle. One opt-in exception, a prototype: `[analyse] php-rules` below.
+  System PHP is only the test oracle.
 - **One-to-one with upstream** (2026-10-17): every Pun lint rule maps to exactly one non-deprecated Rector (or risky
   PHP-CS-Fixer) rule and every analyse rule to one non-deprecated PHPStan, Larastan, strict-rules or deprecation-rules
   rule, checked against the pinned tools and their websites. A rule upstream deprecates, or registers wrongly, is
@@ -225,21 +225,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   from the services phpstan.neon tags `phpat.test` and `parameters.phpat`). Pun reads the test classes statically; a
   builder chain it can't evaluate is a run error naming the code. Every phpat rule class reports under the one rule
   `analyse/phpat/architecture-violation`, because phpat names errors after the test method (`phpat.<method>`). A
-  PHPStan-compatible PHP rule API stays out of the default path ("No PHP fallback").
-- **A project's own PHPStan rules run in an opt-in PHP worker (prototype)** (assistant's call on shipfastlabs/pun#55,
-  2026-11-25; a deliberate exception to "No PHP fallback", because the rules are the project's own PHP code):
-  `[analyse] php-rules = ["tests/PHPStan/rules.neon"]` starts one long-lived `php -r` worker per run
-  (crates/pun-analyse/src/php_rules_worker.php). It loads the project's vendor/autoload.php and its PHPStan phar, boots
-  PHPStan's container from those neon files without a level config (so the reflection provider is PHPStan's own, and
-  PHPStan's core rules stay out), parses each analysed file with PHPStan's rich parser, and hands the nodes, plus
-  `InClassNode`, `InClassMethodNode` (without its method reflection) and `FileNode`, to the rules. `Scope` is a
-  subset (file, namespace, class and trait reflection, function name, `resolveName`, `getType`); every other method
-  is a run error that names it. `getType()` asks Pun for the type it inferred at the expression's byte span, as a
-  PHPDoc string. Every identifier the worker reports goes to the Pun-only rule `analyse/style/project-rule`, and its
-  errors go through `@phpstan-ignore`, ignoreErrors and baselines like the others. Projects without the key run no
-  PHP. Ceilings: one worker serializes the rule phase; no other virtual nodes, collectors or anonymous-class
-  reflections; a span the two parsers cut differently answers `mixed`. On fp-laravel's 31 rules and fixtures it
-  reports what PHPStan 2.3.3 reports, byte for byte.
+  PHPStan-compatible PHP rule API stays out ("No PHP fallback"), so `rules:` classes keep needing PHPStan.
 
 ### Engines
 
