@@ -25,8 +25,16 @@ const STRICT_RULES_PARAMETERS: [(&str, bool); 12] = [
 /// The analyse rule phpat's rules report under.
 pub(crate) const PHPAT_RULE: &str = "analyse/phpat/architecture-violation";
 
-/// The analyse rule the project's own PHPStan rules (`[analyse] php-rules`) report under.
-pub const PHP_RULES_RULE: &str = "analyse/style/project-rule";
+/// The PHPStan, strict-rules, deprecation-rules, Larastan and phpat rule classes Pun ports
+/// (`[upstream.phpstan-classes]` entries with a Pun rule): the php-rules workers leave them to the native analysis and
+/// run every other rule class.
+fn native_rule_classes() -> Vec<String> {
+    let classes = mapping::section(&["upstream", "phpstan-classes"]).table();
+    (classes.values())
+        .filter(|e| e.get("pun").is_some())
+        .filter_map(|e| Some(e.get("class")?.as_str()?.to_string()))
+        .collect()
+}
 
 /// The bootstrap file nesbot/carbon's `extension.neon` names, from the project root.
 const CARBON_BOOTSTRAP: &str = "vendor/nesbot/carbon/lazy/Carbon/UnprotectedDatePeriod.php";
@@ -88,10 +96,15 @@ impl Analyse {
             let paths = paths.into_iter().map(Value::str);
             p.set(Key::from(name), Value::Array(Array::list(paths)));
         }
-        // `punPhpRules`: the `php-rules` neon files, when their rule is on
-        if !self.php_rules.is_empty() && self.on().contains(PHP_RULES_RULE) {
+        // `punPhpRules`: the `php-rules` neon files, with the rule classes Pun runs natively, which the workers skip
+        if !self.php_rules.is_empty() {
             let neon = absolute(&self.php_rules).into_iter().map(Value::str);
             p.set(Key::from("punPhpRules"), Value::Array(Array::list(neon)));
+            let native = native_rule_classes().into_iter().map(Value::str);
+            p.set(
+                Key::from("punPhpRulesNative"),
+                Value::Array(Array::list(native)),
+            );
             if let Some(n) = self.php_rules_workers {
                 p.set(Key::from("punPhpRulesWorkers"), Value::Int(n.into()));
             }

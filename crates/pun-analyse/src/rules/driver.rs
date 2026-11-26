@@ -158,7 +158,7 @@ impl Checks {
                         || id.starts_with("larastan.collected.")
                         || self.extension_identifiers.contains(id)
                         || reported(id)
-                        // a project rule's identifiers are its own; its Pun rule is on when the worker runs
+                        // a php-rules error keeps its rule's own identifier; the workers run only when php-rules are on
                         || self.php_rules.as_ref().is_some_and(|r| r.reported(id))
                 })
             });

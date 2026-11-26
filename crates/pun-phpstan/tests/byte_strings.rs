@@ -424,6 +424,10 @@ fn multiline_constant_string_phpdoc() {
         ("it's", "'it\\'s'"),
     ] {
         let t = Type::ConstString(s.as_bytes().to_vec());
-        assert_eq!(pun_phpstan::types::to_phpdoc_fully_qualified(&t), want, "{s:?}");
+        assert_eq!(
+            pun_phpstan::types::to_phpdoc_fully_qualified(&t),
+            want,
+            "{s:?}"
+        );
     }
 }

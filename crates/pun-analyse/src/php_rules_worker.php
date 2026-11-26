@@ -5,14 +5,17 @@
 //
 // It loads the project's vendor/autoload.php and PHPStan's phar (vendor/phpstan/phpstan/phpstan.phar), boots
 // PHPStan's own container from the php-rules neon files, without a level's config, and runs their `bootstrapFiles`
-// as PHPStan does (Larastan's boots the Laravel app), so the reflection provider is PHPStan's real one. It runs the
-// project's own rules only: rule classes of PHPStan, Larastan and phpat are Pun's native ports (pun_rules()). Each file is parsed with PHPStan's
+// as PHPStan does (Larastan's boots the Laravel app), so the reflection provider is PHPStan's real one. It runs every
+// rule class the neon files register except the ones pun ports natively (setup "native": PHPStan's, strict-rules',
+// deprecation-rules', Larastan's and phpat's), so the project's own rules and those of extensions pun doesn't port
+// (phpstan-phpunit, phpstan-doctrine, ...) run here. Each file is parsed with PHPStan's
 // rich parser (so `phpstan.parser.richParserNodeVisitor` services run) and walked; every node goes to the rules
 // whose getNodeType() it is an instance of, with a Scope of which only a subset works (PunScopeBase below).
-// `getType()` asks pun for the type of the expression's byte span, as a PHPDoc type string.
+// `getType()` asks pun for the type of the expression's byte span, as a PHPDoc type string; an expression pun has no
+// type for is an error, so a rule never sees a guessed type.
 //
 // Protocol: JSON lines. pun's first line is the setup:
-//   {"token": ..., "root": ..., "autoload": ..., "phar": ..., "neon": [...], "paths": [...]}
+//   {"token": ..., "root": ..., "autoload": ..., "phar": ..., "neon": [...], "native": [...], "paths": [...]}
 // The worker answers each request on stdout with a line that starts with the token (not an environment variable:
 // a containerized `php` such as lerd's doesn't pass the environment on); any other output is not the worker's and
 // pun passes it on to stderr:
@@ -136,14 +139,18 @@ const PUN_VIRTUAL_NODES = [
     PHPStan\Node\FileNode::class,
 ];
 
-/** @return list<PHPStan\Rules\Rule<PhpParser\Node>> */
-function pun_rules(PHPStan\DependencyInjection\Container $container): array
+/**
+ * @param list<string> $native
+ * @return list<PHPStan\Rules\Rule<PhpParser\Node>>
+ */
+function pun_rules(PHPStan\DependencyInjection\Container $container, array $native): array
 {
-    // PHPStan's config.neon, and the Larastan and phpat extensions a project's phpstan.neon includes, register rules
-    // Pun runs natively (or that need PHPStan's full Scope): the worker runs the project's own rules only.
+    // the extensions a project's phpstan.neon includes (Larastan, phpat, strict-rules) register rules pun runs
+    // natively: leave those to it, and run the others
+    $native = array_flip($native);
     $rules = array_filter(
         $container->getServicesByTag('phpstan.rules.rule'),
-        static fn (object $rule): bool => !preg_match('/^(PHPStan|PHPat|Larastan|NunoMaduro\\\\Larastan)\\\\/', get_class($rule)),
+        static fn (object $rule): bool => !isset($native[get_class($rule)]),
     );
     foreach ($rules as $rule) {
         $type = $rule->getNodeType();
@@ -339,8 +346,7 @@ final class PunWalker
         $start = $expr->getStartFilePos();
         $end = $expr->getEndFilePos();
         if ($start < 0 || $end < 0) {
-            // a node a rule built itself: pun has no type for it
-            return new PHPStan\Type\MixedType();
+            throw new PunUnsupported('Scope::getType() on ' . get_class($expr) . ' the rule built itself in ' . $this->file . ', which pun has no type for');
         }
         $key = $start . ':' . $end;
         if (isset($this->types[$key])) {
@@ -348,9 +354,12 @@ final class PunWalker
         }
         PunWorker::send(['type' => [$start, $end + 1]]);
         $answer = PunWorker::receive()['type'] ?? null;
-        $type = $answer === null
-            ? new PHPStan\Type\MixedType()
-            : $this->typeStrings->resolve($answer, new PHPStan\Analyser\NameScope(null, [], $this->class?->getName(), $this->function));
+        if ($answer === null) {
+            // a mixed here could change what the rule reports without a word
+            $code = (new PhpParser\PrettyPrinter\Standard())->prettyPrintExpr($expr);
+            throw new PunUnsupported("Scope::getType(): pun has no type for `{$code}` at {$this->file}:{$expr->getStartLine()}");
+        }
+        $type = $this->typeStrings->resolve($answer, new PHPStan\Analyser\NameScope(null, [], $this->class?->getName(), $this->function));
 
         return $this->types[$key] = $type;
     }
@@ -493,7 +502,7 @@ try {
     pun_define_scope();
     $container = pun_boot($setup);
     pun_autoload_functions($autoloadersBefore);
-    $rules = pun_rules($container);
+    $rules = pun_rules($container, $setup['native']);
     PunWorker::send(['ready' => count($rules)]);
 } catch (Throwable $e) {
     PunWorker::send(['error' => pun_describe($e)]);

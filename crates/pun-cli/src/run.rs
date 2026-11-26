@@ -147,7 +147,11 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     }
     let started = std::time::Instant::now();
     let root = root()?;
-    let cfg = load_config(a, &root)?;
+    let mut cfg = load_config(a, &root)?;
+    if let Stage::Check { .. } = stage {
+        // `pun check` has no `--php-rules`: `PUN_PHP_RULES=1` turns them on
+        crate::analyse::php_rules_opt_in(&mut cfg, false);
+    }
     let plan = ported_plan(a, &cfg, lint)?;
     let lints = stage != Stage::Format;
     let formats = !matches!(stage, Stage::Lint { .. });

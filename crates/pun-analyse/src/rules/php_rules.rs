@@ -18,8 +18,8 @@ pub(super) fn check(c: &Checker, path: &Path, rules: &crate::PhpRules) -> Vec<Er
     }
     let context = (c.trait_context.as_ref()).map(|t| (t.class.as_str(), t.trait_name.as_str()));
     let type_at = |start, end| {
-        // only spans Pun recorded a type for answer (driver.rs records every expression's); a span the two parsers
-        // cut differently answers mixed
+        // only spans Pun recorded a type for answer (driver.rs records every expression's); the worker stops the run
+        // on a span the two parsers cut differently
         let span = Span::new(c.file.id, Position::new(start), Position::new(end));
         c.phpstan_type_at(span)
             .map(|t| to_phpdoc_fully_qualified(&t))

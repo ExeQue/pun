@@ -1017,7 +1017,7 @@ fn unmatched_ignores_of_files_left_out() {
 #[test]
 fn no_rules_detected() {
     let d = sample("no-rules", ERRORS);
-    let groups = "arrays attributes casing casts classes comments control-flow dead-code debug deprecated functions imports laravel operators phpdoc statements strings style types undefined";
+    let groups = "arrays attributes casing casts classes comments control-flow dead-code debug deprecated functions imports laravel operators phpdoc statements strings types undefined";
     let off: String = groups.split(' ').fold(String::new(), |mut out, g| {
         let _ = writeln!(out, "{g} = \"off\"");
         out
@@ -1464,7 +1464,11 @@ fn php_rules_match_phpstan() {
                     .contains("Foo@anonymous/a.php:25) after the bootstrap."),
             "{want:?}"
         );
-        assert_eq!(run(&d, &[PUN, "analyse"], &[format]), want, "{format}");
+        assert_eq!(
+            run(&d, &[PUN, "analyse", "--php-rules"], &[format]),
+            want,
+            "{format}"
+        );
     }
 }
 
@@ -1499,7 +1503,7 @@ final class FirstLevelRule implements Rule
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(&d)
         .env("PUN_AGENT", "0")
-        .args(["analyse", "--error-format=json"])
+        .args(["analyse", "--php-rules", "--error-format=json"])
         .output()
         .unwrap();
     let stderr = String::from_utf8(out.stderr).unwrap();
@@ -1544,7 +1548,7 @@ final class HungryRule implements Rule
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(&d)
         .env("PUN_AGENT", "0")
-        .args(["analyse", "--error-format=json"])
+        .args(["analyse", "--php-rules", "--error-format=json"])
         .output()
         .unwrap();
     let stderr = String::from_utf8(out.stderr).unwrap();
@@ -1556,20 +1560,21 @@ final class HungryRule implements Rule
     );
 }
 
-/// The worker doesn't run phpat's (or PHPStan's, or Larastan's) rule classes, which a project's phpstan.neon brings in
-/// with the extensions it includes: Pun runs them natively.
+/// The worker leaves the rule classes Pun ports (here Larastan's, which a project's phpstan.neon brings in with the
+/// extensions it includes) to the native analysis, and runs every other one, also under `PHPStan\` (here
+/// phpstan-phpunit's).
 #[test]
-fn php_rules_skip_phpat_rules() {
-    let rule = r"<?php
+fn php_rules_skip_only_ported_rule_classes() {
+    let ported = r"<?php
 
-namespace PHPat\Rule;
+namespace Larastan\Larastan\Rules;
 
 use PhpParser\Node;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\Rule;
 
 /** @implements Rule<Node\Stmt\Expression> */
-final class Extra implements Rule
+final class NoEnvCallsOutsideOfConfigRule implements Rule
 {
     public function getNodeType(): string
     {
@@ -1582,15 +1587,151 @@ final class Extra implements Rule
     }
 }
 ";
-    let Some(d) = php_rules_project("php-rules-phpat", None) else {
+    let unported = r"<?php
+
+namespace PHPStan\Rules\PHPUnit;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleErrorBuilder;
+
+/** @implements Rule<Node\Stmt\Function_> */
+final class FunctionRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return Node\Stmt\Function_::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        return [RuleErrorBuilder::message('Function make() checked.')->identifier('phpunit.fake')->build()];
+    }
+}
+";
+    let Some(d) = php_rules_project("php-rules-ported", None) else {
         return;
     };
-    std::fs::write(d.join("rules/Extra.php"), rule).unwrap();
-    let neon = format!("{PHP_RULES_NEON}    - PHPat\\Rule\\Extra\n");
+    std::fs::write(d.join("rules/Ported.php"), ported).unwrap();
+    std::fs::write(d.join("rules/Unported.php"), unported).unwrap();
+    let neon = format!(
+        "{PHP_RULES_NEON}    - Larastan\\Larastan\\Rules\\NoEnvCallsOutsideOfConfigRule\n    - PHPStan\\Rules\\PHPUnit\\FunctionRule\n"
+    );
     std::fs::write(d.join("rules.neon"), neon).unwrap();
-    let (out, code) = run(&d, &[PUN, "analyse"], &["--error-format=raw"]);
-    assert!(out.contains("Calls Foo::dangerous() in run()."), "{out}");
+    let (out, code) = run(
+        &d,
+        &[PUN, "analyse", "--php-rules"],
+        &["--error-format=raw"],
+    );
+    assert!(
+        out.contains("Calls Foo::dangerous() in run().")
+            && out.contains("Function make() checked."),
+        "{out}"
+    );
     assert_eq!(code, Some(1), "{out}");
+}
+
+/// The rules run only with `--php-rules` or `PUN_PHP_RULES=1` (`pun check` too): without them a pun.toml with
+/// `php-rules` runs no PHP and says so. Their errors report under `php-rules`, which no preset turns on, with the
+/// rules' own identifiers.
+#[test]
+fn php_rules_need_an_opt_in() {
+    let Some(d) = php_rules_project("php-rules-opt-in", Some(("LogRule", LOG_RULE))) else {
+        return;
+    };
+    let notice = "[analyse] php-rules are configured but not enabled: pass --php-rules or set PUN_PHP_RULES=1 to run them\n";
+    let ran = || std::fs::remove_file(d.join("checked.log")).is_ok();
+    for env in [&[][..], &[("PUN_PHP_RULES", "0")]] {
+        let (out, err, code) = pun(&d, &["--error-format=raw", "--no-cache"], env);
+        // the rules' `@phpstan-ignore` is unmatched then, as under PHPStan without them
+        assert_eq!((err.as_str(), code), (notice, Some(1)), "{out}");
+        assert!(
+            !out.contains("Calls Foo::dangerous()")
+                && out.contains("No error with identifier app.dangerous is reported on line 19.")
+                && !ran(),
+            "{out}"
+        );
+    }
+    let (out, err, code) = pun(&d, &["--no-cache"], &[("PUN_PHP_RULES", "1")]);
+    assert_eq!(code, Some(1), "{out}{err}");
+    assert!(
+        ran()
+            && out.contains("Calls Foo::dangerous() in run().")
+            && out.contains("php-rules")
+            && !out.contains("analyse/"),
+        "{out}"
+    );
+    let (raw, _, _) = pun(
+        &d,
+        &["--php-rules", "--no-cache", "--error-format=raw", "-v"],
+        &[],
+    );
+    assert!(
+        ran() && raw.contains("Calls Foo::dangerous() in run(). [identifier=app.dangerous]"),
+        "{raw}"
+    );
+    let check = |env: &[(&str, &str)]| {
+        let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+            .current_dir(&d)
+            .env("PUN_AGENT", "0")
+            .envs(env.iter().copied())
+            .args(["check", "--no-cache", "src"])
+            .output()
+            .unwrap();
+        let s = |b: Vec<u8>| String::from_utf8(b).unwrap();
+        (s(out.stdout), s(out.stderr))
+    };
+    let (out, err) = check(&[]);
+    assert!(
+        err.contains(notice) && !out.contains("Calls Foo::dangerous()") && !ran(),
+        "{out}{err}"
+    );
+    let (out, err) = check(&[("PUN_PHP_RULES", "1")]);
+    assert!(
+        out.contains("Calls Foo::dangerous() in run().") && ran(),
+        "{out}{err}"
+    );
+}
+
+/// `getType()` on an expression Pun has no type for is a run error naming it, not `mixed`: here a node the rule
+/// built itself.
+#[test]
+fn php_rules_missing_type_is_a_run_error() {
+    let rule = r"<?php
+
+namespace App\Rules;
+
+use PhpParser\Node;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\Rule;
+
+/** @implements Rule<Node\Stmt\Return_> */
+final class BuiltRule implements Rule
+{
+    public function getNodeType(): string
+    {
+        return Node\Stmt\Return_::class;
+    }
+
+    public function processNode(Node $node, Scope $scope): array
+    {
+        $scope->getType(new Node\Expr\Variable('built'));
+
+        return [];
+    }
+}
+";
+    let Some(d) = php_rules_project("php-rules-no-type", Some(("BuiltRule", rule))) else {
+        return;
+    };
+    let (out, err, code) = pun(&d, &["--php-rules", "--no-cache"], &[]);
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert!(
+        err.contains("App\\Rules\\BuiltRule: Scope::getType() on PhpParser\\Node\\Expr\\Variable the rule built itself in ")
+            && err.contains("src/a.php, which pun has no type for"),
+        "{err}"
+    );
 }
 
 /// Logs the file of each method a check walks (a trait's methods in the context of a class that uses it too), to
@@ -1654,7 +1795,7 @@ fn php_rules_result_cache() {
             .into_iter()
             .chain(env.iter().copied())
             .collect();
-        let args: Vec<_> = ["--error-format=json"]
+        let args: Vec<_> = ["--error-format=json", "--php-rules"]
             .into_iter()
             .chain(args.iter().copied())
             .collect();
@@ -1686,7 +1827,10 @@ fn php_rules_result_cache() {
     // a run on some of the files reads and keeps the same cache
     assert_eq!(analyse(&["src/child.php"], &[]).1, "");
     append("src/child.php");
-    assert_eq!(analyse(&["src/child.php", "src/t.php"], &[]).1, "child.php t.php");
+    assert_eq!(
+        analyse(&["src/child.php", "src/t.php"], &[]).1,
+        "child.php t.php"
+    );
     assert_eq!(analyse(&[], &[]).1, "");
     append("rules/FinalClassRule.php");
     assert_eq!(analyse(&[], &[]).1, all);
@@ -1708,7 +1852,11 @@ fn php_rules_paths_keep_the_rules_to_their_paths() {
     std::fs::create_dir_all(d.join("src/other")).unwrap();
     std::fs::write(d.join("src/other/b.php"), other).unwrap();
     let toml = std::fs::read_to_string(d.join("pun.toml")).unwrap();
-    let (all, _, _) = pun(&d, &["--error-format=raw", "--no-cache"], &[]);
+    let (all, _, _) = pun(
+        &d,
+        &["--error-format=raw", "--no-cache", "--php-rules"],
+        &[],
+    );
     assert!(
         all.contains("Calls Foo::dangerous() in run().")
             && all.contains("Class App\\Other is not final."),
@@ -1719,7 +1867,11 @@ fn php_rules_paths_keep_the_rules_to_their_paths() {
         format!("{toml}php-rules-paths = [\"src/other\"]\n"),
     )
     .unwrap();
-    let (out, err, code) = pun(&d, &["--error-format=raw", "--no-cache"], &[]);
+    let (out, err, code) = pun(
+        &d,
+        &["--error-format=raw", "--no-cache", "--php-rules"],
+        &[],
+    );
     assert_eq!(code, Some(1), "{out}{err}");
     assert!(
         !out.contains("Calls Foo::dangerous()")

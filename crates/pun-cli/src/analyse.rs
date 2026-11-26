@@ -46,6 +46,9 @@ pub(crate) struct AnalyseArgs {
     /// `PUN_NO_CACHE=1`).
     #[arg(long)]
     no_cache: bool,
+    /// Run the `[analyse] php-rules` (experimental), which run the project's PHP (Pun; also `PUN_PHP_RULES=1`).
+    #[arg(long)]
+    php_rules: bool,
     /// `raw`: add each error's identifier, as PHPStan's `-v` does.
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
@@ -286,6 +289,24 @@ fn project(
     Ok(project)
 }
 
+/// The rule the `[analyse] php-rules` errors report under, with the identifiers the rules gave them: no Pun rule
+/// stands for them, so it has no `analyse/` group and no preset turns it on.
+const PHP_RULES_RULE: &str = "php-rules";
+
+/// `[analyse] php-rules` run the project's PHP, so only with `--php-rules` (`flag`) or `PUN_PHP_RULES=1`: a committed
+/// pun.toml alone runs nothing, and says that the rules are off.
+pub(crate) fn php_rules_opt_in(cfg: &mut Config, flag: bool) {
+    let set = std::env::var_os("PUN_PHP_RULES").is_some_and(|v| !v.is_empty() && v != "0");
+    if cfg.analyse.php_rules.is_empty() || flag || set {
+        return;
+    }
+    eprintln!(
+        "[analyse] php-rules are configured but not enabled: pass --php-rules or set PUN_PHP_RULES=1 to run them"
+    );
+    cfg.analyse.php_rules.clear();
+    cfg.analyse.php_rules_paths.clear();
+}
+
 /// The php-rules' result cache file, beside the result cache of `pun lint`, and the part of its key that covers Pun and
 /// the config; `None` when the caches are off.
 fn php_rules_cache(cfg: &Config, no_cache: bool) -> Option<(PathBuf, String)> {
@@ -345,7 +366,7 @@ pub(crate) fn analyse(
     let project_rule = |id: &str| {
         (project.php_rules.as_ref())
             .is_some_and(|r| r.reported(id))
-            .then_some(pun_config::PHP_RULES_RULE)
+            .then_some(PHP_RULES_RULE)
     };
     let mut errors = analysis.errors;
     errors.extend(syntax_errors(&project.analysed, &errors));
@@ -515,7 +536,8 @@ pub(crate) fn run(a: &AnalyseArgs) -> Result<Exit> {
         ignore_php_constraint: crate::ignore_php_constraint(),
         ..Default::default()
     };
-    let cfg = crate::run::load(&root, &opts)?;
+    let mut cfg = crate::run::load(&root, &opts)?;
+    php_rules_opt_in(&mut cfg, a.php_rules);
     if cfg.analyse.rules.is_empty() {
         let hint = "set [analyse] preset, or turn rules on under [analyse.rules]";
         return Err(run_error("No rules detected".into(), Some(hint.into())));

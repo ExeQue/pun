@@ -8,7 +8,6 @@ mod mapping;
 pub mod migrate;
 pub mod options;
 mod phpstan_parameters;
-pub use phpstan_parameters::PHP_RULES_RULE;
 mod schema;
 
 pub use explain::{RULE_DOCS_URL, explain, rule_docs_url};

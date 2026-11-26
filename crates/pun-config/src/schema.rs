@@ -1089,8 +1089,6 @@ pub fn phpstan_level_rules(level: u8, bleeding_edge: bool) -> BTreeSet<String> {
             out.insert(id.to_string());
         }
     }
-    // the project's own rules run in PHPStan at every level; the rule does nothing without `php-rules`
-    out.insert(crate::PHP_RULES_RULE.to_string());
     out
 }
 

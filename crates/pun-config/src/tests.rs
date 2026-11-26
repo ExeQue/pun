@@ -626,7 +626,7 @@ fn analyse() {
             report_unmatched: true,
         }
     );
-    assert_eq!(a.rules.len(), 152 + 106 + 75 - 11);
+    assert_eq!(a.rules.len(), 151 + 106 + 75 - 11);
     assert!(has(&a, "analyse/undefined/method") && !has(&a, "analyse/types/missing-return-type"));
     let preset = |p: &str, lock: bool| {
         let on = if lock {
@@ -642,17 +642,17 @@ fn analyse() {
         let a = an(&files);
         (a.rules.len(), a.switches)
     };
-    assert_eq!(preset("basic", false), (152, vec![]));
-    assert_eq!(preset("essential", true), (152 + 106, vec![]));
-    assert_eq!(preset("recommended", true), (152 + 106 + 75, vec![]));
+    assert_eq!(preset("basic", false), (151, vec![]));
+    assert_eq!(preset("essential", true), (151 + 106, vec![]));
+    assert_eq!(preset("recommended", true), (151 + 106 + 75, vec![]));
     assert_eq!(
         preset("strict", true),
-        (152 + 106 + 75 + 35, vec!["union-types", "nullables"])
+        (151 + 106 + 75 + 35, vec!["union-types", "nullables"])
     );
     assert_eq!(
         preset("max", false),
         (
-            371 - 15,
+            370 - 15,
             vec![
                 "union-types",
                 "nullables",
@@ -688,7 +688,7 @@ laravel = "on"
             Some("pun-baseline.toml".into())
         )
     );
-    assert_eq!(a.rules.len(), 152 + 2 + 14 - 1);
+    assert_eq!(a.rules.len(), 151 + 2 + 14 - 1);
     let rule = |id: &str| {
         a.rules
             .iter()
@@ -708,7 +708,7 @@ laravel = "on"
     ]);
     assert_eq!(
         (a.rules.len(), a.ecosystems.len()),
-        (152 + 106 + 75 - 11, 0)
+        (151 + 106 + 75 - 11, 0)
     );
 }
 /// `phpstan/level_<n>` runs what `phpstan analyse --level <n>` runs: PHPStan core's rules of that level and below
@@ -751,8 +751,7 @@ fn phpstan_level_presets() {
             below.is_subset(&on),
             "level {level} drops rules of a lower level"
         );
-        // the project's own rules (`php-rules`) run at every level
-        for id in on.iter().filter(|id| *id != crate::PHP_RULES_RULE) {
+        for id in &on {
             assert_eq!(package_of(id), Some("phpstan"), "{id} at level {level}");
         }
         below = on;
@@ -2074,8 +2073,8 @@ fn analyse_parameters() {
     );
 }
 
-/// `[analyse] php-rules` reaches pun-analyse as `punPhpRules`, absolute, while its rule is on (at a PHPStan level
-/// preset too), and not at all when the rule is off.
+/// `[analyse] php-rules` reaches pun-analyse as `punPhpRules`, absolute, with `punPhpRulesNative`, the rule classes
+/// Pun ports (which the workers skip), and not at all without the key.
 #[test]
 fn php_rules_parameter() {
     use pun_phpstan::Value as V;
@@ -2102,8 +2101,32 @@ fn php_rules_parameter() {
     };
     assert_eq!(workers("3"), Ok(Some(V::Int(3))));
     assert!(workers("0").is_err());
-    let off = format!("{on}\n[analyse.rules]\n\"style/project-rule\" = \"off\"\n");
-    assert_eq!(rules(&off), None);
+    assert_eq!(rules("[analyse]\npreset = \"phpstan/level_0\"\n"), None);
+    // the workers skip PHPStan's, Larastan's and phpat's ported rule classes, and run phpstan-phpunit's and an unported
+    // core rule's
+    let d = dir(&[("pun.toml", on)]);
+    let params = load(&d, &Options::default())
+        .unwrap()
+        .analyse
+        .parameters(&d);
+    let Some(V::Array(native)) = params.get_str("punPhpRulesNative") else {
+        panic!("no punPhpRulesNative");
+    };
+    let native: Vec<_> = native.values().filter_map(V::as_str).collect();
+    for class in [
+        "PHPStan\\Rules\\Methods\\CallMethodsRule",
+        "PHPStan\\Rules\\BooleansInConditions\\BooleanInBooleanAndRule",
+        "Larastan\\Larastan\\Rules\\NoEnvCallsOutsideOfConfigRule",
+        "PHPat\\Rule\\Assertion\\Declaration\\IsAbstract\\AbstractRule",
+    ] {
+        assert!(native.contains(&class), "{class}");
+    }
+    for class in [
+        "PHPStan\\Rules\\PHPUnit\\AssertSameBooleanExpectedRule",
+        "PHPStan\\Rules\\Api\\ApiMethodCallRule",
+    ] {
+        assert!(!native.contains(&class), "{class}");
+    }
 }
 
 /// `[analyse] php-rules-paths` reaches pun-analyse as `punPhpRulesPaths`, absolute; a path outside the project, or

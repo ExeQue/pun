@@ -92,6 +92,8 @@ pub struct Project {
     pub php_rules_workers: Option<usize>,
     /// `[analyse] php-rules-paths`: the absolute paths the workers check; empty is every analysed file.
     pub php_rules_paths: Vec<PathBuf>,
+    /// The rule classes Pun ports, which the workers leave to the native analysis.
+    pub php_rules_native: Vec<String>,
     pub php_rules: Option<std::sync::Arc<crate::PhpRules>>,
     pub type_aliases: Vec<(String, String)>,
     pub stubs: Vec<PathBuf>,
@@ -357,7 +359,8 @@ impl Project {
         } else {
             (&self.php_rules_paths[..], true)
         };
-        let rules = crate::PhpRules::start(root, &neon, paths, only, workers, cache);
+        let native = &self.php_rules_native;
+        let rules = crate::PhpRules::start(root, &neon, native, paths, only, workers, cache);
         self.php_rules = Some(std::sync::Arc::new(rules));
     }
 
@@ -662,6 +665,10 @@ impl Project {
                 .into_iter()
                 .map(PathBuf::from)
                 .collect(),
+            php_rules_native: strings(params, "punPhpRulesNative")
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
             php_rules: None,
             type_aliases: params
                 .get_str("typeAliases")
@@ -774,6 +781,7 @@ impl Project {
             php_rules_config: Vec::new(),
             php_rules_workers: None,
             php_rules_paths: Vec::new(),
+            php_rules_native: Vec::new(),
             php_rules: None,
             type_aliases: Vec::new(),
             stubs: Vec::new(),

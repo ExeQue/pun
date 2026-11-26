@@ -1,6 +1,6 @@
 //! `[analyse] php-rules` (prototype): the project's own PHPStan rule classes, run by a pool of long-lived `php` workers
 //! (`php_rules_worker.php`, protocol in its header) on PHPStan's container and reflection, with the expression types
-//! Pun inferred. An opt-in exception to "no PHP fallback" (context/PLAN.md §2): the rules are the project's code.
+//! Pun inferred. Experimental, pending shipfastlabs/pun#55: it runs only with `--php-rules` or `PUN_PHP_RULES=1`.
 
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader, Write};
@@ -99,13 +99,14 @@ struct Pool {
 
 impl PhpRules {
     /// Prepares the workers for the project in `root`: its vendor/autoload.php and vendor/phpstan/phpstan/phpstan.phar,
-    /// the rules the `neon` files register, and `paths` as PHPStan's analysed paths (and, with `only`, the only paths
-    /// whose files the rules check). At most `max` workers run, each
+    /// the rules the `neon` files register but those of the `native` classes, and `paths` as PHPStan's analysed paths
+    /// (and, with `only`, the only paths whose files the rules check). At most `max` workers run, each
     /// started when a file needs it. `cache` is the result cache's file and the caller's part of its run key (Pun's
     /// version, binary and config), or `None` to run without it.
     pub fn start(
         root: &Path,
         neon: &[PathBuf],
+        native: &[String],
         paths: &[PathBuf],
         only: bool,
         max: usize,
@@ -117,6 +118,7 @@ impl PhpRules {
             "autoload": path(&root.join("vendor/autoload.php")),
             "phar": path(&root.join("vendor/phpstan/phpstan/phpstan.phar")),
             "neon": neon.iter().map(|n| path(&root.join(n))).collect::<Vec<_>>(),
+            "native": native,
             "paths": paths.iter().map(|p| path(p)).collect::<Vec<_>>(),
         });
         let cache = cache.map(|(file, key)| {
