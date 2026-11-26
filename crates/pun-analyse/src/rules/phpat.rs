@@ -63,10 +63,10 @@ impl<'c> Reflect<'c> {
     fn parents(&self, k: &ClassLikeMetadata) -> Vec<&'c ClassLikeMetadata> {
         let mut out: Vec<&'c ClassLikeMetadata> = Vec::new();
         let mut next = self.parent(k);
-        while let Some(p) = next {
-            if out.iter().any(|o| o.name == p.name) || out.len() > 256 {
-                break;
-            }
+        // A cycle, which PHP rejects, ends the walk.
+        while let Some(p) =
+            next.filter(|p| !out.iter().any(|o| o.name == p.name) && out.len() <= 256)
+        {
             out.push(p);
             next = self.parent(p);
         }
@@ -409,7 +409,8 @@ impl<'c, 'arena> Walk<'c, 'arena> {
                 Kind::BeInvokable => Reflect::has_method(k, b"__invoke"),
                 Kind::BeNamed => named(&name),
                 Kind::HaveOnlyOnePublicMethod => methods().len() == 1,
-                Kind::HaveOnlyOnePublicMethodNamed => match methods().as_slice() {
+                // HaveOnlyOnePublicMethodNamed, the last kind `class_like` asks for
+                _ => match methods().as_slice() {
                     [m] => pattern.is_some_and(|p| {
                         if p.regex.is_some() {
                             p.is_match(m)
@@ -419,12 +420,12 @@ impl<'c, 'arena> Walk<'c, 'arena> {
                     }),
                     _ => false,
                 },
-                _ => continue,
             };
-            let error = match st.constraint {
-                Constraint::Should => !meets,
-                Constraint::ShouldNot => meets,
-                Constraint::CanOnly => false,
+            // Only `should` and `shouldNot` lead to a declaration assertion.
+            let error = if st.constraint == Constraint::Should {
+                !meets
+            } else {
+                meets
             };
             if !error {
                 continue;
@@ -519,17 +520,14 @@ impl<'c, 'arena> Walk<'c, 'arena> {
 
     /// The class-scope tag extractors (`MethodTagExtractor`, `MixinTagExtractor`, `PropertyTagExtractor`).
     fn class_tags(&mut self, at: Span, line: i64) {
-        let entry = self.doc(at);
-        let scope = entry.map(|_| super::declared::class_scope(self.c, at, self.subject));
-        let resolve = |n: &pun_phpstan::phpdoc::Node, out: &mut Vec<String>| {
-            if let Some(scope) = &scope {
-                Self::referenced(&resolve_in(n, scope), out);
-            }
-        };
         let mut methods = Vec::new();
         let mut mixins = Vec::new();
         let mut properties = Vec::new();
-        if let Some(e) = entry {
+        if let Some(e) = self.doc(at) {
+            let scope = super::declared::class_scope(self.c, at, self.subject);
+            let resolve = |n: &pun_phpstan::phpdoc::Node, out: &mut Vec<String>| {
+                Self::referenced(&resolve_in(n, &scope), out);
+            };
             for m in &e.doc.methods {
                 for (_, ty, _) in &m.params {
                     if let Some(ty) = ty {
@@ -671,15 +669,6 @@ impl<'arena> MutWalker<'arena, 'arena, ()> for Walk<'_, 'arena> {
         self.relation(Kind::Depend, names, self.line(s.span()));
     }
 
-    fn walk_in_static_method_partial_application(
-        &mut self,
-        s: &'arena StaticMethodPartialApplication<'arena>,
-        (): &mut (),
-    ) {
-        let names = self.class_names(s.class);
-        self.relation(Kind::Depend, names, self.line(s.span()));
-    }
-
     fn walk_in_class_constant_access(
         &mut self,
         a: &'arena ClassConstantAccess<'arena>,
@@ -716,13 +705,9 @@ impl<'arena> MutWalker<'arena, 'arena, ()> for Walk<'_, 'arena> {
         self.relation(Kind::Depend, names, self.line(s.span()));
     }
 
-    // Anonymous classes, and classes and functions declared inside a body, have scopes of their own.
+    // An anonymous class has a scope of its own. PHPStan checks a function declared in a method like the method's
+    // code, and a first-class callable `X::y(...)` is no static call to it.
     fn walk_anonymous_class(&mut self, _: &'arena AnonymousClass<'arena>, (): &mut ()) {}
-    fn walk_class(&mut self, _: &'arena Class<'arena>, (): &mut ()) {}
-    fn walk_interface(&mut self, _: &'arena Interface<'arena>, (): &mut ()) {}
-    fn walk_trait(&mut self, _: &'arena Trait<'arena>, (): &mut ()) {}
-    fn walk_enum(&mut self, _: &'arena Enum<'arena>, (): &mut ()) {}
-    fn walk_function(&mut self, _: &'arena Function<'arena>, (): &mut ()) {}
 }
 
 /// The top-level class-likes of a file, in namespaces too: PHPStan analyses no other class declaration.
@@ -748,9 +733,6 @@ pub(super) fn check<'c, 'arena>(
         files: c.files,
     };
     let mut errors = Vec::new();
-    if rules.statements.is_empty() {
-        return errors;
-    }
     let in_trait = c.trait_context.as_ref();
     for s in top_level(program) {
         let (name, members, attributes): (_, &'arena Sequence<'arena, ClassLikeMember<'arena>>, _) =
@@ -762,18 +744,16 @@ pub(super) fn check<'c, 'arena>(
                 _ => continue,
             };
         let resolved = text(c.names.get(&name.span));
-        let Some(declared) = c.codebase.get_class_like(resolved.as_bytes()) else {
-            continue;
-        };
+        let declared = c.codebase.get_class_like(resolved.as_bytes());
         let subject = match (in_trait, attributes) {
             (None, Some(_)) => declared,
             (Some(t), None) if t.trait_name.eq_ignore_ascii_case(&resolved) => {
-                let Some(k) = c.codebase.get_class_like(t.class.as_bytes()) else {
-                    continue;
-                };
-                k
+                c.codebase.get_class_like(t.class.as_bytes())
             }
-            _ => continue,
+            _ => None,
+        };
+        let (Some(declared), Some(subject)) = (declared, subject) else {
+            continue;
         };
         let mut walk = Walk {
             r: r(),

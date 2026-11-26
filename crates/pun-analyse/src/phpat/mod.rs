@@ -247,11 +247,10 @@ impl Rules {
             if rule.subjects.is_empty() {
                 return Err(format!("The PHPat rule {} has no subjects", rule.name));
             }
-            let Some(kind) = rule.kind else {
+            // The builder picks the constraint before the assertion, so RuleValidator's "has no constraint" can't
+            // happen.
+            let (Some(kind), Some(constraint)) = (rule.kind, rule.constraint) else {
                 return Err(format!("The PHPat rule {} has no assertion", rule.name));
-            };
-            let Some(constraint) = rule.constraint else {
-                return Err(format!("The PHPat rule {} has no constraint", rule.name));
             };
             if kind.is_relation() && rule.targets.is_empty() {
                 return Err(format!("The PHPat rule {} has no targets", rule.name));
