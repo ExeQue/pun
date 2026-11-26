@@ -7,13 +7,17 @@
 //! functions the file names or its expressions' types hold, with their parent classes, interfaces and traits. The run
 //! key covers the caller's key (Pun's version, binary and config), the worker, its setup, the neon files with their
 //! includes, Composer's lock file and installed packages, and the PHP files the workers had loaded (the rules, the
-//! bootstrap files and what those load), whose list the cache keeps and hashes again on each run.
+//! bootstrap files and what those load, but the DI container PHPStan compiles from what the key already covers into
+//! the worker's temporary directory, which a new machine lacks), whose list the cache keeps and hashes again on each
+//! run.
 //!
-//! The file is JSON: the run key, the loaded files, a table of paths, and the entries, which name their file and
-//! dependencies by their index in the table. A file that is missing, unreadable or from another key is an empty cache.
+//! The file is JSON: the run key's parts with their hashes, the loaded files with theirs, a table of paths, and the
+//! entries, which name their file and dependencies by their index in the table. A file that is missing, unreadable or
+//! from another key is an empty cache; [`Cache::summary`] says which part of the key changed.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use serde::{Deserialize, Serialize};
@@ -23,10 +27,15 @@ use crate::php_rules::RuleError;
 /// The checked file and, for a trait's body, the class that uses it and the trait.
 pub(crate) type Check = (PathBuf, Option<(String, String)>);
 
+/// A part of the run key: what it is (`caller key`, `composer.lock`, a neon file...) and the hash of its content.
+pub(crate) type Part = (String, String);
+
 #[derive(Serialize, Deserialize)]
 struct Stored {
-    key: String,
+    base: Vec<Part>,
     loaded: Vec<usize>,
+    /// The hash of each loaded file, in `loaded`'s order.
+    loaded_hashes: Vec<String>,
     paths: Vec<PathBuf>,
     entries: Vec<StoredEntry>,
 }
@@ -49,8 +58,13 @@ struct Entry {
 
 pub(crate) struct Cache {
     file: PathBuf,
-    /// The run key without the loaded files.
-    base: String,
+    /// The run key without the loaded files, and its hash.
+    base: Vec<Part>,
+    base_key: String,
+    /// Why the stored entries don't hold, when they don't.
+    rejected: Option<String>,
+    hits: AtomicUsize,
+    misses: AtomicUsize,
     old: HashMap<Check, Entry>,
     old_loaded: Vec<PathBuf>,
     kept: Mutex<HashMap<Check, Entry>>,
@@ -69,31 +83,55 @@ fn hex(h: &blake3::Hasher) -> String {
 
 impl Cache {
     /// The cache in `file` for the run key `base`.
-    pub(crate) fn open(file: PathBuf, base: String) -> Cache {
+    pub(crate) fn open(file: PathBuf, base: Vec<Part>) -> Cache {
+        let mut h = blake3::Hasher::new();
+        for (name, hash) in &base {
+            part(&mut h, name.as_bytes());
+            part(&mut h, hash.as_bytes());
+        }
         let mut cache = Cache {
             file,
+            base_key: hex(&h),
             base,
+            rejected: None,
+            hits: AtomicUsize::new(0),
+            misses: AtomicUsize::new(0),
             old: HashMap::new(),
             old_loaded: Vec::new(),
             kept: Mutex::default(),
             hashes: Mutex::default(),
         };
-        let stored: Option<Stored> =
-            (std::fs::read(&cache.file).ok()).and_then(|bytes| serde_json::from_slice(&bytes).ok());
-        let Some(stored) = stored else {
+        let Ok(bytes) = std::fs::read(&cache.file) else {
+            cache.rejected = Some("no cache file".to_string());
             return cache;
+        };
+        let reject = |mut cache: Cache, why: String| {
+            cache.rejected = Some(why);
+            cache
+        };
+        let Ok(stored) = serde_json::from_slice::<Stored>(&bytes) else {
+            return reject(cache, "unreadable or from an older Pun".to_string());
         };
         let path = |i: &usize| stored.paths.get(*i).cloned();
         let Some(loaded) = stored.loaded.iter().map(path).collect::<Option<Vec<_>>>() else {
-            return cache;
+            return reject(cache, "unreadable".to_string());
         };
-        if cache.key(&loaded) != stored.key {
-            return cache;
+        if let Some(name) = changed(&stored.base, &cache.base) {
+            return reject(cache, format!("run key changed: {name}"));
+        }
+        if loaded.len() != stored.loaded_hashes.len() {
+            return reject(cache, "unreadable".to_string());
+        }
+        let changed_file =
+            (loaded.iter().zip(&stored.loaded_hashes)).find(|(f, h)| cache.hash(f) != **h);
+        if let Some((file, _)) = changed_file {
+            let why = format!("run key changed: loaded file {}", file.display());
+            return reject(cache, why);
         }
         for e in &stored.entries {
             let (Some(file), Some(deps)) = (path(&e.file), e.deps.iter().map(path).collect())
             else {
-                return cache;
+                return reject(cache, "unreadable".to_string());
             };
             let entry = Entry {
                 deps,
@@ -106,14 +144,14 @@ impl Cache {
         cache
     }
 
-    fn key(&self, loaded: &[PathBuf]) -> String {
-        let mut h = blake3::Hasher::new();
-        part(&mut h, self.base.as_bytes());
-        for file in loaded {
-            part(&mut h, file.as_os_str().as_encoded_bytes());
-            part(&mut h, self.hash(file).as_bytes());
-        }
-        hex(&h)
+    /// One line for `-v`: the checks answered from the cache and those run, and why the stored entries didn't hold.
+    pub(crate) fn summary(&self) -> String {
+        let (hits, misses) = (
+            self.hits.load(Ordering::Relaxed),
+            self.misses.load(Ordering::Relaxed),
+        );
+        let why = (self.rejected.as_ref()).map_or_else(String::new, |why| format!(" ({why})"));
+        format!("php-rules cache: {hits} hits, {misses} misses{why}")
     }
 
     /// The hash of `path`'s content (`-` when it can't be read), once per run.
@@ -132,7 +170,7 @@ impl Cache {
 
     fn digest(&self, check: &Check, deps: &[PathBuf]) -> String {
         let mut h = blake3::Hasher::new();
-        part(&mut h, self.base.as_bytes());
+        part(&mut h, self.base_key.as_bytes());
         for file in std::iter::once(&check.0).chain(deps) {
             part(&mut h, file.as_os_str().as_encoded_bytes());
             part(&mut h, self.hash(file).as_bytes());
@@ -146,10 +184,15 @@ impl Cache {
 
     /// The errors `check` found in an earlier run, when neither its file nor a file it depends on changed since.
     pub(crate) fn hit(&self, check: &Check) -> Option<Vec<RuleError>> {
-        let e = self.old.get(check)?;
-        if self.digest(check, &e.deps) != e.digest {
+        let e = self
+            .old
+            .get(check)
+            .filter(|e| self.digest(check, &e.deps) == e.digest);
+        let Some(e) = e else {
+            self.misses.fetch_add(1, Ordering::Relaxed);
             return None;
-        }
+        };
+        self.hits.fetch_add(1, Ordering::Relaxed);
         let errors = e.errors.clone();
         let mut kept = self.kept.lock().unwrap_or_else(PoisonError::into_inner);
         kept.insert(check.clone(), e.clone());
@@ -204,7 +247,8 @@ impl Cache {
             })
             .collect();
         let stored = Stored {
-            key: self.key(&loaded),
+            base: self.base.clone(),
+            loaded_hashes: loaded.iter().map(|f| self.hash(f)).collect(),
             loaded: loaded.iter().map(&mut at).collect(),
             paths,
             entries,
@@ -213,6 +257,16 @@ impl Cache {
             let _ = write(&self.file, &bytes);
         }
     }
+}
+
+/// The name of the first part of the run key `new` whose hash differs from `old`'s, or that only one of them has.
+fn changed(old: &[Part], new: &[Part]) -> Option<String> {
+    let differs = |a: &[Part], b: &[Part]| {
+        (a.iter())
+            .find(|(name, hash)| !b.iter().any(|(n, h)| n == name && h == hash))
+            .map(|(name, _)| name.clone())
+    };
+    differs(new, old).or_else(|| differs(old, new))
 }
 
 /// Writes `bytes` to `file` owner-only (the errors quote the project's code) through a temporary sibling.
@@ -238,19 +292,23 @@ fn write(file: &Path, bytes: &[u8]) -> std::io::Result<()> {
     written.inspect_err(|_| drop(std::fs::remove_file(&tmp)))
 }
 
-/// The run key without the loaded files: `parts`, and the content of the `neon` files (relative to `root`) with their
-/// includes and of Composer's lock file and installed packages.
-pub(crate) fn run_key(root: &Path, neon: &[PathBuf], parts: &[&str]) -> String {
-    let mut h = blake3::Hasher::new();
-    for p in parts {
-        part(&mut h, p.as_bytes());
-    }
+/// The run key without the loaded files: the named `parts`, and the content of the `neon` files (relative to `root`)
+/// with their includes and of Composer's lock file and installed packages, each named by its path.
+pub(crate) fn run_key(root: &Path, neon: &[PathBuf], parts: &[(&str, &str)]) -> Vec<Part> {
+    let hash = |bytes: &[u8]| blake3::hash(bytes).to_hex()[..32].to_string();
+    let mut key: Vec<Part> = (parts.iter())
+        .map(|(name, p)| (name.to_string(), hash(p.as_bytes())))
+        .collect();
     let composer = ["composer.lock", "vendor/composer/installed.json"].map(|f| root.join(f));
     for file in neon_files(root, neon).iter().chain(&composer) {
-        part(&mut h, file.as_os_str().as_encoded_bytes());
-        part(&mut h, &std::fs::read(file).unwrap_or_default());
+        let name = file
+            .strip_prefix(root)
+            .unwrap_or(file)
+            .display()
+            .to_string();
+        key.push((name, hash(&std::fs::read(file).unwrap_or_default())));
     }
-    hex(&h)
+    key
 }
 
 /// The neon files `neon` (relative to `root`) and the files they include, recursively. An include with a parameter
@@ -278,4 +336,71 @@ fn neon_files(root: &Path, neon: &[PathBuf]) -> Vec<PathBuf> {
         );
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A cache in `dir` for the run key `base`, after a run that checked `a.php` with no errors and loaded `rule.php`.
+    fn warm(dir: &Path, base: &[(&str, &str)]) -> Check {
+        let check: Check = (dir.join("a.php"), None);
+        let cache = Cache::open(dir.join("cache.json"), run_key(dir, &[], base));
+        assert_eq!(
+            cache.summary(),
+            "php-rules cache: 0 hits, 0 misses (no cache file)"
+        );
+        assert!(cache.hit(&check).is_none());
+        cache.keep(check.clone(), Vec::new(), Vec::new());
+        cache.save(vec![dir.join("rule.php")]);
+        check
+    }
+
+    #[test]
+    fn says_why_the_entries_did_not_hold() {
+        let dir = std::env::temp_dir().join(format!("pun-php-rules-cache-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("a.php"), "<?php\n").unwrap();
+        std::fs::write(dir.join("rule.php"), "<?php\n").unwrap();
+        let base = [("caller key", "pun 1"), ("worker", "w")];
+        let check = warm(&dir, &base);
+        let open =
+            |base: &[(&str, &str)]| Cache::open(dir.join("cache.json"), run_key(&dir, &[], base));
+
+        let cache = open(&base);
+        assert_eq!(cache.hit(&check), Some(Vec::new()));
+        assert_eq!(cache.summary(), "php-rules cache: 1 hits, 0 misses");
+
+        let cache = open(&[("caller key", "pun 2"), ("worker", "w")]);
+        assert!(cache.hit(&check).is_none());
+        assert_eq!(
+            cache.summary(),
+            "php-rules cache: 0 hits, 1 misses (run key changed: caller key)"
+        );
+
+        std::fs::write(dir.join("composer.lock"), "{}").unwrap();
+        assert!(
+            open(&base)
+                .summary()
+                .ends_with("(run key changed: composer.lock)")
+        );
+        std::fs::remove_file(dir.join("composer.lock")).unwrap();
+
+        std::fs::write(dir.join("rule.php"), "<?php // changed\n").unwrap();
+        let rule = dir.join("rule.php");
+        let want = format!("(run key changed: loaded file {})", rule.display());
+        assert!(open(&base).summary().ends_with(&want));
+
+        std::fs::write(
+            dir.join("cache.json"),
+            r#"{"key": "the format before the parts"}"#,
+        )
+        .unwrap();
+        assert!(
+            open(&base)
+                .summary()
+                .ends_with("(unreadable or from an older Pun)")
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

@@ -126,7 +126,8 @@ impl PhpRules {
             // the configured paths and `php-rules-paths` are in the caller's key
             let mut setup = setup.clone();
             setup["paths"] = Value::Null;
-            let parts = [key, WORKER, &setup.to_string()];
+            let setup = setup.to_string();
+            let parts = [("caller key", key), ("worker", WORKER), ("setup", &setup)];
             let key = crate::php_rules_cache::run_key(root, neon, &parts);
             crate::php_rules_cache::Cache::open(file, key)
         });
@@ -350,6 +351,13 @@ impl PhpRules {
     /// Whether the rules check `file`, an analysed file: it is in `[analyse] php-rules-paths`, when set.
     pub(crate) fn covers(&self, file: &Path) -> bool {
         (self.only.as_ref()).is_none_or(|paths| paths.iter().any(|p| file.starts_with(p)))
+    }
+
+    /// The result cache's line for `-v`: its hits and misses, and why it held nothing; `None` without the cache.
+    pub fn cache_summary(&self) -> Option<String> {
+        self.cache
+            .as_ref()
+            .map(crate::php_rules_cache::Cache::summary)
     }
 
     /// Why the worker stopped during the run, if it did.
