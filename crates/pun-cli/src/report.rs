@@ -822,8 +822,9 @@ fn agent(ctx: &Ctx, results: &[FileResult]) -> String {
     }
     let (lint, analyse) = ctx.unmatched_baseline;
     if lint + analyse > 0 {
-        let entries = count(lint + analyse, "baseline entry").replace("entrys", "entries");
-        detail.push(format!("{entries} no longer matched"));
+        let n = lint + analyse;
+        let entries = if n == 1 { "entry" } else { "entries" };
+        detail.push(format!("{n} baseline {entries} no longer matched"));
     }
     let result = if errors > 0 || left > 0 || (fixed > 0 && ctx.dry_run) {
         "fail"

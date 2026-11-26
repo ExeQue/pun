@@ -262,7 +262,16 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         if let Some(path) = &cfg.lint.baseline {
             let b = Baseline::read(&cfg.root.join(path), Kind::Lint)?;
             let mut left = b.left();
-            apply_baseline(&mut left, &mut results, &mut remaining, dry_run);
+            let rediff = |r: &mut FileResult| rediff(a, &engines, r);
+            let check_only = dry_run && !stage.fix();
+            apply_baseline(
+                &mut left,
+                &mut results,
+                &mut remaining,
+                dry_run,
+                check_only,
+                rediff,
+            )?;
             unmatched_lint = left.unmatched();
         }
     }
@@ -303,6 +312,17 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         a.output_to_file.as_deref(),
         a.output_format.as_deref(),
     )?;
+    if lint.generate_baseline.is_some() && !a.quiet {
+        // Reached only when a file failed: a baseline without that file's problems would hide too little.
+        let failed = results.iter().filter(|r| r.is_error()).count();
+        let look = Look::stderr(a.color());
+        let glyph = look.paint(crate::render::Role::Warning, look.glyph("⚠", "!"));
+        eprintln!(
+            "{glyph} No baseline written: {} failed; fix {} and run `pun lint --generate-baseline` again",
+            crate::agent::count(failed, "file"),
+            if failed == 1 { "it" } else { "them" },
+        );
+    }
     let exit = exit(stage, a, lint, &ctx, &results);
     eprint!("{}", base.profile_report());
     Ok(exit)
@@ -333,13 +353,16 @@ fn lint_problems(results: &[FileResult]) -> Vec<(&str, &str, &str)> {
 }
 
 /// Hides the lint problems the baseline covers, after the `@pun-ignore` comments: native problems, and the token
-/// rules a dry run (or `--fix` left for later) would apply. Fixes `--fix` applied are not problems and stay.
+/// rules a dry run (or `--fix` left for later) would apply. Fixes `--fix` applied are not problems and stay. A file
+/// that still changes without the hidden rules gets its diff from `rediff` when the run only checks (`check_only`).
 fn apply_baseline(
     left: &mut baseline::Left,
     results: &mut [FileResult],
     remaining: &mut Vec<FileResult>,
     dry_run: bool,
-) {
+    check_only: bool,
+    mut rediff: impl FnMut(&mut FileResult) -> Result<()>,
+) -> Result<()> {
     let drop_fixers = |r: &mut FileResult, left: &mut baseline::Left| {
         let rel = r.rel.clone();
         r.applied.retain(|n| {
@@ -352,11 +375,12 @@ fn apply_baseline(
         (r.problems)
             .retain(|p| !(p.rule.starts_with("lint/") && left.take(&rel, &p.rule, &p.message)));
         if dry_run && r.status == Status::Fixed {
+            let before = r.applied.len();
             drop_fixers(r, left);
             if r.applied.is_empty() {
-                r.status = Status::NoChanges;
-                r.diff.clear();
-                r.line = 0;
+                no_changes(r);
+            } else if check_only && r.applied.len() < before {
+                rediff(r)?;
             }
         }
     }
@@ -364,6 +388,45 @@ fn apply_baseline(
         drop_fixers(r, left);
     }
     remaining.retain(|r| !r.applied.is_empty());
+    Ok(())
+}
+
+fn no_changes(r: &mut FileResult) {
+    r.status = Status::NoChanges;
+    r.diff.clear();
+    r.line = 0;
+}
+
+/// A checked file's diff without the token rules the baseline hides: its format rules and the token rules still in
+/// `r.applied` run again on the file, which a check leaves as it was.
+fn rediff(a: &FormatArgs, e: &Engines, r: &mut FileResult) -> Result<()> {
+    let code = std::fs::read(&r.path)?;
+    let (in_format, _) = scopes(e, &r.path);
+    let on = (e.plan.as_ref()).map_or_else(BTreeMap::new, |plan| plan.for_file(&r.path));
+    let mut token = token_rules(&on, false, false);
+    token.retain(|t| r.applied.iter().any(|n| *n == t.name));
+    let p = e.pipelines.get(in_format, &token)?;
+    let fixed = isolated(|| run_file(&p, &r.path, &code))
+        .ok()
+        .transpose()?
+        .and_then(Result::ok)
+        .flatten();
+    match fixed {
+        Some((new, _)) => {
+            r.diff = shown_diff(a, &r.path, Path::new(&r.rel), &code, &new);
+            r.line = crate::github::first_changed_line(&code, &new);
+        }
+        None => no_changes(r),
+    }
+    Ok(())
+}
+
+/// The unified diff of a file from `old` to `new` (`-v`), named by its relative path in agent mode.
+fn shown_diff(a: &FormatArgs, path: &Path, rel: &Path, old: &[u8], new: &[u8]) -> String {
+    if a.verbose == 0 {
+        return String::new();
+    }
+    report::diff_bytes(old, new, if crate::agent::enabled() { rel } else { path })
 }
 
 /// `pun lint --generate-baseline [file]`: every lint problem into the baseline; nothing is reported, the exit code
@@ -387,12 +450,20 @@ fn generate_baseline(
     let problems = lint_problems(results);
     Baseline::of(problems.iter().copied()).write(&cfg.root.join(&path), Kind::Lint)?;
     let counted = crate::agent::count(problems.len(), "problem");
+    let files = problems.iter().filter(|p| p.2 == TOKEN_FIX).count();
+    let files_note = (files > 0).then(|| {
+        let entries = crate::render::plural(files, "entry", "entries");
+        format!(
+            "{entries} for PHP-CS-Fixer rules: each counts a file, not its problems, so a new problem in a listed file stays hidden"
+        )
+    });
     let shown = path.display();
     if a.quiet {
         return Ok(Exit::Success);
     }
     if crate::agent::enabled() {
-        let detail = [format!("baseline {shown} written with {counted}")];
+        let mut detail = vec![format!("baseline {shown} written with {counted}")];
+        detail.extend(files_note);
         print!("{}", crate::agent::render("ok", &detail, "", &[], false));
         return Ok(Exit::Success);
     }
@@ -406,6 +477,9 @@ fn generate_baseline(
     let r = crate::render::Renderer::new(Look::stdout(a.color()), &cfg.root);
     let elapsed = started.elapsed().as_secs_f64();
     print!("{}", r.done(&format!("{message} ({elapsed:.2}s)")));
+    if let Some(note) = files_note {
+        println!("  {note}");
+    }
     Ok(Exit::Success)
 }
 
@@ -1219,20 +1293,7 @@ fn process_file(
         }
     }
 
-    let diff = |old: &[u8], new: &[u8]| {
-        if a.verbose == 0 {
-            return String::new();
-        }
-        report::diff_bytes(
-            old,
-            new,
-            if crate::agent::enabled() {
-                rel_path
-            } else {
-                path
-            },
-        )
-    };
+    let diff = |old: &[u8], new: &[u8]| shown_diff(a, path, rel_path, old, new);
     if now != code {
         r.diff = diff(&code, &now);
         r.line = crate::github::first_changed_line(&code, &now);

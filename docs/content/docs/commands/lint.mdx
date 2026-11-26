@@ -24,7 +24,7 @@ pun lint --generate-baseline     # accept current problems
 | Option | Description |
 | --- | --- |
 | `--fix` | Apply the fixes. Skips rules with `fix = "off"`. |
-| `--generate-baseline [<file>]` | Save every current problem to a baseline and exit 0. Default file: `[lint] baseline`, else `pun-lint-baseline.toml`. |
+| `--generate-baseline [<file>]` | Save every current problem to a baseline and exit 0. Default file: `[lint] baseline`, else `pun-lint-baseline.toml`. When a file fails (a syntax error, say), nothing is written and the run says so. |
 | `-A`, `--allow <rule>` | Turn a rule or group off. |
 | `-W`, `--warn <rule>` | Turn a rule or group on as a warning. |
 | `-D`, `--deny <rule>` | Turn a rule or group on as an error. |
@@ -43,7 +43,7 @@ Lint also takes the file options of [`pun format`](/docs/commands/format#options
 - Checks each file and prints the problems.
 - With `--fix`, edits the files. It does not format them, so use `pun check --fix` for both.
 - Only `error` rules fail the run. `warn` rules only report.
-- Hides problems listed in the baseline (`[lint] baseline`), after `@pun-ignore` comments. Each entry is a file, rule, message and count, without a line, so moving code keeps it hidden. Entries nothing matches any more get a note. `--fix` still fixes what the baseline hides.
+- Hides problems listed in the baseline (`[lint] baseline`), after `@pun-ignore` comments. Each entry is a file, rule, message and count, without a line, so moving code keeps it hidden. Entries nothing matches any more get a note. `--fix` still fixes what the baseline hides. Without `--fix`, a file's diff leaves out the changes of the rules the baseline hides there.
 - Reads standard input (`-` or `--stdin-filename`) only with `--fix`, and prints the fixed code. Without `--fix`, standard input is a run error (exit 2): pass the files to check instead.
 - Skips Blade, `vendor/`, `bootstrap/cache`, `build`, `node_modules` and `storage`.
 

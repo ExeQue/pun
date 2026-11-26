@@ -1067,6 +1067,74 @@ fn lint_baseline_hides_the_problems_it_lists() {
     assert!(read(&d, "other.toml").contains("variant = \"loose\""));
 }
 
+/// A dry run's diff leaves out the token rules the baseline hides, and a file only those rules change has no diff;
+/// `--generate-baseline` says that token-rule entries count files, and that it wrote nothing when a file failed.
+#[test]
+fn lint_baseline_dry_run_diff_and_notes() {
+    let toml = "[format]\npreset = \"empty\"\n\n[lint]\nbaseline = \"pun-lint-baseline.toml\"\n\n[lint.rules]\n\"style/no-alias-function\" = \"error\"\n";
+    let d = project(
+        "lint",
+        "baseline-diff",
+        &[
+            ("pun.toml", toml),
+            ("a.php", "<?php\n$n = sizeof($a);\n$s = implode($a, ',');\n"),
+            ("b.php", "<?php\n$s = join($b, ',');\n"),
+        ],
+    );
+    let note = "2 entries for PHP-CS-Fixer rules: each counts a file, not its problems, so a new problem in a listed file stays hidden";
+    let (out, status) = plain(&d, &["--generate-baseline", "--color=never"], &[]);
+    assert_eq!(status, Some(0), "{out}");
+    assert!(out.contains(&format!("\n  {note}\n")), "{out}");
+    let (_, summary, status) = agent(&d, &["lint", "--generate-baseline"]);
+    assert_eq!(status, Some(0));
+    assert_eq!(
+        summary,
+        format!("pun lint: ok, baseline pun-lint-baseline.toml written with 2 problems, {note}")
+    );
+
+    // `implode()`'s argument order is the only change left in a.php; b.php's `join()` becomes `implode()` only
+    // through the hidden rule, so the separator rule has nothing to change there.
+    std::fs::write(
+        d.join("pun.toml"),
+        format!("{toml}\"style/require-implode-separator\" = \"error\"\n"),
+    )
+    .unwrap();
+    let (out, status) = plain(&d, &["-v", "--color=never"], &[]);
+    assert_eq!(status, Some(1), "{out}");
+    assert!(out.contains("+$s = implode(',', $a);"), "{out}");
+    assert!(!out.contains("count("), "{out}");
+    assert!(!out.contains("$b"), "{out}");
+
+    // a.php no longer matches its entry.
+    std::fs::write(d.join("a.php"), "<?php\n").unwrap();
+    let (_, summary, status) = agent(&d, &["lint"]);
+    assert_eq!(
+        (summary.as_str(), status),
+        (
+            "pun lint: pass, 1 baseline entry no longer matched",
+            Some(0)
+        )
+    );
+
+    // A file that fails leaves the baseline as it was.
+    let before = read(&d, "pun-lint-baseline.toml");
+    std::fs::write(d.join("c.php"), "<?php\n$x = ;\n").unwrap();
+    let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+        .current_dir(&d)
+        .env("PUN_AGENT", "0")
+        .args(["lint", "--generate-baseline", "--color=never"])
+        .output()
+        .unwrap();
+    let err = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        err.contains("! No baseline written: 1 file failed; fix it and run `pun lint --generate-baseline` again\n"),
+        "{err}"
+    );
+    assert_ne!(out.status.code(), Some(0));
+    assert_eq!(read(&d, "pun-lint-baseline.toml"), before);
+    let _ = std::fs::remove_dir_all(&d);
+}
+
 /// A lint baseline that doesn't parse, or a `[lint] baseline` outside the project, stops the run (exit 2).
 #[test]
 fn lint_baseline_errors() {
